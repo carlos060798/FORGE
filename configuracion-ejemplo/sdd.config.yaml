@@ -1,0 +1,320 @@
+# ============================================================
+# SDD-ES — Configuración del Plugin
+# ============================================================
+# Este archivo se copia a `.sdd/sdd.config.yaml` al inicializar.
+# Edítalo para personalizar el comportamiento del plugin.
+# ============================================================
+
+# IDIOMA — todos los artefactos generados estarán en este idioma
+idioma: español
+
+# PERFIL — cómo se conduce el flujo con el usuario
+#   experto → controla el stack y las decisiones técnicas (flujo normal)
+#   guiado  → no programa: el sistema decide lo técnico, explica sin jerga,
+#             confirma antes de actuar y encadena los pasos automáticamente.
+#             Lo establece /sdd.constitucion. El rigor del producto NO cambia.
+perfil: experto
+
+# ============================================================
+# AGENTES — activa/desactiva y asigna modelo a cada agente
+# ============================================================
+# Modelos recomendados (al momento, 2026):
+#   - opus      → Tareas complejas: razonamiento profundo, revisión, BD, arquitectura
+#   - sonnet    → Implementación: código, tests, docs, operaciones (uso general)
+#   - haiku     → Tareas simples: estados, verificaciones rápidas, formateo
+#
+# Recomendación de Anthropic: usa el modelo MÁS PEQUEÑO que resuelva el problema
+# bien. Subir de tier solo si el agente falla repetidamente.
+# ============================================================
+
+agentes:
+  # ---------- Diseño y arquitectura ----------
+  arquitecto:
+    activo: true
+    modelo: opus          # Recomendado: opus (decisiones difíciles de revertir)
+    descripcion: "Toma decisiones de arquitectura del sistema y diseño técnico de alto nivel."
+
+  architecture-designer:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet (stack técnico para MVPs)
+    descripcion: "Recomienda el stack técnico más simple viable: frontend, backend, BD, deploy."
+
+  product-designer:
+    activo: true
+    modelo: opus          # Recomendado: opus (decisiones de producto son difíciles de revertir)
+    descripcion: "Genera el ProductDesign completo: pantallas P0/P1/P2, user flow, mvp_scope."
+
+  disenador-api:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet (contratos estructurados)
+    descripcion: "Diseña contratos de API (OpenAPI, GraphQL, gRPC, eventos)."
+
+  asesor-datos:
+    activo: true
+    modelo: opus          # Recomendado: opus (errores en BD son costosos de revertir)
+    descripcion: "Diseño de esquemas, queries, índices, migraciones, performance de BD."
+
+  # ---------- Implementación ----------
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet (codificación)
+    descripcion: "Implementa lógica de servidor: servicios, APIs, manejo de datos."
+
+  desarrollador-frontend:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet (codificación)
+    descripcion: "Implementa UI: componentes, vistas, estado del cliente."
+    # Desactívalo si tu proyecto es backend-only:
+    # activo: false
+
+  operaciones:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet
+    descripcion: "CI/CD, despliegues, infraestructura, configuración."
+
+  # ---------- Calidad ----------
+  tester:
+    activo: true
+    modelo: sonnet        # Recomendado: sonnet (genera tests útiles)
+    descripcion: "Genera y ejecuta tests unitarios, integración y E2E."
+
+  revisor:
+    activo: true
+    modelo: opus          # Recomendado: opus (revisión profunda atrapa más bugs)
+    descripcion: "Revisa código contra spec, calidad y constitución."
+
+  critico:
+    activo: true
+    modelo: opus          # Recomendado: opus (encontrar puntos ciegos requiere abstracción)
+    descripcion: "Identifica riesgos, puntos ciegos y asunciones del plan."
+
+  seguridad:
+    activo: true
+    modelo: opus          # Recomendado: opus (auditoría de seguridad seria)
+    descripcion: "Audita vulnerabilidades en cambios sensibles."
+
+  documentador:
+    activo: false         # Desactivado por defecto — actívalo si tu proyecto requiere docs formales
+    modelo: sonnet
+    descripcion: "Genera documentación técnica útil (no obvia)."
+
+  investigador:
+    activo: true          # Recopila contexto técnico antes de especificar
+    modelo: sonnet
+    descripcion: "Analiza el proyecto existente — stack, patrones, deuda técnica — antes de especificar."
+
+# ============================================================
+# RUTAS — dónde se generan los artefactos SDD
+# ============================================================
+rutas:
+  raiz_sdd: ".sdd"                           # Raíz del estado SDD
+  constitucion: ".sdd/memoria/constitucion.md"
+  estado_global: ".sdd/estado.json"
+  especificaciones: ".sdd/especificaciones"  # specs/YYYY-MM-DD-slug/
+  cambios: ".sdd/cambios"                    # Registro cronológico
+  arquitectura: ".sdd/arquitectura"          # ADRs (Decisiones)
+  dominio: ".sdd/dominio"                    # Glosario y definiciones
+  indice: ".sdd/INDICE.md"
+  snapshot: ".sdd/SNAPSHOT.md"
+
+# ============================================================
+# COMPORTAMIENTO — cómo opera el flujo
+# ============================================================
+comportamiento:
+  # Detección automática del tamaño del cambio
+  deteccion_tamano_automatica: true
+
+  # Para cambios micro (≤3 archivos, <10 líneas), generar spec+plan+tareas en un paso
+  ruta_rapida_micro: true
+
+  # Marcadores que se insertan cuando la información es ambigua
+  marcador_clarificacion: "[NECESITA_ACLARACION]"
+  marcador_pendiente: "[PENDIENTE]"
+  marcador_decidir: "[POR_DECIDIR]"
+
+  # Numeración automática de especificaciones
+  numeracion_especificaciones: "fecha"   # "fecha" | "secuencial" | "ambos"
+  # fecha:       YYYY-MM-DD-nombre-slug
+  # secuencial:  001-nombre-slug
+  # ambos:       2026-06-08-001-nombre-slug
+
+  # Confirmación antes de implementar
+  requerir_aprobacion_plan: true
+  requerir_aprobacion_tareas: false
+
+  # Versionado semántico de la constitución
+  versionado_constitucion: true
+
+# ============================================================
+# CONTROL DE VERSIONES — completamente opcional
+# ============================================================
+# SDD-ES NO se acopla a Git, GitLab, ni ningún VCS.
+# Esta sección es solo para que TUS hooks personalizados
+# puedan leer la preferencia.
+control_versiones:
+  sistema: "git"      # "git" | "mercurial" | "ninguno" | "otro"
+  crear_ramas: false  # Si tu flujo usa una rama por feature, escribe tu propio hook
+  hacer_commits: false
+
+# ============================================================
+# CALIDAD — umbrales que el agente revisor aplica
+# ============================================================
+calidad:
+  cobertura_tests_minima: 80
+  permitir_warnings_lint: false
+  permitir_codigo_comentado: false
+  longitud_funcion_maxima: 50
+  longitud_archivo_maxima: 400
+
+# ============================================================
+# PROTECCIONES — archivos/comandos que SDD no toca
+# ============================================================
+# Esta sección es DECLARATIVA — los valores son leídos por
+# guardia-seguridad.sh (hooks-ejemplo/guardia-seguridad.sh).
+# Para activar las protecciones, copia ese hook a .sdd/hooks/.
+# ============================================================
+protecciones:
+  # Archivos que los agentes NUNCA deben leer ni escribir
+  no_tocar_archivos:
+    - ".env*"
+    - "*.pem"
+    - "*.key"
+    - "*.p12"
+    - "secrets/**"
+    - "**/credentials*"
+    - "**/*secret*"
+    - ".aws/credentials"
+    - ".ssh/*"
+    - ".sdd/memoria/constitucion.md"   # solo /sdd.constitucion lo edita
+
+  # Comandos que se bloquean sin excepción (nunca se ejecutan)
+  comandos_prohibidos:
+    - "rm -rf /"
+    - "rm -rf ~"
+    - "rm -rf ."
+    - "DROP DATABASE"
+    - "DROP SCHEMA"
+    - "git push --force"
+    - "git push -f"
+    - "git reset --hard"
+    - "git clean -fxd"
+
+  # Comandos que requieren confirmación explícita del usuario (escribir "SI")
+  requerir_confirmacion:
+    - "rm -rf"
+    - "DROP TABLE"
+    - "DELETE FROM"
+    - "TRUNCATE"
+    - "git reset"
+    - "git branch -D"
+    - "git push"
+    - "npm publish"
+    - "pip uninstall"
+    - "terraform apply"
+    - "terraform destroy"
+    - "kubectl delete"
+    - "helm uninstall"
+    - "docker push"
+
+  # Ramas protegidas — requieren confirmación para implementar directamente
+  ramas_protegidas:
+    - main
+    - master
+    - develop
+    - release
+    - production
+    - staging
+
+# ============================================================
+# FIGMA — integración con el MCP sdd-figma-mcp
+# ============================================================
+# Si tu proyecto tiene diseños en Figma, define aquí el file_key.
+# El orquestador de /sdd.implementar lo usa automáticamente
+# cuando detecta tareas de tipo UI/frontend.
+#
+# Para obtener el file_key: abre el archivo en Figma → URL:
+#   figma.com/file/ESTE_ES_EL_FILE_KEY/nombre-del-archivo
+# ============================================================
+figma:
+  # Activa la integración con Figma en tareas de frontend
+  # Requiere: FIGMA_PAT en variables de entorno
+  enabled: false
+
+  # Clave del archivo principal de diseño del proyecto
+  # file_key: "REEMPLAZA_CON_TU_FILE_KEY"
+
+  # Si quieres un archivo diferente por sección (opcional)
+  # archivos:
+  #   componentes: "KEY_DEL_ARCHIVO_DE_COMPONENTES"
+  #   pantallas:   "KEY_DEL_ARCHIVO_DE_PANTALLAS"
+
+  # Comportamiento automático en /sdd.implementar
+  auto_analizar_sistema_diseño: true   # Siempre analiza antes de implementar UI
+  auto_mapear_si_file_key: true        # Mapea estilos si file_key está definido
+  bloquear_si_tokens_sin_mapear: false # Si true, pide confirmación antes de continuar
+
+# ============ MAPAS Y INDEXACIÓN ============
+mapeos:
+  enabled: true
+  # Modo de actualización: "manual" | "perezoso" | "automático"
+  modo_actualizacion: perezoso
+  
+  # Detecta archivos nuevos automáticamente
+  validacion_perezosa: true
+  
+  # Lenguajes a indexar
+  lenguajes:
+    - typescript
+    - javascript
+    - python
+    - rust
+    - go
+    - java
+    - csharp
+    - ruby
+    - php
+  
+  # Directorios a ignorar (como .gitignore)
+  ignorar:
+    - node_modules
+    - dist
+    - build
+    - target
+    - vendor
+    - __pycache__
+    - .git
+    - .sdd
+
+# ============ COMPRESIÓN DE TOKENS ============
+compresion:
+  # Activar compresión
+  enabled: true
+  
+  # Modo global de salida
+  # "normal" | "lite" | "full" | "ultra"
+  modo_salida_usuario: lite
+  
+  # Modo de comunicación entre agentes (usuario no ve)
+  # "normal" | "lite" | "full" | "ultra"
+  modo_agentes_internos: ultra
+  
+  # Comprimir archivos internos del plugin (commands, agents, skills)
+  # CUIDADO: hace menos legibles para editar
+  comprimir_plugin: false
+  
+  # Términos técnicos que NUNCA se abrevian
+  preservar_terminos:
+    - autenticación
+    - autorización
+    - verificación
+    - base de datos
+    - algoritmo
+  
+  # Patrones que NUNCA se comprimen (regex)
+  patrones_protegidos:
+    - PELIGRO
+    - CUIDADO
+    - "NO USAR EN PRODUCCIÓN"
+    - ELIMINAR
+    - BORRAR
+    - irreversible

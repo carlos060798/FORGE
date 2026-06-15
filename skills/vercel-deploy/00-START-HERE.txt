@@ -1,0 +1,364 @@
+================================================================================
+                           ¡BIENVENIDO!
+                  Skill: Despliegue Automático en Vercel
+                          vercel-deploy v1.0.0
+================================================================================
+
+Ubicación: c:\Users\usuario\sdd-lite\sdd-lite\skills\vercel-deploy\
+
+Este directorio contiene un skill completo para automatizar deployments en
+Vercel con 6 pasos atómicos, health checks automáticos y rollback seguro.
+
+================================================================================
+                      ¿POR DÓNDE EMPIEZO? (Elige tu caso)
+================================================================================
+
+1️⃣  QUIERO DESPLEGAR YA (10 MINUTOS)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: Lee README.md (2 min)
+    Paso 2: Genera VERCEL_TOKEN en https://vercel.com/account/tokens (2 min)
+    Paso 3: Haz export VERCEL_TOKEN="vercel_xxx..." (1 min)
+    Paso 4: Ejecuta bash deploy.sh (4 min)
+
+    RESULTADO: Tu app en vivo en Vercel
+
+    ➜ Ve a: README.md
+
+
+2️⃣  QUIERO ENTENDER EL FLUJO (20 MINUTOS)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: Lee EXEC-SUMMARY.txt para overview (5 min)
+    Paso 2: Estudia SKILL.md para especificación completa (10 min)
+    Paso 3: Revisa FLOW.txt para diagrama visual (5 min)
+
+    RESULTADO: Entiendes 100% cómo funciona
+
+    ➜ Ve a: EXEC-SUMMARY.txt
+
+
+3️⃣  QUIERO INTEGRAR EN /sdd.implementar (25 MINUTOS)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: Lee INTEGRATION.md (10 min)
+    Paso 2: Copia la configuración YAML a tu proyecto (5 min)
+    Paso 3: Configura VERCEL_TOKEN (5 min)
+    Paso 4: Prueba con /sdd.desplegar (5 min)
+
+    RESULTADO: Skill integrado en tu flujo SDD
+
+    ➜ Ve a: INTEGRATION.md
+
+
+4️⃣  NECESITO VERIFICAR TODO ESTÁ OK (5 MINUTOS)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: Abre CHECKLIST.md
+    Paso 2: Ejecuta la lista de validaciones
+    Paso 3: Si todo está verde ✅, procede al deployment
+
+    RESULTADO: Validación completa pre-deploy
+
+    ➜ Ve a: CHECKLIST.md
+
+
+5️⃣  ALGO FALLÓ, NECESITO AYUDA (VARIABLE)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: Revisa tabla de errores en README.md
+    Paso 2: Más detalles en SKILL.md → "Manejo de errores"
+    Paso 3: Si es integración, ve a INTEGRATION.md → "Troubleshooting"
+    Paso 4: Consulta FLOW.txt para visualizar dónde falló
+
+    RESULTADO: Diagnosis e instrucciones de remediar
+
+    ➜ Ve a: README.md → Errores comunes
+
+
+6️⃣  SOY ARQUITECTO/DEVOPS, QUIERO VER TODO (1 HORA)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Paso 1: MANIFEST.md — Contenido e índice (5 min)
+    Paso 2: SKILL.md — Especificación con código (20 min)
+    Paso 3: deploy.sh — Revisión de código (15 min)
+    Paso 4: skill.yaml — Metadata y configuración (10 min)
+    Paso 5: FLOW.txt — Diagrama de flujo (10 min)
+
+    RESULTADO: Visión 360° del skill
+
+    ➜ Ve a: MANIFEST.md
+
+
+================================================================================
+                          ARCHIVO CORRECTO PARA TI
+================================================================================
+
+Archivo              Tipo              Lectura   Propósito
+─────────────────────────────────────────────────────────────────────────────
+README.md            Quick start       2 min     Empezar YA
+CHECKLIST.md         Pre-requisitos    5 min     Validar antes de desplegar
+SKILL.md             Especificación   10 min     Entender flujo completo
+INTEGRATION.md       Integración      10 min     Conectar con /sdd.implementar
+FLOW.txt             Diagrama          5 min     Ver diagrama visual
+deploy.sh            Ejecutable        5 min     Ver código
+skill.yaml           Metadata          5 min     Referencia técnica
+INDEX.md             Navegación        5 min     Mapa de documentos
+MANIFEST.md          Resumen          10 min     Contenido e índice
+EXEC-SUMMARY.txt     Summary          10 min     Overview empresarial
+estado.json.example  Ejemplo JSON      2 min     Ver formato salida
+
+================================================================================
+                            FLUJO RÁPIDO: 3 PASOS
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PASO 1: Obtener VERCEL_TOKEN                                           │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                                         │
+│ 1. Ve a: https://vercel.com/account/tokens                            │
+│ 2. Crea nuevo token (scope: full)                                     │
+│ 3. Copia el token: vercel_xxx_abc123...                               │
+│                                                                         │
+│ Luego guarda:                                                          │
+│   export VERCEL_TOKEN="vercel_xxx_abc123..."                          │
+│   # O persistente:                                                    │
+│   echo 'VERCEL_TOKEN=vercel_xxx_abc123...' >> .env.local              │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PASO 2: Verificar pre-requisitos                                       │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                                         │
+│ Abre CHECKLIST.md y ejecuta:                                          │
+│                                                                         │
+│ ✓ VERCEL_TOKEN presente                                              │
+│ ✓ Rama limpia (git status limpio)                                    │
+│ ✓ Sin secretos en src/                                               │
+│ ✓ Tests verdes (npm test)                                            │
+│ ✓ Build local OK (npm run build)                                     │
+│                                                                         │
+│ Si algo falla, ve a CHECKLIST.md para instrucc. de remediar          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PASO 3: Ejecutar el skill                                              │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                                         │
+│ bash deploy.sh                                                         │
+│                                                                         │
+│ SALIDA ESPERADA:                                                       │
+│                                                                         │
+│ 🚀 DESPLIEGUE A VERCEL                                                │
+│                                                                         │
+│   ✅ Pre-checks completados                                           │
+│   ✅ Build exitoso                                                    │
+│   ✅ Vercel deployment: https://proyecto.vercel.app                  │
+│   ✅ Health check: HTTP 200 OK                                        │
+│                                                                         │
+│   Tu app está en vivo: https://proyecto.vercel.app                   │
+│   Tiempo total: 3m 42s                                                │
+│                                                                         │
+│ Próximos pasos:                                                       │
+│   • Comparte URL con testers                                         │
+│   • Monitorea por 15 minutos                                         │
+│   • Ejecuta /sdd.snapshot para actualizar estado                     │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                           CARACTERÍSTICAS PRINCIPALES
+================================================================================
+
+✅ FLUJO ATÓMICO (6 PASOS)
+   1. Pre-checks: VERCEL_TOKEN, rama limpia, sin secretos, tests OK
+   2. Configuración: Detecta framework, genera vercel.json automáticamente
+   3. Build & Deploy: npm run build + vercel deploy --prod
+   4. Health Check: 3 reintentos automáticos con backoff
+   5. Rollback: Automático si falla
+   6. Registro: Metadatos en .sdd/estado.json
+
+✅ SEGURIDAD ENTERPRISE
+   • Detección de secretos pre-deploy
+   • VERCEL_TOKEN nunca se loguea
+   • Rama limpia antes de desplegar
+   • .env.local en .gitignore
+
+✅ CONFIABILIDAD
+   • Idempotencia (ejecutar 2x = mismo resultado)
+   • Health checks automáticos
+   • Rollback atómico
+   • Sin estados intermedios
+
+✅ OBSERVABILIDAD
+   • Output visual con emojis
+   • Logging completo en .sdd/estado.json
+   • Auditoría de cada paso
+   • Métricas de duración
+
+✅ DOCUMENTACIÓN
+   • 11 archivos completamente documentados
+   • 4 rutas de lectura diferentes
+   • Diagramas ASCII
+   • Ejemplos ejecutables
+
+================================================================================
+                       ESTRUCTURA DEL DIRECTORIO
+================================================================================
+
+📂 vercel-deploy/
+  │
+  ├─ 00-START-HERE.txt ⭐        Este archivo (empieza aquí)
+  │
+  ├─ ARCHIVOS PRINCIPALES:
+  │  ├─ SKILL.md                  Especificación completa (10 KB)
+  │  ├─ deploy.sh                 Script ejecutable (8 KB)
+  │  └─ README.md                 Quick start (2 KB)
+  │
+  ├─ GUÍAS ESPECIALIZADAS:
+  │  ├─ CHECKLIST.md              Pre-requisitos (5 KB)
+  │  ├─ INTEGRATION.md            Cómo integrar (8 KB)
+  │  └─ FLOW.txt                  Diagrama visual (15 KB)
+  │
+  ├─ REFERENCIA:
+  │  ├─ INDEX.md                  Mapa de navegación (6 KB)
+  │  ├─ MANIFEST.md               Contenido (8 KB)
+  │  ├─ EXEC-SUMMARY.txt          Overview empresarial (10 KB)
+  │  └─ skill.yaml                Metadata (10 KB)
+  │
+  └─ EJEMPLOS:
+     ├─ estado.json.example       Salida del deploy (15 KB)
+     └─ (más archivos)
+
+TOTAL: 11 archivos (~100 KB)
+
+================================================================================
+                       TIEMPO ESTIMADO POR TAREA
+================================================================================
+
+Tarea                                        Tiempo
+─────────────────────────────────────────────────────────────────────────────
+Leer este archivo (00-START-HERE.txt)        2 min
+Generar VERCEL_TOKEN                         2 min
+Leer README.md                               2 min
+Ejecutar deploy.sh                           4 min
+                                           ────────
+TOTAL PARA PRIMER DEPLOYMENT                10 min
+
+Integrar en /sdd.implementar                20 min
+Entrenar al team                            20 min
+Monitoreo post-deploy                       15 min
+                                           ────────
+TOTAL PRIMER DÍA                            65 min
+
+================================================================================
+                           PRÓXIMOS PASOS
+================================================================================
+
+Ya mismo:
+  1. Lee README.md (2 min)
+  2. Generas VERCEL_TOKEN (2 min)
+
+En los próximos 5 minutos:
+  3. Haz export VERCEL_TOKEN=...
+  4. Ejecuta bash deploy.sh
+  5. Verifica que tu app está en vivo
+
+Hoy:
+  6. Documenta la URL en tu proyecto
+  7. Avisa al team
+  8. Monitorea por 15 minutos
+
+Esta semana:
+  9. Integra el skill en /sdd.implementar
+  10. Entrena al team en el flujo
+
+Este mes:
+  11. Monitorea deployments
+  12. Ajusta configuración si necesario
+
+================================================================================
+                            SOPORTE RÁPIDO
+================================================================================
+
+PREGUNTA: "¿Por dónde empiezo?"
+RESPUESTA: Lee README.md (2 min)
+ARCHIVO: README.md
+
+PREGUNTA: "Necesito validar todo antes de desplegar"
+RESPUESTA: Abre CHECKLIST.md y sigue la lista
+ARCHIVO: CHECKLIST.md
+
+PREGUNTA: "¿Cómo integro en mi flujo SDD?"
+RESPUESTA: Ve a INTEGRATION.md (10 min)
+ARCHIVO: INTEGRATION.md
+
+PREGUNTA: "Algo falló, ¿qué hago?"
+RESPUESTA: Consulta tabla de errores en README.md
+ARCHIVO: README.md → "Errores comunes"
+
+PREGUNTA: "Quiero ver el diagrama de flujo"
+RESPUESTA: Abre FLOW.txt (diagrama ASCII)
+ARCHIVO: FLOW.txt
+
+PREGUNTA: "¿Qué contiene este skill?"
+RESPUESTA: Ve a MANIFEST.md
+ARCHIVO: MANIFEST.md
+
+PREGUNTA: "Soy DevOps, quiero detalles técnicos"
+RESPUESTA: EXEC-SUMMARY.txt → SKILL.md → skill.yaml
+ARCHIVOS: EXEC-SUMMARY.txt, SKILL.md, skill.yaml
+
+================================================================================
+                     LOS 6 PASOS EXPLICADOS EN 30 SEGUNDOS
+================================================================================
+
+1. PRE-CHECKS       → Verifica que todo está OK (token, rama, tests)
+2. CONFIGURACIÓN    → Auto-detecta framework (next, react, etc.)
+3. BUILD & DEPLOY   → Compila y envía a Vercel
+4. HEALTH CHECK     → Reintenta 3 veces hasta que responda HTTP 200
+5. ROLLBACK         → Si falla, vuelve al deploy anterior (automático)
+6. REGISTRO         → Guarda metadatos en .sdd/estado.json
+
+RESULTADO: Tu app en vivo en Vercel, 100% confiable.
+
+================================================================================
+                              COMIENZA AQUÍ
+================================================================================
+
+→ Para desplegar YA:
+  Abre: README.md
+
+→ Para entender todo:
+  Abre: EXEC-SUMMARY.txt
+
+→ Para integrar en SDD:
+  Abre: INTEGRATION.md
+
+→ Para validar pre-requisitos:
+  Abre: CHECKLIST.md
+
+→ Para ver el diagrama:
+  Abre: FLOW.txt
+
+¿LISTO? 🚀
+
+Ve al archivo que necesites arriba ↑
+
+================================================================================
+                             BIENVENIDO AL FUTURO
+                       DE DEPLOYMENTS SIN PREOCUPACIONES
+================================================================================
+
+Este skill automatiza lo que antes era manual y error-prone.
+Disfruta del deployment seguro, rápido y confiable a Vercel.
+
+Preguntas? Consulta la documentación dentro de este directorio.
+
+Versión: 1.0.0
+Estado: ✅ Listo para usar
+Fecha: 2026-06-13
+
+================================================================================

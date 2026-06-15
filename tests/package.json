@@ -1,0 +1,13 @@
+{
+  "name": "sdd-lite-tests",
+  "version": "1.0.0",
+  "description": "Test suite de integridad del framework SDD-ES. Zero dependencias — usa Node test runner nativo.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:verbose": "node --test --reporter=spec tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

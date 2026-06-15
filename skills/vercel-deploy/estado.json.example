@@ -1,0 +1,205 @@
+{
+  "skill": "vercel-deploy",
+  "version": "1.0.0",
+  "execution": {
+    "timestamp_start": "2026-06-13T14:25:30Z",
+    "timestamp_end": "2026-06-13T14:30:15Z",
+    "duration_seconds": 285,
+    "status": "SUCCESS",
+    "exit_code": 0
+  },
+  "ultimo_despliegue": {
+    "timestamp": "2026-06-13T14:30:00Z",
+    "url": "https://mi-proyecto.vercel.app",
+    "status": "OK",
+    "health_check": "200 OK",
+    "framework": "nextjs",
+    "environment": "production"
+  },
+  "pre_checks": {
+    "vercel_token": {
+      "status": "OK",
+      "message": "Token presente y válido"
+    },
+    "branch_clean": {
+      "status": "OK",
+      "message": "Sin cambios sin stagear"
+    },
+    "secrets_scan": {
+      "status": "OK",
+      "message": "No secretos detectados"
+    },
+    "tests": {
+      "status": "OK",
+      "message": "Tests pasando (42/42)",
+      "exit_code": 0
+    }
+  },
+  "build": {
+    "status": "OK",
+    "command": "npm run build",
+    "duration_seconds": 120,
+    "output": {
+      "lines": 45,
+      "first_line": "Linting source files...",
+      "last_line": "✓ Build complete"
+    }
+  },
+  "deploy": {
+    "status": "OK",
+    "platform": "vercel",
+    "deployment_id": "dpl_abc123def456ghi789",
+    "url": "https://mi-proyecto.vercel.app",
+    "production_url": "https://mi-proyecto.vercel.app",
+    "console_url": "https://vercel.com/dashboard/deployments/dpl_abc123def456ghi789",
+    "duration_seconds": 85,
+    "regions": ["iad1", "sfo1"]
+  },
+  "health_check": {
+    "status": "OK",
+    "attempts": 1,
+    "max_attempts": 3,
+    "http_code": "200",
+    "response_time_ms": 145,
+    "checks": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-06-13T14:30:10Z",
+        "http_code": "200",
+        "response_time_ms": 145,
+        "status": "OK"
+      }
+    ]
+  },
+  "rollback": {
+    "status": "NOT_NEEDED",
+    "previous_deployment": "dpl_xyz789abc456def123",
+    "previous_url": "https://mi-proyecto-prev.vercel.app"
+  },
+  "configuration": {
+    "vercel_json": {
+      "buildCommand": "npm run build",
+      "outputDirectory": ".next",
+      "framework": "nextjs",
+      "auto_generated": false
+    },
+    "environment_vars": {
+      "NODE_ENV": "production",
+      "VERCEL_ENV": "production"
+    },
+    "secrets_detected": 0
+  },
+  "files_generated": {
+    ".sdd/estado.json": {
+      "size_bytes": 2845,
+      "timestamp": "2026-06-13T14:30:15Z"
+    }
+  },
+  "next_steps": [
+    "Comparte URL con testers: https://mi-proyecto.vercel.app",
+    "Monitorea por anomalías (15 minutos)",
+    "Ejecuta /sdd.snapshot para actualizar estado del producto",
+    "En caso de issues: /sdd.revertir para rollback manual"
+  ],
+  "metrics": {
+    "total_duration_seconds": 285,
+    "build_duration_seconds": 120,
+    "deploy_duration_seconds": 85,
+    "health_check_duration_seconds": 5,
+    "files_deployed": 342,
+    "uncompressed_size_mb": 45.2,
+    "compressed_size_mb": 8.7
+  },
+  "network": {
+    "git_commits_deployed": 3,
+    "last_commit_hash": "abc123def456",
+    "last_commit_message": "Add new feature: user dashboard",
+    "branch_deployed": "main",
+    "tag_created": "v1.2.3"
+  },
+  "notifications": {
+    "slack": {
+      "status": "SENT",
+      "channel": "#deployments",
+      "message_ts": "1686751815.000100"
+    },
+    "email": {
+      "status": "QUEUED",
+      "recipients": ["dev-team@company.com"],
+      "subject": "Deployment successful: v1.2.3 → production"
+    }
+  },
+  "compliance": {
+    "security_scan": {
+      "status": "OK",
+      "vulnerabilities_found": 0,
+      "scanner": "npm audit"
+    },
+    "code_quality": {
+      "status": "OK",
+      "linting_errors": 0,
+      "warnings": 2,
+      "tool": "eslint"
+    },
+    "performance": {
+      "lighthouse_score": 98,
+      "first_contentful_paint_ms": 850,
+      "largest_contentful_paint_ms": 1200
+    }
+  },
+  "audit_trail": [
+    {
+      "timestamp": "2026-06-13T14:25:30Z",
+      "action": "PRE_CHECKS_START",
+      "actor": "user@company.com",
+      "result": "OK"
+    },
+    {
+      "timestamp": "2026-06-13T14:27:45Z",
+      "action": "BUILD_START",
+      "actor": "vercel-cli",
+      "result": "OK"
+    },
+    {
+      "timestamp": "2026-06-13T14:29:15Z",
+      "action": "DEPLOY_START",
+      "actor": "vercel-api",
+      "result": "OK"
+    },
+    {
+      "timestamp": "2026-06-13T14:30:10Z",
+      "action": "HEALTH_CHECK",
+      "actor": "curl",
+      "result": "OK"
+    },
+    {
+      "timestamp": "2026-06-13T14:30:15Z",
+      "action": "COMPLETE",
+      "actor": "system",
+      "result": "SUCCESS"
+    }
+  ],
+  "error_history": [],
+  "previous_deployments": [
+    {
+      "timestamp": "2026-06-12T10:15:00Z",
+      "url": "https://mi-proyecto-v1-2-2.vercel.app",
+      "status": "SUCCESS",
+      "deployment_id": "dpl_xyz789abc456def123"
+    },
+    {
+      "timestamp": "2026-06-11T16:45:30Z",
+      "url": "https://mi-proyecto-v1-2-1.vercel.app",
+      "status": "SUCCESS",
+      "deployment_id": "dpl_prev123abc789def456"
+    }
+  ],
+  "environment_info": {
+    "vercel_cli_version": "28.16.4",
+    "node_version": "18.16.0",
+    "npm_version": "9.6.2",
+    "git_version": "2.40.0",
+    "os": "Linux ubuntu-latest",
+    "arch": "x64"
+  }
+}

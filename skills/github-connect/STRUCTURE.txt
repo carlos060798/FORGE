@@ -1,0 +1,252 @@
+GitHub Connect Skill - Estructura de Archivos
+===============================================
+
+/skills/github-connect/
+│
+├── SKILL.md                    (9.1 KB)
+│   └─ Definición oficial del skill
+│      - Frontmatter YAML
+│      - Propósito y descripción
+│      - Flujo de ejecución paso a paso
+│      - Salida esperada
+│      - Manejo de errores
+│      - Integración con SDD-ES
+│      - Changelog
+│
+├── github-connect.sh           (12 KB) [EJECUTABLE]
+│   └─ Script principal que implementa el skill
+│      - Validación de token
+│      - Obtención de información de usuario
+│      - Verificación de repositorio
+│      - Creación de repositorio
+│      - Configuración de remote
+│      - Commit inicial
+│      - Push inicial
+│      - Guardado de configuración
+│      - Validación final
+│
+├── README.md                   (9.3 KB)
+│   └─ Documentación para usuarios
+│      - Descripción rápida
+│      - Requisitos previos
+│      - Instrucciones de uso
+│      - Parámetros disponibles
+│      - Ejemplos prácticos
+│      - Flujo paso a paso
+│      - Manejo de errores
+│      - Validación post-ejecución
+│      - FAQ
+│      - Notas técnicas
+│
+├── INTEGRATION.md              (7.8 KB)
+│   └─ Guía de integración técnica
+│      - Integración con sdd.constitucion.md
+│      - Interfaz pública del skill
+│      - Variables de entorno
+│      - Archivos modificados/creados
+│      - Integración con otros skills
+│      - Errores comunes y recuperación
+│      - Estado persistente
+│      - Flujo de reintentos
+│      - Testing e integración continua
+│      - Roadmap futuro
+│
+├── example-config.yaml         (1.2 KB)
+│   └─ Ejemplo de configuración generada
+│      - Estructura de .sdd/sdd.config.yaml
+│      - Campos y valores
+│      - Ejemplos públicos y privados
+│      - Notas de seguridad
+│
+└── STRUCTURE.txt               (este archivo)
+    └─ Descripción de la estructura del skill
+
+
+FLUJO DE EJECUCIÓN
+==================
+
+Usuario invoca:
+  /github-connect [parámetros opcionales]
+        ↓
+  ┌─────────────────────────────────────────────────────┐
+  │  github-connect.sh (script bash ejecutable)         │
+  │  ┌─────────────────────────────────────────────┐   │
+  │  │ 1. Validar Token GitHub                     │   │
+  │  │    - GITHUB_TOKEN existe                    │   │
+  │  │    - gh cli está instalado                  │   │
+  │  │    - Token es válido                        │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 2. Obtener Info de Usuario                  │   │
+  │  │    - gh api user (obtener username)         │   │
+  │  │    - Mostrar configuración                  │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 3. Verificar Git                            │   │
+  │  │    - .git existe                            │   │
+  │  │    - user.name configurado                  │   │
+  │  │    - user.email configurado                 │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 4. Verificar Repo en GitHub                 │   │
+  │  │    - gh repo view (¿existe?)                │   │
+  │  │    - Decidir: crear o usar existente        │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 5. Crear Repositorio (si necesario)         │   │
+  │  │    - gh repo create                         │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 6. Configurar Remote                        │   │
+  │  │    - git remote add origin                  │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 7. Commit Inicial                           │   │
+  │  │    - git add -A                             │   │
+  │  │    - git commit -m "feat: ..."              │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 8. Rama Principal                           │   │
+  │  │    - git branch -M main                     │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 9. Push Inicial                             │   │
+  │  │    - git push -u origin main                │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 10. Guardar Configuración                   │   │
+  │  │     - Crear .sdd/sdd.config.yaml            │   │
+  │  │     - git commit (config)                   │   │
+  │  │     - git push                              │   │
+  │  ├─────────────────────────────────────────────┤   │
+  │  │ 11. Validación Final                        │   │
+  │  │     - Verificar remote                      │   │
+  │  │     - Verificar upstream                    │   │
+  │  │     - Verificar config local                │   │
+  │  └─────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────┘
+        ↓
+  ✅ Completado exitosamente
+        ↓
+  Archivos creados/modificados:
+  - .git/config (remote añadido)
+  - .sdd/sdd.config.yaml (configuración guardada)
+  - Commits iniciales en rama main
+
+
+ARCHIVOS MODIFICADOS DURANTE EJECUCIÓN
+========================================
+
+Creados:
+  .sdd/
+    └── sdd.config.yaml          Configuración de GitHub
+
+Modificados:
+  .git/
+    └── config                   Añadido remote origin
+
+  (rama principal)               Commits iniciales
+
+
+REQUISITOS PREVIOS
+==================
+
+Sistema:
+  - Git 2.20+ instalado
+  - GitHub CLI (gh) 1.0+ instalado
+
+Configuración Git:
+  - git config user.name configurado
+  - git config user.email configurado
+  - Repositorio Git inicializado (git init)
+
+Credenciales:
+  - GITHUB_TOKEN válido (variable de entorno)
+  - Permisos: repo (todos), user:email
+
+
+PARÁMETROS
+==========
+
+repo_name           : Nombre del repo (default: nombre de carpeta)
+repo_description    : Descripción (default: "Proyecto SDD-ES")
+repo_visibility     : public/private (default: "public")
+branch_name         : Rama principal (default: "main")
+auto_init_commit    : true/false (default: true)
+github_token        : Token (default: $GITHUB_TOKEN)
+
+
+SALIDA ESPERADA
+===============
+
+Éxito:
+  ✅ Repositorio creado en GitHub
+  ✅ Remote configurado: https://github.com/usuario/repo.git
+  ✅ Commit inicial creado
+  ✅ Push completado
+  ✅ Configuración guardada en .sdd/sdd.config.yaml
+
+Error (Ejemplos):
+  ❌ GITHUB_TOKEN no configurado
+  ❌ Token de GitHub inválido o expirado
+  ❌ GitHub CLI no está instalado
+  ❌ Este directorio no es un repositorio Git
+
+Advertencias:
+  ⚠️  El repositorio ya existe en GitHub
+  ⚠️  No hay cambios pendientes para commitear
+
+
+INTEGRACIÓN CON SDD-ES
+======================
+
+Se invoca desde: sdd.constitucion.md, PASO 4
+Cuando usuario dice: "sí, guardar en GitHub"
+
+Parámetros recibidos del orquestador:
+  - proyecto.nombre
+  - proyecto.descripcion
+  - usuario.email
+
+Actualiza estado en: gestion-estado.md
+  - proyecto.github_connected = true
+  - proyecto.repo_url = "https://..."
+  - proyecto.git_configured = true
+
+Puede ser invocado por otros skills:
+  - modo-guiado.md (mostrar progreso)
+  - deteccion-stack.md (integración)
+  - verificador-implementacion.md (validación)
+
+
+COMANDOS ÚTILES
+===============
+
+Ver estado:
+  git remote -v
+  git branch -vv
+  cat .sdd/sdd.config.yaml
+  gh repo view
+
+Verificar token:
+  gh auth status
+  echo $GITHUB_TOKEN
+
+Ver logs:
+  git log --oneline -5
+  cat /tmp/push-output.log
+
+Resetear (si necesario):
+  git remote remove origin
+  rm -rf .sdd/sdd.config.yaml
+  rm -rf .git (¡cuidado!)
+
+
+NOTAS DE SEGURIDAD
+==================
+
+- El token NUNCA se loguea o imprime en pantalla
+- El token se almacena solo en memoria durante ejecución
+- La configuración guardada (.sdd/sdd.config.yaml) no contiene tokens
+- Usa HTTPS seguro para comunicación
+- El script valida entrada antes de ejecutar comandos
+
+Safe to commit:
+  ✓ .sdd/sdd.config.yaml
+  ✓ .git/config (sin tokens)
+
+Never commit:
+  ✗ GITHUB_TOKEN
+  ✗ GitHub secrets
+  ✗ SSH keys

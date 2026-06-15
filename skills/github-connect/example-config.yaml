@@ -1,0 +1,41 @@
+# Ejemplo de configuración generada por github-connect skill
+# Este archivo se crea automáticamente en .sdd/sdd.config.yaml
+
+git:
+  # URL del repositorio remoto
+  remote_url: "https://github.com/usuario/nombre-proyecto.git"
+
+  # Estado de conexión a GitHub
+  connected: true
+
+  # Timestamp de cuándo se conectó
+  connected_at: "2026-06-13T14:32:45Z"
+
+  # Usuario de GitHub asociado
+  github_user: "usuario"
+
+  # Nombre del repositorio
+  repo_name: "nombre-proyecto"
+
+  # Rama principal
+  branch: "main"
+
+  # Visibilidad del repositorio (public/private)
+  visibility: "public"
+
+# Notas:
+# - Este archivo es generado automáticamente por el skill github-connect
+# - No contiene tokens o credenciales (seguro de commitear)
+# - Se usa para documentar la configuración de GitHub del proyecto
+# - Útil para integración con otros tools y scripts de SDD-ES
+
+# Ejemplo con repositorio privado:
+#
+# git:
+#   remote_url: "https://github.com/usuario/proyecto-privado.git"
+#   connected: true
+#   connected_at: "2026-06-13T14:32:45Z"
+#   github_user: "usuario"
+#   repo_name: "proyecto-privado"
+#   branch: "main"
+#   visibility: "private"

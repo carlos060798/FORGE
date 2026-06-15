@@ -1,0 +1,121 @@
+{
+  "$schema": "https://claude.ai/schemas/plugin/v1.json",
+  "name": "sdd-es",
+  "version": "2.6.0",
+  "description": "Spec-Driven Development en español. Fábrica de software agnóstica al stack: de la idea al despliegue. Con 14 agentes especializados, 35 comandos, skill para mejorar prompts, mapas, compresión de tokens, hooks de seguridad y técnicas avanzadas de optimización (v2.6.0).",
+  "homepage": "https://github.com/carlos060798/FORGE",
+  "repository": "https://github.com/carlos060798/FORGE",
+  "license": "MIT",
+  "author": {
+    "name": "Danilo Angarita",
+    "email": "daniloangaritagarcia@gmail.com",
+    "url": "https://github.com/carlos060798/FORGE"
+  },
+
+  "userConfig": {
+    "modelo_principal": {
+      "type": "select",
+      "label": "Modelo para agentes de decisión (arquitecto, crítico, seguridad, asesor-datos, revisor)",
+      "options": ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+      "default": "claude-opus-4-8"
+    },
+    "perfil_default": {
+      "type": "select",
+      "label": "Perfil de interacción por defecto",
+      "options": ["experto", "guiado"],
+      "default": "experto"
+    },
+    "verbosidad": {
+      "type": "select",
+      "label": "Nivel de detalle en reportes de implementación",
+      "options": ["minimo", "normal", "detallado"],
+      "default": "normal"
+    }
+  },
+
+  "commands": [
+    "sdd",
+    "sdd.constitucion",
+    "sdd.configurar",
+    "sdd.descubrir",
+    "sdd.interpretar",
+    "sdd.diseñar",
+    "sdd.construir",
+    "sdd.exportar",
+    "sdd.compliance",
+    "sdd.especificar",
+    "sdd.importar",
+    "sdd.aclarar",
+    "sdd.checklist",
+    "sdd.planificar",
+    "sdd.tareas",
+    "sdd.analizar",
+    "sdd.implementar",
+    "sdd.qa",
+    "sdd.verificar",
+    "sdd.desplegar",
+    "sdd.canary",
+    "sdd.snapshot",
+    "sdd.retro",
+    "sdd.release",
+    "sdd.glosario",
+    "sdd.estado",
+    "sdd.mapear",
+    "sdd.comprimir",
+    "sdd.optimizar",
+    "sdd.optimizar-memoria",
+    "sdd.adr",
+    "sdd.defect-report",
+    "sdd.ayuda",
+    "sdd.crear-mcp",
+    "sdd.crear-app",
+    "sdd.md"
+  ],
+
+  "agents": [
+    "arquitecto",
+    "disenador-api",
+    "asesor-datos",
+    "desarrollador-backend",
+    "desarrollador-frontend",
+    "operaciones",
+    "tester",
+    "revisor",
+    "critico",
+    "seguridad",
+    "investigador",
+    "documentador",
+    "product-designer",
+    "architecture-designer"
+  ],
+
+  "skills": [
+    "deteccion-stack",
+    "gestion-estado",
+    "validacion-spec",
+    "enrutador-agentes",
+    "verificador-implementacion",
+    "indexador",
+    "compresion-tokens",
+    "constitucion-constraint",
+    "modo-guiado",
+    "orquestacion-ptc",
+    "descubrir-idea",
+    "interpretar-idea",
+    "elegir-direccion",
+    "wireframe-mvp",
+    "critica-diseno",
+    "github-connect",
+    "vercel-deploy",
+    "observabilidad-consumo",
+    "effort-router",
+    "memory-compactor",
+    "cache-audit",
+    "token-budget",
+    "adr-indexer",
+    "mutation-detector",
+    "mejorar-prompt"
+  ],
+
+  "mcpServers": "./.mcp.json"
+}

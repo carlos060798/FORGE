@@ -1,0 +1,10 @@
+# MCP — dependencias y compilado (no se versionan)
+sdd-lite/mcp-figma/node_modules/
+sdd-lite/mcp-figma/dist/
+
+# Estado local del proyecto (generado en cada repo donde se instala SDD-ES)
+.sdd/
+
+# Variables de entorno
+.env
+.env.local

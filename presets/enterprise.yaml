@@ -1,0 +1,75 @@
+# ============================================================
+# PRESET: enterprise
+# Para: equipos grandes, compliance, auditoría, producto crítico.
+# Filosofía: proceso completo. Nada llega a prod sin revisión.
+# ============================================================
+
+preset:
+  nombre: enterprise
+  descripcion: "Equipo grande o producto crítico. Proceso completo con auditoría."
+  casos_de_uso:
+    - "Equipo de 8+ desarrolladores"
+    - "Producto con datos sensibles (fintech, healthtech, legaltech)"
+    - "Compliance requerido (SOC2, ISO 27001, HIPAA, GDPR)"
+    - "Sistema que no puede fallar (infraestructura crítica)"
+
+agentes:
+  arquitecto:
+    activo: true
+    modelo: opus
+  disenador-api:
+    activo: true
+    modelo: sonnet
+  asesor-datos:
+    activo: true
+    modelo: opus
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet
+  desarrollador-frontend:
+    activo: true
+    modelo: sonnet
+  operaciones:
+    activo: true
+    modelo: sonnet
+  tester:
+    activo: true
+    modelo: sonnet
+  revisor:
+    activo: true
+    modelo: opus          # revisión profunda siempre
+  critico:
+    activo: true
+    modelo: opus          # análisis de riesgos en todo
+  seguridad:
+    activo: true
+    modelo: opus          # auditoría en cada cambio sensible
+  documentador:
+    activo: true          # docs formales requeridas
+    modelo: sonnet
+  investigador:
+    activo: true
+    modelo: sonnet
+  product-designer:
+    activo: true
+    modelo: opus          # diseño de producto riguroso
+  architecture-designer:
+    activo: true
+    modelo: opus          # arquitectura crítica → opus siempre
+
+comportamiento:
+  deteccion_tamano_automatica: true
+  ruta_rapida_micro: false          # incluso cambios micro pasan por el flujo
+  numeracion_especificaciones: "ambos"   # fecha + secuencial para trazabilidad
+  requerir_aprobacion_plan: true
+  requerir_aprobacion_tareas: true  # aprobación explícita del plan de tareas
+  flujo_minimo: false
+  requiere_analizar: true           # /sdd.analizar obligatorio antes de implementar
+  requiere_verificar: true          # /sdd.verificar obligatorio al final
+
+calidad:
+  cobertura_tests_minima: 85
+  permitir_warnings_lint: false
+  permitir_codigo_comentado: false
+  longitud_funcion_maxima: 40       # funciones más cortas, más legibles
+  longitud_archivo_maxima: 300

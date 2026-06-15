@@ -1,0 +1,323 @@
+---
+# Metadatos del skill: vercel-deploy
+# Sistema: SDD (Software Deployment Dashboard)
+
+metadata:
+  id: vercel-deploy
+  name: "Despliegue Automático en Vercel"
+  version: 1.0.0
+  author: "SDD Framework"
+  last_updated: 2026-06-13
+  status: production
+
+description:
+  short: "Despliega automáticamente a Vercel con pre-checks, health checks y rollback automático"
+  long: |
+    Cierra el ciclo idea→producción sin salir del flujo.
+    Diferenciador vs Bolt/v0: verificación independiente PRE-deploy, no post-deploy.
+
+    Flujo sincrónico bloqueante con 6 pasos:
+    1. Pre-checks (valida VERCEL_TOKEN, rama limpia, sin secretos, tests verdes)
+    2. Auto-generar vercel.json (detecta framework automáticamente)
+    3. Build y deploy (npm run build + vercel deploy --prod)
+    4. Health check (retry 3x con backoff)
+    5. Rollback automático (si health check falla)
+    6. Registrar resultado (.sdd/estado.json)
+
+tags:
+  - deployment
+  - vercel
+  - ci-cd
+  - production
+  - automation
+  - devops
+
+requirements:
+  tools:
+    - name: Bash
+      version: "4+"
+    - name: vercel-cli
+      version: "latest"
+      install: "npm install -g vercel"
+    - name: git
+      version: "2+"
+    - name: npm
+      version: "8+"
+    - name: curl
+      version: "7+"
+
+environment:
+  required:
+    - VERCEL_TOKEN
+      description: "Token de autenticación en Vercel"
+      generate_at: "https://vercel.com/account/tokens"
+  optional:
+    - VERCEL_PROJECT_ID
+      description: "ID del proyecto si ya existe en Vercel"
+      source: "Vercel Dashboard > Settings > General"
+
+inputs:
+  framework:
+    type: enum
+    values: [auto, nextjs, react, vue, astro, python, flask, fastapi]
+    default: auto
+    description: "Framework detectado automáticamente si es 'auto'"
+
+  environment:
+    type: enum
+    values: [staging, production]
+    default: production
+    description: "Entorno a desplegar"
+
+  retry_count:
+    type: integer
+    default: 3
+    description: "Número de reintentos para health check"
+
+  retry_delay:
+    type: integer
+    default: 5
+    description: "Segundos entre reintentos (backoff)"
+
+outputs:
+  deploy_url:
+    type: string
+    description: "URL de la aplicación desplegada"
+    example: "https://mi-proyecto.vercel.app"
+
+  health_check_status:
+    type: enum
+    values: [OK, FAILED]
+    description: "Estado del health check"
+
+  deployment_timestamp:
+    type: string
+    format: "ISO 8601"
+    description: "Timestamp del despliegue"
+    example: "2026-06-13T14:30:00Z"
+
+  stato_file:
+    type: string
+    description: "Ruta al archivo de estado"
+    value: ".sdd/estado.json"
+
+flow:
+  steps:
+    - id: "paso-1-prechecks"
+      name: "Pre-checks"
+      description: "Valida VERCEL_TOKEN, rama limpia, sin secretos, tests verdes"
+      blocking: true
+      timeout_seconds: 60
+
+    - id: "paso-2-config"
+      name: "Configuración"
+      description: "Detecta framework y auto-genera vercel.json"
+      blocking: false
+      timeout_seconds: 30
+
+    - id: "paso-3-deploy"
+      name: "Deploy"
+      description: "Build local y envío a Vercel"
+      blocking: true
+      timeout_seconds: 900  # 15 minutos
+
+    - id: "paso-4-health"
+      name: "Health Check"
+      description: "Verificación de que la URL responde (HTTP 200)"
+      blocking: true
+      timeout_seconds: 60
+      retries:
+        count: 3
+        delay_seconds: 5
+        strategy: exponential_backoff
+
+    - id: "paso-5-rollback"
+      name: "Rollback"
+      description: "Revertir a deploy anterior si health check falla"
+      blocking: true
+      timeout_seconds: 300
+      condition: "health_check_failed"
+
+    - id: "paso-6-log"
+      name: "Registrar"
+      description: "Guardar metadatos en .sdd/estado.json"
+      blocking: false
+      timeout_seconds: 10
+
+invocation:
+  automatic:
+    trigger: "sdd.implementar-paso-5"
+    condition: "deploy.plataforma == 'vercel'"
+    gate: "user_confirmation"  # Requiere confirmación humana
+
+  manual:
+    commands:
+      - "/sdd.desplegar"
+      - "/sdd.desplegar --environment staging"
+      - "/sdd.desplegar --environment production"
+
+error_handling:
+  - error_code: "VERCEL_TOKEN_MISSING"
+    http_code: 401
+    message: "VERCEL_TOKEN no configurado"
+    action: "user_must_set_token"
+
+  - error_code: "TESTS_FAILING"
+    http_code: 422
+    message: "Tests fallando"
+    action: "user_must_fix_tests"
+
+  - error_code: "HEALTH_CHECK_FAILED"
+    http_code: 502
+    message: "Health check falló después de reintentos"
+    action: "automatic_rollback"
+
+  - error_code: "BUILD_FAILED"
+    http_code: 422
+    message: "Build local falló"
+    action: "user_must_fix_code"
+
+  - error_code: "UNCOMMITTED_CHANGES"
+    http_code: 422
+    message: "Cambios sin stagear"
+    action: "user_must_commit"
+
+  - error_code: "SECRETS_FOUND"
+    http_code: 422
+    message: "Secretos detectados en código"
+    action: "user_must_move_secrets"
+
+atomic: true
+idempotent: true
+supports_rollback: true
+
+documentation:
+  files:
+    - path: "./SKILL.md"
+      type: "spec"
+      primary: true
+    - path: "./README.md"
+      type: "quickstart"
+    - path: "./CHECKLIST.md"
+      type: "prerequisites"
+    - path: "./INTEGRATION.md"
+      type: "integration"
+    - path: "./deploy.sh"
+      type: "executable"
+    - path: "./INDEX.md"
+      type: "navigation"
+
+examples:
+  - name: "Despliegue simple"
+    commands:
+      - "export VERCEL_TOKEN='vercel_xxx_abc123...'"
+      - "/sdd.desplegar"
+
+  - name: "Despliegue a staging"
+    commands:
+      - "export VERCEL_TOKEN='vercel_xxx_abc123...'"
+      - "/sdd.desplegar --environment staging"
+
+  - name: "Despliegue manual con script"
+    commands:
+      - "bash ./skills/vercel-deploy/deploy.sh"
+
+post_deployment:
+  actions:
+    - "/sdd.snapshot"
+      description: "Actualizar estado del producto"
+    - "/sdd.canary"
+      description: "Monitorear por 15 minutos"
+    - "/sdd.revertir"
+      description: "Rollback manual si es necesario"
+
+monitoring:
+  state_file: ".sdd/estado.json"
+  logs_location: "~/.sdd/logs/vercel-deploy/"
+  dashboard_link: "https://vercel.com/dashboard"
+
+security:
+  secrets_detected: true
+  secrets_patterns:
+    - "VERCEL_TOKEN"
+    - "API_KEY"
+    - "SECRET"
+    - "password"
+  token_exposure: "never"
+  git_safe: true
+
+performance:
+  typical_duration_seconds: 240  # 4 minutos
+  max_duration_seconds: 1800     # 30 minutos
+  parallelizable: false
+
+ci_cd_integrations:
+  - name: "GitHub Actions"
+    supported: true
+    docs: "https://vercel.com/docs/concepts/git/vercel-for-github"
+
+  - name: "GitLab CI"
+    supported: true
+    docs: "https://vercel.com/docs/concepts/git/vercel-for-gitlab"
+
+  - name: "Jenkins"
+    supported: true
+    example: "vercel deploy --prod --token=$VERCEL_TOKEN"
+
+frameworks_supported:
+  - next.js
+  - React
+  - Vue
+  - Astro
+  - Python (Flask, FastAPI)
+  - Node.js
+  - Express
+  - Nuxt
+  - SvelteKit
+
+pricing:
+  skill_cost: "free"
+  vercel_cost: "see https://vercel.com/pricing"
+
+changelog:
+  - version: "1.0.0"
+    date: "2026-06-13"
+    changes:
+      - "Initial release"
+      - "6-step deployment flow"
+      - "Automatic health checks"
+      - "Atomic rollback support"
+      - "Framework auto-detection"
+
+maintainers:
+  - "SDD Team"
+  - "DevOps"
+
+license: "MIT"
+
+---
+
+# Uso en YAML de proyectos
+
+```yaml
+# En tu sdd.implementar.md o configuración:
+deploy:
+  plataforma: vercel
+  framework: auto          # O específico: nextjs, react, vue, etc.
+  environment: production
+  skill: vercel-deploy
+```
+
+# Invocación desde CLI
+
+```bash
+# Automática (con gate de confirmación)
+/sdd.implementar
+
+# Manual
+/sdd.desplegar
+/sdd.desplegar --environment staging
+
+# Directamente (si se expone como skill)
+/vercel-deploy
+```

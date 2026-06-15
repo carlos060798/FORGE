@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark" data-lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FORGE — Documentación</title>
+  <meta name="description" content="Documentación de FORGE (SDD-ES): el marco de Spec-Driven Development en español para Claude Code.">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <!-- Botón hamburguesa (móvil) -->
+  <button id="menu-toggle" class="menu-toggle" aria-label="Abrir menú">☰</button>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a href="#bienvenida" class="brand-link">
+        <span class="brand-mark">⬡</span>
+        <span class="brand-name">FORGE</span>
+      </a>
+      <span class="brand-tag" data-i18n="brand_tag">Documentación</span>
+    </div>
+
+    <button id="search-trigger" class="search-trigger" aria-label="Buscar">
+      <span data-i18n="search_placeholder">Buscar…</span>
+      <kbd>Ctrl K</kbd>
+    </button>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Generado por app.js -->
+    </nav>
+  </aside>
+
+  <!-- Overlay para móvil -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Contenido principal -->
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="breadcrumb" id="breadcrumb"></span>
+      </div>
+      <div class="topbar-actions">
+        <button id="lang-toggle" class="toggle-btn" aria-label="Cambiar idioma">
+          <span id="lang-label">ES</span>
+        </button>
+        <button id="theme-toggle" class="toggle-btn" aria-label="Cambiar tema">
+          <span id="theme-icon">☾</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <!-- Generado por app.js -->
+    </main>
+
+    <footer class="content-footer">
+      <span data-i18n="footer_text">FORGE · Spec-Driven Development en español para Claude Code · MIT</span>
+    </footer>
+  </div>
+
+  <!-- Modal de búsqueda -->
+  <div class="search-modal" id="search-modal">
+    <div class="search-box">
+      <input type="text" id="search-input" data-i18n-attr="placeholder" data-i18n="search_input_placeholder" placeholder="Buscar en la documentación…" autocomplete="off">
+      <div class="search-results" id="search-results"></div>
+      <div class="search-hint">
+        <kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="search_navigate">navegar</span>
+        <kbd>↵</kbd> <span data-i18n="search_open">abrir</span>
+        <kbd>Esc</kbd> <span data-i18n="search_close">cerrar</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

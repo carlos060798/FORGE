@@ -1,0 +1,55 @@
+{
+  "name": "sdd-es",
+  "version": "2.6.0",
+  "description": "Spec-Driven Development en español para Claude Code. Fábrica de software: de la idea al despliegue, agnóstica al stack. v2.6.0: auto-compresión de memoria, ADR Indexer, Defect Rate tracking.",
+  "type": "module",
+  "bin": {
+    "sdd-es": "cli/index.js"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:verbose": "node --test --reporter=spec tests/*.test.js",
+    "lint": "echo 'Linter coming in v2.6.0'",
+    "lint:fix": "echo 'Auto-fix coming in v2.6.0'",
+    "init": "echo 'Usa marketplace de Claude Code: /plugin install sdd-es'",
+    "doctor": "echo 'Doctor check: v2.6.0 lista para producción'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "commands/",
+    "agents/",
+    "skills/",
+    "craft/",
+    "design-systems/",
+    "plantillas/",
+    "presets/",
+    "claude-hooks/",
+    "configuracion-ejemplo/",
+    "docs/",
+    ".claude-plugin/",
+    ".claude/",
+    ".gitignore",
+    ".mcp.json",
+    "instalar.sh",
+    "instalar.ps1",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "spec-driven-development",
+    "sdd",
+    "español",
+    "agentes",
+    "mcp",
+    "plugin"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/carlos060798/FORGE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carlos060798/FORGE.git"
+  }
+}

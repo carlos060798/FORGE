@@ -1,0 +1,67 @@
+# ============================================================
+# PRESET: lean
+# Para: proyectos personales, prototipos, indie hackers,
+#        MVPs con un desarrollador.
+# Filosofía: velocidad > proceso. Sin fricción innecesaria.
+# ============================================================
+
+preset:
+  nombre: lean
+  descripcion: "Proyecto personal o prototipo. Velocidad máxima, proceso mínimo."
+  casos_de_uso:
+    - "Side project / indie hacker"
+    - "Prototipo para validar idea"
+    - "Proyecto de aprendizaje"
+    - "MVP con un solo desarrollador"
+
+# Solo los agentes esenciales
+agentes:
+  arquitecto:
+    activo: true
+    modelo: sonnet        # sonnet en lugar de opus — decisiones más simples
+  disenador-api:
+    activo: true
+    modelo: sonnet
+  asesor-datos:
+    activo: true
+    modelo: sonnet        # sonnet OK para BDs simples
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet
+  desarrollador-frontend:
+    activo: true
+    modelo: sonnet
+  operaciones:
+    activo: false         # configura el CI tú mismo
+  tester:
+    activo: true
+    modelo: sonnet
+  revisor:
+    activo: false         # sin revisión formal — tú eres el revisor
+  critico:
+    activo: false         # sin análisis de riesgos formal
+  seguridad:
+    activo: false         # revisión básica en tu cabeza
+  documentador:
+    activo: false
+  investigador:
+    activo: false         # no hay equipo que necesite el contexto documentado
+  product-designer:
+    activo: false         # sin diseño formal de producto
+  architecture-designer:
+    activo: false         # tú diseñas la arquitectura
+
+comportamiento:
+  deteccion_tamano_automatica: true
+  ruta_rapida_micro: true
+  numeracion_especificaciones: "secuencial"
+  requerir_aprobacion_plan: false   # no pide confirmación — avanza solo
+  requerir_aprobacion_tareas: false
+  flujo_minimo: true                # salta /sdd.analizar por defecto
+
+calidad:
+  cobertura_tests_minima: 60        # umbral relajado
+  permitir_warnings_lint: true      # no bloquea por warnings
+  permitir_codigo_comentado: true
+  longitud_funcion_maxima: 80       # más flexible
+  longitud_archivo_maxima: 600

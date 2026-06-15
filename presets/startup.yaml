@@ -1,0 +1,73 @@
+# ============================================================
+# PRESET: startup
+# Para: equipos pequeños (2-8 personas), velocidad + calidad
+#        básica, producto en crecimiento.
+# Filosofía: calidad suficiente para escalar, sin burocracia.
+# ============================================================
+
+preset:
+  nombre: startup
+  descripcion: "Equipo pequeño. Velocidad con calidad básica para escalar."
+  casos_de_uso:
+    - "Startup en etapa seed o serie A"
+    - "Equipo de 2-8 desarrolladores"
+    - "Producto con usuarios reales pero sin compliance formal"
+    - "SaaS en crecimiento"
+
+agentes:
+  arquitecto:
+    activo: true
+    modelo: opus          # decisiones técnicas que escalarán — usar opus
+  disenador-api:
+    activo: true
+    modelo: sonnet
+  asesor-datos:
+    activo: true
+    modelo: opus          # errores de BD en producción son caros
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet
+  desarrollador-frontend:
+    activo: true
+    modelo: sonnet
+  operaciones:
+    activo: true
+    modelo: sonnet
+  tester:
+    activo: true
+    modelo: sonnet
+  revisor:
+    activo: true
+    modelo: sonnet        # opus disponible para cambios críticos
+  critico:
+    activo: true
+    modelo: sonnet        # análisis de riesgos en features importantes
+  seguridad:
+    activo: true
+    modelo: opus          # no escatimes en seguridad — actívalo siempre
+  documentador:
+    activo: false         # actívalo cuando tengas equipo que crece
+  investigador:
+    activo: true
+    modelo: sonnet
+  product-designer:
+    activo: true
+    modelo: sonnet
+  architecture-designer:
+    activo: true
+    modelo: opus          # decisiones de arquitectura → opus
+
+comportamiento:
+  deteccion_tamano_automatica: true
+  ruta_rapida_micro: true
+  numeracion_especificaciones: "fecha"
+  requerir_aprobacion_plan: true    # el equipo revisa antes de implementar
+  requerir_aprobacion_tareas: false
+  flujo_minimo: false
+
+calidad:
+  cobertura_tests_minima: 75
+  permitir_warnings_lint: false
+  permitir_codigo_comentado: false
+  longitud_funcion_maxima: 50
+  longitud_archivo_maxima: 400

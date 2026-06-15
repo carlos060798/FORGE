@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — Documentación completa: De la idea al deploy</title>
+<!--
+  Página standalone y autocontenida (CSS embebido).
+  Reutiliza los tokens de diseño de docs-site/assets/styles.css.
+  Idioma: español (ES). La traducción EN se añadirá en data.js
+  bajo la clave de página "desarrolladores-arquitectura" (sección "dev").
+  Para embeber en el sitio: copiar el contenido de <main> dentro de
+  PAGES["desarrolladores-arquitectura"].es.html en data.js.
+-->
+<style>
+:root{
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:"SF Mono","JetBrains Mono","Fira Code","Courier New",monospace;
+  --radius:10px;--radius-sm:6px;--content-max:880px;
+  --bg:#0f1115;--bg-soft:#161a21;--bg-elev:#1c212b;--border:#272d39;
+  --text:#e6e9ef;--text-soft:#9aa3b2;--text-faint:#6b7280;
+  --accent:#6ea8fe;--accent-soft:rgba(110,168,254,0.14);--accent-strong:#4d8bff;
+  --code-bg:#11151c;--code-border:#232a35;
+  --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+  --shadow:0 8px 30px rgba(0,0,0,0.4);
+}
+[data-theme="light"]{
+  --bg:#fff;--bg-soft:#f7f8fa;--bg-elev:#fff;--border:#e4e7ec;
+  --text:#1a1f2b;--text-soft:#4b5563;--text-faint:#9aa3b2;
+  --accent:#2563eb;--accent-soft:rgba(37,99,235,0.08);--accent-strong:#1d4ed8;
+  --code-bg:#f6f8fa;--code-border:#e4e7ec;
+  --green:#16a34a;--amber:#d97706;--red:#dc2626;
+  --shadow:0 8px 30px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--text);line-height:1.65;font-size:16px}
+.wrap{max-width:var(--content-max);margin:0 auto;padding:2rem 1.25rem 5rem}
+header.hero{border-bottom:1px solid var(--border);padding-bottom:1.5rem;margin-bottom:2rem}
+header.hero h1{font-size:2.1rem;margin:.2em 0 .3em;line-height:1.15}
+.badge{display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--accent-soft);color:var(--accent);padding:.25em .7em;border-radius:999px}
+.lead{font-size:1.12rem;color:var(--text-soft)}
+.theme-btn{position:fixed;top:1rem;right:1rem;z-index:10;background:var(--bg-elev);border:1px solid var(--border);
+  color:var(--text);border-radius:var(--radius-sm);padding:.4em .7em;cursor:pointer;font-size:.85rem}
+h2{font-size:1.5rem;margin-top:2.2em;border-bottom:1px solid var(--border);padding-bottom:.3em}
+h3{font-size:1.2rem;margin-top:1.8em}
+a{color:var(--accent)}
+code{font-family:var(--font-mono);background:var(--code-bg);border:1px solid var(--code-border);
+  border-radius:4px;padding:.1em .4em;font-size:.88em}
+pre{background:var(--code-bg);border:1px solid var(--code-border);border-radius:var(--radius);
+  padding:1rem 1.2rem;overflow-x:auto;font-size:.85rem;line-height:1.5}
+pre code{background:none;border:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:1.2em 0;font-size:.92rem}
+th,td{border:1px solid var(--border);padding:.55em .8em;text-align:left;vertical-align:top}
+th{background:var(--bg-soft);font-weight:600}
+.callout{background:var(--bg-soft);border:1px solid var(--border);border-left:4px solid var(--accent);
+  border-radius:var(--radius-sm);padding:.9em 1.1em;margin:1.3em 0}
+.callout.tip{border-left-color:var(--green)}
+.callout.warn{border-left-color:var(--amber)}
+.callout.danger{border-left-color:var(--red)}
+.callout-title{font-weight:700;margin-bottom:.3em}
+/* TOC */
+nav.toc{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);padding:1.2em 1.5em;margin:2em 0}
+nav.toc h2{margin-top:0;border:none;font-size:1.1rem}
+nav.toc ol{margin:.3em 0;padding-left:1.3em}
+nav.toc a{text-decoration:none}
+nav.toc a:hover{text-decoration:underline}
+/* collapsible */
+details{border:1px solid var(--border);border-radius:var(--radius);margin:1em 0;background:var(--bg-soft);overflow:hidden}
+details>summary{cursor:pointer;padding:.85em 1.1em;font-weight:600;font-size:1.05rem;list-style:none;
+  display:flex;align-items:center;gap:.6em;user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▸";color:var(--accent);transition:transform .2s}
+details[open]>summary::before{transform:rotate(90deg)}
+details>summary:hover{background:var(--accent-soft)}
+.details-body{padding:0 1.3em 1em}
+.audience{display:flex;gap:1rem;flex-wrap:wrap;margin:1.5em 0}
+.audience-card{flex:1;min-width:240px;border:1px solid var(--border);border-radius:var(--radius);padding:1.1em 1.3em;background:var(--bg-soft)}
+.audience-card h3{margin-top:0}
+.pill{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:.1em .6em;font-size:.78rem;font-weight:600}
+hr{border:none;border-top:1px solid var(--border);margin:3em 0}
+footer{margin-top:4em;padding-top:1.5em;border-top:1px solid var(--border);color:var(--text-faint);font-size:.85rem}
+</style>
+</head>
+<body>
+<button class="theme-btn" onclick="(function(){var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';})()">☀︎ / ☾</button>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="badge">FORGE · Documentación completa</span>
+  <h1>De la idea al deploy: cómo funciona FORGE</h1>
+  <p class="lead">Un solo documento para dos públicos: quienes quieren <strong>entender qué hace FORGE sin tocar código</strong> y quienes quieren <strong>conocer la arquitectura técnica a fondo</strong>. Elige tu camino abajo.</p>
+</header>
+
+<!-- ============ INTRODUCCIÓN ============ -->
+<section id="intro">
+<h2>Introducción</h2>
+
+<h3>Por qué existe esta documentación</h3>
+<p>FORGE es un marco de <em>Spec-Driven Development</em> (desarrollo guiado por especificación) en español, construido sobre las primitivas nativas de Claude Code. Convierte una idea descrita en lenguaje natural en software real, auditado y desplegado, coordinando <strong>14 agentes especializados</strong> a través de un pipeline de 6 fases.</p>
+<p>El problema que esta documentación resuelve: FORGE atrae a dos públicos muy distintos. El usuario no-técnico necesita confianza y claridad ("¿qué hace, qué controlo, dónde queda mi código?"). El developer necesita precisión arquitectónica ("¿qué son los agentes, cómo se instala, qué primitivas usa?"). Un solo texto genérico falla a ambos. Por eso este documento está <strong>dividido por audiencia</strong>, sin diluir ninguna.</p>
+
+<h3>Cómo elegir tu camino</h3>
+<div class="audience">
+  <div class="audience-card">
+    <span class="pill">🟢 No-developer</span>
+    <h3>Si NO programas</h3>
+    <p>Ve a <a href="#nodev">Para usuarios técnicos no-developers</a>. Aprenderás qué hace FORGE, el flujo paso a paso, los 14 especialistas, qué controlas y qué no, y sus límites reales. <strong>Cero código.</strong></p>
+  </div>
+  <div class="audience-card">
+    <span class="pill">🔵 Developer</span>
+    <h3>Si programas</h3>
+    <p>Ve a <a href="#dev">Para developers</a>. Encontrarás el flujo de idea a deploy, los componentes (agentes, comandos, skills, hooks), la instalación, casos de uso, límites y un <em>deep dive</em> arquitectónico.</p>
+  </div>
+</div>
+
+<h3>Cómo navegar</h3>
+<ul>
+  <li>El <strong>índice</strong> de abajo es clickeable: salta a cualquier sección.</li>
+  <li>Las secciones largas son <strong>colapsables</strong> (clic en el título con ▸).</li>
+  <li>Las <strong>notas resaltadas</strong> marcan advertencias (ámbar/rojo) y consejos (verde).</li>
+  <li>El botón <strong>☀︎/☾</strong> arriba a la derecha cambia entre tema claro y oscuro.</li>
+</ul>
+
+<nav class="toc" aria-label="Índice">
+  <h2>Índice</h2>
+  <ol>
+    <li><a href="#intro">Introducción</a></li>
+    <li><a href="#nodev">Para usuarios técnicos no-developers</a>
+      <ol>
+        <li><a href="#nodev-que">¿Qué es FORGE? (sin código)</a></li>
+        <li><a href="#nodev-flujo">El flujo paso a paso</a></li>
+        <li><a href="#nodev-14">Los 14 especialistas</a></li>
+        <li><a href="#nodev-control">Qué controlas vs. qué no controlas</a></li>
+        <li><a href="#nodev-limites">Limitaciones claras</a></li>
+      </ol>
+    </li>
+    <li><a href="#dev">Para developers</a>
+      <ol>
+        <li><a href="#dev-intro">Introducción técnica</a></li>
+        <li><a href="#dev-flujo">El flujo de idea a deploy</a></li>
+        <li><a href="#dev-componentes">Componentes arquitectónicos</a></li>
+        <li><a href="#dev-install">Instalación técnica</a></li>
+        <li><a href="#dev-casos">Casos de uso concretos</a></li>
+        <li><a href="#dev-limites">Limitaciones y capacidades</a></li>
+        <li><a href="#dev-deepdive">Arquitectura técnica (deep dive)</a></li>
+      </ol>
+    </li>
+    <li><a href="#conclusion">Conclusión y próximos pasos</a></li>
+  </ol>
+</nav>
+</section>
+
+<hr>
+
+<!-- ============ NO-DEV ============ -->
+<section id="nodev">
+<h2>🟢 Para usuarios técnicos no-developers</h2>
+<p class="lead">Esta sección no tiene código. Explica qué hace FORGE, en qué orden, con qué especialistas y qué queda bajo tu control.</p>
+
+<h3 id="nodev-que">¿Qué es FORGE? (sin código)</h3>
+<p>Imagina una <strong>fragua</strong> (eso significa "forge"): traes materia prima —tu idea— y sale una herramienta terminada. FORGE es un sistema que escucha lo que quieres construir, te lo describe en palabras claras <em>antes</em> de empezar, y luego coordina a 14 especialistas que lo construyen automáticamente mientras tú ves el progreso en vivo.</p>
+<p><strong>FORGE no es magia y no es una caja negra.</strong> Cada paso es visible y tu código queda en tu cuenta de GitHub, bajo tu control. No quedas atrapado en ninguna plataforma.</p>
+<div class="callout tip">
+  <div class="callout-title">En una frase</div>
+  Si puedes describir lo que quieres en palabras, FORGE lo construye — de forma transparente, segura y sin dejarte dependiente de nadie.
+</div>
+
+<h3 id="nodev-flujo">El flujo paso a paso</h3>
+<p>FORGE trabaja en <strong>6 fases</strong>. Tu esfuerzo activo es de unos 10 minutos; el resto FORGE trabaja mientras esperas.</p>
+<table>
+  <thead><tr><th>Fase</th><th>Tiempo</th><th>¿Qué haces tú?</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1. Descubrir</strong> — preguntas simples</td><td>~5 min</td><td>Respondes 5-7 preguntas en lenguaje normal</td></tr>
+    <tr><td><strong>2. Especificar</strong> — el plan en palabras claras</td><td>~2 min</td><td>Lees la especificación y apruebas o pides cambios</td></tr>
+    <tr><td><strong>3. Planificar</strong> — la estrategia técnica</td><td>~2 min</td><td>Revisas el plan de alto nivel y lo apruebas</td></tr>
+    <tr><td><strong>4. Implementar</strong> — 14 agentes construyen en paralelo</td><td>~10 min</td><td><strong>FORGE trabaja.</strong> Tú ves el progreso</td></tr>
+    <tr><td><strong>5. Verificar</strong> — control de calidad automático</td><td>~2 min</td><td><strong>FORGE audita.</strong> Tú lees el reporte</td></tr>
+    <tr><td><strong>6. Desplegar</strong> — en internet</td><td>~1 min</td><td>Confirmas la publicación (un clic)</td></tr>
+  </tbody>
+</table>
+<p>Durante todo el proceso FORGE te dice exactamente dónde estás. No hay misterio: ves qué terminó, qué está en progreso, qué viene y cuánto falta.</p>
+<div class="callout">
+  <div class="callout-title">Tu código no desaparece</div>
+  Todo queda en tu GitHub con historial completo: la especificación (qué hace tu app), el plan (cómo se construyó), el código fuente y las pruebas. Puedes leerlo, entenderlo, cambiarlo o revertirlo. Es como tener "Ctrl+Z" para todo.
+</div>
+
+<h3 id="nodev-14">Los 14 especialistas</h3>
+<p>En la fase de implementación, FORGE activa hasta 14 agentes que trabajan <strong>al mismo tiempo</strong>. Por eso lo que tomaría horas en secuencia toma minutos en paralelo. Cada uno tiene un rol claro:</p>
+<table>
+  <thead><tr><th>#</th><th>Especialista</th><th>Qué hace (en lenguaje claro)</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Arquitecto</td><td>Decide la estructura general del proyecto</td></tr>
+    <tr><td>2</td><td>Diseñador de arquitectura</td><td>Detalla cómo encajan las piezas técnicas</td></tr>
+    <tr><td>3</td><td>Asesor de datos</td><td>Define dónde y cómo se guardan tus datos</td></tr>
+    <tr><td>4</td><td>Desarrollador backend</td><td>Programa la lógica detrás de escenas</td></tr>
+    <tr><td>5</td><td>Desarrollador frontend</td><td>Construye lo que ves: botones, pantallas, colores</td></tr>
+    <tr><td>6</td><td>Diseñador de API</td><td>Define cómo se comunican las partes del sistema</td></tr>
+    <tr><td>7</td><td>Product designer</td><td>Cuida la experiencia: que sea claro y usable</td></tr>
+    <tr><td>8</td><td>Tester</td><td>Escribe pruebas automáticas para verificar que todo funciona</td></tr>
+    <tr><td>9</td><td>Revisor</td><td>Revisa la calidad del código construido</td></tr>
+    <tr><td>10</td><td>Crítico</td><td>Cuestiona las decisiones para detectar errores antes de tiempo</td></tr>
+    <tr><td>11</td><td>Seguridad</td><td>Busca vulnerabilidades y las cierra</td></tr>
+    <tr><td>12</td><td>Operaciones</td><td>Configura servidores y el despliegue</td></tr>
+    <tr><td>13</td><td>Documentador</td><td>Escribe la documentación de cómo funciona y cómo modificarlo</td></tr>
+    <tr><td>14</td><td>Investigador</td><td>Busca información y mejores prácticas cuando hace falta</td></tr>
+  </tbody>
+</table>
+<p>No todos se activan siempre: FORGE decide según la complejidad de tu proyecto. Un proyecto simple usa pocos; uno complejo, todos.</p>
+
+<h3 id="nodev-control">Qué controlas vs. qué no controlas</h3>
+<table>
+  <thead><tr><th>✅ Controlas tú</th><th>⚙️ FORGE hace por ti</th></tr></thead>
+  <tbody>
+    <tr><td>Qué se construye (la idea y los requisitos)</td><td>Cómo se programa cada detalle</td></tr>
+    <tr><td>Aprobar o rechazar la especificación</td><td>Coordinar a los 14 agentes en paralelo</td></tr>
+    <tr><td>Aprobar o ajustar el plan técnico</td><td>Escribir pruebas y ejecutarlas</td></tr>
+    <tr><td>Decidir cuándo publicar (un clic)</td><td>Auditar seguridad, rendimiento y calidad</td></tr>
+    <tr><td>Tu código en GitHub (es tuyo)</td><td>Desplegar en servidores reales</td></tr>
+    <tr><td>Revertir, cambiar o experimentar cuando quieras</td><td>Mantener el historial de cambios</td></tr>
+  </tbody>
+</table>
+<div class="callout tip">Regla de oro: <strong>tú decides el qué y el cuándo; FORGE resuelve el cómo</strong> — y siempre puedes revisar y deshacer lo que hizo.</div>
+
+<h3 id="nodev-limites">Limitaciones claras</h3>
+<p>FORGE es honesto sobre lo que aún no hace. Saberlo evita frustraciones:</p>
+<div class="callout warn">
+  <ul>
+    <li><strong>Es experimental.</strong> Funciona, pero está en construcción activa. Verifica los resultados antes de usarlos en producción crítica.</li>
+    <li><strong>No reemplaza el criterio humano.</strong> Para decisiones de negocio, legales o de diseño delicadas, la última palabra es tuya.</li>
+    <li><strong>Apps móviles nativas (iOS/Android)</strong> todavía no están: están en el roadmap.</li>
+    <li><strong>Sin tokens no publica automáticamente.</strong> Construye en tu computadora, pero para guardar en GitHub y publicar en internet necesitas conectar tus cuentas (ver la guía de tokens).</li>
+    <li><strong>Proyectos muy grandes o muy especializados</strong> pueden requerir intervención de un developer en algún punto.</li>
+  </ul>
+</div>
+<p>Lo importante: no hay sorpresas ocultas. El roadmap es público y tu código siempre está en tu poder.</p>
+</section>
+
+<hr>
+
+<!-- ============ DEV ============ -->
+<section id="dev">
+<h2>🔵 Para developers</h2>
+
+<h3 id="dev-intro">Introducción técnica</h3>
+<p>FORGE es una <strong>capa de opinión sobre las primitivas nativas de Claude Code</strong>. No modifica el binario ni el comportamiento base: organiza <em>slash commands</em>, subagentes, skills y hooks en un pipeline de ingeniería estructurado (Spec-Driven Development). Toda la lógica es Markdown plano y JavaScript estándar — sin dependencias propias de framework.</p>
+<table>
+  <thead><tr><th>Métrica</th><th>Valor</th></tr></thead>
+  <tbody>
+    <tr><td>Agentes especializados</td><td><strong>14</strong> (<code>agents/*.md</code>)</td></tr>
+    <tr><td>Slash commands</td><td><strong>35</strong> (<code>commands/sdd.*.md</code>)</td></tr>
+    <tr><td>Skills reutilizables</td><td><strong>25</strong> (<code>skills/*.md</code>)</td></tr>
+    <tr><td>Hooks de ciclo de vida</td><td>2 (<code>pre-tool-guard.js</code>, <code>agent-memory.js</code>)</td></tr>
+    <tr><td>Fases del pipeline</td><td>6 (descubrir → especificar → planificar → implementar → verificar → desplegar)</td></tr>
+  </tbody>
+</table>
+<div class="callout tip">Como FORGE se apoya en las primitivas oficiales, cuando Claude Code actualiza sus capacidades, FORGE se beneficia automáticamente sin cambios.</div>
+
+<h3 id="dev-flujo">El flujo de idea a deploy</h3>
+<p>El usuario maneja el pipeline mediante slash commands. Cada comando orquesta una fase y produce artefactos persistentes en <code>.sdd/</code>:</p>
+<pre><code class="lang-text">/sdd.especificar  →  .sdd/especificacion.md   (qué se construye)
+/sdd.planificar   →  .sdd/plan.md + .sdd/adr/  (cómo y por qué)
+/sdd.implementar  →  src/, tests/  (14 agentes en paralelo)
+        ↓
+   verificación automática (seguridad, tests, performance)
+        ↓
+   deploy  →  GitHub (código) + Vercel (app en vivo)</code></pre>
+<p>Los artefactos de <code>.sdd/</code> (specs, planes, ADRs, memoria por agente, ledger de consumo) <strong>persisten entre sesiones</strong>, lo que da continuidad y trazabilidad completa.</p>
+
+<h3 id="dev-componentes">Componentes arquitectónicos</h3>
+<details open>
+<summary>Comandos (<code>commands/sdd.*.md</code>)</summary>
+<div class="details-body">
+<p>Punto de entrada del usuario. Cada uno de los <strong>35</strong> comandos es un archivo Markdown que orquesta una fase o una operación auxiliar (p. ej. <code>/sdd.adr</code> para gestionar decisiones de arquitectura). No hay código compilado: el comportamiento se define en el prompt del comando.</p>
+</div>
+</details>
+<details>
+<summary>Agentes (<code>agents/*.md</code>)</summary>
+<div class="details-body">
+<p>Los <strong>14</strong> subagentes especializados por dominio, cada uno con su modelo recomendado y herramientas acotadas. Se activan según la complejidad mediante el skill <code>enrutador-agentes</code>.</p>
+<pre><code class="lang-text">architecture-designer   desarrollador-frontend   product-designer
+arquitecto              disenador-api            revisor
+asesor-datos            documentador             seguridad
+critico                 investigador             tester
+desarrollador-backend   operaciones</code></pre>
+</div>
+</details>
+<details>
+<summary>Skills (<code>skills/*.md</code>)</summary>
+<div class="details-body">
+<p><strong>25</strong> fragmentos de instrucción reutilizables que comandos y agentes invocan cuando los necesitan. Incluyen <code>enrutador-agentes</code>, <code>effort-router</code>, <code>constitucion</code>, <code>memory-compactor</code>, <code>cache-audit</code>, <code>token-budget</code>, <code>compresion-tokens</code> y <code>orquestacion-ptc</code>, entre otros.</p>
+</div>
+</details>
+<details>
+<summary>Hooks (<code>claude-hooks/*.js</code>)</summary>
+<div class="details-body">
+<p>Código Node.js que se ejecuta en puntos del ciclo de vida de Claude Code:</p>
+<table>
+  <thead><tr><th>Hook</th><th>Evento</th><th>Responsabilidad</th></tr></thead>
+  <tbody>
+    <tr><td><code>pre-tool-guard.js</code></td><td><code>PreToolUse</code></td><td>Bloqueo y advertencias de seguridad antes de ejecutar herramientas</td></tr>
+    <tr><td><code>agent-memory.js</code></td><td><code>PostToolUse</code></td><td>Memoria por agente y ledger de consumo de tokens</td></tr>
+  </tbody>
+</table>
+</div>
+</details>
+
+<h3 id="dev-install">Instalación técnica</h3>
+<pre><code class="lang-bash"># 1. Clonar FORGE en tu proyecto
+git clone https://github.com/&lt;org&gt;/forge .sdd-forge
+
+# 2. Copiar comandos, agentes, skills y hooks a tu .claude/
+#    (o usar el instalador del repo si está disponible)
+
+# 3. Configurar tokens en .env.local  (NUNCA se commitea)
+echo "GITHUB_TOKEN=ghp_xxx"   >> .env.local
+echo "VERCEL_TOKEN=vercel_xxx" >> .env.local
+
+# 4. Abrir Claude Code y arrancar el pipeline
+#    /sdd.constitucion   → fija principios del proyecto
+#    /sdd.especificar    → primera fase</code></pre>
+<div class="callout warn"><code>.env.local</code> debe estar en <code>.gitignore</code>. Los tokens son <em>scoped</em>: dan acceso solo al repo/proyecto que autorizas, y se revocan en GitHub/Vercel sin afectar tu código ya desplegado.</div>
+
+<h3 id="dev-casos">Casos de uso concretos</h3>
+<table>
+  <thead><tr><th>Escenario</th><th>Comandos clave</th><th>Resultado</th></tr></thead>
+  <tbody>
+    <tr><td>App web nueva de cero</td><td><code>/sdd.especificar</code> → <code>/sdd.planificar</code> → <code>/sdd.implementar</code></td><td>Repo en GitHub + app en Vercel</td></tr>
+    <tr><td>Añadir una feature a algo existente</td><td><code>/sdd.especificar</code> (incremental) → <code>/sdd.implementar</code></td><td>Cambio auditado y desplegado</td></tr>
+    <tr><td>Documentar una decisión técnica</td><td><code>/sdd.adr</code></td><td>ADR versionado en <code>.sdd/adr/</code></td></tr>
+    <tr><td>Auditar consumo de tokens</td><td>skill <code>token-budget</code> / <code>cache-audit</code></td><td>Ledger de costo por agente</td></tr>
+  </tbody>
+</table>
+
+<h3 id="dev-limites">Limitaciones y capacidades</h3>
+<table>
+  <thead><tr><th>✅ Capacidades</th><th>⚠️ Limitaciones</th></tr></thead>
+  <tbody>
+    <tr><td>Pipeline completo idea → deploy</td><td>Estado experimental (v2.6.0); valida antes de prod crítica</td></tr>
+    <tr><td>14 agentes en paralelo con modelos por dominio</td><td>Apps móviles nativas iOS/Android en roadmap</td></tr>
+    <tr><td>Auditoría de seguridad y tests automáticos</td><td>Depende de las cuotas/modelos de tu cuenta Claude Code</td></tr>
+    <tr><td>Memoria y ledger persistentes entre sesiones</td><td>Proyectos muy especializados pueden requerir intervención manual</td></tr>
+    <tr><td>100% Markdown + JS estándar, sin lock-in</td><td>Generador visual de UIs / integración Figma aún en desarrollo</td></tr>
+  </tbody>
+</table>
+
+<h3 id="dev-deepdive">Arquitectura técnica (deep dive)</h3>
+<pre><code class="lang-text">┌─────────────────────────────────────────────────────────────────┐
+│                        USUARIO / EQUIPO                          │
+│        /sdd.especificar  /sdd.planificar  /sdd.implementar       │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │  slash commands
+┌───────────────────────────▼──────────────────────────────────────┐
+│                        FORGE / SDD-ES                            │
+│  commands/        skills/             agents/                     │
+│  sdd.*.md  ─────► enrutador-agentes ─► arquitecto                 │
+│                   effort-router      ► asesor-datos               │
+│                   constitucion       ► desarrollador-backend      │
+│                   memory-compactor   ► desarrollador-frontend     │
+│                   token-budget       ► tester · revisor · critico │
+│                   compresion-tokens  ► seguridad · disenador-api  │
+│                   orquestacion-ptc   ► operaciones · documentador │
+│                                      ► investigador               │
+│                                      ► product-designer           │
+│                                      ► architecture-designer      │
+│                                                                  │
+│  claude-hooks/                                                   │
+│  pre-tool-guard.js (PreToolUse)   — bloqueo y advertencias       │
+│  agent-memory.js   (PostToolUse)  — memoria + ledger             │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │  primitivas oficiales
+┌───────────────────────────▼──────────────────────────────────────┐
+│                      CLAUDE CODE (CLI)                           │
+│   Slash commands · Subagents · Skills · Hooks · Settings         │
+└──────────────────────────────────────────────────────────────────┘</code></pre>
+<table>
+  <thead><tr><th>Capa</th><th>Artefactos</th><th>Responsabilidad</th></tr></thead>
+  <tbody>
+    <tr><td>Comandos</td><td><code>commands/sdd.*.md</code></td><td>Entrada del usuario; cada comando orquesta una fase</td></tr>
+    <tr><td>Skills</td><td><code>skills/*.md</code></td><td>Instrucciones reutilizables invocadas por comandos y agentes</td></tr>
+    <tr><td>Agentes</td><td><code>agents/*.md</code></td><td>Subagentes por dominio, con modelo recomendado y herramientas acotadas</td></tr>
+    <tr><td>Hooks</td><td><code>claude-hooks/*.js</code></td><td>Node.js en <code>PreToolUse</code> / <code>PostToolUse</code></td></tr>
+    <tr><td>Estado</td><td><code>.sdd/</code></td><td>Specs, planes, memoria por agente, ledger; persiste entre sesiones</td></tr>
+    <tr><td>Configuración</td><td><code>.sdd/sdd.config.yaml</code></td><td>Activa/desactiva agentes, asigna modelos, define protecciones</td></tr>
+  </tbody>
+</table>
+<pre><code class="lang-text">FORGE/
+├── commands/        # /sdd.especificar, /sdd.planificar, ...
+├── agents/          # arquitecto.md, tester.md, revisor.md, ...
+├── skills/          # enrutador-agentes, effort-router, ...
+├── plantillas/      # especificacion.md, plan.md, adr.md, ...
+├── claude-hooks/
+│   ├── pre-tool-guard.js   # PreToolUse — seguridad
+│   └── agent-memory.js     # PostToolUse — memoria y ledger
+├── presets/         # lean.yaml, startup.yaml, enterprise.yaml
+└── docs/            # documentación del sistema</code></pre>
+</section>
+
+<hr>
+
+<!-- ============ CONCLUSIÓN ============ -->
+<section id="conclusion">
+<h2>Conclusión y próximos pasos</h2>
+<p>Has visto FORGE desde los dos ángulos: como <strong>usuario no-técnico</strong> (qué hace, las 6 fases, los 14 especialistas, qué controlas y sus límites) y como <strong>developer</strong> (el pipeline, los componentes —14 agentes, 35 comandos, 25 skills, 2 hooks—, la instalación y la arquitectura). La idea central es la misma para ambos: <strong>FORGE es transparente y tu código siempre es tuyo.</strong></p>
+
+<h3>¿Dónde ir desde aquí?</h3>
+<table>
+  <thead><tr><th>Si eres…</th><th>Próximo paso recomendado</th></tr></thead>
+  <tbody>
+    <tr><td>No-developer</td><td>Lee la guía de tokens, crea cuentas en GitHub y Vercel, y abre Claude Code para escribir <code>/sdd.constitucion</code></td></tr>
+    <tr><td>Developer</td><td>Clona el repo, copia comandos/agentes/skills/hooks a tu <code>.claude/</code>, configura <code>.env.local</code> y arranca con <code>/sdd.especificar</code></td></tr>
+    <tr><td>Curioso</td><td>Explora <code>.sdd/adr/</code> para ver cómo FORGE documenta sus decisiones técnicas</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Dónde encontrar ayuda</div>
+  <ul>
+    <li><strong>GitHub:</strong> código fuente, issues y roadmap público (abre un issue para reportar bugs o proponer ideas).</li>
+    <li><strong>Discord:</strong> comunidad para preguntas y soporte entre usuarios.</li>
+    <li><strong>Issues:</strong> el lugar para bugs reproducibles y peticiones de feature.</li>
+  </ul>
+  <p style="margin-bottom:0"><em>Reemplaza estos enlaces por las URLs reales del proyecto antes de publicar.</em></p>
+</div>
+
+<p>FORGE es experimental y está en construcción activa. Tu feedback moldea hacia dónde va. Bienvenido a la fragua.</p>
+</section>
+
+<footer>
+  FORGE · Spec-Driven Development en español para Claude Code · Licencia MIT<br>
+  Documento generado para <code>docs-site/assets/pages/DESARROLLADORES-ARQUITECTURA.html</code> · ES (traducción EN pendiente en data.js).
+</footer>
+
+</div>
+</body>
+</html>

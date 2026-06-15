@@ -1,0 +1,334 @@
+================================================================================
+                    SKILL: VERCEL-DEPLOY - FLUJO VISUAL
+================================================================================
+
+                              PUNTO DE ENTRADA
+                                    │
+                                    ▼
+                    ┌──────────────────────────────┐
+                    │   /sdd.desplegar             │
+                    │   O paso 5 de /sdd.implementar│
+                    │   O invocación manual         │
+                    └──────────────────┬────────────┘
+                                       │
+                                       ▼
+
+================================================================================
+                            PASO 1: PRE-CHECKS
+================================================================================
+
+        ┌─────────────────────────────────────────────────────────┐
+        │  Validaciones preliminares (bloquean si fallan)          │
+        └─────────────────────────────────────────────────────────┘
+                │
+        ┌───────┴───────┬──────────┬──────────┐
+        ▼               ▼          ▼          ▼
+    ╔════════╗   ╔══════════╗  ╔═══════╗  ╔═════════╗
+    ║ Check ║   ║ Rama     ║  ║  Sin  ║  ║ Tests  ║
+    ║TOKEN  ║   ║ Limpia   ║  ║Secretos║  ║ Verdes  ║
+    ╚════════╝   ╚══════════╝  ╚═══════╝  ╚═════════╝
+        │            │           │          │
+        ✓ OK        ✓ OK       ✓ OK       ✓ OK
+        │            │           │          │
+        └────────────┴───────────┴──────────┘
+                     │
+           ✅ TODO OK → Continuar
+           ❌ ALGO FALLA → BLOQUEA (exit 1)
+                     │
+                     ▼
+
+================================================================================
+                      PASO 2: AUTO-GENERAR VERCEL.JSON
+================================================================================
+
+        ┌─────────────────────────────────────────────────┐
+        │ Detectar framework y auto-generar configuración  │
+        └─────────────────────────────────────────────────┘
+                         │
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+    ┌──────────────────────┐   ┌─────────────────────┐
+    │ ¿Existe vercel.json? │   │ ¿Existe package.json│
+    └──────────────────────┘   └─────────────────────┘
+          │                             │
+      SÍ  │ NO                      SÍ  │ NO
+          ▼  │                          ▼  │
+       ✓ Skip │                    ┌────────────┐
+             │                     │ Detectar   │
+             ▼                     │ Framework  │
+    ┌─────────────────┐            └────────────┘
+    │ Auto-generar:   │               │
+    │ • buildCommand  │      ┌────────┼────────┬──────────┬─────────┐
+    │ • outputDir     │      ▼        ▼        ▼          ▼         ▼
+    │ • framework     │    next     react    vue       astro    python
+    └─────────────────┘     │        │        │          │         │
+             │              │        │        │          │         │
+             ▼              ▼        ▼        ▼          ▼         ▼
+         ✅ LISTO       ✓ Conf   ✓ Conf  ✓ Conf    ✓ Conf   ✓ Conf
+                         │        │        │          │         │
+                         └────────┴────────┴──────────┴─────────┘
+                                     │
+                                     ▼
+
+================================================================================
+                          PASO 3: BUILD Y DEPLOY
+================================================================================
+
+        ┌──────────────────────────────────────┐
+        │ Compilar localmente y enviar a Vercel│
+        └──────────────────────────────────────┘
+                │
+        ┌───────┴───────┐
+        ▼               ▼
+    ┌────────┐      ┌──────────────┐
+    │ Build  │      │ Deploy a     │
+    │Local   │      │ Vercel       │
+    │npm run │      │ --prod       │
+    │build   │      │              │
+    └────────┘      └──────────────┘
+        │                   │
+        ▼                   ▼
+    ✓ OK o          ✓ OK → URL capturada
+    ✗ FALLA              o
+                    ✗ FALLA → ERROR (exit 1)
+        │
+    ✗ ERROR          URL: https://proyecto.vercel.app
+      (exit 1)       │
+                     ▼
+
+================================================================================
+                        PASO 4: HEALTH CHECK
+================================================================================
+
+                    ┌──────────────────┐
+                    │ ¿URL responde?   │
+                    │ HTTP 200?        │
+                    └──────────────────┘
+                            │
+                    Intento 1 de 3
+                            │
+                    ┌───────┴────────┐
+                    ▼                ▼
+                 ✓ 200              ✗ No 200
+                 OK                 (502, 503, timeout)
+                 │                      │
+                 ▼                      ▼
+            ✅ ÉXITO           Esperar 5s (backoff)
+            (Ir a PASO 5)      │
+                            Intento 2 de 3
+                               │
+                        ┌──────┴────────┐
+                        ▼              ▼
+                    ✓ 200            ✗ No 200
+                     OK              Esperar 5s
+                     │                   │
+                     ▼               Intento 3 de 3
+                ✅ ÉXITO                │
+                                    ┌───┴────────┐
+                                    ▼            ▼
+                                ✓ 200        ✗ No 200
+                                 OK          (final)
+                                 │               │
+                                 ▼               ▼
+                            ✅ ÉXITO        ❌ FALLA
+                                            (Ir a PASO 5)
+
+================================================================================
+                        PASO 5: ROLLBACK (CONDICIONAL)
+================================================================================
+
+        ┌────────────────────────────┐
+        │ ¿Necesita rollback?        │
+        │ (Health check falló)       │
+        └────────────────────────────┘
+                │
+        ┌───────┴───────┐
+        ▼               ▼
+    ✓ Sí           ✗ No
+    Rollback       (Health OK)
+        │               │
+        ▼               │
+    ┌────────┐      ┌─────────────┐
+    │ Revert │      │ Skip rollback│
+    │ a prev │      │ (normal)    │
+    │deploy  │      └─────────────┘
+    └────────┘              │
+        │                   │
+        ▼                   ▼
+    ✓ OK             ✅ CONTINUAR
+    │                │
+    ├─────────────┬──┘
+    │             │
+    ▼             ▼
+
+================================================================================
+                        PASO 6: REGISTRAR RESULTADO
+================================================================================
+
+        ┌──────────────────────────────┐
+        │ Guardar metadatos del deploy │
+        └──────────────────────────────┘
+                     │
+        ┌────────────┴──────────────┐
+        ▼                           ▼
+    ┌────────────────┐       ┌────────────────┐
+    │ .sdd/estado.json│      │ Log en stdout  │
+    │                │       │                │
+    │ • timestamp    │       │ • Éxito        │
+    │ • URL          │       │ • Tiempo total │
+    │ • status       │       │ • Próximos     │
+    │ • health_check │       │   pasos        │
+    │ • framework    │       └────────────────┘
+    └────────────────┘             │
+            │                       │
+            └───────────┬───────────┘
+                        │
+                        ▼
+                ✅ COMPLETADO
+
+================================================================================
+                         ENTRADA VS SALIDA
+================================================================================
+
+INPUT:
+  • VERCEL_TOKEN (requerido)
+  • VERCEL_PROJECT_ID (opcional)
+  • framework (auto-detectado)
+  • environment (production | staging)
+
+OUTPUT:
+  • deploy_url: "https://proyecto.vercel.app"
+  • health_check: "200 OK" o "FAILED"
+  • timestamp: "2026-06-13T14:30:00Z"
+  • .sdd/estado.json: archivo con metadatos completos
+
+ERROR OUTPUT:
+  • Mensaje de error claro
+  • Instrucciones de remediar
+  • Exit code: 1
+
+================================================================================
+                         MANEJO DE ERRORES
+================================================================================
+
+   PUNTO DE FALLA              ACCIÓN
+   ────────────────────────────────────────────────────────
+   PASO 1: Pre-checks          ❌ BLOQUEA → Usuario debe arreglar
+           │
+           ├─ VERCEL_TOKEN        Instrucciones para generar
+           ├─ Rama limpia         git add . && git commit
+           ├─ Sin secretos        Mueve a .env.local
+           └─ Tests OK            /sdd.implementar
+
+   PASO 3: Build/Deploy        ❌ BLOQUEA → Usuario debe arreglar
+           │
+           ├─ Build falla         npm run build (debug)
+           └─ Deploy falla        Revisa Vercel API
+
+   PASO 4: Health Check        🔄 REINTENTOS AUTOMÁTICOS (3x)
+           │                      ↓
+           └─ Persiste            PASO 5: Rollback automático
+
+   PASO 5: Rollback            ❌ CONTACTA DEVOPS
+                                  (nunca debería fallar)
+
+================================================================================
+                         DIAGRAMA SECUENCIAL
+================================================================================
+
+   PASO 1           PASO 2           PASO 3           PASO 4         PASO 5/6
+   ──────────────────────────────────────────────────────────────────────────
+   Pre-checks   Configuración   Build & Deploy   Health Check   Rollback/Log
+      │              │              │                │              │
+      ├─ Token        ├─ Detect      ├─ Build         ├─ Try 1        ├─ Needed?
+      │              │              │               │              │
+      ├─ Rama        ├─ vercel.json ├─ Deploy        ├─ Try 2        ├─ Revert
+      │              │              │               │              │
+      ├─ Secretos    └─ Ready        └─ Capturar URL  ├─ Try 3        ├─ Log
+      │                                              │              │
+      └─ Tests                                       └─ HTTP 200?    └─ Done
+         │                                               │
+         ▼                                               ▼
+      ✅ OK                                         ✅ OK o ❌ FALLA
+      │                                                  │
+      └──────────────────────────────────────────────────┘
+              Todos los pasos ejecutados
+                      │
+                      ▼
+           🚀 DESPLIEGUE COMPLETADO
+                      │
+                      ▼
+        Mostrar URL, próximos pasos
+        Guardar estado en .sdd/estado.json
+
+================================================================================
+                    FLUJO DE DECISIÓN (IF/THEN)
+================================================================================
+
+SI    VERCEL_TOKEN presente?           NO → ERROR: Generar token
+SÍ    │
+      └─→ SI rama limpia?              NO → ERROR: Commit cambios
+         SÍ    │
+              └─→ SI sin secretos?      NO → ERROR: Mueve secretos
+                 SÍ    │
+                      └─→ SI tests OK?  NO → ERROR: Arregla tests
+                         SÍ    │
+                              └─→ PASO 2: Configuración
+                                        │
+                                        └─→ PASO 3: Deploy
+                                                   │
+                                                   └─→ PASO 4: Health Check
+                                                              │
+                                                    SI OK?   NO?
+                                                    │        └─→ Reintenta (3x)
+                                                    │           │
+                                                    │           SI persiste?
+                                                    │           └─→ PASO 5: Rollback
+                                                    │
+                                                    └─→ PASO 6: Registrar
+                                                               │
+                                                               ▼
+                                                    ✅ COMPLETADO
+
+================================================================================
+                         LÍNEA DE TIEMPO
+================================================================================
+
+00:00  Inicio (/sdd.desplegar)
+       │
+00:05  PASO 1: Pre-checks (timeout: 60s)
+       │
+00:30  PASO 2: Configuración (timeout: 30s)
+       │
+00:35  PASO 3: Build (timeout: 900s/15 min)
+       │      Build local: ~60-120s
+       │      Deploy a Vercel: ~60-90s
+       │
+02:45  PASO 4: Health Check (timeout: 60s)
+       │      Intento 1: ~5s
+       │      Si falla: espera 5s
+       │      Intento 2: ~5s
+       │      Si falla: espera 5s
+       │      Intento 3: ~5s
+       │
+03:00  PASO 5: Rollback (timeout: 300s/si necesario)
+       │      Si health check falló: ~30s
+       │      Si OK: skip
+       │
+03:15  PASO 6: Registrar (timeout: 10s)
+       │
+       ▼
+  FIN TOTAL: ~3-4 minutos (típico)
+  MAX:       ~30 minutos (si hay problemas)
+
+================================================================================
+                              COLORES DE ESTADO
+================================================================================
+
+  🟢 ✅ Verde     → OK, continuar
+  🔴 ❌ Rojo      → Error, bloquea
+  🟡 ⚠️  Amarillo → Advertencia
+  🔵 ℹ️  Azul     → Información
+  🟣 🔄 Púrpura  → En progreso/Reintentando
+
+================================================================================

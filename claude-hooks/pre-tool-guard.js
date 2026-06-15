@@ -1,0 +1,211 @@
+#!/usr/bin/env node
+/**
+ * pre-tool-guard.js — Hook PreToolUse global de Claude Code
+ *
+ * Bloquea operaciones destructivas o fuera del workspace antes
+ * de que Claude Code las ejecute. Se registra en settings.json
+ * bajo "hooks.PreToolUse".
+ *
+ * Protocolo de hooks de Claude Code:
+ *   - Lee el evento JSON desde stdin
+ *   - Exit 0  → permitir
+ *   - Exit 2  → bloquear (Claude Code muestra el stderr al usuario)
+ *   - Stderr  → mensaje de error mostrado al usuario
+ */
+
+import { createInterface } from "node:readline";
+import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { join } from "node:path";
+
+const rl = createInterface({ input: process.stdin, terminal: false });
+let raw = "";
+rl.on("line", (l) => (raw += l + "\n"));
+rl.on("close", () => main(raw.trim()));
+
+// ── Comandos prohibidos — bloqueo duro, sin confirmación ───────────────────
+const PROHIBIDOS = [
+  // Eliminación masiva
+  /rm\s+-rf?\s+\/(?!\w)/,           // rm -rf /  (raíz)
+  /rm\s+-rf?\s+~\b/,                // rm -rf ~
+  /rm\s+-rf?\s+\.\s*$/,             // rm -rf .  (cwd)
+  /rm\s+-rf?\s+\.\./,               // rm -rf ..
+  /Remove-Item\s+.*-Recurse.*-Force\s+[/\\]/, // PowerShell rm raíz
+
+  // Git destructivo remoto
+  /git\s+push\s+.*--force(?!-with-lease)/,   // push --force (no --force-with-lease)
+  /git\s+push\s+-f\b/,
+  /git\s+push\s+\w+\s+:\w+/,        // git push origin :rama (borrar rama remota)
+
+  // Git destructivo local irreversible
+  /git\s+reset\s+--hard/,
+  /git\s+clean\s+.*-[xf]{1,3}d/,
+  /git\s+reflog\s+expire/,
+  /git\s+gc\s+.*--prune=now/,
+
+  // Base de datos
+  /DROP\s+DATABASE\b/i,
+  /DROP\s+SCHEMA\b/i,
+
+  // Credenciales en git config
+  /git\s+config\s+.*password/i,
+  /git\s+config\s+.*credential.*store/i,
+
+  // Operaciones fuera del workspace — acceso a rutas de sistema
+  /rm\s+.*\/etc\//,
+  /rm\s+.*\/usr\//,
+  /rm\s+.*\/bin\//,
+  /rm\s+.*C:\\Windows\\/i,
+  /rm\s+.*C:\\Program Files\\/i,
+
+  // Exposición de secrets
+  /cat\s+.*\.env(?!\.example|\.template)/,
+  /type\s+.*\.env(?!\.example|\.template)/i,  // Windows
+  /Get-Content\s+.*\.env(?!\.example|\.template)/i,
+];
+
+// ── Operaciones que requieren confirmación explícita ───────────────────────
+// (Para estas Claude Code debe preguntar al usuario — no las bloqueamos aquí
+//  porque el hook PreToolUse no puede hacer interacción. Las marcamos en stderr
+//  con un aviso y exit 0 para que Claude Code muestre la advertencia antes de pedir
+//  permiso al usuario mediante el flujo normal de permisos.)
+const ADVERTENCIAS = [
+  { re: /git\s+push\b/,              msg: "git push — sube código al remoto" },
+  { re: /git\s+merge\b/,             msg: "git merge — modifica historial" },
+  { re: /git\s+rebase\b/,            msg: "git rebase — reescribe historial" },
+  { re: /git\s+reset\b/,             msg: "git reset — descarta cambios" },
+  { re: /git\s+branch\s+-D\b/,       msg: "git branch -D — borra rama local" },
+  { re: /DROP\s+TABLE\b/i,           msg: "DROP TABLE — elimina tabla de BD" },
+  { re: /DELETE\s+FROM\b/i,          msg: "DELETE FROM — elimina filas de BD" },
+  { re: /TRUNCATE\b/i,               msg: "TRUNCATE — vacía tabla de BD" },
+  { re: /npm\s+publish\b/,           msg: "npm publish — publica al registro público" },
+  { re: /terraform\s+apply\b/,       msg: "terraform apply — modifica infraestructura real" },
+  { re: /terraform\s+destroy\b/,     msg: "terraform destroy — destruye infraestructura" },
+  { re: /kubectl\s+delete\b/,        msg: "kubectl delete — elimina recursos de k8s" },
+  { re: /helm\s+uninstall\b/,        msg: "helm uninstall — elimina release de k8s" },
+];
+
+// ── Patrones de secrets hardcodeados ──────────────────────────────────────
+// Detecta si el comando intenta escribir un secret literal en un archivo
+const SECRET_PATTERNS = [
+  /password\s*=\s*['"][^'"]{4,}/i,
+  /secret\s*=\s*['"][^'"]{8,}/i,
+  /api[_-]?key\s*=\s*['"][^'"]{8,}/i,
+  /token\s*=\s*['"][^'"]{10,}/i,
+  /sk-[a-zA-Z0-9]{20,}/,              // OpenAI key
+  /xox[baprs]-[0-9]{10,}/,           // Slack token
+  /ghp_[a-zA-Z0-9]{36}/,             // GitHub PAT
+  /AKIA[0-9A-Z]{16}/,                 // AWS Access Key
+  /BEGIN (RSA|EC|OPENSSH) PRIVATE KEY/,
+];
+
+function main(raw) {
+  let event;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    // Si no podemos parsear, dejamos pasar (no bloquear por error del hook)
+    process.exit(0);
+  }
+
+  const toolName = event?.tool_name ?? "";
+  const toolInput = event?.tool_input ?? {};
+
+  // Solo nos importan Bash y PowerShell
+  if (toolName !== "Bash" && toolName !== "PowerShell") {
+    process.exit(0);
+  }
+
+  const cmd = String(toolInput?.command ?? "").trim();
+  if (!cmd) process.exit(0);
+
+  // ── 0. NUEVO: Verificar permisos por agente ─────────────────────────────
+  const agentName = process.env.CLAUDE_AGENT_NAME;
+  if (agentName) {
+    // Agentes read-only que NO pueden usar Write/Edit
+    const readOnlyAgents = [
+      'arquitecto', 'asesor-datos', 'critico', 'seguridad',
+      'investigador', 'revisor', 'disenador-api'
+    ];
+
+    // Si es agente read-only e intenta usar Write/Edit, bloquea
+    if (readOnlyAgents.includes(agentName) &&
+        (toolName === 'Write' || toolName === 'Edit')) {
+      process.stderr.write(
+        `FORGE detuvo esta acción: el agente "${agentName}" solo puede leer, no modificar archivos.\n` +
+        `Si necesitas que este agente escriba código, cambia su rol en la configuración.\n`
+      );
+      process.exit(2);
+    }
+
+    // Auditoría de intentos de tool por agente (log a .sdd/observabilidad/)
+    logAgentToolAttempt(agentName, toolName, cmd);
+  }
+
+  // ── 1. Verificar prohibidos ─────────────────────────────────────────────
+  for (const re of PROHIBIDOS) {
+    if (re.test(cmd)) {
+      process.stderr.write(
+        `FORGE evitó esta acción porque podría borrar o dañar archivos importantes de forma irreversible.\n` +
+        `Si estás completamente seguro de lo que haces, ejecuta el comando manualmente en tu terminal.\n` +
+        `Comando bloqueado: ${cmd.slice(0, 120)}\n`
+      );
+      process.exit(2);
+    }
+  }
+
+  // ── 2. Verificar secrets hardcodeados en el comando ────────────────────
+  for (const re of SECRET_PATTERNS) {
+    if (re.test(cmd)) {
+      process.stderr.write(
+        `FORGE detectó que este comando incluye una contraseña o clave secreta escrita directamente.\n` +
+        `Para proteger tu seguridad, usa variables de entorno en lugar de escribir credenciales en el código.\n` +
+        `Ejemplo: usa process.env.MI_CLAVE en vez de escribir el valor directamente.\n`
+      );
+      process.exit(2);
+    }
+  }
+
+  // ── 3. Advertencias (no bloquean, pero se loguean) ─────────────────────
+  for (const { re, msg } of ADVERTENCIAS) {
+    if (re.test(cmd)) {
+      // Escribir a stderr — Claude Code lo muestra como contexto antes de pedir permiso
+      process.stderr.write(
+        `Atención: esto va a realizar una acción que no se puede deshacer fácilmente (${msg}).\n` +
+        `Revisa el comando antes de confirmar: ${cmd.slice(0, 120)}\n`
+      );
+      // Exit 0 — dejamos que el flujo normal de permisos de Claude Code actúe
+      process.exit(0);
+    }
+  }
+
+  // Todo bien
+  process.exit(0);
+}
+
+/**
+ * Registra intentos de tool por agente para auditoría
+ */
+function logAgentToolAttempt(agentName, toolName, cmd) {
+  try {
+    // Intenta grabar en .sdd/observabilidad/ en formato JSONL (append-only)
+    const auditDir = '.sdd/observabilidad';
+    const auditFile = join(auditDir, 'agent-tool-audit.jsonl');
+
+    // Crea dir si no existe
+    if (!existsSync(auditDir)) {
+      mkdirSync(auditDir, { recursive: true });
+    }
+
+    const record = {
+      timestamp: new Date().toISOString(),
+      agent: agentName,
+      tool: toolName,
+      cmd_preview: cmd.slice(0, 120),
+      pid: process.pid
+    };
+
+    appendFileSync(auditFile, JSON.stringify(record) + '\n', 'utf8');
+  } catch {
+    // Silenciosamente ignorar fallos de auditoría (no bloquear ejecución)
+  }
+}

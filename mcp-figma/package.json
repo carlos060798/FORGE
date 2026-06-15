@@ -1,0 +1,7 @@
+{
+  "name": "sdd-figma-mcp",
+  "version": "1.0.0",
+  "description": "MCP server para integración de Figma con SDD-ES — cero dependencias externas",
+  "type": "module",
+  "main": "src/index.js"
+}
