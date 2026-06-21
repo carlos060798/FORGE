@@ -141,6 +141,26 @@ function registrarADRs(cwd, agente, archivo, adrs) {
   } catch { /* Silencioso */ }
 }
 
+// Detecta el provider activo leyendo las variables de entorno del proceso.
+// El resultado se incluye en cada entrada de consumo.jsonl para observabilidad.
+// model-registry.js (Fase 4) refinará esta lógica.
+function resolveProvider() {
+  if (process.env.OPENAI_API_KEY) return "openai";
+  if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) return "google";
+  return "anthropic"; // Claude Code como host — default
+}
+
+// Mapea el nombre del agente a su tier de esfuerzo según el effort-router.
+const HIGH_EFFORT_AGENTS = new Set(["arquitecto", "critico", "revisor", "seguridad", "asesor-datos", "product-designer"]);
+const LOW_EFFORT_AGENTS  = new Set(["documentador"]);
+
+function resolveEffortLevel(agente) {
+  if (!agente || agente === "main") return null;
+  if (HIGH_EFFORT_AGENTS.has(agente)) return "high";
+  if (LOW_EFFORT_AGENTS.has(agente))  return "low";
+  return "medium";
+}
+
 function registrarLedger(cwd, agente, toolName, archivoModificado, contenido) {
   const obsDir = join(cwd, ".sdd", "observabilidad");
   const ledgerFile = join(obsDir, "consumo.jsonl");
@@ -152,6 +172,8 @@ function registrarLedger(cwd, agente, toolName, archivoModificado, contenido) {
       tool: toolName,
       archivo: archivoModificado,
       bytes: Buffer.byteLength(contenido ?? "", "utf8"),
+      provider: resolveProvider(),
+      effort_level: resolveEffortLevel(agente),
     });
     appendFileSync(ledgerFile, linea + "\n", "utf8");
   } catch { /* Silencioso */ }

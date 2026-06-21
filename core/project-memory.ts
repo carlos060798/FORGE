@@ -6,7 +6,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export const SCHEMA_VERSION = "1.0" as const;
+
 export interface ForgeEstado {
+  // Schema contract — required in all new states
+  schemaVersion?: typeof SCHEMA_VERSION;
+
   // Existing sdd-lite fields (preserved as-is)
   spec_activa?: string;
   plan_activo?: string;
@@ -23,6 +28,11 @@ export interface ForgeEstado {
   spec_draft_path?: string;
   pipeline_step?: 'idea' | 'discovery' | 'ir' | 'design' | 'spec' | 'plan' | 'tasks' | 'code' | 'done';
   ultima_actualizacion?: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
 }
 
 export class ProjectMemory {
@@ -59,14 +69,63 @@ export class ProjectMemory {
   update(fields: Partial<ForgeEstado>): ForgeEstado {
     const current = this.read();
     const updated: ForgeEstado = {
+      schemaVersion: SCHEMA_VERSION,
       ...current,
       ...fields,
       ultima_actualizacion: new Date().toISOString(),
     };
     this.ensureSddDir();
     fs.writeFileSync(this.estadoPath, JSON.stringify(updated, null, 2));
-    this._cache = null; // Invalidar caché al escribir
+    this._cache = null;
     return updated;
+  }
+
+  validate(): ValidationResult {
+    const errors: string[] = [];
+    if (!fs.existsSync(this.estadoPath)) {
+      return { valid: true, errors: [] }; // Sin estado aún es válido (proyecto nuevo)
+    }
+    let estado: unknown;
+    try {
+      estado = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
+    } catch {
+      return { valid: false, errors: ['estado.json no es JSON válido'] };
+    }
+    if (typeof estado !== 'object' || estado === null) {
+      return { valid: false, errors: ['estado.json debe ser un objeto JSON'] };
+    }
+    const e = estado as Record<string, unknown>;
+    if (!e['schemaVersion']) {
+      errors.push('schemaVersion ausente — ejecuta `forge doctor` para migrar');
+    } else if (e['schemaVersion'] !== SCHEMA_VERSION) {
+      errors.push(`schemaVersion "${e['schemaVersion']}" desconocida (esperada: "${SCHEMA_VERSION}")`);
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  migrate(): ForgeEstado {
+    if (!fs.existsSync(this.estadoPath)) {
+      return {};
+    }
+    let estado: ForgeEstado;
+    try {
+      estado = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
+    } catch {
+      return {};
+    }
+    if (estado.schemaVersion === SCHEMA_VERSION) {
+      return estado; // Ya está en la versión actual
+    }
+    // Migración: legado (sin schemaVersion) → 1.0
+    const migrado: ForgeEstado = {
+      schemaVersion: SCHEMA_VERSION,
+      ...estado,
+      ultima_actualizacion: new Date().toISOString(),
+    };
+    this.ensureSddDir();
+    fs.writeFileSync(this.estadoPath, JSON.stringify(migrado, null, 2));
+    this._cache = null;
+    return migrado;
   }
 
   saveIR(ir: object): string {
