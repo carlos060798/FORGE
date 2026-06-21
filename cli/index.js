@@ -285,7 +285,7 @@ function pasosFinales() {
 
 // ─── Comandos ───────────────────────────────────────────────────────────────────
 
-function cmdInit(global, guided = false, withUi = false) {
+function cmdInit(global, guided = false, withUi = false, preset = null) {
   banner();
   const claudeDir = global
     ? join(homedir(), ".claude")
@@ -305,11 +305,49 @@ function cmdInit(global, guided = false, withUi = false) {
     configurarSdd(claudeDir, overrides);
   }
 
+  if (preset) {
+    aplicarPreset(preset);
+  }
+
   if (withUi) {
     instalarUi();
   }
 
   pasosFinales();
+}
+
+function aplicarPreset(preset) {
+  const presets = ["lean", "startup", "enterprise"];
+  if (!presets.includes(preset)) {
+    aviso(`Preset desconocido: "${preset}". Opciones: lean, startup, enterprise`);
+    return;
+  }
+  const presetSrc  = join(PLUGIN_DIR, "presets", `${preset}.yaml`);
+  const configDest = join(process.cwd(), ".sdd", "sdd.config.yaml");
+  if (!existsSync(presetSrc)) {
+    aviso(`Archivo de preset no encontrado: ${presetSrc}`);
+    return;
+  }
+  if (!existsSync(join(process.cwd(), ".sdd"))) {
+    aviso(".sdd/ no existe — ejecuta forge init primero");
+    return;
+  }
+  const presetContent = readFileSync(presetSrc, "utf8");
+  // Preserva los bloques de rutas, protecciones y figma del config actual
+  let current = existsSync(configDest) ? readFileSync(configDest, "utf8") : "";
+  const bloques = ["rutas:", "protecciones:", "figma:", "mapeos:", "memoria:", "compresion:", "control_versiones:"];
+  let extraContent = "";
+  for (const bloque of bloques) {
+    const idx = current.indexOf(`\n${bloque}`);
+    if (idx !== -1) {
+      // Extrae el bloque hasta el próximo bloque de nivel 0 o fin de archivo
+      const rest = current.slice(idx);
+      const nextBloque = rest.slice(1).search(/\n[a-z]/);
+      extraContent += (nextBloque === -1 ? rest : rest.slice(0, nextBloque + 1)) + "\n";
+    }
+  }
+  writeFileSync(configDest, presetContent + (extraContent ? "\n" + extraContent : ""), "utf8");
+  info(`Preset "${preset}" aplicado → .sdd/sdd.config.yaml`);
 }
 
 function instalarUi() {
@@ -569,6 +607,51 @@ function cmdDoctor() {
   if (!hooksVerificados && settingsPaths.every((p) => !existsSync(p))) {
     aviso("settings.json no encontrado — los hooks no están activos. Ejecuta 'npx sdd-es init'");
     problemas++;
+  }
+
+  // ── Providers LLM ──────────────────────────────────────────────────────────
+  titulo("Verificando providers LLM...");
+  const hasOpenAI  = !!process.env.OPENAI_API_KEY;
+  const hasGoogle  = !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+  info("Claude Code (Anthropic)  ✅ activo — provider principal de FORGE");
+  if (hasOpenAI)  info("OpenAI                   ✅ disponible (OPENAI_API_KEY detectada)");
+  else            aviso("OpenAI                   ⚠️  no configurado (opcional) — OPENAI_API_KEY no encontrada");
+  if (hasGoogle)  info("Google / Gemini          ✅ disponible (GOOGLE_API_KEY detectada)");
+  else            aviso("Google / Gemini          ⚠️  no configurado (opcional) — GOOGLE_API_KEY no encontrada");
+
+  // ── schemaVersion del estado ────────────────────────────────────────────────
+  titulo("Verificando esquema .sdd/estado.json...");
+  const estadoPath = join(process.cwd(), ".sdd", "estado.json");
+  if (!existsSync(estadoPath)) {
+    aviso(".sdd/estado.json no existe — se creará al ejecutar el primer comando /forge");
+  } else {
+    try {
+      const estado = JSON.parse(readFileSync(estadoPath, "utf8"));
+      if (estado.schemaVersion === "1.0") {
+        info(`estado.json schemaVersion: ${estado.schemaVersion} ✓`);
+      } else if (!estado.schemaVersion) {
+        aviso(`estado.json sin schemaVersion — legado. Ejecuta /sdd.estado para migrar.`);
+        problemas++;
+      } else {
+        aviso(`estado.json schemaVersion desconocida: ${estado.schemaVersion}`);
+        problemas++;
+      }
+    } catch {
+      aviso("estado.json malformado — no es JSON válido");
+      problemas++;
+    }
+  }
+
+  // ── Dashboard UI ────────────────────────────────────────────────────────────
+  titulo("Verificando dashboard UI...");
+  const localUiServer  = join(process.cwd(), ".forge-ui", "server.js");
+  const bundleUiServer = join(PLUGIN_DIR, "ui", "server.js");
+  if (existsSync(localUiServer)) {
+    info("Dashboard instalado en .forge-ui/ ✓  →  forge ui");
+  } else if (existsSync(bundleUiServer)) {
+    info("Dashboard disponible en el paquete ✓  →  forge ui");
+  } else {
+    aviso("Dashboard no disponible — instala con: forge init --ui");
   }
 
   console.log("");
@@ -837,7 +920,8 @@ function uso() {
 FORGE — CLI (v${pluginVersion()})
 
 Uso:
-  npx forge init [--global]          Instala FORGE (proyecto actual o global)
+  npx forge init [--global] [--preset lean|startup|enterprise] [--ui]
+                                     Instala FORGE (proyecto actual o global)
   npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
   npx forge doctor                   Diagnostica la instalación y providers disponibles
   npx forge ui [--port N] [--no-open]  Abre el dashboard en el navegador
@@ -862,10 +946,14 @@ function main() {
   const global  = args.includes("--global") || args.includes("-g");
   const guided  = args.includes("--guided");
   const withUi  = args.includes("--ui");
+  const presetIdx = args.findIndex(a => a === "--preset" || a.startsWith("--preset="));
+  const preset  = presetIdx !== -1
+    ? (args[presetIdx].includes("=") ? args[presetIdx].split("=")[1] : args[presetIdx + 1])
+    : null;
 
   switch (comando) {
     case "init":
-      cmdInit(global, guided, withUi);
+      cmdInit(global, guided, withUi, preset);
       break;
     case "update":
       cmdUpdate(global);

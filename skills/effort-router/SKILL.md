@@ -111,6 +111,23 @@ Ahorro total estimado: ((3×0.40) + (2×0.80)) / 5 = ~56%
 
 ---
 
+## Equivalencias multi-LLM por tier (model-registry)
+
+FORGE detecta automáticamente providers alternativos en el entorno. Esta tabla muestra las equivalencias entre providers para cada tier. El motor elige automáticamente — el usuario no configura nada.
+
+| Tier | Anthropic (default) | OpenAI (si OPENAI_API_KEY) | Google (si GOOGLE_API_KEY) | Cuándo se usa |
+|------|--------------------|-----------------------------|----------------------------|---------------|
+| **high** | claude-opus-4-8 | — (siempre Anthropic) | — (siempre Anthropic) | Arquitectura, crítica, seguridad, revisión |
+| **medium** | claude-sonnet-4-6 | gpt-4o | — | Implementación, tests, specs |
+| **low** | claude-haiku-4-5-20251001 | gpt-4o-mini | gemini-2.0-flash-lite | Docs, deploy, formateo, ops |
+
+**Reglas fijas (no negociables):**
+- Los agentes del Grupo A (`arquitecto`, `critico`, `revisor`, `seguridad`, `asesor-datos`, `product-designer`) **siempre** usan Anthropic, sin importar el entorno.
+- Si no hay provider alternativo disponible, todo cae en Anthropic (fallback garantizado).
+- Esta lógica vive en `claude-hooks/model-registry.js` y se activa sin intervención del usuario.
+
+---
+
 ## Cómo aplicar las recomendaciones
 
 Las recomendaciones son de sesión (no tocan los archivos `.md` de los agentes). Para aplicar en la sesión actual:

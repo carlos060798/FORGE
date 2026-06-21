@@ -26,8 +26,23 @@ import {
   existsSync, mkdirSync, appendFileSync, statSync,
   readFileSync, writeFileSync,
 } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, dirname } from "node:path";
 import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
+
+// Importación dinámica de model-registry para mantener compatibilidad
+// con entornos donde el archivo no exista aún (instalaciones parciales).
+const __registryPath = join(dirname(fileURLToPath(import.meta.url)), "model-registry.js");
+let _registry = null;
+async function registry() {
+  if (_registry) return _registry;
+  try {
+    _registry = await import(_registryPath);
+  } catch {
+    _registry = { resolveForAgent: () => ({ provider: "anthropic", tier: null }) };
+  }
+  return _registry;
+}
 
 // ── Configuración ────────────────────────────────────────────────────────────
 
@@ -82,7 +97,7 @@ const CONFIG = leerConfig(process.cwd());
 const rl = createInterface({ input: process.stdin, terminal: false });
 let raw = "";
 rl.on("line", (l) => (raw += l + "\n"));
-rl.on("close", () => main(raw.trim()));
+rl.on("close", () => main(raw.trim()).catch(() => process.exit(0)));
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 
@@ -141,39 +156,21 @@ function registrarADRs(cwd, agente, archivo, adrs) {
   } catch { /* Silencioso */ }
 }
 
-// Detecta el provider activo leyendo las variables de entorno del proceso.
-// El resultado se incluye en cada entrada de consumo.jsonl para observabilidad.
-// model-registry.js (Fase 4) refinará esta lógica.
-function resolveProvider() {
-  if (process.env.OPENAI_API_KEY) return "openai";
-  if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) return "google";
-  return "anthropic"; // Claude Code como host — default
-}
-
-// Mapea el nombre del agente a su tier de esfuerzo según el effort-router.
-const HIGH_EFFORT_AGENTS = new Set(["arquitecto", "critico", "revisor", "seguridad", "asesor-datos", "product-designer"]);
-const LOW_EFFORT_AGENTS  = new Set(["documentador"]);
-
-function resolveEffortLevel(agente) {
-  if (!agente || agente === "main") return null;
-  if (HIGH_EFFORT_AGENTS.has(agente)) return "high";
-  if (LOW_EFFORT_AGENTS.has(agente))  return "low";
-  return "medium";
-}
-
-function registrarLedger(cwd, agente, toolName, archivoModificado, contenido) {
+async function registrarLedger(cwd, agente, toolName, archivoModificado, contenido) {
   const obsDir = join(cwd, ".sdd", "observabilidad");
   const ledgerFile = join(obsDir, "consumo.jsonl");
   try {
     if (!existsSync(obsDir)) mkdirSync(obsDir, { recursive: true });
+    const reg = await registry();
+    const { provider, tier } = reg.resolveForAgent(agente);
     const linea = JSON.stringify({
       ts: new Date().toISOString(),
       agente: agente || "main",
       tool: toolName,
       archivo: archivoModificado,
       bytes: Buffer.byteLength(contenido ?? "", "utf8"),
-      provider: resolveProvider(),
-      effort_level: resolveEffortLevel(agente),
+      provider,
+      effort_level: tier ?? null,
     });
     appendFileSync(ledgerFile, linea + "\n", "utf8");
   } catch { /* Silencioso */ }
@@ -399,7 +396,7 @@ function alertarMemoryMdGlobal(cwd) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-function main(raw) {
+async function main(raw) {
   let event;
   try {
     event = JSON.parse(raw);
@@ -425,7 +422,7 @@ function main(raw) {
   const bytes = Buffer.byteLength(contenido ?? "", "utf8");
 
   // ── Ledger JSONL (todos los agentes) ───────────────────────────────────────
-  registrarLedger(cwd, agente, toolName, archivoModificado, contenido);
+  await registrarLedger(cwd, agente, toolName, archivoModificado, contenido);
 
   // ── Indexar ADRs (todos los agentes) ───────────────────────────────────────
   registrarADRs(cwd, agente, archivoModificado, extraerADRsDelContenido(contenido));
