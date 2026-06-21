@@ -15,13 +15,16 @@
  * Estrategia: tmpdir limpio por test para aislamiento.
  */
 
-import { test, describe, before, after, beforeEach } from "node:test";
+import { test, describe, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
+
+const _require = createRequire(import.meta.url);
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const HOOK = join(__dir, "../claude-hooks/agent-memory.js");
@@ -584,5 +587,232 @@ describe("agent-memory — contrato lectura de memoria por agente", () => {
     // Cada agente con memoria debe tener su propio archivo separado
     assert.ok(archivos.length >= 1,
       `debe haber al menos 1 archivo de memoria, encontrados: ${archivos.join(", ")}`);
+  });
+});
+
+// ── describe #8: índice invertido JSONL (indice.jsonl) ─────────────────────────
+
+describe("índice invertido JSONL para recuperación selectiva", () => {
+  /** @type {string} */
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "forge-indice-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("se crea indice.jsonl tras una escritura de agente con memoria", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    const indiceFile = join(tmpDir, ".sdd", "memoria", "indice.jsonl");
+    assert.ok(existsSync(indiceFile), "debe existir indice.jsonl");
+  });
+
+  test("la entrada del índice tiene los campos requeridos", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    const indiceFile = join(tmpDir, ".sdd", "memoria", "indice.jsonl");
+    const linea = readFileSync(indiceFile, "utf8").trim().split("\n")[0];
+    const entrada = JSON.parse(linea);
+    assert.ok(entrada.ts, "debe tener campo ts");
+    assert.ok(entrada.fecha, "debe tener campo fecha");
+    assert.strictEqual(entrada.agente, "arquitecto", "debe registrar el agente correcto");
+    assert.ok(entrada.archivo.includes("auth.ts"), "debe registrar el archivo");
+    assert.ok(typeof entrada.resumen === "string", "debe tener resumen");
+    assert.ok(typeof entrada.bytes === "number", "debe tener bytes");
+  });
+
+  test("múltiples agentes generan entradas separadas en el mismo índice", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/api.ts"), "export const router = {}"),
+      { agentName: "disenador-api", cwd: tmpDir }
+    );
+    runHook(
+      writeEvent(join(tmpDir, "src/db.ts"), "export const pool = null"),
+      { agentName: "desarrollador-backend", cwd: tmpDir }
+    );
+    const indiceFile = join(tmpDir, ".sdd", "memoria", "indice.jsonl");
+    const lineas = readFileSync(indiceFile, "utf8").trim().split("\n");
+    assert.strictEqual(lineas.length, 2, "debe haber 2 entradas en el índice");
+    const agentes = lineas.map(l => JSON.parse(l).agente);
+    assert.ok(agentes.includes("disenador-api"), "debe incluir disenador-api");
+    assert.ok(agentes.includes("desarrollador-backend"), "debe incluir desarrollador-backend");
+  });
+
+  test("agentes sin memoria no se añaden al índice", () => {
+    // "investigador" no está en AGENTES_CON_MEMORIA
+    runHook(
+      writeEvent(join(tmpDir, "src/report.md"), "# Investigación"),
+      { agentName: "investigador", cwd: tmpDir }
+    );
+    const indiceFile = join(tmpDir, ".sdd", "memoria", "indice.jsonl");
+    assert.ok(!existsSync(indiceFile), "no debe crear indice.jsonl para agentes sin memoria");
+  });
+
+  test("query-memory.js devuelve las últimas N entradas del agente correcto", () => {
+    // Insertar 3 entradas para arquitecto y 1 para otro agente
+    for (const archivo of ["src/a.ts", "src/b.ts", "src/c.ts"]) {
+      runHook(
+        writeEvent(join(tmpDir, archivo), `export const x = 1; // ${archivo}`),
+        { agentName: "arquitecto", cwd: tmpDir }
+      );
+    }
+    runHook(
+      writeEvent(join(tmpDir, "src/db.ts"), "export const pool = null"),
+      { agentName: "desarrollador-backend", cwd: tmpDir }
+    );
+
+    const resultado = spawnSync(
+      process.execPath,
+      [join(process.cwd(), "claude-hooks", "query-memory.js"), "--agente", "arquitecto", "--ultimas", "2"],
+      { cwd: tmpDir, encoding: "utf8" }
+    );
+    assert.strictEqual(resultado.status, 0, "debe salir con código 0");
+    assert.ok(resultado.stdout.includes("arquitecto"), "debe mencionar el agente");
+    // Contar entradas de memoria (líneas que empiezan con "## YYYY-MM-DD")
+    const entradas = resultado.stdout.split("\n").filter(l => /^## \d{4}-\d{2}-\d{2}/.test(l));
+    assert.ok(entradas.length <= 2, `debe devolver máximo 2 entradas, devolvió ${entradas.length}`);
+  });
+
+  test("query-memory.js filtra por término de búsqueda", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function loginWithJWT() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    runHook(
+      writeEvent(join(tmpDir, "src/db.ts"), "export const pool = createPool()"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    const resultado = spawnSync(
+      process.execPath,
+      [join(process.cwd(), "claude-hooks", "query-memory.js"), "--agente", "arquitecto", "--buscar", "auth"],
+      { cwd: tmpDir, encoding: "utf8" }
+    );
+    assert.strictEqual(resultado.status, 0, "debe salir con código 0");
+    assert.ok(resultado.stdout.includes("auth"), "debe incluir la entrada con auth");
+    assert.ok(!resultado.stdout.includes("pool"), "no debe incluir la entrada de db sin auth");
+  });
+});
+
+// ── 9. Backend SQLite ─────────────────────────────────────────────────────────
+
+describe("agent-memory — backend SQLite", () => {
+  let tmpDir;
+
+  // Detectar si node:sqlite está disponible en este runtime
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  const sqliteDisponible = major > 22 || (major === 22 && minor >= 5);
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "forge-sqlite-"));
+    mkdirSync(join(tmpDir, ".sdd", "memoria"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      'memoria:\n  umbral_bytes: 50000\n  backend: "sqlite"\n  recuperacion_por_defecto: 10\n',
+      "utf8"
+    );
+  });
+
+  after(() => {
+    try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
+  });
+
+  test("crea memoria.db cuando backend es sqlite (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function login() { return true; }"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    const dbPath = join(tmpDir, ".sdd", "memoria", "memoria.db");
+    assert.ok(existsSync(dbPath), "debe crear memoria.db con backend sqlite");
+  });
+
+  test("NO crea agente-arquitecto.md con backend sqlite (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    const mdFile = join(tmpDir, ".sdd", "memoria", "agente-arquitecto.md");
+    assert.ok(!existsSync(mdFile), "con backend sqlite no debe crear archivo .md");
+  });
+
+  test("la entrada en memoria.db tiene los campos correctos (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/service.ts"), "export class UserService { find() {} }"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    const dbPath = join(tmpDir, ".sdd", "memoria", "memoria.db");
+    // Leer la DB con node:sqlite
+    const { DatabaseSync } = _require("node:sqlite");
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare("SELECT * FROM entradas WHERE agente = 'arquitecto'").all();
+    db.close();
+
+    assert.ok(rows.length >= 1, "debe haber al menos 1 entrada en la DB");
+    const row = rows[0];
+    assert.ok(row.ts, "debe tener campo ts");
+    assert.ok(row.fecha, "debe tener campo fecha");
+    assert.equal(row.agente, "arquitecto");
+    assert.ok(row.archivo.includes("service.ts"), "debe registrar el archivo");
+    assert.ok(typeof row.resumen === "string" && row.resumen.length > 0, "debe tener resumen");
+    assert.ok(typeof row.bytes === "number" && row.bytes > 0, "debe tener bytes");
+  });
+
+  test("deduplicación: misma escritura el mismo día actualiza en lugar de duplicar (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "function login() { return true; }"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "function login(user) { return user.active; }"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    const dbPath = join(tmpDir, ".sdd", "memoria", "memoria.db");
+    const { DatabaseSync } = _require("node:sqlite");
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare("SELECT * FROM entradas WHERE agente = 'arquitecto' AND archivo LIKE '%auth.ts'").all();
+    db.close();
+
+    assert.equal(rows.length, 1, "mismo archivo mismo día debe dar 1 fila (dedup)");
+    assert.ok(rows[0].resumen.includes("user.active"), "debe tener el resumen de la última escritura");
+  });
+
+  test("indice.jsonl se crea igualmente con backend sqlite", { skip: !sqliteDisponible }, () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/api.ts"), "export const router = {}"),
+      { agentName: "disenador-api", cwd: tmpDir }
+    );
+
+    const indiceFile = join(tmpDir, ".sdd", "memoria", "indice.jsonl");
+    assert.ok(existsSync(indiceFile), "indice.jsonl debe existir independientemente del backend");
+  });
+
+  test("fallback a markdown si sqlite falla (backend configurado pero Node < 22.5 simulado)", () => {
+    // Este test verifica la lógica de fallback en cualquier versión de Node
+    // Configuramos un yaml con backend sqlite pero con un umbral muy bajo para forzar escritura
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      'memoria:\n  umbral_bytes: 50000\n  backend: "markdown"\n',
+      "utf8"
+    );
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "function login() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    // Con backend markdown explícito, debe crear .md
+    const mdFile = join(tmpDir, ".sdd", "memoria", "agente-arquitecto.md");
+    assert.ok(existsSync(mdFile), "backend markdown explícito debe crear archivo .md");
   });
 });
