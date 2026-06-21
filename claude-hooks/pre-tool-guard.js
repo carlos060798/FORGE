@@ -14,8 +14,33 @@
  */
 
 import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
+
+// ── forge.config.json ────────────────────────────────────────────────────────
+
+function leerForgeConfig(cwd) {
+  const configPath = join(cwd, "forge.config.json");
+  const defaults = {
+    memoria: { umbral_compresion_bytes: 40_000, max_archivos_agente: 3 },
+    routing: { usar_complexity_ir: true, complexity_umbral_opus: "high" },
+    guardrails: { write_safety: true, verify_local_imports: false },
+    ignore_patterns: [],
+  };
+  if (!existsSync(configPath)) return defaults;
+  try {
+    const raw = readFileSync(configPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return {
+      memoria: { ...defaults.memoria, ...(parsed.memoria ?? {}) },
+      routing: { ...defaults.routing, ...(parsed.routing ?? {}) },
+      guardrails: { ...defaults.guardrails, ...(parsed.guardrails ?? {}) },
+      ignore_patterns: parsed.ignore_patterns ?? [],
+    };
+  } catch { return defaults; }
+}
+
+const FORGE_CONFIG = leerForgeConfig(process.cwd());
 
 const rl = createInterface({ input: process.stdin, terminal: false });
 let raw = "";
@@ -61,6 +86,10 @@ const PROHIBIDOS = [
   /cat\s+.*\.env(?!\.example|\.template)/,
   /type\s+.*\.env(?!\.example|\.template)/i,  // Windows
   /Get-Content\s+.*\.env(?!\.example|\.template)/i,
+
+  // Permisos inseguros
+  /chmod\s+777\b/,                             // chmod 777 (todos los permisos)
+  /chmod\s+-R\s+777\b/,                        // chmod -R 777 (recursivo)
 ];
 
 // ── Operaciones que requieren confirmación explícita ───────────────────────
@@ -124,7 +153,31 @@ function main(raw) {
       process.exit(2);
     }
 
-    // 0b. Detectar secrets en el contenido que se va a escribir
+    // 0b. Edit/MultiEdit sobre archivo inexistente → bloquear con mensaje útil
+    // Write sí puede crear archivos nuevos — solo bloqueamos Edit
+    if (toolName === "Edit" || toolName === "MultiEdit") {
+      const filePath = String(toolInput?.file_path ?? toolInput?.path ?? "");
+      if (filePath && filePath !== "(desconocido)" && !existsSync(filePath)) {
+        process.stderr.write(
+          `FORGE detuvo esta acción: el archivo "${filePath}" no existe.\n` +
+          `Usa Write para crear archivos nuevos, o verifica la ruta antes de editar.\n`
+        );
+        process.exit(2);
+      }
+    }
+
+    // 0c. write-safety — solo para tool Write (Edit ya está cubierto en 0b)
+    if (toolName === "Write" && FORGE_CONFIG.guardrails.write_safety) {
+      const filePath = String(toolInput?.file_path ?? toolInput?.path ?? "");
+      if (filePath && existsSync(filePath)) {
+        // El archivo ya existe → advertir (no bloquear — puede ser intencional)
+        process.stderr.write(
+          `⚠️  [write-safety] El archivo "${filePath}" ya existe y será sobreescrito.\n`
+        );
+      }
+    }
+
+    // 0e. Detectar secrets en el contenido que se va a escribir
     const contenido = String(
       toolInput?.content ?? toolInput?.new_string ?? ""
     );
@@ -137,6 +190,32 @@ function main(raw) {
             `Ejemplo: usa process.env.MI_CLAVE en vez de escribir el valor directamente.\n`
           );
           process.exit(2);
+        }
+      }
+    }
+
+    // 0f. verify-imports opt-in — solo si está activado en forge.config.json
+    if (FORGE_CONFIG.guardrails.verify_local_imports && contenido) {
+      const filePath = String(toolInput?.file_path ?? toolInput?.path ?? "");
+      if (filePath && /\.[jt]sx?$/.test(filePath)) {
+        const fileDir = dirname(resolve(filePath));
+        const importRe = /from\s+['"](\.[./\\][^'"]+)['"]/g;
+        let m;
+        while ((m = importRe.exec(contenido)) !== null) {
+          const importPath = m[1];
+          // Intentar con extensiones comunes si no tiene extensión
+          const candidatos = /\.\w+$/.test(importPath)
+            ? [importPath]
+            : [importPath, importPath + ".js", importPath + ".ts",
+               importPath + "/index.js", importPath + "/index.ts"];
+          const existe = candidatos.some((c) => existsSync(resolve(fileDir, c)));
+          if (!existe) {
+            process.stderr.write(
+              `⚠️  [verify-imports] Import relativo no encontrado: "${importPath}"\n` +
+              `   Archivo: ${filePath}\n` +
+              `   (Advertencia — no bloquea. Desactiva con guardrails.verify_local_imports: false)\n`
+            );
+          }
         }
       }
     }

@@ -23,6 +23,10 @@ Eres el **Orquestador del Plan**. Coordinas a los agentes especializados configu
 
 **Si el usuario escribió `/sdd.planificar cambios [descripción]`**: registra feedback específico, edita el plan, y regresa al PASO 9 (aprobación explícita).
 
+**Si el usuario escribió `/sdd.planificar rapido`** (o `sesion.modo = "rapido"` en sdd.config.yaml): omite la crítica del agente `critico` en el PASO 7. Útil en iteraciones rápidas donde el plan es corregible.
+
+**Si el usuario escribió `/sdd.planificar prototipo`** (o `sesion.modo = "prototipo"`): omite `critico`, `seguridad` y generación de ADR. Solo genera el plan mínimo viable para prototipado exploratorio. Advierte al usuario antes de continuar que este plan **no es apto para producción**.
+
 ## VERIFICACIONES PRE-EJECUCIÓN
 
 ```bash
@@ -53,6 +57,37 @@ find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" 
   -not -path "*/__pycache__/*" -not -path "*/dist/*" -not -path "*/build/*" \
   -not -path "*/.sdd/*" | head -80
 ```
+
+## PASO 1b — Routing dinámico de modelo según complejidad del IR
+
+```bash
+# Lee forge.config.json para determinar si usar routing dinámico (default: true)
+USAR_ROUTING=$(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync('forge.config.json','utf8'));
+    console.log(c.routing?.usar_complexity_ir !== false ? 'true' : 'false');
+  } catch { console.log('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$USAR_ROUTING" = "true" ] && [ -f ".sdd/ir.json" ]; then
+  COMPLEXITY=$(node -e "
+    const ir = JSON.parse(require('fs').readFileSync('.sdd/ir.json','utf8'));
+    console.log(ir.architecture?.estimated_complexity ?? ir.complexity ?? 'high');
+  " 2>/dev/null || echo "high")
+  if [ "$COMPLEXITY" = "low" ] || [ "$COMPLEXITY" = "medium" ]; then
+    ARQUITECTO_MODEL="sonnet"
+    echo "🔀 [forge-routing] Complejidad: ${COMPLEXITY} → agente arquitecto usará modelo sonnet"
+  else
+    ARQUITECTO_MODEL="opus"
+    echo "🔀 [forge-routing] Complejidad: ${COMPLEXITY} → agente arquitecto usará modelo opus"
+  fi
+else
+  ARQUITECTO_MODEL="opus"
+fi
+```
+
+Usa `$ARQUITECTO_MODEL` al invocar el agente `arquitecto` en el PASO 3. Si `ARQUITECTO_MODEL=sonnet`, avisa al usuario con: `> 💡 Usando Sonnet para arquitecto (complejidad: ${COMPLEXITY}) — cámbialo con forge.config.json si prefieres Opus.`
 
 ## PASO 2 — Determinar qué agentes invocar
 

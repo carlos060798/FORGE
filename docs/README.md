@@ -30,6 +30,8 @@ Esta carpeta contiene la documentación de referencia en Markdown. Está organiz
 | [PERSONALIZACION.md](PERSONALIZACION.md) | Los 5 niveles de personalización |
 | [COMPRESION.md](COMPRESION.md) | La técnica de compresión de contexto |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Errores técnicos reales de FORGE y sus soluciones |
+| [OPTIMIZACION-ENTORNO.md](OPTIMIZACION-ENTORNO.md) | Variables de entorno, límites reales de Claude Code y configuración óptima |
+| [INFORME-MEMORIA-OSS.md](INFORME-MEMORIA-OSS.md) | Investigación: gestión de memoria en el ecosistema Claude Code y qué adopta FORGE |
 
 ## 📖 Ejemplos y casos
 

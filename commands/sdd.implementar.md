@@ -41,6 +41,8 @@ cat .sdd/memoria/constitucion.md
 | `continuar` | **Reanudar**: desde la última tarea no completada |
 | `fase A` | **Por fase**: solo las tareas de la Fase A |
 | `revisar` | **Revisión**: invocar revisor sobre tareas completadas |
+| `rapido` | **Rápido**: omite el agente `revisor` al finalizar. Lee también `sesion.modo` del sdd.config.yaml si no hay flag. |
+| `prototipo` | **Prototipo**: omite `revisor` y los pasos de integración continua. Solo implementa, sin validar. Advierte que no es apto para producción. |
 
 ## PASO 3 — Gate Humano (aprobación antes de ejecutar)
 

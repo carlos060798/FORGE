@@ -11,13 +11,19 @@ allowed-tools: Read, Bash
 [ ! -d .sdd ] && echo "NO_INICIALIZADO" && exit 0
 
 cat .sdd/estado.json
-cat .sdd/sdd.config.yaml | head -50
+cat .sdd/sdd.config.yaml | head -60
 ls .sdd/especificaciones/ 2>/dev/null
 
 SPEC_ID=$(grep -o '"especificacion_activa": "[^"]*"' .sdd/estado.json | cut -d'"' -f4)
 if [ -n "$SPEC_ID" ]; then
   cat ".sdd/especificaciones/${SPEC_ID}/.estado-tareas.json" 2>/dev/null
 fi
+
+# Estado de memoria e índice AST
+MODO_SESION=$(grep -E "^\s*modo:" .sdd/sdd.config.yaml 2>/dev/null | head -1 | sed 's/.*: *"\?\([^"#]*\).*/\1/' | tr -d ' ')
+echo "MODO_SESION=${MODO_SESION:-normal}"
+[ -f ".sdd/arquitectura/ast-index.jsonl" ] && wc -l < .sdd/arquitectura/ast-index.jsonl || echo "AST_INDEX=no"
+[ -f ".sdd/memoria/indice.jsonl" ] && wc -l < .sdd/memoria/indice.jsonl || echo "MEMORIA_INDEX=0"
 ```
 
 ## PASO 2 — Si no está inicializado
@@ -128,6 +134,14 @@ Reglas para el dashboard de producto:
 ║     [✅] operaciones             (sonnet)                      ║
 ║     [✅] tester                  (sonnet)                      ║
 ║     [✅] revisor                 (opus)                        ║
+║                                                                ║
+╠════════════════════════════════════════════════════════════════╣
+║  ⚙️  SESIÓN                                                     ║
+║                                                                ║
+║     Modo:           {MODO_SESION} (normal/rapido/prototipo)    ║
+║     Índice AST:     ✅ .sdd/arquitectura/ast-index.jsonl       ║
+║                     (o ⏸ no generado — ejecuta /indexar-proyecto) ║
+║     Memoria agentes: {N} entradas en indice.jsonl              ║
 ║                                                                ║
 ╠════════════════════════════════════════════════════════════════╣
 ║  📚 HISTORIAL DEL PROYECTO                                     ║

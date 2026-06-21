@@ -22,6 +22,9 @@ El usuario pasa la intención como argumento. Mapea a la acción:
 | Intención | Acción |
 |-----------|--------|
 | (vacío) o "mostrar" | Mostrar config actual de forma legible |
+| `show` | Mostrar yaml completo de sdd.config.yaml |
+| `show [sección]` | Mostrar solo esa sección (ej: `show agentes`, `show memoria`) |
+| `set [clave] [valor]` | Cambiar un valor específico (ej: `set sesion.modo rapido`) |
 | "preset:lean" | Aplicar preset lean |
 | "preset:startup" | Aplicar preset startup |
 | "preset:enterprise" | Aplicar preset enterprise |
@@ -31,6 +34,47 @@ El usuario pasa la intención como argumento. Mapea a la acción:
 | "calidad" | Cambiar umbrales de calidad |
 | "protecciones" | Cambiar archivos/comandos protegidos |
 | "[nombre-agente]" | Acceso directo a config de ese agente |
+
+### Subcomando `show`
+
+```bash
+CONFIG=".sdd/sdd.config.yaml"
+
+# /sdd.configurar show → yaml completo
+cat "$CONFIG"
+
+# /sdd.configurar show agentes → solo la sección "agentes:"
+# Usa awk para extraer la sección hasta la próxima sección sin indentación
+awk '/^agentes:/,/^[a-z]/' "$CONFIG" | head -n -1
+```
+
+Si la sección no existe, muestra: `(sección "[sección]" no encontrada en sdd.config.yaml)`
+
+### Subcomando `set`
+
+Formato: `/sdd.configurar set clave.subclave valor`
+
+```bash
+CONFIG=".sdd/sdd.config.yaml"
+
+# Ejemplo: /sdd.configurar set sesion.modo rapido
+# Actualiza la línea "  modo: ..." dentro de la sección "sesion:"
+# Ejemplo: /sdd.configurar set agentes.arquitecto.modelo claude-sonnet-4-6
+
+# Estrategia: usa sed o Python para edición segura sin romper el yaml
+# Para claves de un nivel de profundidad (ej: sesion.modo):
+SECCION=$(echo "$CLAVE" | cut -d. -f1)   # "sesion"
+SUBCLAVE=$(echo "$CLAVE" | cut -d. -f2)  # "modo"
+sed -i "s/^  ${SUBCLAVE}: .*/  ${SUBCLAVE}: \"${VALOR}\"/" "$CONFIG"
+```
+
+Antes de cambiar, muestra el valor actual y el nuevo, y pide confirmación:
+```
+¿Cambiar agentes.arquitecto.modelo?
+  Actual: claude-opus-4-8
+  Nuevo:  claude-sonnet-4-6
+[s/N]
+```
 
 ### Modo preset
 

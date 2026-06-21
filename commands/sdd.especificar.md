@@ -40,6 +40,12 @@ fi
 
 > Si se detecta `contexto-descubrimiento.md`, úsalo como fuente principal para pre-rellenar la spec. No vuelvas a preguntar lo que ya está respondido ahí. Marca con `[POR_DEFINIR]` solo lo que falte.
 
+## MODO RÁPIDO
+
+Si el usuario escribió `/sdd.especificar rapido [descripción]` (o `sesion.modo = "rapido"` en sdd.config.yaml): omite `/sdd.aclarar` y `/sdd.checklist` al finalizar. Genera la spec directamente y pasa al handoff de planificación.
+
+Si el usuario escribió `/sdd.especificar prototipo [descripción]` (o `sesion.modo = "prototipo"`): además de omitir aclarar y checklist, marca la spec con `[PROTOTIPO — sin criterios de aceptación formales]` y salta directamente a `/sdd.planificar prototipo`.
+
 ## PASO 1 — Capturar descripción
 
 El usuario pasó la descripción tras `/sdd.especificar`. Si está vacía, pregunta:

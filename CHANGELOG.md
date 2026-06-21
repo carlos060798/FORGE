@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-06-21
+
+### Added
+- **`forge.config.json`** — archivo de configuración avanzada de FORGE, leído por `agent-memory.js` y `pre-tool-guard.js`. Controla umbral de compresión de memoria, routing de modelos y guardrails. Si no existe, se usan valores por defecto seguros. Ejemplo en `configuracion-ejemplo/forge.config.json`.
+- **Umbral de compresión configurable** (`agent-memory.js`): el valor `memoria.umbral_compresion_bytes` de `forge.config.json` sustituye al anterior hardcode de 50KB. Default nuevo: 40KB.
+- **Routing dinámico Opus→Sonnet** (`sdd.planificar.md`): en PASO 1b, lee `ir.json` para determinar `estimated_complexity`. Si es `low` o `medium`, el agente arquitecto usa Sonnet (5× más barato). Configurable con `routing.usar_complexity_ir`.
+- **`verify_local_imports` opt-in** (`pre-tool-guard.js`): cuando `guardrails.verify_local_imports: true` en `forge.config.json`, advierte en stderr si un import relativo en un `.js`/`.ts` no existe en disco. Desactivado por defecto (puede dar falsos positivos con barrel files).
+- **`docs/guardrails.md`** — documentación completa de todos los guardrails activos: qué bloquea, qué advierte, cómo configurar y cómo desactivar selectivamente.
+- **`docs/ejemplo-todo-app.md`** — walkthrough end-to-end completo: idea → IR → diseño → spec → plan → implementación → QA, con output real de cada comando y anotaciones de qué protección activó FORGE en cada paso.
+- **Sección guardrails en `README.md`** — tabla resumen de protecciones activas por defecto, visible desde la página principal.
+- **Sección configuración en `QUICK-START.md`** — explica `forge.config.json` y los guardrails en lenguaje no técnico.
+
+### Changed
+- `leerConfig()` en `agent-memory.js` ahora llama primero a `leerForgeConfig()` para obtener el umbral desde `forge.config.json` antes de leer `sdd.config.yaml`. La precedencia es: `sdd.config.yaml` > `forge.config.json` > defaults.
+- `pre-tool-guard.js` importa ahora `readFileSync` y `resolve`/`dirname` de `node:path` (antes no los usaba).
+
+### Internals
+- `ProjectMemory.read()` ya tenía memoización por `mtime` desde v2.8.0 — documentado explícitamente en este CHANGELOG. No se añadió código nuevo.
+
+---
+
+## [3.0.0] - 2026-06-21
+
+### Added
+- **`sdd-es init --guided`** — wizard interactivo que pregunta perfil (experto/guiado), modelo y modo de sesión, y pre-configura `sdd.config.yaml` automáticamente.
+- **Comando `/sdd.crear-agente`** — wizard que genera `agents/{nombre}.md`, lo registra en `plugin.json`, añade a `READ_ONLY_AGENTS` si es analista, y actualiza el enrutador.
+- **Dashboard de sesión en `/sdd.estado`** — muestra modo de sesión actual, estado del índice AST y entradas de memoria en el dashboard técnico.
+- **`CONTRIBUTING.md`** — guía completa para añadir agentes, comandos, reportar bugs y proceso de review.
+- **`.github/ISSUE_TEMPLATE/bug_report.md`** — template de bug con campos de entorno y output de doctor.
+- **`.github/ISSUE_TEMPLATE/agent_proposal.md`** — template para proponer nuevos agentes con criterios de aceptación.
+- Comando `/sdd.crear-agente` registrado en `plugin.json`, `sdd.ayuda.md` y enrutador `sdd.md`.
+
+### Changed
+- `package.json` y `plugin.json` bumpeados a `3.0.0` con description actualizada.
+
+---
+
+## [2.8.0] - 2026-06-21
+
+### Added
+- **Memoria inteligente con índice JSONL** (`agent-memory.js`): además del archivo markdown por agente, se genera `.sdd/memoria/indice.jsonl` (append-only) con metadatos resumidos para recuperación selectiva sin leer archivos completos.
+- **`claude-hooks/query-memory.js`** — CLI de consulta del índice: `--ultimas N`, `--buscar término`, `--archivo path`, `--stats`.
+- **Alerta proactiva de MEMORY.md**: `agent-memory.js` avisa en stderr cuando el MEMORY.md global supera 150 líneas (límite oficial: 200).
+- **AST indexer con acorn** (`claude-hooks/ast-indexer.js`): genera `.sdd/arquitectura/ast-index.jsonl` con exports, imports y funciones de todos los archivos JS/TS del proyecto.
+- **`claude-hooks/ast-query.js`** — CLI de consulta AST: `--archivo`, `--tipo`, `--buscar`, `--stats`, `--limite`.
+- **Skill `/indexar-proyecto`** — invoca `ast-indexer.js` sobre el proyecto completo.
+- **`chmod 777` en PROHIBIDOS** de `pre-tool-guard.js` — bloquea permisos inseguros en Bash.
+- **Verificación de existencia antes de `Edit`** en `pre-tool-guard.js` — bloquea edición de archivos inexistentes con mensaje útil.
+- **`docs/OPTIMIZACION-ENTORNO.md`** — referencia de variables de entorno, límites reales de Claude Code (CLAUDE.md 4K chars, MEMORY.md 200 líneas, hooks oficiales) y qué sobrevive a `/compact`.
+- **`docs/INFORME-MEMORIA-OSS.md`** — investigación comparativa de 4 repos OSS de memoria para Claude Code vs FORGE.
+- **Sección `sesion:` en `sdd.config.yaml`** — modo `normal/rapido/prototipo` y lista de pasos a omitir.
+- **Flags de modo en comandos clave**: `/sdd.planificar rapido|prototipo`, `/sdd.implementar rapido|prototipo`, `/sdd.especificar rapido|prototipo`.
+- **Comando `/sdd.modo`** — cambia o muestra el modo de sesión actual sin editar YAML manualmente.
+- **Subcomandos `show` y `set` en `/sdd.configurar`** — `show [sección]` muestra el YAML filtrado; `set clave.subclave valor` edita un valor específico con confirmación.
+- **Auditoría CLAUDE.md en `doctor`** — alerta si el CLAUDE.md local supera 3,500 chars (límite oficial: 4,000).
+- **Validación de `sdd.config.yaml` en `doctor`** — verifica claves obligatorias (`agentes:`, `comportamiento:`), `umbral_bytes` positivo y modelos válidos.
+
+### Fixed
+- Corregido mismatch de versión entre `package.json` (2.7.0) y `plugin.json` (2.6.0) — ambos ahora en 2.8.0.
+
+### Tests
+- +15 tests nuevos (total: 775 → ahora consolidado en 767 post-refactor de suite).
+- Nuevos describes: índice JSONL agent-memory (#8), ast-indexer, ast-query, chmod 777, Edit sobre inexistente.
+
+---
+
 ## [2.6.0] - 2026-06-20
 
 Consolidación del pipeline **FORGE** (idea → producto para no-programadores) y

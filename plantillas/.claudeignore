@@ -1,0 +1,59 @@
+# FORGE .claudeignore — excluye ruidos de la ventana de contexto de Claude Code
+# Copia automática durante /sdd.constitucion — personaliza según tu proyecto.
+
+# Dependencias y artefactos de build (siempre excluir)
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+__pycache__/
+*.pyc
+.pytest_cache/
+vendor/
+target/
+
+# Archivos generados (minificados, mapas, locks)
+*.min.js
+*.min.css
+*.map
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Artefactos de git (objetos internos, logs)
+.git/objects/
+.git/logs/
+
+# Observabilidad FORGE (crecen sin límite — no necesitan estar en contexto)
+.sdd/observabilidad/
+.sdd/memoria/*.original.md
+
+# Imágenes y binarios (no aportan tokens útiles)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg
+*.pdf
+*.zip
+*.tar.gz
+*.dmg
+*.exe
+
+# Cachés y archivos temporales
+.cache/
+tmp/
+temp/
+*.tmp
+*.log
+
+# IDEs y editores (metadatos locales)
+.idea/
+.vscode/settings.json
+*.swp
+*~

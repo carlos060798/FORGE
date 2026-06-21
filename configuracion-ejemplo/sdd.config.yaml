@@ -293,6 +293,26 @@ memoria:
   # Por defecto: 50000 (50 KB). Reduce para comprimir más agresivamente.
   umbral_bytes: 50000
 
+  # Backend de almacenamiento de memoria
+  # "sqlite"   → usa .sdd/memoria/memoria.db (recuperación selectiva, recomendado)
+  # "markdown" → usa .sdd/memoria/agente-{nombre}.md (comportamiento pre-v2.8)
+  backend: "sqlite"
+
+  # Número de entradas a cargar al iniciar sesión (solo aplica con query-memory.js)
+  recuperacion_por_defecto: 10
+
+# ============ SESIÓN ============
+sesion:
+  # Modo de trabajo de la sesión actual
+  # "normal"    → flujo completo con crítico, seguridad y ADR
+  # "rapido"    → omite crítico en planificar/implementar (ahorra ~30% tokens)
+  # "prototipo" → omite crítico, seguridad y ADR (prototipado rápido, sin garantías)
+  modo: "normal"
+
+  # Pasos individuales que se pueden omitir manualmente (independiente del modo)
+  # Opciones: "checklist", "aclarar", "analizar", "critico", "adr", "seguridad"
+  omitir_pasos: []
+
 # ============ COMPRESIÓN DE TOKENS ============
 compresion:
   # Activar compresión

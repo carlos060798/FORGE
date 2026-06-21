@@ -67,6 +67,7 @@ Muestra esta guía formateada:
    /sdd.exportar                     Empaquetar el proyecto actual como bundle descargable
    /sdd.crear-app [idea]             Generar app web o CLI desde una descripción en lenguaje natural
    /sdd.crear-mcp [descripción]      Generar servidor MCP empaquetado (.mcpb) desde una descripción
+   /sdd.crear-agente                 Wizard interactivo para crear un agente SDD-ES personalizado
 
 🏛️  CALIDAD Y COMPLIANCE
    /sdd.compliance                   Reporte de cumplimiento regulatorio (GDPR, SOC2, ISO 27001, HIPAA)
@@ -74,6 +75,7 @@ Muestra esta guía formateada:
    /sdd.defect-report                Reporte de defectos y tasa de bugs del proyecto
 
 ⚙️  UTILIDADES
+   /sdd.modo [normal|rapido|prototipo]  Cambiar modo de sesión (normal=completo, rapido=sin crítico, prototipo=sin revisores)
    /sdd.mapear                       Indexar estructura, símbolos y dependencias del proyecto
    /sdd.comprimir                    Comprimir archivos de memoria para ahorrar tokens
    /sdd.optimizar                    Optimizar artefactos SDD para reducir uso de contexto

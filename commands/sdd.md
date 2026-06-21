@@ -123,6 +123,8 @@ El usuario invocó este comando con argumentos en lenguaje natural. Mapea su int
 | "descubre el proyecto", "tengo una idea vaga" | `/sdd.descubrir` |
 | "crea una app", "construye una app", "quiero una app de X" | `/sdd.crear-app [resto]` |
 | "crea un MCP", "quiero una herramienta para Claude", "genera un servidor MCP" | `/sdd.crear-mcp [resto]` |
+| "cambia el modo", "modo rápido", "modo prototipo", "modo normal" | `/sdd.modo [normal\|rapido\|prototipo]` |
+| "crea un agente", "quiero un agente para X", "necesito un agente personalizado" | `/sdd.crear-agente` |
 | "ayuda", "qué puedes hacer" | `/sdd.ayuda` |
 
 ## PASO 2.5 — Detectar IR sin spec activa (FORGE)

@@ -113,6 +113,16 @@ describe("pre-tool-guard — comandos destructivos", () => {
     const r = runHook(bashEvent("git reset --soft HEAD~1"));
     assert.equal(r.exitCode, 0, "reset --soft no destruye historial");
   });
+
+  test("bloquea chmod 777", () => {
+    const r = runHook(bashEvent("chmod 777 /etc/passwd"));
+    assert.equal(r.exitCode, 2, "chmod 777 debe bloquearse por permisos inseguros");
+  });
+
+  test("bloquea chmod -R 777 recursivo", () => {
+    const r = runHook(bashEvent("chmod -R 777 ./src"));
+    assert.equal(r.exitCode, 2, "chmod -R 777 recursivo debe bloquearse");
+  });
 });
 
 // ── 2. Detección de secrets ─────────────────────────────────────────────────
@@ -300,5 +310,26 @@ describe("pre-tool-guard — auditoría de agentes", () => {
       tool_input: { command: "git push --force origin main" },
     });
     assert.equal(r.exitCode, 2, "PowerShell con push --force también debe ser bloqueado");
+  });
+});
+
+// ── 6. Verificación de existencia antes de Edit ──────────────────────────────
+
+describe("pre-tool-guard — Edit sobre archivo inexistente", () => {
+  test("Edit sobre archivo inexistente → exit 2 con mensaje útil", () => {
+    const r = runHook({
+      tool_name: "Edit",
+      tool_input: { file_path: "/ruta/que/no/existe/archivo.ts", old_string: "a", new_string: "b" },
+    });
+    assert.equal(r.exitCode, 2, "Edit sobre inexistente debe bloquearse");
+    assert.ok(
+      r.stderr.includes("no existe") || r.stderr.includes("FORGE"),
+      "mensaje debe indicar que el archivo no existe"
+    );
+  });
+
+  test("Write sobre archivo inexistente → exit 0 (Write crea archivos nuevos)", () => {
+    const r = runHook(writeEvent("/ruta/que/no/existe/nuevo.ts", "export const x = 1;"));
+    assert.equal(r.exitCode, 0, "Write sobre inexistente debe permitirse");
   });
 });

@@ -31,9 +31,35 @@ import { homedir } from "node:os";
 
 // ── Configuración ────────────────────────────────────────────────────────────
 
+function leerForgeConfig(cwd) {
+  const configPath = join(cwd, "forge.config.json");
+  const defaults = {
+    memoria: { umbral_compresion_bytes: 40_000, max_archivos_agente: 3 },
+    routing: { usar_complexity_ir: true, complexity_umbral_opus: "high" },
+    guardrails: { write_safety: true, verify_local_imports: false },
+    ignore_patterns: [],
+  };
+  if (!existsSync(configPath)) return defaults;
+  try {
+    const raw = readFileSync(configPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return {
+      memoria: { ...defaults.memoria, ...(parsed.memoria ?? {}) },
+      routing: { ...defaults.routing, ...(parsed.routing ?? {}) },
+      guardrails: { ...defaults.guardrails, ...(parsed.guardrails ?? {}) },
+      ignore_patterns: parsed.ignore_patterns ?? [],
+    };
+  } catch { return defaults; }
+}
+
 function leerConfig(cwd) {
+  const forgeConfig = leerForgeConfig(cwd);
   const configPath = join(cwd, ".sdd", "sdd.config.yaml");
-  const defaults = { umbral_bytes: 50_000, backend: "markdown", recuperacion_por_defecto: 10 };
+  const defaults = {
+    umbral_bytes: forgeConfig.memoria.umbral_compresion_bytes,
+    backend: "markdown",
+    recuperacion_por_defecto: 10,
+  };
   if (!existsSync(configPath)) return defaults;
   try {
     const yaml = readFileSync(configPath, "utf8");

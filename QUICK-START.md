@@ -85,6 +85,37 @@ En cualquier momento puedes escribir:
 
 ---
 
+## Configura FORGE para tu proyecto (opcional)
+
+Crea un archivo `forge.config.json` en la raíz de tu proyecto para ajustar el comportamiento:
+
+```json
+{
+  "memoria": {
+    "umbral_compresion_bytes": 40000
+  },
+  "routing": {
+    "usar_complexity_ir": true
+  },
+  "guardrails": {
+    "verify_local_imports": false
+  }
+}
+```
+
+Sin este archivo, FORGE usa valores predeterminados seguros. **No es obligatorio.**
+
+¿Qué protege FORGE aunque no configures nada?
+
+- Nunca ejecuta comandos que puedan borrar archivos importantes (`rm -rf`, `DROP DATABASE`).
+- Detecta contraseñas y claves secretas antes de que queden escritas en el código.
+- Los agentes que solo diseñan (arquitecto, revisor) no pueden modificar archivos de código.
+- Registra qué cambió cada agente para que puedas rastrear decisiones.
+
+**Más detalles:** [docs/guardrails.md](docs/guardrails.md)
+
+---
+
 ## ¿Listo?
 
 ```

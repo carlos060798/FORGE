@@ -1,0 +1,16 @@
+{
+  "_comentario": "forge.config.json — Configuración avanzada de FORGE. Coloca este archivo en la raíz del proyecto.",
+  "memoria": {
+    "umbral_compresion_bytes": 40000,
+    "max_archivos_agente": 3
+  },
+  "routing": {
+    "usar_complexity_ir": true,
+    "complexity_umbral_opus": "high"
+  },
+  "guardrails": {
+    "write_safety": true,
+    "verify_local_imports": false
+  },
+  "ignore_patterns": []
+}

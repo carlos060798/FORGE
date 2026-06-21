@@ -67,6 +67,25 @@ SDD-ES pide **tokens de GitHub y Vercel** para automatizar GitHub + deployment.
 
 ---
 
+## ¿Qué protege FORGE por defecto?
+
+FORGE instala dos hooks de Claude Code que actúan como guardianes en cada acción del agente:
+
+| Guardrail | Qué previene | ¿Bloquea o advierte? |
+|---|---|---|
+| Comandos destructivos | `rm -rf /`, `git reset --hard`, `DROP DATABASE` | Bloquea |
+| Detección de secrets | Contraseñas, API keys, tokens hardcodeados en código | Bloquea |
+| Agentes read-only | Arquitecto, crítico, revisor no pueden escribir archivos | Bloquea |
+| Edit sobre archivo inexistente | Previene sobrescritura ciega | Bloquea |
+| `git push`, `DROP TABLE`, `terraform apply` | Operaciones de riesgo moderado | Advierte |
+| Memoria de decisiones | Registra qué modificó cada agente y por qué | Silencioso |
+| ADR automáticos | Extrae decisiones de arquitectura de comentarios del código | Silencioso |
+
+**Configura el comportamiento** con [`forge.config.json`](configuracion-ejemplo/forge.config.json) en la raíz del proyecto.
+**Documentación completa:** [docs/guardrails.md](docs/guardrails.md)
+
+---
+
 ## ¿Eres programador o no?
 
 ### 👨‍💻 Para programadores (modo experto)
