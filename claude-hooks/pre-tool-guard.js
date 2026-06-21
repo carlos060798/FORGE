@@ -26,7 +26,7 @@ rl.on("close", () => main(raw.trim()));
 const PROHIBIDOS = [
   // Eliminación masiva
   /rm\s+-rf?\s+\/(?!\w)/,           // rm -rf /  (raíz)
-  /rm\s+-rf?\s+~\b/,                // rm -rf ~
+  /rm\s+-rf?\s+~(?:\s|$)/,          // rm -rf ~
   /rm\s+-rf?\s+\.\s*$/,             // rm -rf .  (cwd)
   /rm\s+-rf?\s+\.\./,               // rm -rf ..
   /Remove-Item\s+.*-Recurse.*-Force\s+[/\\]/, // PowerShell rm raíz
@@ -64,10 +64,6 @@ const PROHIBIDOS = [
 ];
 
 // ── Operaciones que requieren confirmación explícita ───────────────────────
-// (Para estas Claude Code debe preguntar al usuario — no las bloqueamos aquí
-//  porque el hook PreToolUse no puede hacer interacción. Las marcamos en stderr
-//  con un aviso y exit 0 para que Claude Code muestre la advertencia antes de pedir
-//  permiso al usuario mediante el flujo normal de permisos.)
 const ADVERTENCIAS = [
   { re: /git\s+push\b/,              msg: "git push — sube código al remoto" },
   { re: /git\s+merge\b/,             msg: "git merge — modifica historial" },
@@ -85,7 +81,6 @@ const ADVERTENCIAS = [
 ];
 
 // ── Patrones de secrets hardcodeados ──────────────────────────────────────
-// Detecta si el comando intenta escribir un secret literal en un archivo
 const SECRET_PATTERNS = [
   /password\s*=\s*['"][^'"]{4,}/i,
   /secret\s*=\s*['"][^'"]{8,}/i,
@@ -98,6 +93,12 @@ const SECRET_PATTERNS = [
   /BEGIN (RSA|EC|OPENSSH) PRIVATE KEY/,
 ];
 
+// ── Agentes read-only que NO pueden modificar archivos ────────────────────
+const READ_ONLY_AGENTS = new Set([
+  'arquitecto', 'asesor-datos', 'critico', 'seguridad',
+  'investigador', 'revisor', 'disenador-api'
+]);
+
 function main(raw) {
   let event;
   try {
@@ -109,27 +110,13 @@ function main(raw) {
 
   const toolName = event?.tool_name ?? "";
   const toolInput = event?.tool_input ?? {};
+  const agentName = process.env.CLAUDE_AGENT_NAME ?? "";
 
-  // Solo nos importan Bash y PowerShell
-  if (toolName !== "Bash" && toolName !== "PowerShell") {
-    process.exit(0);
-  }
-
-  const cmd = String(toolInput?.command ?? "").trim();
-  if (!cmd) process.exit(0);
-
-  // ── 0. NUEVO: Verificar permisos por agente ─────────────────────────────
-  const agentName = process.env.CLAUDE_AGENT_NAME;
-  if (agentName) {
-    // Agentes read-only que NO pueden usar Write/Edit
-    const readOnlyAgents = [
-      'arquitecto', 'asesor-datos', 'critico', 'seguridad',
-      'investigador', 'revisor', 'disenador-api'
-    ];
-
-    // Si es agente read-only e intenta usar Write/Edit, bloquea
-    if (readOnlyAgents.includes(agentName) &&
-        (toolName === 'Write' || toolName === 'Edit')) {
+  // ── 0. Write/Edit/MultiEdit: permisos por agente + secrets en contenido ─
+  const isWriteTool = toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit";
+  if (isWriteTool) {
+    // 0a. Agentes read-only no pueden modificar archivos
+    if (agentName && READ_ONLY_AGENTS.has(agentName)) {
       process.stderr.write(
         `FORGE detuvo esta acción: el agente "${agentName}" solo puede leer, no modificar archivos.\n` +
         `Si necesitas que este agente escriba código, cambia su rol en la configuración.\n`
@@ -137,7 +124,43 @@ function main(raw) {
       process.exit(2);
     }
 
-    // Auditoría de intentos de tool por agente (log a .sdd/observabilidad/)
+    // 0b. Detectar secrets en el contenido que se va a escribir
+    const contenido = String(
+      toolInput?.content ?? toolInput?.new_string ?? ""
+    );
+    if (contenido) {
+      for (const re of SECRET_PATTERNS) {
+        if (re.test(contenido)) {
+          process.stderr.write(
+            `FORGE detectó que el archivo a escribir incluye una contraseña o clave secreta.\n` +
+            `Para proteger tu seguridad, usa variables de entorno en lugar de escribir credenciales en el código.\n` +
+            `Ejemplo: usa process.env.MI_CLAVE en vez de escribir el valor directamente.\n`
+          );
+          process.exit(2);
+        }
+      }
+    }
+
+    // Auditoría de Write tools con agente identificado
+    if (agentName) {
+      const filePath = String(toolInput?.file_path ?? toolInput?.path ?? "(desconocido)");
+      logAgentToolAttempt(agentName, toolName, filePath);
+    }
+
+    // Write/Edit sin problemas detectados → permitir
+    process.exit(0);
+  }
+
+  // Solo inspeccionamos Bash y PowerShell para el resto
+  if (toolName !== "Bash" && toolName !== "PowerShell") {
+    process.exit(0);
+  }
+
+  const cmd = String(toolInput?.command ?? "").trim();
+  if (!cmd) process.exit(0);
+
+  // Auditoría de Bash/PowerShell por agente
+  if (agentName) {
     logAgentToolAttempt(agentName, toolName, cmd);
   }
 
@@ -185,13 +208,11 @@ function main(raw) {
 /**
  * Registra intentos de tool por agente para auditoría
  */
-function logAgentToolAttempt(agentName, toolName, cmd) {
+function logAgentToolAttempt(agentName, toolName, target) {
   try {
-    // Intenta grabar en .sdd/observabilidad/ en formato JSONL (append-only)
     const auditDir = '.sdd/observabilidad';
     const auditFile = join(auditDir, 'agent-tool-audit.jsonl');
 
-    // Crea dir si no existe
     if (!existsSync(auditDir)) {
       mkdirSync(auditDir, { recursive: true });
     }
@@ -200,7 +221,7 @@ function logAgentToolAttempt(agentName, toolName, cmd) {
       timestamp: new Date().toISOString(),
       agent: agentName,
       tool: toolName,
-      cmd_preview: cmd.slice(0, 120),
+      cmd_preview: target.slice(0, 120),
       pid: process.pid
     };
 

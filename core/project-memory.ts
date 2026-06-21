@@ -28,6 +28,8 @@ export interface ForgeEstado {
 export class ProjectMemory {
   private estadoPath: string;
   private sddDir: string;
+  private _cache: ForgeEstado | null = null;
+  private _cacheMtime: number = 0;
 
   constructor(cwd: string = process.cwd()) {
     this.sddDir = path.join(cwd, '.sdd');
@@ -37,10 +39,18 @@ export class ProjectMemory {
   read(): ForgeEstado {
     this.ensureSddDir();
     if (!fs.existsSync(this.estadoPath)) {
+      this._cache = null;
       return {};
     }
     try {
-      return JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
+      const mtime = fs.statSync(this.estadoPath).mtimeMs;
+      if (this._cache !== null && mtime === this._cacheMtime) {
+        return this._cache;
+      }
+      const parsed = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
+      this._cache = parsed;
+      this._cacheMtime = mtime;
+      return this._cache!;
     } catch {
       return {};
     }
@@ -55,6 +65,7 @@ export class ProjectMemory {
     };
     this.ensureSddDir();
     fs.writeFileSync(this.estadoPath, JSON.stringify(updated, null, 2));
+    this._cache = null; // Invalidar caché al escribir
     return updated;
   }
 

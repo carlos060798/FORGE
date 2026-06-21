@@ -151,7 +151,11 @@ function copiarNucleo(claudeDir) {
 
 function copiarSettings(claudeDir) {
   const dest = join(claudeDir, "settings.json");
-  const src = join(PLUGIN_DIR, ".claude", "settings.json");
+  const src = join(PLUGIN_DIR, ".claude-plugin", ".claude", "settings.json");
+  if (!existsSync(src)) {
+    aviso(`No se encontró settings.json de plantilla en ${src} — se omite`);
+    return;
+  }
   if (!existsSync(dest)) {
     cpSync(src, dest);
     info(`Settings de seguridad instalados (${dest})`);
@@ -216,6 +220,18 @@ function configurarSdd(claudeDir) {
     info("Configuración por defecto copiada (.sdd/sdd.config.yaml)");
   } else {
     aviso("Configuración ya existe — no se sobreescribe");
+  }
+
+  // .claudeignore (no sobreescribe — respeta personalizaciones del usuario)
+  const claudeignoreDest = join(process.cwd(), ".claudeignore");
+  if (!existsSync(claudeignoreDest)) {
+    cpSync(
+      join(PLUGIN_DIR, "configuracion-ejemplo", ".claudeignore"),
+      claudeignoreDest
+    );
+    info(".claudeignore creado — excluye node_modules, dist, observabilidad FORGE del contexto");
+  } else {
+    aviso(".claudeignore ya existe — no se sobreescribe");
   }
 
   // README de hooks (no sobreescribe)
