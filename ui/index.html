@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FORGE — Dashboard</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <style>
+    /* ── Layout del dashboard ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans, system-ui, sans-serif);
+      background: var(--bg, #0f1115);
+      color: var(--text, #e6e9ef);
+      min-height: 100vh;
+    }
+
+    header {
+      height: 52px;
+      background: var(--bg-soft, #161a21);
+      border-bottom: 1px solid var(--border, #272d39);
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      gap: 1rem;
+    }
+    .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent, #6ea8fe); }
+
+    nav { display: flex; gap: 0.25rem; margin-left: auto; }
+    nav button {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--text-soft, #9aa3b2);
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+    }
+    nav button:hover { background: var(--bg-elev, #1c212b); color: var(--text, #e6e9ef); }
+    nav button.active {
+      background: var(--accent-soft, rgba(110,168,254,0.14));
+      border-color: var(--accent, #6ea8fe);
+      color: var(--accent, #6ea8fe);
+    }
+
+    main { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Estado vacío ─────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-soft, #9aa3b2);
+    }
+    .empty-state p { margin-bottom: 0.5rem; }
+    .empty-state code {
+      background: var(--bg-elev, #1c212b);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-family: var(--font-mono, monospace);
+      color: var(--accent, #6ea8fe);
+    }
+
+    /* ── Pipeline ─────────────────────────────────────────────────────── */
+    .pipeline-header { margin-bottom: 1.5rem; }
+    .project-name { font-size: 1.4rem; margin-bottom: 0.4rem; }
+    .step-badge {
+      display: inline-block;
+      background: var(--accent-soft, rgba(110,168,254,0.14));
+      color: var(--accent, #6ea8fe);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .progress-wrap { margin-bottom: 2rem; }
+    .progress-bar {
+      background: var(--bg-elev, #1c212b);
+      border-radius: 8px;
+      height: 10px;
+      overflow: hidden;
+      margin-bottom: 0.4rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent, #6ea8fe);
+      border-radius: 8px;
+      transition: width 0.4s ease;
+    }
+    .progress-label { font-size: 0.8rem; color: var(--text-soft, #9aa3b2); }
+
+    .step-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .step-done    { color: var(--text-soft, #9aa3b2); }
+    .step-active  { background: var(--bg-elev, #1c212b); color: var(--text, #e6e9ef); font-weight: 600; }
+    .step-pending { color: var(--text-faint, #6b7280); }
+    .last-update  { margin-top: 1.5rem; font-size: 0.78rem; color: var(--text-faint, #6b7280); }
+
+    /* ── Tareas ───────────────────────────────────────────────────────── */
+    .tasks-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .tasks-header h2 { font-size: 1.2rem; }
+    .tasks-stats { display: flex; gap: 0.75rem; }
+    .stat {
+      font-size: 0.8rem;
+      color: var(--text-soft, #9aa3b2);
+      background: var(--bg-elev, #1c212b);
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+    }
+    .stat.active { color: var(--accent, #6ea8fe); background: var(--accent-soft, rgba(110,168,254,0.14)); }
+
+    .task-list { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; }
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.55rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+    .task-in_progress { background: var(--bg-elev, #1c212b); }
+    .task-failed      { background: rgba(248,113,113,0.08); }
+    .task-done        { color: var(--text-soft, #9aa3b2); }
+    .task-pending     { color: var(--text-faint, #6b7280); }
+    .task-icon        { font-size: 1rem; flex-shrink: 0; }
+    .task-id          { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: var(--text-faint, #6b7280); flex-shrink: 0; min-width: 3.5rem; }
+    .task-desc        { flex: 1; }
+
+    /* ── Verificación ─────────────────────────────────────────────────── */
+    .verify-result { padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border, #272d39); }
+    .verify-ok   { border-color: var(--green, #4ade80); background: rgba(74,222,128,0.06); }
+    .verify-fail { border-color: #f87171; background: rgba(248,113,113,0.06); }
+
+    .verify-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .verify-date    { font-size: 0.8rem; color: var(--text-soft, #9aa3b2); margin-bottom: 0.75rem; }
+    .verify-summary { margin-bottom: 1rem; color: var(--text-soft, #9aa3b2); }
+    .verify-failures h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .verify-failures ul { list-style: disc; padding-left: 1.4rem; }
+    .verify-failures li { margin-bottom: 0.3rem; font-size: 0.875rem; }
+    .verify-hint { margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-soft, #9aa3b2); font-style: italic; }
+
+    /* ── Error ────────────────────────────────────────────────────────── */
+    .error { color: #f87171; padding: 1rem; }
+
+    /* ── Indicador de conexión ────────────────────────────────────────── */
+    #connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green, #4ade80);
+      display: inline-block;
+      margin-left: 0.5rem;
+      transition: background 0.3s;
+    }
+    #connection-dot.offline { background: #f87171; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">⚡ <span>FORGE</span> Dashboard</span>
+    <span id="connection-dot" title="Conectado"></span>
+    <nav>
+      <button class="active" data-view="pipeline">Pipeline</button>
+      <button data-view="tasks">Tareas</button>
+      <button data-view="verify">Verificación</button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="view-pipeline" class="view active"></div>
+    <div id="view-tasks"    class="view"></div>
+    <div id="view-verify"   class="view"></div>
+  </main>
+
+  <script type="module">
+    import { init as initPipeline } from "/src/pipeline.js";
+    import { init as initTasks    } from "/src/tasks.js";
+    import { init as initVerify   } from "/src/verify.js";
+
+    // ── Navegación ──────────────────────────────────────────────────────
+    const buttons = document.querySelectorAll("nav button");
+    const views   = document.querySelectorAll(".view");
+
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.view;
+        buttons.forEach(b => b.classList.toggle("active", b === btn));
+        views.forEach(v => v.classList.toggle("active", v.id === `view-${target}`));
+      });
+    });
+
+    // ── Inicializar vistas ──────────────────────────────────────────────
+    initPipeline();
+    initTasks();
+    initVerify();
+
+    // ── Indicador de conexión ───────────────────────────────────────────
+    const dot = document.getElementById("connection-dot");
+    async function checkConnection() {
+      try {
+        await fetch("/estado");
+        dot.classList.remove("offline");
+        dot.title = "Conectado";
+      } catch {
+        dot.classList.add("offline");
+        dot.title = "Sin conexión con el servidor FORGE";
+      }
+    }
+    setInterval(checkConnection, 10000);
+  </script>
+</body>
+</html>

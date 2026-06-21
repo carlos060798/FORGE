@@ -285,7 +285,7 @@ function pasosFinales() {
 
 // ─── Comandos ───────────────────────────────────────────────────────────────────
 
-function cmdInit(global, guided = false) {
+function cmdInit(global, guided = false, withUi = false) {
   banner();
   const claudeDir = global
     ? join(homedir(), ".claude")
@@ -305,7 +305,24 @@ function cmdInit(global, guided = false) {
     configurarSdd(claudeDir, overrides);
   }
 
+  if (withUi) {
+    instalarUi();
+  }
+
   pasosFinales();
+}
+
+function instalarUi() {
+  titulo("Instalando dashboard UI...");
+  const uiSrc  = join(PLUGIN_DIR, "ui");
+  const uiDest = join(process.cwd(), ".forge-ui");
+  try {
+    cpSync(uiSrc, uiDest, { recursive: true });
+    info(`Dashboard instalado en ${uiDest}`);
+    info("Usa 'forge ui' para abrirlo en tu navegador");
+  } catch (e) {
+    aviso(`No se pudo instalar el dashboard: ${e.message}`);
+  }
 }
 
 /**
@@ -775,6 +792,46 @@ Uso: npx sdd-es config <subcomando>
 `);
 }
 
+async function cmdUi(args) {
+  const portArg  = args.find(a => a.startsWith("--port"));
+  const noOpen   = args.includes("--no-open");
+  const port     = portArg
+    ? parseInt(portArg.split("=")[1] ?? args[args.indexOf(portArg) + 1] ?? "3001", 10)
+    : 3001;
+
+  // Busca server.js: primero en .forge-ui/ (instalado con --ui), luego en el paquete
+  const localUi  = join(process.cwd(), ".forge-ui", "server.js");
+  const bundleUi = join(PLUGIN_DIR, "ui", "server.js");
+  const serverJs = existsSync(localUi) ? localUi : existsSync(bundleUi) ? bundleUi : null;
+
+  if (!serverJs) {
+    console.log("");
+    aviso("El dashboard no está instalado.");
+    console.log("  Instálalo con:  npx forge init --ui");
+    console.log("");
+    process.exit(1);
+  }
+
+  console.log("");
+  titulo(`Iniciando FORGE Dashboard en http://localhost:${port}`);
+  console.log("  Presiona Ctrl+C para detener.");
+  console.log("");
+
+  // Importa y arranca el servidor
+  const { startServer } = await import(serverJs);
+  startServer(port);
+
+  if (!noOpen) {
+    const url = `http://localhost:${port}`;
+    // Abrir navegador multiplataforma
+    const { platform } = await import("node:os");
+    const { spawn }    = await import("node:child_process");
+    const cmds = { win32: ["cmd", ["/c", "start", url]], darwin: ["open", [url]], linux: ["xdg-open", [url]] };
+    const [cmd, cmdArgs] = cmds[platform()] ?? cmds.linux;
+    spawn(cmd, cmdArgs, { stdio: "ignore", detached: true }).unref();
+  }
+}
+
 function uso() {
   console.log(`
 FORGE — CLI (v${pluginVersion()})
@@ -782,7 +839,8 @@ FORGE — CLI (v${pluginVersion()})
 Uso:
   npx forge init [--global]          Instala FORGE (proyecto actual o global)
   npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
-  npx forge doctor                   Diagnostica la instalación y hooks
+  npx forge doctor                   Diagnostica la instalación y providers disponibles
+  npx forge ui [--port N] [--no-open]  Abre el dashboard en el navegador
   npx forge config show [sección]    Muestra sdd.config.yaml o una sección
   npx forge config get <clave>       Obtiene el valor de una clave
   npx forge config set <clave> <v>   Cambia un valor en sdd.config.yaml
@@ -799,14 +857,15 @@ Tras instalar, abre Claude Code y escribe:
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
 function main() {
-  const args = process.argv.slice(2);
+  const args    = process.argv.slice(2);
   const comando = args[0];
-  const global = args.includes("--global") || args.includes("-g");
-  const guided = args.includes("--guided");
+  const global  = args.includes("--global") || args.includes("-g");
+  const guided  = args.includes("--guided");
+  const withUi  = args.includes("--ui");
 
   switch (comando) {
     case "init":
-      cmdInit(global, guided);
+      cmdInit(global, guided, withUi);
       break;
     case "update":
       cmdUpdate(global);
@@ -816,6 +875,9 @@ function main() {
       break;
     case "config":
       cmdConfig(args.slice(1));
+      break;
+    case "ui":
+      cmdUi(args.slice(1)).catch(e => error(e.message));
       break;
     case "--version":
     case "-v":
@@ -827,7 +889,7 @@ function main() {
       uso();
       break;
     default:
-      error(`Comando desconocido: '${comando}'. Usa 'npx sdd-es --help'.`);
+      error(`Comando desconocido: '${comando}'. Usa 'forge --help'.`);
   }
 }
 
