@@ -82,6 +82,28 @@ Si responde `cancelar` → detente con mensaje: "Implementación cancelada. Cuan
 
 Usa `TodoWrite` para mostrar el progreso en tiempo real al usuario. Crea un TODO por tarea pendiente.
 
+## PASO 3.8 — Validar frescura de ir.json (R-01)
+
+Antes de leer la complejidad para el routing, verifica que `ir.json` refleja la spec actual:
+
+```bash
+SPEC_FILE="${SPEC_DIR}/spec.md"
+IR_FILE="${SPEC_DIR}/ir.json"
+
+if [ -f "$IR_FILE" ] && [ -f "$SPEC_FILE" ]; then
+  IR_MTIME=$(stat -c %Y "$IR_FILE" 2>/dev/null || stat -f %m "$IR_FILE" 2>/dev/null)
+  SPEC_MTIME=$(stat -c %Y "$SPEC_FILE" 2>/dev/null || stat -f %m "$SPEC_FILE" 2>/dev/null)
+  if [ "$SPEC_MTIME" -gt "$IR_MTIME" ]; then
+    echo "⚠️  ir.json es más antiguo que spec.md — el routing de modelos usará complejidad 'alta' por defecto."
+    COMPLEXITY="alta"
+  else
+    COMPLEXITY=$(grep -o '"estimated_complexity"[[:space:]]*:[[:space:]]*"[^"]*"' "$IR_FILE" | cut -d'"' -f4)
+  fi
+else
+  COMPLEXITY="alta"
+fi
+```
+
 ## PASO 4 — Model routing (asignación de modelo por agente)
 
 Antes de despachar cada agente, aplica esta tabla de routing. El modelo correcto se inyecta en el prompt del agente:
@@ -93,18 +115,25 @@ Grupo OPUS (decisiones de alto impacto, razonamiento extendido):
   → arquitecto, critico, seguridad, asesor-datos
   → Modelo: claude-opus-4-8
 
+  OVERRIDE DINÁMICO (R-01): si COMPLEXITY == "baja" o "media",
+  el Grupo OPUS usa claude-sonnet-4-6 en su lugar.
+  Excepción: si userConfig.modelo_principal está definido,
+  ese valor prevalece solo para el Grupo OPUS (respeta preferencia explícita).
+
 Grupo SONNET (implementación estándar, análisis medio):
   → desarrollador-backend, desarrollador-frontend, tester
   → desarrollador-mobile, operaciones, disenador-api, revisor
-  → Modelo: claude-sonnet-4-6
+  → Modelo: claude-sonnet-4-6 (sin override — siempre sonnet)
 
 Grupo HAIKU (búsqueda, resumen, tareas de baja complejidad):
   → investigador, documentador
   → Modelo: claude-haiku-4-5-20251001
 
-Override: si userConfig.modelo_principal está definido en plugin.json,
-aplícalo solo al Grupo OPUS (respeta preferencia del usuario para
-decisiones críticas sin afectar el costo de tareas rutinarias).
+Tabla resumen:
+  COMPLEXITY = "alta"  → Opus | Sonnet | Haiku  (comportamiento original)
+  COMPLEXITY = "media" → Sonnet | Sonnet | Haiku (Opus → Sonnet en grupo crítico)
+  COMPLEXITY = "baja"  → Sonnet | Sonnet | Haiku (ídem)
+  COMPLEXITY ausente / ir.json desactualizado → "alta" (conservador)
 ```
 
 ## PASO 4.5 — Planificación PTC (Programmatic Tool Calling) + revisión paralela

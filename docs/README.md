@@ -21,19 +21,22 @@ Esta carpeta contiene la documentación de referencia en Markdown. Está organiz
 |-----------|--------------|
 | [FLUJO.md](FLUJO.md) | El flujo de ingeniería SDD completo, con diagrama |
 | [FILOSOFIA.md](FILOSOFIA.md) | Qué es SDD y los principios que lo guían |
-| [AGENTES.md](AGENTES.md) | Los 14 agentes: roles, cuándo se activan |
-| [MODELOS.md](MODELOS.md) | Qué modelo de Claude usa cada agente y por qué |
+| [AGENTES.md](AGENTES.md) | Los 14 agentes: roles, cuándo se activan, L5 Governance |
+| [AGENTES-DETALLE.md](AGENTES-DETALLE.md) | Qué produce cada agente, cómo depurarlo y personalizarlo |
+| [MODELOS.md](MODELOS.md) | Qué modelo de Claude usa cada agente y routing dinámico v2.7 |
 | [MEMORIA-Y-OBSERVABILIDAD.md](MEMORIA-Y-OBSERVABILIDAD.md) | Persistencia, ledger y compresión de tokens |
 | [MAPAS.md](MAPAS.md) | Indexación de estructura, símbolos y dependencias |
 | [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md) | FORGE como capa sobre las primitivas oficiales |
 | [PERSONALIZACION.md](PERSONALIZACION.md) | Los 5 niveles de personalización |
 | [COMPRESION.md](COMPRESION.md) | La técnica de compresión de contexto |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Errores técnicos reales de FORGE y sus soluciones |
 
 ## 📖 Ejemplos y casos
 
 | Documento | De qué trata |
 |-----------|--------------|
-| [CASO-COMPLETO.md](CASO-COMPLETO.md) | Un proyecto real de principio a fin |
+| [CASO-COMPLETO.md](CASO-COMPLETO.md) | Caso introductorio: app de lista de tareas (perfil guiado) |
+| [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) | Caso mediano: API REST con JWT y PostgreSQL (perfil experto) |
 | [EJEMPLOS.md](EJEMPLOS.md) | Ejemplos por stack (TypeScript, Python, Go…) |
 
 ---

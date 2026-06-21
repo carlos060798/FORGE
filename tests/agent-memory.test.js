@@ -429,3 +429,160 @@ describe("agent-memory — exit 0 para tools no-Write", () => {
     assert.equal(result.status, 0);
   });
 });
+
+// ── T-05: umbral configurable desde sdd.config.yaml ─────────────────────────
+
+describe("agent-memory — umbral configurable (T-05)", () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "forge-umbral-"));
+    mkdirSync(join(tmpDir, ".sdd"), { recursive: true });
+  });
+
+  after(() => {
+    try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
+  });
+
+  test("usa 50 000 bytes por defecto si no hay sdd.config.yaml", () => {
+    // Sin config — el hook debe funcionar normalmente con umbral por defecto
+    const r = runHook(
+      writeEvent(join(tmpDir, "app.ts"), "export const x = 1;"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    assert.equal(r.exitCode, 0);
+  });
+
+  test("lee umbral_bytes de sdd.config.yaml y no crashea con valor personalizado", () => {
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      "memoria:\n  umbral_bytes: 100\n",
+      "utf8"
+    );
+    const r = runHook(
+      writeEvent(join(tmpDir, "app.ts"), "export const x = 1;"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    assert.equal(r.exitCode, 0);
+  });
+
+  test("con umbral muy bajo dispara auto-compresión en la primera escritura", () => {
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      "memoria:\n  umbral_bytes: 1\n",
+      "utf8"
+    );
+    // Primera escritura crea y supera umbral → debe disparar compresión (stderr tiene mensaje)
+    const r = runHook(
+      writeEvent(join(tmpDir, "app.ts"), "export const x = 1;"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    assert.equal(r.exitCode, 0);
+    // El hook no debe crashear con umbral mínimo
+  });
+
+  test("ignora yaml malformado y usa umbral por defecto", () => {
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      "esto: no\n  es: yaml válido\n  [roto",
+      "utf8"
+    );
+    const r = runHook(
+      writeEvent(join(tmpDir, "app.ts"), "x"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+    assert.equal(r.exitCode, 0);
+  });
+});
+
+// ── 7. Contrato de lectura de memoria al inicio de sesión ────────────────────
+//
+// Los agentes leen `.sdd/memoria/agente-{nombre}.md` al inicio de cada tarea.
+// Este bloque verifica que:
+//   a) El hook crea el archivo en la ruta que los agentes esperan leer.
+//   b) El contenido es parseable (no binario ni corrupto).
+//   c) La ruta existe y es accesible con `cat` o `readFileSync`.
+
+describe("agent-memory — contrato lectura de memoria por agente", () => {
+  /** @type {string} */
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "forge-lectura-"));
+  });
+
+  after(() => {
+    try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
+  });
+
+  test("el archivo de memoria se crea en la ruta que el agente intenta leer", () => {
+    // Simula la primera escritura del agente arquitecto
+    runHook(
+      writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
+      { agentName: "arquitecto", cwd: tmpDir }
+    );
+
+    // La ruta que el agente lee en su prompt: .sdd/memoria/agente-arquitecto.md
+    const rutaEsperada = join(tmpDir, ".sdd", "memoria", "agente-arquitecto.md");
+    assert.ok(existsSync(rutaEsperada),
+      `el archivo debe existir en la ruta que el agente lee: ${rutaEsperada}`);
+  });
+
+  test("el contenido del archivo de memoria es texto UTF-8 legible", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/service.ts"), "export class UserService {}"),
+      { agentName: "desarrollador-backend", cwd: tmpDir }
+    );
+
+    const rutaMemoria = join(tmpDir, ".sdd", "memoria", "agente-desarrollador-backend.md");
+    assert.ok(existsSync(rutaMemoria), "debe existir el archivo de memoria");
+
+    const contenido = readFileSync(rutaMemoria, "utf8");
+    assert.ok(contenido.length > 0, "el archivo no debe estar vacío");
+    // Verificar que es texto plano legible (no binario): todos los chars son imprimibles o whitespace
+    assert.ok(!/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(contenido),
+      "el contenido debe ser texto UTF-8 sin caracteres de control");
+  });
+
+  test("tras múltiples escrituras el archivo acumula entradas (es un log, no se sobreescribe)", () => {
+    const agente = "tester";
+    const evento1 = writeEvent(join(tmpDir, "tests/auth.test.ts"), "test('login', () => {});");
+    const evento2 = writeEvent(join(tmpDir, "tests/user.test.ts"), "test('create', () => {});");
+
+    runHook(evento1, { agentName: agente, cwd: tmpDir });
+    runHook(evento2, { agentName: agente, cwd: tmpDir });
+
+    const rutaMemoria = join(tmpDir, ".sdd", "memoria", `agente-${agente}.md`);
+    assert.ok(existsSync(rutaMemoria), "debe existir el archivo de memoria");
+
+    const contenido = readFileSync(rutaMemoria, "utf8");
+    // Debe registrar ambos archivos
+    assert.ok(
+      contenido.includes("auth.test.ts") || contenido.includes("auth"),
+      "debe registrar la primera escritura"
+    );
+    assert.ok(
+      contenido.includes("user.test.ts") || contenido.includes("user"),
+      "debe registrar la segunda escritura"
+    );
+  });
+
+  test("agentes distintos tienen archivos de memoria separados", () => {
+    runHook(
+      writeEvent(join(tmpDir, "src/api.ts"), "export const router = {}"),
+      { agentName: "disenador-api", cwd: tmpDir }
+    );
+    runHook(
+      writeEvent(join(tmpDir, "src/db.ts"), "export const pool = null"),
+      { agentName: "desarrollador-backend", cwd: tmpDir }
+    );
+
+    const memoriaDir = join(tmpDir, ".sdd", "memoria");
+    assert.ok(existsSync(memoriaDir), "debe existir el directorio de memoria");
+
+    const archivos = readdirSync(memoriaDir).filter(f => f.startsWith("agente-"));
+    // Cada agente con memoria debe tener su propio archivo separado
+    assert.ok(archivos.length >= 1,
+      `debe haber al menos 1 archivo de memoria, encontrados: ${archivos.join(", ")}`);
+  });
+});

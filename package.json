@@ -1,14 +1,15 @@
 {
   "name": "sdd-es",
-  "version": "2.6.0",
-  "description": "Spec-Driven Development en español para Claude Code. Fábrica de software: de la idea al despliegue, agnóstica al stack. v2.6.0: auto-compresión de memoria, ADR Indexer, Defect Rate tracking.",
+  "version": "2.7.0",
+  "description": "Spec-Driven Development en español para Claude Code. Fábrica de software: de la idea al despliegue, agnóstica al stack. v2.7.0: routing dinámico de modelos, umbral configurable, tests nativos, guardrails ACI.",
   "type": "module",
   "bin": {
     "sdd-es": "cli/index.js"
   },
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "test:verbose": "node --test --reporter=spec tests/*.test.js",
+    "test": "node --test tests/*.test.js __tests__/*.test.js",
+    "test:verbose": "node --test --reporter=spec tests/*.test.js __tests__/*.test.js",
+    "coverage": "node --test --experimental-test-coverage tests/*.test.js __tests__/*.test.js",
     "init": "echo 'Instala con: npx sdd-es init  (o /plugin install sdd-es en Claude Code)'",
     "doctor": "node cli/index.js doctor"
   },

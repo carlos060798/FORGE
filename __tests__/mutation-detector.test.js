@@ -1,4 +1,5 @@
-const fs = require("fs");
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
 
 describe("Mutation Detector", () => {
   function agruparMutacionesPorArchivo(mutaciones) {
@@ -25,23 +26,16 @@ describe("Mutation Detector", () => {
     ];
 
     const agrupadas = agruparMutacionesPorArchivo(mutaciones);
-    expect(Object.keys(agrupadas)).toHaveLength(2);
-    expect(agrupadas["src/auth.ts"]).toHaveLength(2);
-    expect(agrupadas["src/ui.tsx"]).toHaveLength(1);
+    assert.equal(Object.keys(agrupadas).length, 2);
+    assert.equal(agrupadas["src/auth.ts"].length, 2);
+    assert.equal(agrupadas["src/ui.tsx"].length, 1);
   });
 
   test("Calcula escape rate correctamente", () => {
-    // Total 5 bugs, encontrados 4 → 1 escapó → 20%
-    expect(calcularEscapeRate(5, 4)).toBe(20);
-
-    // Total 10 bugs, encontrados 9 → 1 escapó → 10%
-    expect(calcularEscapeRate(10, 9)).toBe(10);
-
-    // Total 4 bugs, encontrados 4 → 0 escaparon → 0%
-    expect(calcularEscapeRate(4, 4)).toBe(0);
-
-    // Total 4 bugs, encontrados 0 → 4 escaparon → 100%
-    expect(calcularEscapeRate(4, 0)).toBe(100);
+    assert.equal(calcularEscapeRate(5, 4), 20);
+    assert.equal(calcularEscapeRate(10, 9), 10);
+    assert.equal(calcularEscapeRate(4, 4), 0);
+    assert.equal(calcularEscapeRate(4, 0), 100);
   });
 
   test("Detecta archivos inestables (>2 mutaciones)", () => {
@@ -58,8 +52,8 @@ describe("Mutation Detector", () => {
       .filter(([_, muts]) => muts.length > 2)
       .map(([archivo]) => archivo);
 
-    expect(inestables).toHaveLength(1);
-    expect(inestables[0]).toBe("src/auth.ts");
+    assert.equal(inestables.length, 1);
+    assert.equal(inestables[0], "src/auth.ts");
   });
 
   test("Calcula quality score por agente", () => {
@@ -69,19 +63,18 @@ describe("Mutation Detector", () => {
         { found: true },
         { found: true },
         { found: false },
-      ], // 3/4 bugs encontrados = 75%
-      "frontend-dev": [{ found: true }, { found: true }], // 2/2 = 100%
+      ],
+      "frontend-dev": [{ found: true }, { found: true }],
     };
 
-    for (const [agente, muts] of Object.entries(mutPorAgente)) {
-      const encontrados = muts.filter((m) => m.found).length;
-      const score = Math.round((encontrados / muts.length) * 100);
-      console.log(`${agente}: ${score}%`);
-    }
-
-    expect(
-      Math.round((mutPorAgente["backend-dev"].filter((m) => m.found).length / 4) * 100)
-    ).toBe(75);
+    assert.equal(
+      Math.round((mutPorAgente["backend-dev"].filter((m) => m.found).length / 4) * 100),
+      75
+    );
+    assert.equal(
+      Math.round((mutPorAgente["frontend-dev"].filter((m) => m.found).length / 2) * 100),
+      100
+    );
   });
 
   test("Identifica agentes con mejora necesaria", () => {
@@ -95,7 +88,7 @@ describe("Mutation Detector", () => {
       .filter(([_, score]) => score < 75)
       .map(([agente]) => agente);
 
-    expect(mejoraNeeded).toHaveLength(1);
-    expect(mejoraNeeded[0]).toBe("revisor");
+    assert.equal(mejoraNeeded.length, 1);
+    assert.equal(mejoraNeeded[0], "revisor");
   });
 });

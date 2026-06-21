@@ -68,7 +68,8 @@
     "sdd.defect-report",
     "sdd.ayuda",
     "sdd.crear-mcp",
-    "sdd.crear-app"
+    "sdd.crear-app",
+    "compact"
   ],
 
   "agents": [

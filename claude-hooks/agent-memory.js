@@ -20,7 +20,18 @@ import { createInterface } from "node:readline";
 import { existsSync, mkdirSync, appendFileSync, statSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MEMORIA_UMBRAL_BYTES = 50_000; // 50KB — alerta cuando se supera
+function leerUmbralBytes(cwd) {
+  const configPath = join(cwd, ".sdd", "sdd.config.yaml");
+  if (!existsSync(configPath)) return 50_000;
+  try {
+    const yaml = readFileSync(configPath, "utf8");
+    const match = yaml.match(/^memoria:\s*\n(?:[ \t]+\S[^\n]*\n)*?[ \t]+umbral_bytes:\s*(\d+)/m);
+    if (match) return parseInt(match[1], 10);
+  } catch { /* silencioso */ }
+  return 50_000;
+}
+
+const MEMORIA_UMBRAL_BYTES = leerUmbralBytes(process.cwd());
 
 const rl = createInterface({ input: process.stdin, terminal: false });
 let raw = "";

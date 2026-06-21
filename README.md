@@ -359,6 +359,37 @@ SDD-ES no impone — recomienda. Cada agente sugiere un modelo según la complej
 
 ---
 
+## Arquitectura: FORGE como ACI (Agent-Computer Interface)
+
+FORGE implementa las 6 capas del Agentic SDLC:
+
+| Capa | Nombre | Implementación FORGE |
+|---|---|---|
+| L0 | Foundation Model | Claude Opus 4.8 / Sonnet 4.6 (routing dinámico) |
+| L1 | Memory + Reflection | `.sdd/memoria/agente-*.md` + `agent-memory.js` |
+| L2 | ACI | Comandos `/sdd.*` — traducen intent a operaciones concretas |
+| L3 | Tools | Read, Write, Bash, Task — operaciones reales sobre filesystem |
+| L4 | Orchestration | `sdd.implementar.md` — coordina 14 agentes especializados |
+| L5 | Governance | `pre-tool-guard.js` + `post-write-conventions.js` — guardrails activos |
+
+### L5 Guardrails — Qué protege FORGE por defecto
+
+| Guardrail | Qué previene | Nivel |
+|---|---|---|
+| Bloqueo `rm -rf /`, `DROP DATABASE`, `push --force` | Destrucción irreversible | Duro (exit 2) |
+| Detección secrets hardcodeados (8 patrones) | Leak de credenciales | Duro (exit 2) |
+| Write con secret en contenido | Leak vía escritura de archivo | Duro (exit 2) |
+| Agentes read-only no pueden Write/Edit | Aislamiento de roles | Duro (exit 2) |
+| Advertencias git push, DROP TABLE, terraform | Operaciones de alto impacto | Advertencia (exit 0) |
+| Captura automática de decisiones en memoria | Pérdida de contexto entre sesiones | Pasivo |
+| Validación de convenciones post-write | Code style inconsistente | Configurable |
+
+> **Tip de contexto**: ejecuta `/compact` (alias de `/sdd.comprimir aplicar`) cuando el indicador de contexto supere el 60%.
+> FORGE genera archivos de observabilidad (`.sdd/observabilidad/`) que se excluyen
+> automáticamente del contexto via `.claudeignore`.
+
+---
+
 ## Contribuir
 
 El plugin está diseñado para ser forkeado y personalizado. Si mejoras algo genérico, abre un PR.

@@ -287,6 +287,12 @@ mapeos:
     - .git
     - .sdd
 
+# ============ MEMORIA DE AGENTES ============
+memoria:
+  # Tamaño máximo del archivo de memoria de un agente antes de auto-compresión
+  # Por defecto: 50000 (50 KB). Reduce para comprimir más agresivamente.
+  umbral_bytes: 50000
+
 # ============ COMPRESIÓN DE TOKENS ============
 compresion:
   # Activar compresión

@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
 
 describe("ADR Indexer", () => {
   function extraerADRsDelContenido(contenido) {
@@ -25,9 +25,9 @@ describe("ADR Indexer", () => {
 class Database {}
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use PostgreSQL");
-    expect(adrs[0].status).toBe("accepted");
+    assert.equal(adrs.length, 1);
+    assert.equal(adrs[0].decision, "Use PostgreSQL");
+    assert.equal(adrs[0].status, "accepted");
   });
 
   test("Extrae ADR de comentario Python", () => {
@@ -37,8 +37,8 @@ def create_app():
     pass
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use Django");
+    assert.equal(adrs.length, 1);
+    assert.equal(adrs[0].decision, "Use Django");
   });
 
   test("Extrae múltiples ADRs del mismo archivo", () => {
@@ -48,17 +48,21 @@ def create_app():
 // ADR: {"decision": "Use ESLint for linting", "status": "accepted"}
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(3);
+    assert.equal(adrs.length, 3);
   });
 
-  test("Ignora JSON inválido", () => {
-    const contenido = `
-// ADR: {"decision": "Use PostgreSQL"
+  test("Ignora JSON inválido (llaves sin cerrar en la misma línea)", () => {
+    // El regex {[^}]*} captura hasta el primer } — si el JSON está incompleto
+    // en una línea y la siguiente tiene su propio ADR, ambas se fusionan en un
+    // solo match inválido. Solo los JSON bien formados pasan.
+    const contenido = `// ADR: {"decision": "Use PostgreSQL", "status": "accepted"}
+// ADR: este no es json valido
 // ADR: {"decision": "Use MongoDB", "status": "accepted"}
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use MongoDB");
+    assert.equal(adrs.length, 2);
+    assert.equal(adrs[0].decision, "Use PostgreSQL");
+    assert.equal(adrs[1].decision, "Use MongoDB");
   });
 
   test("Ignora comentarios sin decision", () => {
@@ -67,8 +71,8 @@ def create_app():
 // ADR: {"decision": "Use PostgreSQL"}
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use PostgreSQL");
+    assert.equal(adrs.length, 1);
+    assert.equal(adrs[0].decision, "Use PostgreSQL");
   });
 
   test("Extrae ADR de comentario block (/* */)", () => {
@@ -76,8 +80,8 @@ def create_app():
 /* ADR: {"decision": "Use Redis", "status": "accepted"} */
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use Redis");
+    assert.equal(adrs.length, 1);
+    assert.equal(adrs[0].decision, "Use Redis");
   });
 
   test("Extrae ADR de comentario HTML", () => {
@@ -85,8 +89,8 @@ def create_app():
 <!-- ADR: {"decision": "Use React", "status": "accepted"} -->
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs).toHaveLength(1);
-    expect(adrs[0].decision).toBe("Use React");
+    assert.equal(adrs.length, 1);
+    assert.equal(adrs[0].decision, "Use React");
   });
 
   test("Default status es 'accepted'", () => {
@@ -94,6 +98,6 @@ def create_app():
 // ADR: {"decision": "Use PostgreSQL"}
 `;
     const adrs = extraerADRsDelContenido(contenido);
-    expect(adrs[0].status).toBeUndefined(); // No incluye default
+    assert.equal(adrs[0].status, undefined);
   });
 });

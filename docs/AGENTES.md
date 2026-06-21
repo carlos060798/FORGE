@@ -66,6 +66,21 @@ Los agentes NO se invocan manualmente por el usuario. El plugin los orquesta:
 
 - **Al final de `/sdd.implementar`**: el `revisor` cruza el código contra la spec; el `tester` ejecuta la suite; el `seguridad` audita si tocó algo sensible.
 
+## Restricciones por rol — L5 Governance
+
+FORGE impone restricciones a nivel de hook (`claude-hooks/pre-tool-guard.js`), no a nivel de prompt. Estas restricciones **no se pueden desactivar editando el archivo del agente**:
+
+| Restricción | Agentes afectados | Qué pasa si se viola |
+|---|---|---|
+| **Read-only**: no pueden Write/Edit/MultiEdit | arquitecto, critico, asesor-datos | Hook bloquea con exit 2 |
+| **Sin secrets en contenido**: Write con contraseña/token es bloqueado | todos | Hook bloquea con exit 2 |
+| **Sin comandos destructivos**: `rm -rf`, `DROP DATABASE`, `git push --force` | todos (vía Bash) | Hook bloquea con exit 2 |
+| **Advertencia en comandos sensibles**: `git push`, `DROP TABLE`, `terraform apply` | todos (vía Bash) | Hook avisa pero permite |
+
+Los agentes read-only (arquitecto, critico, asesor-datos) están diseñados para **analizar y recomendar**, no para escribir código directamente. El desarrollador-backend y similares ejecutan los cambios bajo su supervisión.
+
+Para cambiar estas restricciones edita el hook directamente: `claude-hooks/pre-tool-guard.js`.
+
 ## Personalizar un agente
 
 Los agentes son archivos Markdown plano. Edita `.claude/agents/[nombre].md` para:

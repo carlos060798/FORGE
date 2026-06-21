@@ -1,19 +1,22 @@
-const { execSync } = require("child_process");
-const { readFileSync, writeFileSync, mkdirSync } = require("fs");
-const { join } = require("path");
+import { test, before, after } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
-const TEST_DIR = "./test-memory-compressor-tmp";
+let tmpDir;
 
-beforeAll(() => {
-  mkdirSync(join(TEST_DIR, ".sdd/memoria"), { recursive: true });
+before(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), "forge-compactor-"));
+  mkdirSync(join(tmpDir, ".sdd", "memoria"), { recursive: true });
 });
 
-afterAll(() => {
-  execSync(`rm -rf "${TEST_DIR}"`, { shell: "bash" });
+after(() => {
+  try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
 });
 
 test("Auto-compresión deduplica entradas por filepath", () => {
-  const memoriaFile = join(TEST_DIR, ".sdd/memoria/agente-test.md");
+  const memoriaFile = join(tmpDir, ".sdd/memoria/agente-test.md");
   const contenido = `# Memoria del agente: test
 
 ## 2026-06-10 — src/database.ts
@@ -31,10 +34,6 @@ test("Auto-compresión deduplica entradas por filepath", () => {
 
   writeFileSync(memoriaFile, contenido, "utf8");
 
-  // Simular ejecución del hook (sin ejecutar realmente, solo verificar lógica)
-  const lineas = contenido.split("\n");
-  const header = lineas.slice(0, 6).join("\n").concat("\n\n");
-
   const entradas = new Map();
   const regex = /^## (\d{4}-\d{2}-\d{2}) — (.+?)\n> (.+?)(?=\n##|\n$)/gms;
   let match;
@@ -43,22 +42,20 @@ test("Auto-compresión deduplica entradas por filepath", () => {
     entradas.set(filepath, { fecha, resumen });
   }
 
-  expect(entradas.size).toBe(2); // database.ts + auth.ts
-  expect(entradas.get("src/database.ts").fecha).toBe("2026-06-12"); // más reciente
+  assert.equal(entradas.size, 2);
+  assert.equal(entradas.get("src/database.ts").fecha, "2026-06-12");
 });
 
 test("Backup se crea antes de comprimir", () => {
-  const memoriaFile = join(TEST_DIR, ".sdd/memoria/agente-backup-test.md");
+  const memoriaFile = join(tmpDir, ".sdd/memoria/agente-backup-test.md");
   const backupFile = memoriaFile.replace(".md", ".original.md");
 
   const contenido = "# Test contenido original";
   writeFileSync(memoriaFile, contenido, "utf8");
 
-  // Simular backup
-  const fs = require("fs");
-  fs.copyFileSync(memoriaFile, backupFile);
+  copyFileSync(memoriaFile, backupFile);
 
-  expect(readFileSync(backupFile, "utf8")).toBe(contenido);
+  assert.equal(readFileSync(backupFile, "utf8"), contenido);
 });
 
 test("Compresión es idempotente", () => {
@@ -71,7 +68,6 @@ test("Compresión es idempotente", () => {
 > contenido B
 `;
 
-  // Aplicar deduplica 2 veces, resultado debe ser igual
   const aplicarDeduplica = (c) => {
     const entradas = new Map();
     const regex = /^## (\d{4}-\d{2}-\d{2}) — (.+?)\n> (.+?)(?=\n##|\n$)/gms;
@@ -90,5 +86,5 @@ test("Compresión es idempotente", () => {
   const resultado1 = aplicarDeduplica(contenido);
   const resultado2 = aplicarDeduplica(resultado1);
 
-  expect(resultado1).toBe(resultado2);
+  assert.equal(resultado1, resultado2);
 });

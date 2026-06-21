@@ -18,6 +18,10 @@
           {
             "type": "command",
             "command": "node claude-hooks/agent-memory.js"
+          },
+          {
+            "type": "command",
+            "command": "node claude-hooks/post-write-conventions.js"
           }
         ]
       }

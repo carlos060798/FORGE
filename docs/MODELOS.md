@@ -1,10 +1,23 @@
 # Guía de Modelos por Agente
 
+## Routing dinámico desde v2.7.0
+
+A partir de v2.7.0, `/sdd.implementar` ajusta el modelo del Grupo OPUS automáticamente según la complejidad estimada en `ir.json`:
+
+| `estimated_complexity` | Grupo OPUS (arquitecto, critico, seguridad, asesor-datos, revisor) | Grupo SONNET | Grupo HAIKU |
+|---|---|---|---|
+| `alta` (o ausente) | claude-opus-4-8 | claude-sonnet-4-6 | claude-haiku-4-5 |
+| `media` | claude-sonnet-4-6 | claude-sonnet-4-6 | claude-haiku-4-5 |
+| `baja` | claude-sonnet-4-6 | claude-sonnet-4-6 | claude-haiku-4-5 |
+
+Si `ir.json` no existe o es más antiguo que `spec.md`, se usa `alta` por defecto (falla segura).
+Para forzar un modelo concreto en un agente, edita `.sdd/sdd.config.yaml` → `agentes.[nombre].modelo`.
+
 ## Tabla maestra de recomendaciones
 
 | Agente | Recomendado | Aceptable | Evitar | Razón principal |
 |--------|-------------|-----------|--------|-----------------|
-| arquitecto | **opus** | sonnet (proyectos pequeños) | haiku | Decisiones difíciles de revertir |
+| arquitecto | **opus** (alta) / sonnet (media/baja) | sonnet (proyectos pequeños) | haiku | Decisiones difíciles de revertir |
 | disenador-api | **sonnet** | opus (APIs complejas) | haiku | Diseño estructurado pero acotado |
 | asesor-datos | **opus** | sonnet (BD simple) | haiku | Errores de BD son costosos |
 | desarrollador-backend | **sonnet** | opus (lógica compleja), haiku (CRUD simple) | — | Codificación general |
