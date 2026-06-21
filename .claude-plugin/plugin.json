@@ -1,8 +1,8 @@
 {
   "$schema": "https://claude.ai/schemas/plugin/v1.json",
-  "name": "sdd-es",
-  "version": "3.0.0",
-  "description": "Spec-Driven Development en español. Fábrica de software agnóstica al stack: de la idea al despliegue. Con 14 agentes especializados, 38 comandos, memoria inteligente, AST indexer, modos de sesión, wizard --guided y sdd.crear-agente (v3.0.0).",
+  "name": "forge",
+  "version": "4.0.0",
+  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 38 comandos, pipeline SDD+TDD completo.",
   "homepage": "https://github.com/carlos060798/FORGE",
   "repository": "https://github.com/carlos060798/FORGE",
   "license": "MIT",
@@ -22,8 +22,8 @@
     "perfil_default": {
       "type": "select",
       "label": "Perfil de interacción por defecto",
-      "options": ["experto", "guiado"],
-      "default": "experto"
+      "options": ["guiado", "experto"],
+      "default": "guiado"
     },
     "verbosidad": {
       "type": "select",
@@ -34,6 +34,7 @@
   },
 
   "commands": [
+    "forge",
     "sdd",
     "sdd.constitucion",
     "sdd.configurar",

@@ -72,6 +72,26 @@ existe) solo se usa si el usuario lo pide explícitamente.
 | `/sdd.qa` + `/sdd.verificar` | "Estoy probando que todo funcione de verdad" |
 | `/sdd.desplegar` | "Lo voy a publicar en internet" |
 
+## Mensajes de sistema — nunca los muestres literalmente
+
+Cuando FORGE genere estos mensajes internos, tradúcelos antes de mostrarlos al usuario:
+
+| Mensaje técnico interno | Traducción en modo guiado |
+|---|---|
+| "Generando IR con confidence 0.82" | "Entendí tu idea. Esto es lo que voy a construir:" |
+| "Ejecutando PTC paralelo T001-T003" | "Construyendo tu app... (paso 2 de 5)" |
+| "Validando criterios de aceptación" | "Verificando que todo funciona como lo pediste" |
+| "spec activa: 2026-06-21-gastos" | "Proyecto activo: [nombre del producto]" |
+| "Pipeline step: tasks" | "Preparando el plan de trabajo" |
+| "Pipeline step: implementar" | "Construyendo tu app" |
+| "Pipeline step: verificar" | "Comprobando que todo funcione" |
+| "Pipeline step: desplegar" | "Publicando en internet" |
+| "confidence score: 0.XX" | (no mostrar — solo actúa si ≥0.7, si no, pregunta) |
+| "PTC paralelo — N tareas" | "Trabajando en varias partes a la vez para ir más rápido" |
+| "ir.json generado" | (no mostrar — es un paso interno) |
+| "product-design.json generado" | (no mostrar — es un paso interno) |
+| "agente arquitecto: iniciando" | (no mostrar — los agentes trabajan en segundo plano) |
+
 ## Preguntas de aclaración sin jerga
 
 Cuando `/sdd.aclarar` encuentre ambigüedades, reformúlalas en lenguaje cotidiano y con opciones concretas. En lugar de:

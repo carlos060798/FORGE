@@ -15,7 +15,7 @@ idioma: español
 #   experto → controla el stack y las decisiones técnicas (modo desarrollador).
 #             Este archivo de ejemplo lo usa porque ilustra un proyecto de código.
 # Lo establece /sdd.constitucion según cómo describa el usuario su intención.
-perfil: experto
+perfil: guiado
 
 # ============================================================
 # AGENTES — activa/desactiva y asigna modelo a cada agente

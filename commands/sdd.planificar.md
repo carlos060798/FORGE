@@ -397,7 +397,40 @@ echo "💾 Tu aprobación se guardó automáticamente."
 
 ## PASO 8 — Pedir aprobación del plan
 
-Si `comportamiento.requerir_aprobacion_plan: true` en config:
+Detecta el perfil antes de mostrar el gate:
+
+```bash
+PERFIL=$(grep -o '"perfil": *"[^"]*"' .sdd/estado.json 2>/dev/null | cut -d'"' -f4)
+[ -z "$PERFIL" ] && PERFIL=$(grep '^perfil:' .sdd/sdd.config.yaml 2>/dev/null | cut -d':' -f2 | tr -d ' ')
+PERFIL="${PERFIL:-guiado}"
+```
+
+### Gate modo GUIADO (perfil guiado — el default)
+
+Si `PERFIL=guiado`, muestra este mensaje en lenguaje humano. Extrae la información del plan generado:
+
+```
+He diseñado el plan para tu [nombre del producto].
+
+Aquí el resumen:
+
+  ✦ [tipo de app — ej: "Una app web que corre en tu navegador"]
+  ✦ [pantallas principales — ej: "3 pantallas: lista de gastos, categorías, resumen mensual"]
+  ✦ [dónde guarda datos — ej: "Guarda los datos en tu computadora, sin necesitar internet"]
+  ✦ [tiempo estimado — ej: "Tiempo estimado de construcción: ~15 minutos"]
+
+¿Arranco la construcción? (sí / no / quiero cambiar algo)
+```
+
+Si el usuario responde **"sí"** o equivalente → ejecuta el flujo de aprobación del PASO 9 automáticamente, sin pedir que escriba ningún comando.
+
+Si el usuario responde **"quiero cambiar algo"** o describe un cambio → aplica el cambio al plan y vuelve a mostrar el resumen.
+
+Si el usuario responde **"no"** → confirma que el proyecto queda en pausa y explica cómo retomarlo.
+
+### Gate modo EXPERTO (perfil experto)
+
+Si `PERFIL=experto` y `comportamiento.requerir_aprobacion_plan: true` en config:
 
 ```
 📋 Plan técnico generado

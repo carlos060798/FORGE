@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 // @ts-check
 /**
- * SDD-ES — CLI de instalación multiplataforma (Windows / macOS / Linux).
- *
- * Reemplaza a instalar.sh (bash-only) con Node puro, cero dependencias.
- * Comparte la misma lógica de copia idempotente.
+ * FORGE — CLI de instalación multiplataforma (Windows / macOS / Linux).
+ * (también disponible como sdd-es para compatibilidad)
  *
  * Uso:
- *   npx sdd-es init            instala en el proyecto actual (.claude/ + .sdd/)
- *   npx sdd-es init --global   instala en $HOME/.claude (todos los proyectos)
- *   npx sdd-es update          re-copia commands/agents/skills/hooks sin tocar .sdd/ ni settings
- *   npx sdd-es doctor          diagnostica la instalación
- *   npx sdd-es --version       muestra la versión
+ *   npx forge init             instala en el proyecto actual (.claude/ + .sdd/)
+ *   npx forge init --global    instala en $HOME/.claude (todos los proyectos)
+ *   npx forge update           re-copia commands/agents/skills/hooks sin tocar .sdd/ ni settings
+ *   npx forge doctor           diagnostica la instalación
+ *   npx forge --version        muestra la versión
  */
 
 import {
@@ -98,7 +96,7 @@ function banner() {
   console.log("");
   console.log("  ╔══════════════════════════════════════════════════════╗");
   console.log("  ║                                                      ║");
-  console.log("  ║          SDD-ES — Instalación del Plugin v2.0        ║");
+  console.log("  ║              FORGE — Tu equipo técnico en Claude Code ║");
   console.log("  ║                                                      ║");
   console.log("  ╚══════════════════════════════════════════════════════╝");
   console.log("");
@@ -269,13 +267,19 @@ function configurarSdd(claudeDir, overrides = {}) {
 
 function pasosFinales() {
   console.log("");
-  console.log("  ╔══════════════════════════════════════════════════════╗");
-  console.log("  ║              ✅ Instalación completada               ║");
-  console.log("  ╠══════════════════════════════════════════════════════╣");
-  console.log("  ║   PRÓXIMO PASO:                                      ║");
-  console.log("  ║      Abre Claude Code y ejecuta:  /sdd.constitucion  ║");
-  console.log("  ║   Para ver todos los comandos:    /sdd.ayuda         ║");
-  console.log("  ╚══════════════════════════════════════════════════════╝");
+  console.log("  ╔══════════════════════════════════════════════════════════════╗");
+  console.log("  ║                  ✅  FORGE instalado                         ║");
+  console.log("  ╠══════════════════════════════════════════════════════════════╣");
+  console.log("  ║                                                              ║");
+  console.log("  ║   Abre Claude Code y escribe:                                ║");
+  console.log("  ║                                                              ║");
+  console.log('  ║      /forge "describe tu idea aquí"                          ║');
+  console.log("  ║                                                              ║");
+  console.log("  ║   Ejemplo:                                                   ║");
+  console.log('  ║      /forge "una app para registrar mis gastos diarios"      ║');
+  console.log("  ║                                                              ║");
+  console.log("  ║   ¿Necesitas ayuda? Escribe:  /forge ayuda                   ║");
+  console.log("  ╚══════════════════════════════════════════════════════════════╝");
   console.log("");
 }
 
@@ -773,19 +777,22 @@ Uso: npx sdd-es config <subcomando>
 
 function uso() {
   console.log(`
-SDD-ES — CLI (v${pluginVersion()})
+FORGE — CLI (v${pluginVersion()})
 
 Uso:
-  npx sdd-es init [--global]         Instala el plugin (proyecto o global)
-  npx sdd-es update [--global]       Re-copia núcleo sin tocar tu .sdd/ ni settings
-  npx sdd-es doctor                  Diagnostica la instalación y hooks
-  npx sdd-es config show [sección]   Muestra sdd.config.yaml o una sección
-  npx sdd-es config get <clave>      Obtiene el valor de una clave
-  npx sdd-es config set <clave> <v>  Cambia un valor en sdd.config.yaml
-  npx sdd-es config validate         Valida la estructura del config
-  npx sdd-es --version               Muestra la versión
+  npx forge init [--global]          Instala FORGE (proyecto actual o global)
+  npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
+  npx forge doctor                   Diagnostica la instalación y hooks
+  npx forge config show [sección]    Muestra sdd.config.yaml o una sección
+  npx forge config get <clave>       Obtiene el valor de una clave
+  npx forge config set <clave> <v>   Cambia un valor en sdd.config.yaml
+  npx forge config validate          Valida la estructura del config
+  npx forge --version                Muestra la versión
 
-Tras instalar, abre Claude Code y ejecuta /sdd.constitucion
+  (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
+
+Tras instalar, abre Claude Code y escribe:
+  /forge "describe tu idea aquí"
 `);
 }
 

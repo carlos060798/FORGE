@@ -1,15 +1,29 @@
-# SDD-ES
+# FORGE
 
-> **Una capa de opinión en español sobre las primitivas oficiales de Claude Code**
-> Skills, subagentes, hooks y slash commands orquestados en un flujo idea→deploy, agnóstico al stack.
->
-> **Para quién:** no-técnicos que quieren construir sin programar (modo guiado) y developers que quieren estándares de ingeniería altos sin boilerplate (modo experto).
+> **Tu equipo técnico completo dentro de Claude Code.**
+> Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código.
 
-[![npm](https://img.shields.io/npm/v/sdd-es)](https://www.npmjs.com/package/sdd-es)
+[![npm](https://img.shields.io/npm/v/forge-sdd)](https://www.npmjs.com/package/forge-sdd)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-📚 **[Documentación completa →](https://carlos060798.github.io/FORGE/)** · sitio navegable bilingüe (ES/EN) con buscador, para no-técnicos y developers. También disponible como Markdown en [`docs/`](docs/README.md).
+**¿Qué necesitas?** Node.js ≥18, Claude Code, y una idea. Nada más.
+
+📚 **[Documentación →](https://carlos060798.github.io/FORGE/)**
+
+---
+
+## Inicio rápido
+
+```bash
+# 1. Instala FORGE en tu proyecto
+npx forge init
+
+# 2. Abre Claude Code y describe tu idea
+/forge "una app para registrar mis gastos del mes"
+```
+
+FORGE hace el resto: especifica, diseña, construye, prueba y verifica tu app completa.
 
 ---
 
@@ -18,18 +32,26 @@
 Requiere **Node.js ≥ 18** y **Claude Code**.
 
 ```bash
-# Desde la carpeta de tu proyecto
-npx sdd-es init
+# En la carpeta de tu proyecto
+npx forge init
+
+# O para todos tus proyectos
+npx forge init --global
 ```
 
-Eso es todo. SDD-ES instala comandos, agentes, skills y hooks en `.claude/` y crea la estructura `.sdd/` en tu proyecto.
+FORGE instala comandos, agentes, skills y hooks en `.claude/` y crea la estructura `.sdd/` en tu proyecto.
 
-### Opciones adicionales
+### Otros comandos CLI
 
 ```bash
-npx sdd-es init --global   # instala para todos tus proyectos ($HOME/.claude)
-npx sdd-es update          # actualiza el núcleo sin tocar tu .sdd/ ni settings
-npx sdd-es doctor          # diagnostica la instalación
+npx forge update           # actualiza el núcleo sin tocar tu .sdd/ ni settings
+npx forge doctor           # diagnostica la instalación y providers disponibles
+```
+
+### Compatibilidad con sdd-es (usuarios existentes)
+
+```bash
+npx sdd-es init            # sigue funcionando — alias de npx forge init
 ```
 
 ### Windows (PowerShell nativo)

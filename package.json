@@ -1,16 +1,17 @@
 {
-  "name": "sdd-es",
-  "version": "3.1.0",
-  "description": "Spec-Driven Development en español para Claude Code. Fábrica de software: de la idea al despliegue, agnóstica al stack. v3.1.0: forge.config.json, routing dinámico Opus→Sonnet, guardrails documentados, ejemplo end-to-end.",
+  "name": "forge-sdd",
+  "version": "4.0.0",
+  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código.",
   "type": "module",
   "bin": {
+    "forge": "cli/index.js",
     "sdd-es": "cli/index.js"
   },
   "scripts": {
     "test": "node --test tests/*.test.js __tests__/*.test.js",
     "test:verbose": "node --test --reporter=spec tests/*.test.js __tests__/*.test.js",
     "coverage": "node --test --experimental-test-coverage tests/*.test.js __tests__/*.test.js",
-    "init": "echo 'Instala con: npx sdd-es init  (o /plugin install sdd-es en Claude Code)'",
+    "init": "echo 'Instala con: npx forge init  (o npx sdd-es init)'",
     "doctor": "node cli/index.js doctor"
   },
   "engines": {
@@ -42,13 +43,17 @@
     "LICENSE"
   ],
   "keywords": [
+    "forge",
     "claude-code",
     "spec-driven-development",
     "sdd",
+    "tdd",
     "español",
     "agentes",
     "mcp",
-    "plugin"
+    "plugin",
+    "no-code",
+    "citizen-developer"
   ],
   "license": "MIT",
   "homepage": "https://github.com/carlos060798/FORGE",
