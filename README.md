@@ -113,7 +113,7 @@ Flujo simplificado (sin jerga técnica):
 
 **Ejemplo completo:** Lee [docs/FABRICA.md](docs/FABRICA.md) — la historia real de Martina que pasó de idea a app en vivo sin saber programar.
 
-**Resumen sin jerga:** [docs/RESUMEN-EJECUTIVO-NO-TECNICOS.md](docs/RESUMEN-EJECUTIVO-NO-TECNICOS.md)
+**Resumen sin jerga:** [docs/SEGURIDAD-PARA-NOTECNICOS.md](docs/SEGURIDAD-PARA-NOTECNICOS.md)
 
 ### Crear una app desde cero
 
@@ -313,11 +313,11 @@ Todo el plugin es Markdown plano. Personaliza editando archivos:
 
 ## MCP integrado
 
-SDD-ES declara un servidor MCP en `plugin.json`:
+SDD-ES declara un servidor MCP en `.mcp.json`:
 
 | MCP | Cuándo se activa | Para qué |
 |-----|-----------------|----------|
-| `navegador` (Playwright) | `/sdd.qa`, palabras clave `e2e`, `prueba` | QA en navegador real sin mantener un navegador propio |
+| `playwright` | `/sdd.qa`, palabras clave `e2e`, `prueba` | QA en navegador real sin mantener un navegador propio |
 
 ---
 
@@ -341,7 +341,8 @@ Las siguientes técnicas reducen el volumen de artefactos que Claude lee por ses
 | [docs/FABRICA.md](docs/FABRICA.md) | Recorrido idea→deploy para no-programadores |
 | [docs/INICIO-RAPIDO.md](docs/INICIO-RAPIDO.md) | Primeros pasos |
 | [docs/FLUJO.md](docs/FLUJO.md) | Sprint completo y diagrama del flujo |
-| [docs/EJEMPLO-PRACTICA.md](docs/EJEMPLO-PRACTICA.md) | Ejemplo completo: API REST desde cero |
+| [docs/CASO-COMPLETO.md](docs/CASO-COMPLETO.md) | Ejemplo completo de principio a fin |
+| [docs/EJEMPLOS.md](docs/EJEMPLOS.md) | Recetario de ejemplos y hooks |
 | [docs/AGENTES.md](docs/AGENTES.md) | Cuándo usar cada agente |
 | [docs/MODELOS.md](docs/MODELOS.md) | Recomendaciones de modelos por rol |
 | [docs/PERSONALIZACION.md](docs/PERSONALIZACION.md) | Guía exhaustiva de personalización |

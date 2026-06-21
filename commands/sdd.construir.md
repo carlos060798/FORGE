@@ -62,8 +62,16 @@ if [ ! -f ".sdd/ir.json" ] || [ ! -f ".sdd/product-design.json" ]; then
   exit 1
 fi
 
-# Ejecutar el mapper
-node sdd-lite/core/ir-to-spec-mapper.js
+# Ejecutar el mapper (artefacto JS distribuido junto al plugin).
+# Claude Code expone $CLAUDE_PLUGIN_ROOT con la raíz del plugin instalado.
+MAPPER="${CLAUDE_PLUGIN_ROOT:-.}/core/ir-to-spec-mapper.js"
+if [ ! -f "$MAPPER" ]; then
+  # Fallback: buscar el mapper en ubicaciones conocidas
+  for p in "$HOME/.claude/plugins/sdd-es/core/ir-to-spec-mapper.js" "core/ir-to-spec-mapper.js"; do
+    [ -f "$p" ] && MAPPER="$p" && break
+  done
+fi
+node "$MAPPER"
 
 # El mapper genera .sdd/spec-draft.json con:
 # - user_stories[] ← de features.core del IR

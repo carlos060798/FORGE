@@ -9,10 +9,12 @@
 idioma: español
 
 # PERFIL — cómo se conduce el flujo con el usuario
-#   experto → controla el stack y las decisiones técnicas (flujo normal)
-#   guiado  → no programa: el sistema decide lo técnico, explica sin jerga,
-#             confirma antes de actuar y encadena los pasos automáticamente.
-#             Lo establece /sdd.constitucion. El rigor del producto NO cambia.
+#   guiado  → (POR DEFECTO) no programa: el sistema decide lo técnico, explica
+#             sin jerga, confirma antes de actuar y encadena los pasos solo.
+#             Es el modo activo si NO se declara este campo. El rigor NO cambia.
+#   experto → controla el stack y las decisiones técnicas (modo desarrollador).
+#             Este archivo de ejemplo lo usa porque ilustra un proyecto de código.
+# Lo establece /sdd.constitucion según cómo describa el usuario su intención.
 perfil: experto
 
 # ============================================================

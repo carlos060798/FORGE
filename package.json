@@ -9,15 +9,16 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:verbose": "node --test --reporter=spec tests/*.test.js",
-    "lint": "echo 'Linter coming in v2.6.0'",
-    "lint:fix": "echo 'Auto-fix coming in v2.6.0'",
-    "init": "echo 'Usa marketplace de Claude Code: /plugin install sdd-es'",
-    "doctor": "echo 'Doctor check: v2.6.0 lista para producción'"
+    "init": "echo 'Instala con: npx sdd-es init  (o /plugin install sdd-es en Claude Code)'",
+    "doctor": "node cli/index.js doctor"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "files": [
+    "cli/",
+    "bin/",
+    "core/",
     "commands/",
     "agents/",
     "skills/",
@@ -29,12 +30,14 @@
     "configuracion-ejemplo/",
     "docs/",
     ".claude-plugin/",
-    ".claude/",
     ".gitignore",
     ".mcp.json",
     "instalar.sh",
     "instalar.ps1",
     "README.md",
+    "QUICK-START.md",
+    "CHANGELOG.md",
+    "VERSIONING.md",
     "LICENSE"
   ],
   "keywords": [

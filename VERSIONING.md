@@ -7,7 +7,7 @@ Este documento describe la estrategia de versionamiento semántico (SemVer) para
 FORGE sigue el formato: **MAJOR.MINOR.PATCH**
 
 ```
-v0.2.0
+v2.6.0
   │  │  │
   │  │  └─ PATCH: Bug fixes, hotfixes, optimizaciones
   │  └───── MINOR: Nuevas funcionalidades, compatibles hacia atrás
@@ -18,14 +18,14 @@ v0.2.0
 
 | Cambio | Versión | Ejemplo |
 |--------|---------|---------|
-| Nuevo comando SDD | MINOR | 0.1.0 → 0.2.0 |
-| Nuevo design system | MINOR | 0.2.0 → 0.3.0 |
-| Nuevo agente | MINOR | 0.2.0 → 0.3.0 |
-| Fix en skill existente | PATCH | 0.2.0 → 0.2.1 |
-| Optimización de performance | PATCH | 0.2.0 → 0.2.1 |
-| API breaking change | MAJOR | 0.2.0 → 1.0.0 |
-| Eliminación de comando | MAJOR | 0.2.0 → 1.0.0 |
-| Cambio en IR schema | MAJOR | 0.2.0 → 1.0.0 |
+| Nuevo comando SDD | MINOR | 2.5.0 → 2.6.0 |
+| Nuevo design system | MINOR | 2.6.0 → 2.7.0 |
+| Nuevo agente | MINOR | 2.6.0 → 2.7.0 |
+| Fix en skill existente | PATCH | 2.6.0 → 2.6.1 |
+| Optimización de performance | PATCH | 2.6.0 → 2.6.1 |
+| API breaking change | MAJOR | 2.6.0 → 3.0.0 |
+| Eliminación de comando | MAJOR | 2.6.0 → 3.0.0 |
+| Cambio en IR schema | MAJOR | 2.6.0 → 3.0.0 |
 
 ---
 
@@ -74,15 +74,15 @@ Cuando esté listo para un release:
 **2.1. Crear rama de release**
 
 ```bash
-git checkout -b release/0.2.0
+git checkout -b release/2.6.0
 ```
 
 **2.2. Actualizar versión en `package.json`**
 
 ```json
 {
-  "name": "forge-mvp",
-  "version": "0.2.0",
+  "name": "sdd-es",
+  "version": "2.6.0",
   ...
 }
 ```
@@ -91,14 +91,14 @@ Usa **exactamente** el formato `X.Y.Z` (sin `v` prefijo en package.json).
 
 **2.3. Actualizar `CHANGELOG.md`**
 
-1. Cambia la sección `[Unreleased]` → `[0.2.0] - 2026-06-13`
+1. Cambia la sección `[Unreleased]` → `[2.6.0] - 2026-06-13`
 2. Revisa que todos los cambios desde el release anterior estén documentados
 3. Agrupa por categoría: Agregado, Cambiado, Deprecado, Removido, Fixed, Seguridad
 
 Ejemplo:
 
 ```markdown
-## [0.2.0] - 2026-06-13
+## [2.6.0] - 2026-06-13
 
 ### Agregado
 - Nuevo endpoint `/api/wireframe`
@@ -116,14 +116,14 @@ Ejemplo:
 
 ```bash
 git add package.json CHANGELOG.md
-git commit -m "release: v0.2.0"
+git commit -m "release: v2.6.0"
 ```
 
 **2.5. Tag semántico**
 
 ```bash
-git tag -a v0.2.0 -m "FORGE v0.2.0 — SPA + GitHub Actions + 5 design systems"
-git push origin v0.2.0
+git tag -a v2.6.0 -m "FORGE v2.6.0 — SPA + GitHub Actions + 5 design systems"
+git push origin v2.6.0
 ```
 
 ---
@@ -134,7 +134,7 @@ git push origin v0.2.0
 
 ```bash
 # Verifica que estés en la rama release
-git branch   # debe mostrar: * release/0.2.0
+git branch   # debe mostrar: * release/2.6.0
 
 # Build y test antes de publicar (opcional pero recomendado)
 npm test
@@ -144,15 +144,15 @@ npm publish
 
 # Respuesta esperada:
 # npm notice Publishing to registry
-# npm notice 📦  forge-mvp@0.2.0
+# npm notice 📦  sdd-es@2.6.0
 # npm notice === Tarball Contents ===
 ```
 
 Para ver el paquete publicado:
 
 ```bash
-npm view forge-mvp@0.2.0
-npm info forge-mvp versions  # lista todas las versiones publicadas
+npm view sdd-es@2.6.0
+npm info sdd-es versions  # lista todas las versiones publicadas
 ```
 
 ---
@@ -163,15 +163,15 @@ Después de publicar en npm:
 
 ```bash
 git checkout main
-git merge release/0.2.0
+git merge release/2.6.0
 git push origin main
 ```
 
 Opcionalmente, elimina la rama:
 
 ```bash
-git branch -d release/0.2.0
-git push origin --delete release/0.2.0
+git branch -d release/2.6.0
+git push origin --delete release/2.6.0
 ```
 
 ---
@@ -197,16 +197,16 @@ Algunos componentes tienen sus propias versiones compatibles entre sí:
 Para versiones inestables, usa estos formatos:
 
 ```
-0.2.0-alpha.1      # Versión alpha (alpha testing phase)
-0.2.0-beta.1       # Versión beta (feature complete)
-0.2.0-rc.1         # Release candidate (ready for production)
+2.6.0-alpha.1      # Versión alpha (alpha testing phase)
+2.6.0-beta.1       # Versión beta (feature complete)
+2.6.0-rc.1         # Release candidate (ready for production)
 ```
 
 En `package.json`:
 
 ```json
 {
-  "version": "0.2.0-rc.1"
+  "version": "2.6.0-rc.1"
 }
 ```
 
@@ -214,18 +214,18 @@ Con npm:
 
 ```bash
 npm publish --tag rc
-npm dist-tags ls forge-mvp
+npm dist-tags ls sdd-es
 
 # Resultado:
-# latest: 0.1.0
-# rc: 0.2.0-rc.1
+# latest: 2.5.0
+# rc: 2.6.0-rc.1
 ```
 
 Usuarios instalan así:
 
 ```bash
-npm install forge-mvp@rc      # última RC
-npm install forge-mvp@latest  # estable
+npm install sdd-es@rc      # última RC
+npm install sdd-es@latest  # estable
 ```
 
 ---
@@ -235,15 +235,15 @@ npm install forge-mvp@latest  # estable
 Si una funcionalidad debe desaparecer:
 
 1. **v X.Y.Z** — Marca como deprecated en docs y logs
-2. **v X+1.0.0** — Remueve (breaking change)
+2. **v X+3.0.0** — Remueve (breaking change)
 
 Ejemplo:
 
 ```bash
-# v0.2.0
-npm deprecate forge-mvp@0.1.0 "Use v0.2.0+ instead"
+# v2.6.0
+npm deprecate sdd-es@2.5.0 "Use v2.6.0+ instead"
 
-# v1.0.0 remueve feature antigua
+# v3.0.0 remueve feature antigua
 ```
 
 ---
@@ -252,7 +252,7 @@ npm deprecate forge-mvp@0.1.0 "Use v0.2.0+ instead"
 
 Antes de publicar, verifica:
 
-- [ ] `npm test` — 59/59 tests passing
+- [ ] `npm test` — 579/579 tests passing
 - [ ] `package.json` — versión actualizada a X.Y.Z
 - [ ] `CHANGELOG.md` — nuevas features documentadas
 - [ ] `README.md` — ejemplos y docs sincronizados
@@ -268,9 +268,9 @@ Antes de publicar, verifica:
 ### ¿Publiqué la versión equivocada?
 
 ```bash
-npm unpublish forge-mvp@0.2.1  # elimina
+npm unpublish sdd-es@2.6.1  # elimina
 # O marca deprecated:
-npm deprecate forge-mvp@0.2.1 "Use 0.2.0"
+npm deprecate sdd-es@2.6.1 "Use 2.6.0"
 ```
 
 ### ¿Necesito re-publicar con cambios?
@@ -278,12 +278,12 @@ npm deprecate forge-mvp@0.2.1 "Use 0.2.0"
 Sube a una nueva PATCH:
 
 ```bash
-# En package.json: 0.2.0 → 0.2.1
+# En package.json: 2.6.0 → 2.6.1
 npm publish
 
 # Tag el commit:
-git tag v0.2.1
-git push origin v0.2.1
+git tag v2.6.1
+git push origin v2.6.1
 ```
 
 ### ¿Cómo revertir a una versión anterior?
@@ -291,8 +291,8 @@ git push origin v0.2.1
 Los usuarios pueden instalar cualquier versión histórica:
 
 ```bash
-npm install forge-mvp@0.1.0
-npx forge-mvp@0.1.0   # ejecutar una versión específica
+npm install sdd-es@2.5.0
+npx sdd-es@2.5.0   # ejecutar una versión específica
 ```
 
 ---

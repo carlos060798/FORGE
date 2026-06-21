@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-06-20
+
+Consolidación del pipeline **FORGE** (idea → producto para no-programadores) y
+saneamiento de ingeniería. Esta entrada agrupa el trabajo posterior a 2.3.0.
+
+### Added
+- **Pipeline FORGE** (idea → MVP): comandos `/sdd.interpretar`, `/sdd.diseñar`,
+  `/sdd.construir`, `/sdd.exportar` y los agentes `product-designer` y
+  `architecture-designer`.
+- **Modo guiado por defecto**: el hub `/sdd` conduce sin jerga, decide lo técnico
+  por el usuario y encadena el flujo FORGE automáticamente. El flujo clásico para
+  desarrolladores queda como "modo avanzado" (`perfil: experto`).
+- Mapper `core/ir-to-spec-mapper.js` (artefacto ejecutable) que convierte IR +
+  ProductDesign en una spec borrador.
+- Auto-compresión de memoria, ADR Indexer y tracking de Defect Rate.
+
+### Fixed
+- `npx sdd-es init` dejaba de funcionar: la plantilla `settings.json` se buscaba
+  en una ruta inexistente. Ahora se resuelve desde `.claude-plugin/.claude/` y se
+  omite con aviso si no está.
+- `/sdd.construir` invocaba un mapper en `sdd-lite/core/*.js` (ruta y extensión
+  inexistentes). Ahora usa el `.js` distribuido vía `$CLAUDE_PLUGIN_ROOT`.
+- Comando fantasma `sdd.md` registrado en `plugin.json` (rompía la suite de tests).
+- Nombre del MCP de navegador unificado a `playwright` (antes `navegador`).
+- Enlaces rotos en el README (`EJEMPLO-PRACTICA.md`,
+  `RESUMEN-EJECUTIVO-NO-TECNICOS.md`).
+
+### Changed
+- `QUICK-START.md` reescrito como guía real para no-programadores (el antiguo plan
+  de mercado se movió a `docs/PLAN-GO-TO-MARKET.md`).
+
 ## [2.3.0] - 2026-06-13
 
 ### Added

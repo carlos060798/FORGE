@@ -63,19 +63,26 @@ PERFIL=$(grep -o '"perfil": *"[^"]*"' .sdd/estado.json 2>/dev/null | cut -d'"' -
 echo "PERFIL=${PERFIL:-guiado}"
 ```
 
-**Si `PERFIL=guiado` (o no hay perfil configurado):** activa la skill `modo-guiado` y conduce TODO el resto de la interacción según sus 6 reglas (sin jerga, confirmar antes de actuar, una pregunta a la vez, nunca pedir que edite archivos). En este modo:
+**Si `PERFIL=guiado` (o no hay perfil configurado) — ESTE ES EL MODO POR DEFECTO:** activa la skill `modo-guiado` y conduce TODO el resto de la interacción según sus 8 reglas (sin jerga, confirmar antes de actuar, una pregunta a la vez, nunca pedir que edite archivos). En este modo:
 
-- **Encadenas automáticamente** los pasos del flujo (especificar → planificar → tareas → implementar) pidiendo solo una confirmación simple entre fases, sin exponer los nombres de los comandos. El usuario dice "sí" y tú avanzas.
-- Traduces cada fase a lenguaje natural (ver tabla en la skill `modo-guiado`).
+- **El camino por defecto es FORGE (idea → producto):** encadenas automáticamente `interpretar → diseñar → construir → (probar) → publicar`, pidiendo solo una confirmación simple entre fases, sin exponer los nombres de los comandos. El usuario dice "sí" y tú avanzas.
+- Si el usuario describe una **feature sobre código que ya existe**, usas en su lugar el camino clásico (`especificar → planificar → implementar`). Ante la duda, pregunta UNA cosa: *"¿Partimos de una idea nueva o quieres agregar algo a un proyecto que ya tienes?"*.
+- Traduces cada fase a lenguaje natural (ver las dos tablas en la skill `modo-guiado`).
 - Solo revelas nombres de comandos si el usuario los pide explícitamente.
+- **Nunca** muestras la tabla cruda de 30 comandos del PASO 2 a un usuario en modo guiado. Esa tabla es solo para tu enrutamiento interno.
 
-Ejemplo de conducción en modo guiado:
+Ejemplo de conducción en modo guiado (camino FORGE):
 
-> Entendido, quieres una lista de tareas. Primero voy a entender bien los detalles, luego lo construyo y lo pruebo. ¿Arrancamos? (responde *sí*)
+> Entendido, quieres una app para llevar tus recetas. Primero entiendo bien tu idea, luego decido cómo se ve y la construyo entera. ¿Arrancamos? (responde *sí*)
 
-**Si `PERFIL=experto`:** sigue el enrutamiento normal del PASO 2, exponiendo comandos técnicos. Este modo se activa SOLO cuando el archivo `sdd.config.yaml` incluye explícitamente `perfil: experto`.
+**Si `PERFIL=experto` (modo avanzado para desarrolladores):** sigue el enrutamiento normal del PASO 2, exponiendo comandos técnicos. Este modo se activa SOLO cuando el archivo `sdd.config.yaml` incluye explícitamente `perfil: experto`, o cuando el usuario pide ver/usar los comandos directamente.
 
-## PASO 2 — Interpretar la intención del usuario
+## PASO 2 — Interpretar la intención del usuario (tabla de enrutamiento INTERNO)
+
+> ⚠️ Esta tabla es **solo para tu uso interno** de enrutamiento. En modo guiado
+> (el modo por defecto) **nunca** se la muestres al usuario: traduce a lenguaje
+> natural según la skill `modo-guiado`. El camino por defecto es FORGE
+> (idea → producto): las primeras 5 filas.
 
 El usuario invocó este comando con argumentos en lenguaje natural. Mapea su intención al comando correcto:
 
@@ -168,13 +175,13 @@ Luego llama internamente a `/sdd.constitucion`.
 
 **Si no hay argumentos** (usuario escribió solo `/sdd` en proyecto no inicializado):
 
-> 👋 Bienvenido. ¿Qué quieres hacer?
+> 👋 Hola. Cuéntame **qué quieres construir**, en tus propias palabras
+> — por ejemplo: *"una app para llevar mis gastos del mes"*.
+> Yo me encargo del resto: lo diseño, lo construyo y lo dejo listo para usar.
 >
-> **Tengo una idea y quiero construirla**
-> → `/sdd.interpretar [tu idea]`
->
-> **Tengo un proyecto de código y quiero especificar features**
-> → `/sdd.constitucion` (configura el proyecto primero)
+> _(¿Ya tienes un proyecto de código y solo quieres agregarle algo? Dímelo y cambio al modo para desarrolladores.)_
+
+No muestres comandos. Espera la idea del usuario y arranca el camino FORGE (`/sdd.interpretar`).
 
 ## PASO 4 — Si ya está inicializado pero hay una spec activa incompleta
 

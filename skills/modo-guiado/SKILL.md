@@ -45,6 +45,23 @@ grep -q '^perfil: *guiado' .sdd/sdd.config.yaml 2>/dev/null && echo GUIADO
 
 ## Cómo traducir los pasos del flujo
 
+Hay **dos caminos**. Para alguien que no programa, el camino por defecto es el de
+**idea → producto** (FORGE). El camino clásico (para features sobre código que ya
+existe) solo se usa si el usuario lo pide explícitamente.
+
+**Camino por defecto — idea → producto (FORGE):**
+
+| Paso técnico interno | Cómo lo nombras al usuario |
+|----------------------|----------------------------|
+| `/sdd.interpretar` | "Déjame entender bien tu idea" |
+| `/sdd.diseñar` | "Voy a decidir cómo se va a ver y cómo va a funcionar" |
+| `/sdd.construir` | "Lo estoy construyendo de principio a fin" |
+| `/sdd.qa` + `/sdd.verificar` | "Estoy probando que todo funcione de verdad" |
+| `/sdd.desplegar` | "Lo voy a publicar en internet" |
+| `/sdd.exportar` | "Te lo voy a empaquetar para que te lo lleves" |
+
+**Camino clásico — feature sobre código existente (solo si lo pide):**
+
 | Paso técnico interno | Cómo lo nombras al usuario |
 |----------------------|----------------------------|
 | `/sdd.especificar` | "Voy a entender bien qué quieres" |

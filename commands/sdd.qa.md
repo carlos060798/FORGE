@@ -18,7 +18,7 @@ Este comando usa un servidor MCP de navegador (Playwright / Chrome DevTools) par
 
 ```bash
 command -v npx >/dev/null 2>&1 && echo "npx OK"
-# El MCP de Playwright se declara en plugin.json (mcpServers.navegador).
+# El MCP de Playwright se declara en .mcp.json (mcpServers.playwright).
 # Si no hay MCP de navegador, degrada a tests E2E con el runner del proyecto
 # (Playwright/Cypress) en vez de control interactivo.
 ```
