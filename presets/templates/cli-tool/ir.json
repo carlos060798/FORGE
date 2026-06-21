@@ -1,0 +1,40 @@
+{
+  "id": "ir-template-cli-tool",
+  "created_at": "TEMPLATE",
+  "raw_input": "Quiero construir una herramienta de línea de comandos (CLI) con subcomandos, ayuda integrada y output coloreado",
+  "confidence": 0.88,
+  "product": {
+    "name": "Mi CLI Tool",
+    "type": "cli",
+    "tagline": "Herramienta de terminal con subcomandos y UX profesional",
+    "value_proposition": "Automatizar tareas repetitivas desde la terminal con una interfaz clara y bien documentada",
+    "target_users": "Desarrolladores y DevOps que prefieren la terminal sobre interfaces gráficas"
+  },
+  "features": {
+    "core": [
+      "Sistema de subcomandos (ej: mi-cli init, mi-cli run, mi-cli status)",
+      "Ayuda integrada con --help en cada subcomando",
+      "Output coloreado con indicadores de éxito/error/advertencia",
+      "Configuración persistente en archivo local (~/.mi-cli/config.json)"
+    ],
+    "nice_to_have": [
+      "Autocompletado de shell (bash/zsh)",
+      "Modo verbose con --verbose flag",
+      "Output en formato JSON con --json flag para scripting"
+    ]
+  },
+  "constraints": {
+    "budget": "bajo",
+    "timeline": "flexible",
+    "team_size": "1 persona",
+    "tech_preference": "Node.js"
+  },
+  "assumptions": [
+    "La CLI se distribuirá vía npm global o npx",
+    "Node.js ≥18 disponible en el entorno del usuario",
+    "Sin dependencias de UI — solo terminal"
+  ],
+  "ambiguities": [],
+  "requires_clarification": false,
+  "estimated_complexity": "baja"
+}

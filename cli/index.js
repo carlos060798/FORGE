@@ -285,12 +285,72 @@ function pasosFinales() {
 
 // ─── Comandos ───────────────────────────────────────────────────────────────────
 
-function cmdInit(global, guided = false, withUi = false, preset = null) {
+const CLAUDE_MD_SECCION = `
+## FORGE
+
+FORGE está activo en este proyecto. Es tu equipo de ingeniería en Claude Code.
+
+### Comandos principales
+- \`/forge "tu idea"\` — Inicia o continúa el pipeline SDD+TDD
+- \`/forge.explicame\` — Explica en lenguaje humano qué está pasando
+- \`forge ui\` — Abre el dashboard de progreso en el navegador
+
+### Archivos del sistema FORGE (no editar manualmente)
+- \`.sdd/estado.json\` — Estado del pipeline
+- \`.sdd/observabilidad/consumo.jsonl\` — Telemetría de agentes
+- \`.sdd/sdd.config.yaml\` — Configuración del proyecto
+
+### Cómo interpretar \`.sdd/\`
+- \`pipeline_step\`: fase actual (input → ir → spec → plan → implementando → verificado)
+- \`spec_activa\`: spec aprobada en uso
+- \`plan_activo\`: plan de tareas generado
+
+Para modo avanzado: usa \`/sdd\` en lugar de \`/forge\`.
+`;
+
+const CLAUDE_MD_VERSION = "5.0.0";
+const CLAUDE_MD_VERSION_TAG = `<!-- forge-version: ${CLAUDE_MD_VERSION} -->`;
+
+function integrarClaudeMd(cwd) {
+  const claudeMdPath = join(cwd, "CLAUDE.md");
+  const MARCADOR_INICIO = "## FORGE";
+
+  const seccionCompleta = CLAUDE_MD_SECCION.trimEnd() + "\n" + CLAUDE_MD_VERSION_TAG + "\n";
+
+  if (existsSync(claudeMdPath)) {
+    const contenido = readFileSync(claudeMdPath, "utf8");
+    if (contenido.includes(MARCADOR_INICIO)) {
+      // Actualizar sección existente — reemplazar desde ## FORGE hasta el tag de versión o fin del bloque
+      const idx = contenido.indexOf(MARCADOR_INICIO);
+      // Encuentra el fin de la sección FORGE: próximo ## de nivel 2 (no ##) o fin de archivo
+      const resto = contenido.slice(idx);
+      const sigSeccion = resto.search(/\n## [^F]/);
+      const fin = sigSeccion === -1 ? contenido.length : idx + sigSeccion;
+      const antes = contenido.slice(0, idx).trimEnd();
+      const despues = contenido.slice(fin).replace(/^\n+/, "");
+      const nuevo = antes + "\n" + seccionCompleta + (despues ? "\n" + despues : "");
+      writeFileSync(claudeMdPath, nuevo, "utf8");
+      info(`Sección FORGE en CLAUDE.md actualizada a v${CLAUDE_MD_VERSION}`);
+      return;
+    }
+    // Añadir sección al final del archivo existente
+    const nuevo = contenido.trimEnd() + "\n\n" + seccionCompleta;
+    writeFileSync(claudeMdPath, nuevo, "utf8");
+    info("Sección FORGE añadida a CLAUDE.md existente");
+  } else {
+    const contenido = `# Instrucciones del proyecto\n` + seccionCompleta;
+    writeFileSync(claudeMdPath, contenido, "utf8");
+    info("CLAUDE.md creado con sección FORGE");
+  }
+}
+
+function cmdInit(global, guided = false, withUi = false, preset = null, template = null) {
   banner();
   const claudeDir = global
     ? join(homedir(), ".claude")
     : join(process.cwd(), ".claude");
   console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${claudeDir})`);
+  if (template) console.log(`  Template: ${template}`);
   console.log("");
 
   if (!claudeEnPath()) {
@@ -305,15 +365,122 @@ function cmdInit(global, guided = false, withUi = false, preset = null) {
     configurarSdd(claudeDir, overrides);
   }
 
+  if (template) {
+    aplicarTemplate(template);
+  }
+
   if (preset) {
     aplicarPreset(preset);
+  }
+
+  if (!global) {
+    integrarClaudeMd(process.cwd());
   }
 
   if (withUi) {
     instalarUi();
   }
 
-  pasosFinales();
+  if (template) {
+    pasosFinalesConTemplate(template);
+  } else {
+    pasosFinales();
+  }
+}
+
+const TEMPLATES_DISPONIBLES = ["api-rest", "cli-tool", "saas-mvp"];
+
+const TEMPLATE_EJEMPLOS = {
+  "api-rest":  '/forge "añade endpoint para listar usuarios con paginación"',
+  "cli-tool":  '/forge "añade subcomando deploy que sube los archivos a producción"',
+  "saas-mvp":  '/forge "añade la gestión de equipos con invitación por email"',
+};
+
+const TEMPLATE_DESCRIPCION = {
+  "api-rest":  "API REST con autenticación JWT y CRUD",
+  "cli-tool":  "CLI con subcomandos y UX profesional",
+  "saas-mvp":  "SaaS MVP con autenticación, dashboard y CRUD",
+};
+
+function aplicarTemplate(template) {
+  if (!TEMPLATES_DISPONIBLES.includes(template)) {
+    error(
+      `Template '${template}' no existe. Templates disponibles: ${TEMPLATES_DISPONIBLES.join(", ")}.\n` +
+      `  Uso: forge init --template api-rest`
+    );
+  }
+  const templateSrc = join(PLUGIN_DIR, "presets", "templates", template);
+  if (!existsSync(templateSrc)) {
+    aviso(`Directorio de template no encontrado: ${templateSrc}`);
+    return null;
+  }
+  const sddDir = join(process.cwd(), ".sdd");
+  mkdirSync(sddDir, { recursive: true });
+
+  // Copiar ir.json
+  const irSrc = join(templateSrc, "ir.json");
+  if (existsSync(irSrc)) {
+    const ir = JSON.parse(readFileSync(irSrc, "utf8"));
+    ir.created_at = new Date().toISOString();
+    ir.id = `ir-${template}-${Date.now()}`;
+    writeFileSync(join(sddDir, "ir.json"), JSON.stringify(ir, null, 2), "utf8");
+    info(`IR pre-generado desde template ${template}`);
+  }
+
+  // Copiar spec.md a .sdd/especificaciones/
+  const specSrc = join(templateSrc, "spec.md");
+  if (existsSync(specSrc)) {
+    const specId = `template-${template}`;
+    const specDir = join(sddDir, "especificaciones", specId);
+    mkdirSync(specDir, { recursive: true });
+    const specContent = readFileSync(specSrc, "utf8")
+      .replace(/creada: TEMPLATE/g, `creada: ${new Date().toISOString().slice(0, 10)}`)
+      .replace(/actualizada: TEMPLATE/g, `actualizada: ${new Date().toISOString().slice(0, 10)}`);
+    writeFileSync(join(specDir, "spec.md"), specContent, "utf8");
+    info(`Spec pre-generada desde template ${template}`);
+  }
+
+  // Copiar sdd.config.yaml (sobreescribe el default del init)
+  const configSrc = join(templateSrc, "sdd.config.yaml");
+  const configDest = join(sddDir, "sdd.config.yaml");
+  if (existsSync(configSrc)) {
+    cpSync(configSrc, configDest);
+    info(`Configuración del template ${template} aplicada`);
+  }
+
+  // Inicializar estado.json con schemaVersion
+  const estadoDest = join(sddDir, "estado.json");
+  if (!existsSync(estadoDest)) {
+    writeFileSync(estadoDest, JSON.stringify({
+      schemaVersion: "1.0",
+      ir_generado: true,
+      ir_path: ".sdd/ir.json",
+      pipeline_step: "ir",
+      ultima_actualizacion: new Date().toISOString(),
+    }, null, 2), "utf8");
+  }
+
+  return template;
+}
+
+function pasosFinalesConTemplate(template) {
+  const desc = TEMPLATE_DESCRIPCION[template] || template;
+  const ejemplo = TEMPLATE_EJEMPLOS[template] || '/forge "describe tu idea"';
+  console.log("");
+  console.log("  ╔══════════════════════════════════════════════════════════════╗");
+  console.log(`  ║   ✅  FORGE listo — Template: ${desc.padEnd(30)}║`);
+  console.log("  ╠══════════════════════════════════════════════════════════════╣");
+  console.log("  ║                                                              ║");
+  console.log("  ║   Tu proyecto ya tiene una spec pre-generada.                ║");
+  console.log("  ║   Abre Claude Code y escribe tu primera idea:                ║");
+  console.log("  ║                                                              ║");
+  console.log(`  ║   ${ejemplo.padEnd(60)}║`);
+  console.log("  ║                                                              ║");
+  console.log("  ║   O personaliza desde cero:                                  ║");
+  console.log('  ║      /forge "describe tu idea aquí"                          ║');
+  console.log("  ║                                                              ║");
+  console.log("  ╚══════════════════════════════════════════════════════════════╝");
+  console.log("");
 }
 
 function aplicarPreset(preset) {
@@ -609,14 +776,42 @@ function cmdDoctor() {
     problemas++;
   }
 
+  // ── Contrato de hooks ──────────────────────────────────────────────────────
+  titulo("Contrato de hooks Claude Code...");
+  const hooksContractTest = join(PLUGIN_DIR, "tests", "hooks-contract.test.js");
+  if (existsSync(hooksContractTest)) {
+    info("Contrato de hooks: ✅ tests/hooks-contract.test.js presente — ejecuta npm test para verificar");
+  } else {
+    aviso("Contrato de hooks: ⚠️ no verificado — falta tests/hooks-contract.test.js");
+  }
+
+  // ── CLAUDE.md del proyecto ─────────────────────────────────────────────────
+  titulo("Verificando CLAUDE.md del proyecto...");
+  const claudeMdProyecto = join(process.cwd(), "CLAUDE.md");
+  if (existsSync(claudeMdProyecto)) {
+    const claudeMdContenido = readFileSync(claudeMdProyecto, "utf8");
+    if (claudeMdContenido.includes("## FORGE")) {
+      const tieneVersion = claudeMdContenido.includes(`forge-version: ${CLAUDE_MD_VERSION}`);
+      if (tieneVersion) {
+        info(`CLAUDE.md: ✅ FORGE v${CLAUDE_MD_VERSION} registrado`);
+      } else {
+        aviso(`CLAUDE.md: ⚠️ sección FORGE desactualizada — ejecuta 'forge init' para actualizar`);
+      }
+    } else {
+      aviso("CLAUDE.md: ⚠️ sección FORGE no encontrada — ejecuta 'forge init' para añadirla");
+    }
+  } else {
+    aviso("CLAUDE.md: ⚠️ no existe en el directorio actual — ejecuta 'forge init'");
+  }
+
   // ── Providers LLM ──────────────────────────────────────────────────────────
   titulo("Verificando providers LLM...");
   const hasOpenAI  = !!process.env.OPENAI_API_KEY;
   const hasGoogle  = !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
   info("Claude Code (Anthropic)  ✅ activo — provider principal de FORGE");
-  if (hasOpenAI)  info("OpenAI                   ✅ disponible (OPENAI_API_KEY detectada)");
+  if (hasOpenAI)  info("OpenAI                   ✅ disponible — registro en consumo.jsonl (routing real en v5.1)");
   else            aviso("OpenAI                   ⚠️  no configurado (opcional) — OPENAI_API_KEY no encontrada");
-  if (hasGoogle)  info("Google / Gemini          ✅ disponible (GOOGLE_API_KEY detectada)");
+  if (hasGoogle)  info("Google / Gemini          ✅ disponible — registro en consumo.jsonl (routing real en v5.1)");
   else            aviso("Google / Gemini          ⚠️  no configurado (opcional) — GOOGLE_API_KEY no encontrada");
 
   // ── schemaVersion del estado ────────────────────────────────────────────────
@@ -641,6 +836,33 @@ function cmdDoctor() {
       problemas++;
     }
   }
+
+  // ── MCPs disponibles ───────────────────────────────────────────────────────
+  titulo("Verificando MCPs integrados...");
+  const mcpConfigPaths = [
+    join(process.cwd(), ".mcp.json"),
+    join(process.cwd(), "mcp.json"),
+    join(homedir(), ".claude", "mcp.json"),
+  ];
+  let mcpVercel = false;
+  let mcpGithub = false;
+  let mcpFigma  = false;
+  for (const mcpPath of mcpConfigPaths) {
+    if (!existsSync(mcpPath)) continue;
+    try {
+      const mcp = JSON.parse(readFileSync(mcpPath, "utf8"));
+      const keys = Object.keys(mcp?.mcpServers ?? mcp ?? {}).join(" ").toLowerCase();
+      if (keys.includes("vercel")) mcpVercel = true;
+      if (keys.includes("github")) mcpGithub = true;
+      if (keys.includes("figma"))  mcpFigma  = true;
+    } catch { /* ignora JSON inválido */ }
+  }
+  if (mcpVercel) info("MCP Vercel: ✅ disponible  →  /forge.desplegar vercel");
+  else           aviso("MCP Vercel: ⚠️  no instalado (opcional)  →  úsalo para desplegar con /forge.desplegar vercel");
+  if (mcpGithub) info("MCP GitHub: ✅ disponible  →  /sdd.github.pr");
+  else           aviso("MCP GitHub: ⚠️  no instalado (opcional)");
+  if (mcpFigma)  info("MCP Figma:  ✅ disponible  →  /forge.diseño <url>");
+  else           aviso("MCP Figma:  ⚠️  no instalado (opcional)");
 
   // ── Dashboard UI ────────────────────────────────────────────────────────────
   titulo("Verificando dashboard UI...");
@@ -921,6 +1143,7 @@ FORGE — CLI (v${pluginVersion()})
 
 Uso:
   npx forge init [--global] [--preset lean|startup|enterprise] [--ui]
+                 [--template api-rest|cli-tool|saas-mvp]
                                      Instala FORGE (proyecto actual o global)
   npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
   npx forge doctor                   Diagnostica la instalación y providers disponibles
@@ -950,10 +1173,14 @@ function main() {
   const preset  = presetIdx !== -1
     ? (args[presetIdx].includes("=") ? args[presetIdx].split("=")[1] : args[presetIdx + 1])
     : null;
+  const templateIdx = args.findIndex(a => a === "--template" || a.startsWith("--template="));
+  const template = templateIdx !== -1
+    ? (args[templateIdx].includes("=") ? args[templateIdx].split("=")[1] : args[templateIdx + 1])
+    : null;
 
   switch (comando) {
     case "init":
-      cmdInit(global, guided, withUi, preset);
+      cmdInit(global, guided, withUi, preset, template);
       break;
     case "update":
       cmdUpdate(global);

@@ -111,20 +111,24 @@ Ahorro total estimado: ((3×0.40) + (2×0.80)) / 5 = ~56%
 
 ---
 
-## Equivalencias multi-LLM por tier (model-registry)
+## Observabilidad multi-LLM por tier (model-registry)
 
-FORGE detecta automáticamente providers alternativos en el entorno. Esta tabla muestra las equivalencias entre providers para cada tier. El motor elige automáticamente — el usuario no configura nada.
+FORGE registra automáticamente qué provider y tier correspondería a cada agente en `consumo.jsonl`. Esta información es **registro de observabilidad**, no routing real en tiempo de ejecución.
 
-| Tier | Anthropic (default) | OpenAI (si OPENAI_API_KEY) | Google (si GOOGLE_API_KEY) | Cuándo se usa |
+> **Estado actual (v4.0.0):** Claude Code no expone un mecanismo para cambiar el modelo de un agente en tiempo de ejecución desde un hook. Los agentes siguen usando el modelo declarado en su frontmatter `.md`. El registry resuelve qué modelo usaría cada agente para registrarlo en `consumo.jsonl` — lo que permite auditar el consumo por tier.
+>
+> **Roadmap v5.1:** Cuando Claude Code exponga un mecanismo de override de modelo (via env var, flag de invocación, o frontmatter dinámico), el registry pasará de observabilidad a routing real sin cambios en la lógica de negocio — la infraestructura ya está lista.
+
+| Tier | Anthropic (default) | OpenAI (si OPENAI_API_KEY) | Google (si GOOGLE_API_KEY) | Cuándo aplica |
 |------|--------------------|-----------------------------|----------------------------|---------------|
 | **high** | claude-opus-4-8 | — (siempre Anthropic) | — (siempre Anthropic) | Arquitectura, crítica, seguridad, revisión |
 | **medium** | claude-sonnet-4-6 | gpt-4o | — | Implementación, tests, specs |
 | **low** | claude-haiku-4-5-20251001 | gpt-4o-mini | gemini-2.0-flash-lite | Docs, deploy, formateo, ops |
 
-**Reglas fijas (no negociables):**
-- Los agentes del Grupo A (`arquitecto`, `critico`, `revisor`, `seguridad`, `asesor-datos`, `product-designer`) **siempre** usan Anthropic, sin importar el entorno.
+**Reglas fijas (no negociables en v5.1 cuando el routing sea real):**
+- Los agentes del Grupo A (`arquitecto`, `critico`, `revisor`, `seguridad`, `asesor-datos`, `product-designer`) **siempre** usarán Anthropic, sin importar el entorno.
 - Si no hay provider alternativo disponible, todo cae en Anthropic (fallback garantizado).
-- Esta lógica vive en `claude-hooks/model-registry.js` y se activa sin intervención del usuario.
+- Esta lógica vive en `claude-hooks/model-registry.js`.
 
 ---
 

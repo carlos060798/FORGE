@@ -118,7 +118,10 @@
     "adr-indexer",
     "mutation-detector",
     "mejorar-prompt",
-    "indexar-proyecto"
+    "indexar-proyecto",
+    "explicame",
+    "deploy-vercel",
+    "share-progress"
   ],
 
   "mcpServers": "./.mcp.json"

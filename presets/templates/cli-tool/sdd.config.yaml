@@ -1,0 +1,24 @@
+proyecto:
+  nombre: "Mi CLI Tool"
+  tipo: cli
+  perfil: guiado
+
+sesion:
+  modo: estandar
+  idioma: es
+
+agentes:
+  arquitecto: claude-sonnet-4-6
+  desarrollador-backend: claude-sonnet-4-6
+  tester: claude-haiku-4-5-20251001
+  documentador: claude-haiku-4-5-20251001
+
+memoria:
+  umbral_bytes: 50000
+  backend: markdown
+
+observabilidad:
+  consumo_max_mb: 10
+
+# Template: cli-tool — CLI con subcomandos y UX profesional
+# Generado por: forge init --template cli-tool

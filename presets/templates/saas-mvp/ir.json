@@ -1,0 +1,50 @@
+{
+  "id": "ir-template-saas-mvp",
+  "created_at": "TEMPLATE",
+  "raw_input": "Quiero construir un SaaS MVP con registro de usuarios, autenticación, un recurso principal y dashboard básico",
+  "confidence": 0.82,
+  "product": {
+    "name": "Mi SaaS MVP",
+    "type": "saas",
+    "tagline": "SaaS MVP con autenticación, gestión de recursos y dashboard",
+    "value_proposition": "Plataforma web que permite a usuarios gestionar sus recursos desde un dashboard intuitivo",
+    "target_users": "Pequeñas empresas o equipos que necesitan gestionar información de forma colaborativa"
+  },
+  "features": {
+    "core": [
+      "Registro y autenticación de usuarios (email + contraseña)",
+      "Dashboard principal con resumen de actividad y métricas básicas",
+      "CRUD completo del recurso principal del negocio",
+      "Gestión de perfil de usuario (nombre, email, contraseña)"
+    ],
+    "nice_to_have": [
+      "Invitación de colaboradores dentro de una organización",
+      "Notificaciones por email",
+      "Exportación de datos en CSV",
+      "Modo oscuro"
+    ]
+  },
+  "constraints": {
+    "budget": "bajo",
+    "timeline": "2-4 semanas",
+    "team_size": "1-2 personas",
+    "tech_preference": "Node.js + React o similar"
+  },
+  "assumptions": [
+    "El MVP es para validar el modelo de negocio — se priorizan features core sobre pulido visual",
+    "Un usuario = una cuenta independiente (sin organizaciones multi-tenant en v1)",
+    "Despliegue en Vercel o Railway para simplicidad"
+  ],
+  "ambiguities": [
+    {
+      "field": "recurso_principal",
+      "issue": "El template no sabe qué gestiona el SaaS — puede ser tareas, clientes, proyectos, etc.",
+      "resolution": "Se definirá en el plan técnico. El template usa 'Items' como placeholder."
+    }
+  ],
+  "requires_clarification": true,
+  "questions_for_user": [
+    "¿Qué es lo que tu SaaS gestiona? (tareas, clientes, proyectos, facturas, etc.)"
+  ],
+  "estimated_complexity": "alta"
+}

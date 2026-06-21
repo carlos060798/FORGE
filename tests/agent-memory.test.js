@@ -816,3 +816,74 @@ describe("agent-memory — backend SQLite", () => {
     assert.ok(existsSync(mdFile), "backend markdown explícito debe crear archivo .md");
   });
 });
+
+// ── describe #10: rotación de JSONL ─────────────────────────────────────────
+
+describe("rotarJSONL — rotación automática de consumo.jsonl", () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "forge-rotar-"));
+    mkdirSync(join(tmpDir, ".sdd", "observabilidad"), { recursive: true });
+  });
+
+  afterEach(() => {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* OK */ }
+  });
+
+  test("no rota si el archivo es menor que el umbral", () => {
+    const ledger = join(tmpDir, ".sdd", "observabilidad", "consumo.jsonl");
+    writeFileSync(ledger, '{"ts":"2026-01-01","agente":"test"}\n', "utf8");
+
+    // Disparar hook con consumo.jsonl pequeño
+    const evento = JSON.stringify({
+      tool_name: "Write",
+      tool_input: { path: join(tmpDir, "src/index.js"), content: "x" },
+      tool_response: "ok",
+    });
+    spawnSync("node", [join(process.cwd(), "claude-hooks", "agent-memory.js")], {
+      input: evento,
+      env: { ...process.env, CLAUDE_AGENT_NAME: "tester" },
+      cwd: tmpDir,
+    });
+
+    // El backup NO debe existir porque el archivo es pequeño
+    assert.ok(!existsSync(ledger + ".1"), "no debe crear backup si el archivo es pequeño");
+    assert.ok(existsSync(ledger), "el ledger original debe existir");
+  });
+
+  test("rota cuando el archivo supera el umbral configurado en sdd.config.yaml", () => {
+    const obsDir = join(tmpDir, ".sdd", "observabilidad");
+    const ledger = join(obsDir, "consumo.jsonl");
+
+    // Crear un config con umbral de 1 byte para forzar la rotación
+    mkdirSync(join(tmpDir, ".sdd"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      "observabilidad:\n  consumo_max_mb: 0\n",
+      "utf8"
+    );
+
+    // Crear un consumo.jsonl con algo de contenido (supera 0 MB)
+    writeFileSync(ledger, '{"ts":"2026-01-01","agente":"test"}\n', "utf8");
+
+    const evento = JSON.stringify({
+      tool_name: "Write",
+      tool_input: { path: join(tmpDir, "src/index.js"), content: "x" },
+      tool_response: "ok",
+    });
+    spawnSync("node", [join(process.cwd(), "claude-hooks", "agent-memory.js")], {
+      input: evento,
+      env: { ...process.env, CLAUDE_AGENT_NAME: "tester" },
+      cwd: tmpDir,
+    });
+
+    // El backup .1 debe existir
+    assert.ok(existsSync(ledger + ".1"), "debe crear consumo.jsonl.1 tras la rotación");
+    // El nuevo ledger también debe existir (con la nueva entrada)
+    assert.ok(existsSync(ledger), "debe crear un nuevo consumo.jsonl vacío tras la rotación");
+    // El .1 tiene el contenido original
+    const backup = readFileSync(ledger + ".1", "utf8");
+    assert.ok(backup.includes('"agente":"test"'), "el backup debe contener la entrada original");
+  });
+});

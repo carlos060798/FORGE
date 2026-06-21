@@ -163,6 +163,32 @@
     .verify-failures li { margin-bottom: 0.3rem; font-size: 0.875rem; }
     .verify-hint { margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-soft, #9aa3b2); font-style: italic; }
 
+    /* ── Actividad ───────────────────────────────────────────────────── */
+    #actividad-indicador {
+      font-size: 0.9rem;
+      color: var(--accent, #6ea8fe);
+      min-height: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .actividad-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono, monospace);
+      border-bottom: 1px solid var(--border, #272d39);
+    }
+    .actividad-entry:last-child { border-bottom: none; }
+    .actividad-hora    { color: var(--text-faint, #6b7280); flex-shrink: 0; }
+    .actividad-agente  { color: var(--accent, #6ea8fe); font-weight: 600; flex-shrink: 0; min-width: 11rem; }
+    .actividad-sep     { color: var(--text-faint, #6b7280); }
+    .actividad-tool    { color: var(--text-soft, #9aa3b2); flex-shrink: 0; min-width: 5rem; }
+    .actividad-archivo { color: var(--text, #e6e9ef); flex: 1; }
+    .actividad-bytes   { color: var(--text-faint, #6b7280); flex-shrink: 0; }
+    .error-state { color: #f87171; padding: 1rem; font-size: 0.875rem; }
+
     /* ── Error ────────────────────────────────────────────────────────── */
     .error { color: #f87171; padding: 1rem; }
 
@@ -187,6 +213,7 @@
       <button class="active" data-view="pipeline">Pipeline</button>
       <button data-view="tasks">Tareas</button>
       <button data-view="verify">Verificación</button>
+      <button data-view="actividad">Actividad</button>
     </nav>
   </header>
 
@@ -194,12 +221,17 @@
     <div id="view-pipeline" class="view active"></div>
     <div id="view-tasks"    class="view"></div>
     <div id="view-verify"   class="view"></div>
+    <div id="view-actividad" class="view">
+      <div id="actividad-indicador"></div>
+      <div id="actividad-feed"></div>
+    </div>
   </main>
 
   <script type="module">
     import { init as initPipeline } from "/src/pipeline.js";
     import { init as initTasks    } from "/src/tasks.js";
     import { init as initVerify   } from "/src/verify.js";
+    import                                "/src/actividad.js";
 
     // ── Navegación ──────────────────────────────────────────────────────
     const buttons = document.querySelectorAll("nav button");

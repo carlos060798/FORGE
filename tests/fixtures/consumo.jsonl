@@ -1,0 +1,4 @@
+{"ts":"2026-06-21T10:00:00.000Z","agente":"arquitecto","tool":"Read","archivo":".sdd/ir.json","bytes":1024,"provider":"anthropic","effort_level":"high"}
+{"ts":"2026-06-21T10:01:00.000Z","agente":"product-designer","tool":"Write","archivo":".sdd/especificaciones/task-api/spec.md","bytes":4096,"provider":"anthropic","effort_level":"high"}
+{"ts":"2026-06-21T10:05:00.000Z","agente":"desarrollador-backend","tool":"Write","archivo":"src/routes/auth.js","bytes":2048,"provider":"anthropic","effort_level":"medium"}
+{"ts":"2026-06-21T10:10:00.000Z","agente":"tester","tool":"Write","archivo":"tests/auth.test.js","bytes":1536,"provider":"anthropic","effort_level":"medium"}

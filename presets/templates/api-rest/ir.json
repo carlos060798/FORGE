@@ -1,0 +1,40 @@
+{
+  "id": "ir-template-api-rest",
+  "created_at": "TEMPLATE",
+  "raw_input": "Quiero construir una API REST con autenticación y operaciones CRUD sobre recursos",
+  "confidence": 0.85,
+  "product": {
+    "name": "Mi API REST",
+    "type": "api",
+    "tagline": "API REST estructurada con autenticación y operaciones CRUD",
+    "value_proposition": "Exponer datos y lógica de negocio de forma segura y predecible via HTTP",
+    "target_users": "Desarrolladores frontend, apps móviles, integraciones de terceros"
+  },
+  "features": {
+    "core": [
+      "Autenticación de usuarios con JWT (registro, login, logout)",
+      "CRUD completo sobre el recurso principal (crear, leer, actualizar, eliminar)",
+      "Validación de datos en todas las rutas",
+      "Manejo de errores con códigos HTTP correctos y mensajes claros"
+    ],
+    "nice_to_have": [
+      "Rate limiting por IP o por usuario",
+      "Documentación OpenAPI/Swagger autogenerada",
+      "Paginación en listados grandes"
+    ]
+  },
+  "constraints": {
+    "budget": "bajo",
+    "timeline": "flexible",
+    "team_size": "1 persona",
+    "tech_preference": "Node.js + Express"
+  },
+  "assumptions": [
+    "La API será consumida por un cliente externo (frontend o app móvil)",
+    "Se usará JWT para autenticación stateless",
+    "La base de datos será SQLite para simplicidad (migratable a PostgreSQL)"
+  ],
+  "ambiguities": [],
+  "requires_clarification": false,
+  "estimated_complexity": "media"
+}

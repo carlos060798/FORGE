@@ -86,8 +86,39 @@ Traducciones para el citizen developer. Nunca muestres esta tabla — es solo pa
 | "configura", "personaliza", "ajusta" | `/sdd.configurar` |
 | "ayuda", "qué puedes hacer", "cómo funciona" | `/sdd.ayuda` |
 | "empieza de nuevo", "nuevo proyecto" | `/sdd.constitucion` |
+| "¿qué está pasando?", "explícame", "¿por qué?" | skill `explicame` |
+| "¿qué hiciste?", "no entiendo", "¿qué siges?" | skill `explicame` |
+| "despliega en vercel", "publica en vercel" | skill `deploy-vercel` |
+| "comparte el progreso", "genera un resumen", "share" | skill `share-progress` |
 
 Para todo lo demás, delega a `/sdd [intención del usuario]` y deja que el hub central lo resuelva.
+
+## Alias especiales
+
+### `/forge.explicame` y `/forge why`
+
+Cuando el usuario escribe `/forge.explicame`, `/forge why` o `/forge explica`, activa inmediatamente el skill `skills/explicame/SKILL.md`.
+
+No delegues a `/sdd` — lee directamente:
+1. `.sdd/estado.json` → `pipeline_step`
+2. `.sdd/observabilidad/consumo.jsonl` → últimas 5 líneas
+3. `.sdd/estado-tareas.json` → tareas recientes
+
+Responde usando la plantilla de 4 bloques definida en el skill, en lenguaje natural sin jerga.
+
+### `/forge.desplegar vercel` y `/forge deploy`
+
+Cuando el usuario escribe `/forge.desplegar vercel`, `/forge deploy` o pide "despliega en Vercel", activa el skill `skills/deploy-vercel/SKILL.md`.
+
+Antes de activar, verifica:
+1. `pipeline_step` en `.sdd/estado.json` — si no es `verificado`, advertir
+2. Si el MCP de Vercel está disponible (intentar llamar a la herramienta `list_projects`)
+
+### `/forge.compartir` y `/forge share`
+
+Cuando el usuario escribe `/forge.compartir`, `/forge share`, `/forge progress` o pide "genera un resumen", activa el skill `skills/share-progress/SKILL.md`.
+
+Lee los datos de `.sdd/estado.json`, `.sdd/estado-tareas.json` y `.sdd/observabilidad/consumo.jsonl` para construir el resumen Markdown. No incluyas paths absolutos del sistema del usuario ni contenido de archivos `.env`.
 
 ## PASO 4 — Reglas de lenguaje (modo guiado)
 

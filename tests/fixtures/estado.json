@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "pipeline_step": "implementando",
+  "ir_generado": true,
+  "ir_path": ".sdd/ir.json",
+  "spec_activa": "spec-fixture-test-001",
+  "spec_path": ".sdd/especificaciones/task-api/spec.md",
+  "plan_activo": {
+    "id": "plan-fixture-001",
+    "tareas_total": 10,
+    "tareas_done": 4,
+    "tareas_in_progress": 1,
+    "tareas_pending": 5
+  },
+  "gate_pendiente": false,
+  "ultima_actualizacion": "2026-06-21T10:30:00.000Z"
+}

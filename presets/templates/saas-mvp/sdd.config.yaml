@@ -1,0 +1,26 @@
+proyecto:
+  nombre: "Mi SaaS MVP"
+  tipo: saas
+  perfil: guiado
+
+sesion:
+  modo: estandar
+  idioma: es
+
+agentes:
+  arquitecto: claude-opus-4-8
+  product-designer: claude-opus-4-8
+  desarrollador-backend: claude-sonnet-4-6
+  desarrollador-frontend: claude-sonnet-4-6
+  tester: claude-sonnet-4-6
+  documentador: claude-haiku-4-5-20251001
+
+memoria:
+  umbral_bytes: 50000
+  backend: markdown
+
+observabilidad:
+  consumo_max_mb: 10
+
+# Template: saas-mvp — SaaS MVP con auth, dashboard y CRUD
+# Generado por: forge init --template saas-mvp

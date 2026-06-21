@@ -52,7 +52,7 @@ export function mapIRToSpec(ir: IR, pd: ProductDesign): SddSpec {
     user_stories: userStories,
     functional_requirements: functionalRequirements,
     non_functional_requirements: buildNFR(ir, pd),
-    out_of_scope: pd.out_of_scope || [],
+    out_of_scope: (pd as unknown as Record<string, unknown>)['out_of_scope'] as string[] || [],
   };
 }
 
@@ -146,7 +146,7 @@ function buildNFR(ir: IR, pd: ProductDesign): string[] {
     nfr.push(`Tiempo objetivo de entrega: ${ir.constraints.timeline}`);
   }
 
-  if (pd.design_direction === 'bold-brutalist') {
+  if ((pd.design_direction as string) === 'bold-brutalist') {
     nfr.push('El diseño debe mantener el esquema bold-brutalist en todas las pantallas');
   }
 

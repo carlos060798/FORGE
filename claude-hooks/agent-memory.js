@@ -24,7 +24,7 @@
 import { createInterface } from "node:readline";
 import {
   existsSync, mkdirSync, appendFileSync, statSync,
-  readFileSync, writeFileSync,
+  readFileSync, writeFileSync, renameSync,
 } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { homedir } from "node:os";
@@ -92,6 +92,16 @@ function leerConfig(cwd) {
 
 const CONFIG = leerConfig(process.cwd());
 
+function leerMaxMBConsumo(cwd) {
+  const configPath = join(cwd, ".sdd", "sdd.config.yaml");
+  if (!existsSync(configPath)) return 10;
+  try {
+    const yaml = readFileSync(configPath, "utf8");
+    const m = yaml.match(/consumo_max_mb:\s*(\d+)/);
+    return m ? parseInt(m[1], 10) : 10;
+  } catch { return 10; }
+}
+
 // ── Lectura de stdin ─────────────────────────────────────────────────────────
 
 const rl = createInterface({ input: process.stdin, terminal: false });
@@ -156,11 +166,30 @@ function registrarADRs(cwd, agente, archivo, adrs) {
   } catch { /* Silencioso */ }
 }
 
+// ── Rotación de JSONL ────────────────────────────────────────────────────────
+
+function rotarJSONL(rutaJSONL, maxMB = 10) {
+  try {
+    if (!existsSync(rutaJSONL)) return;
+    const { size } = statSync(rutaJSONL);
+    if (size < maxMB * 1024 * 1024) return;
+    // Rotar: .jsonl.3 → eliminado, .2 → .3, .1 → .2, actual → .1
+    const b3 = rutaJSONL + ".3";
+    const b2 = rutaJSONL + ".2";
+    const b1 = rutaJSONL + ".1";
+    if (existsSync(b3)) { try { renameSync(b3, rutaJSONL + ".tmp_delete"); } catch { /* Silencioso */ } }
+    if (existsSync(b2)) { try { renameSync(b2, b3); } catch { /* Silencioso */ } }
+    if (existsSync(b1)) { try { renameSync(b1, b2); } catch { /* Silencioso */ } }
+    renameSync(rutaJSONL, b1);
+  } catch { /* Silencioso — la rotación no debe bloquear el registro */ }
+}
+
 async function registrarLedger(cwd, agente, toolName, archivoModificado, contenido) {
   const obsDir = join(cwd, ".sdd", "observabilidad");
   const ledgerFile = join(obsDir, "consumo.jsonl");
   try {
     if (!existsSync(obsDir)) mkdirSync(obsDir, { recursive: true });
+    rotarJSONL(ledgerFile, leerMaxMBConsumo(cwd));
     const reg = await registry();
     const { provider, tier } = reg.resolveForAgent(agente);
     const linea = JSON.stringify({

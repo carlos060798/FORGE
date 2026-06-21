@@ -1,0 +1,38 @@
+{
+  "id": "ir-fixture-test-001",
+  "created_at": "2026-06-21T10:00:00.000Z",
+  "raw_input": "Quiero una API REST para gestionar tareas con autenticación",
+  "confidence": 0.90,
+  "product": {
+    "name": "Task Manager API",
+    "type": "api",
+    "tagline": "API REST para gestión de tareas con JWT",
+    "value_proposition": "API segura y escalable para gestionar tareas",
+    "target_users": "Developers que necesitan un backend para su app de tareas"
+  },
+  "features": {
+    "core": [
+      "Autenticación JWT con registro y login",
+      "CRUD completo de tareas",
+      "Filtrado y paginación de tareas"
+    ],
+    "nice_to_have": [
+      "Etiquetas en tareas",
+      "Fechas de vencimiento con recordatorios"
+    ]
+  },
+  "constraints": {
+    "budget": "bajo",
+    "timeline": "1-2 semanas",
+    "team_size": "1",
+    "tech_preference": "Node.js + Express"
+  },
+  "assumptions": [
+    "Un usuario solo ve sus propias tareas",
+    "Despliegue en Vercel o Railway"
+  ],
+  "ambiguities": [],
+  "requires_clarification": false,
+  "questions_for_user": [],
+  "estimated_complexity": "media"
+}

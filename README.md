@@ -72,6 +72,26 @@ bash instalar.sh --global  # global
 
 ---
 
+## Arquitectura en 60 segundos
+
+```
+Usuario → /forge "idea" → [Hub] → 38 comandos SDD → 14 agentes especializados
+                                                          │
+                                         ┌────────────────┼─────────────────┐
+                                         ▼                ▼                 ▼
+                                    Hooks          26 Skills          .sdd/ estado
+                                 (guardrails)   (capacidades)    (ir.json, spec.md…)
+```
+
+- **38 comandos** — pipeline completo SDD+TDD (interpretar → especificar → planificar → implementar → verificar)
+- **14 agentes** — arquitecto, desarrollador-backend, tester, crítico, seguridad y 9 más
+- **4 hooks** — guardrails en tiempo real, memoria persistente, indexación AST, convenciones
+- **26 skills** — modo guiado, routing de esfuerzo, deploy Vercel, explícame y más
+
+[📐 Arquitectura detallada →](docs/ARQUITECTURA.md) · [🔌 Integraciones →](docs/INTEGRACIONES.md) · [🤝 Contribuir →](docs/CONTRIBUIR.md)
+
+---
+
 ## 🔐 Seguridad (IMPORTANTE)
 
 SDD-ES pide **tokens de GitHub y Vercel** para automatizar GitHub + deployment.

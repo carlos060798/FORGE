@@ -8,6 +8,7 @@
  *   GET /tareas       → .sdd/estado-tareas.json (o vacío si no existe)
  *   GET /verificar    → .sdd/verificacion.json  (o vacío si no existe)
  *   GET /consumo      → últimas 50 líneas de .sdd/observabilidad/consumo.jsonl
+ *   GET /actividad    → últimas 50 entradas de consumo.jsonl en formato legible
  *   GET /             → sirve ui/index.html
  *   GET /assets/*     → sirve archivos estáticos de ui/assets/
  *
@@ -120,6 +121,20 @@ function handleRequest(req, res) {
   if (path === "/consumo") {
     const lines = readLastJsonlLines(join(SDD_DIR, "observabilidad", "consumo.jsonl"));
     json(res, lines);
+    return;
+  }
+  if (path === "/actividad") {
+    const entries = readLastJsonlLines(join(SDD_DIR, "observabilidad", "consumo.jsonl"), 50);
+    const actividad = entries.map(e => ({
+      ts: e.ts,
+      hora: e.ts ? new Date(e.ts).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--",
+      agente: e.agente || "main",
+      tool: e.tool || "–",
+      archivo: e.archivo ? e.archivo.split(/[\\/]/).pop() : "–",
+      bytes: e.bytes || 0,
+      provider: e.provider || "anthropic",
+    }));
+    json(res, actividad);
     return;
   }
 
