@@ -1,3 +1,7 @@
+# Dependencias — nunca se versionan
+node_modules/
+package-lock.json
+
 # MCP — dependencias y compilado (no se versionan)
 sdd-lite/mcp-figma/node_modules/
 sdd-lite/mcp-figma/dist/
