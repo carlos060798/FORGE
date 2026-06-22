@@ -89,6 +89,33 @@ Antes de tocar cualquier archivo, muestra este resumen al usuario y espera confi
 Si el usuario responde `editar` → detente y ofrece abrir `tareas.md` con un editor.
 Si responde `cancelar` → detente con mensaje: "Implementación cancelada. Cuando quieras continuar: `/sdd.implementar`"
 
+## PASO 3.2 — Cargar manifiesto de recursos activos
+
+```bash
+# Lee el manifiesto generado por resource-selector (si existe)
+if [ -f ".sdd/recursos-sesion.json" ]; then
+  AGENTES_ACTIVOS=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('.sdd/recursos-sesion.json','utf8'));
+    console.log(m.agentes_activos.join(' '));
+  " 2>/dev/null || echo "")
+  
+  # Solo mostrar en modo guiado
+  PERFIL=$(grep 'perfil:' .sdd/sdd.config.yaml 2>/dev/null | cut -d: -f2 | tr -d ' ')
+  if [ "$PERFIL" = "guiado" ] && [ -n "$AGENTES_ACTIVOS" ]; then
+    TOTAL_EXCLUIDOS=$(node -e "
+      const m = JSON.parse(require('fs').readFileSync('.sdd/recursos-sesion.json','utf8'));
+      console.log(m.agentes_excluidos.length);
+    " 2>/dev/null || echo "0")
+    echo "⚡ Cargando ${#AGENTES_ACTIVOS[@]} agentes (${TOTAL_EXCLUIDOS} excluidos como innecesarios para esta spec)"
+  fi
+fi
+
+# Si no hay manifiesto, no filtrar — comportamiento conservador
+[ -z "$AGENTES_ACTIVOS" ] && AGENTES_ACTIVOS="arquitecto critico revisor seguridad asesor-datos desarrollador-backend desarrollador-frontend operaciones tester disenador-api architecture-designer investigador documentador product-designer"
+```
+
+Usa `$AGENTES_ACTIVOS` en el PASO 5 para decidir qué agentes despachar. Si un agente requerido por una tarea **no está en la lista**, aplica las reglas de fallback de `enrutador-agentes`.
+
 ## PASO 3.5 — Crear TODO list para visualización
 
 Usa `TodoWrite` para mostrar el progreso en tiempo real al usuario. Crea un TODO por tarea pendiente.

@@ -30,9 +30,25 @@ Decide a qué agente delegar cada tarea, leyendo la config y las característica
 | Revisión cruzada final | revisor | — |
 | Auditoría de seguridad | seguridad | — |
 
+## Verificación previa: agentes activos en sesión
+
+Antes de enrutar cualquier tarea, verifica que el agente principal esté en la lista activa de la sesión:
+
+```bash
+# Leer manifiesto de sesión (generado por resource-selector)
+ACTIVOS=$(grep -A100 '"agentes_activos"' .sdd/recursos-sesion.json 2>/dev/null | grep '"' | cut -d'"' -f2 | tr '\n' ' ')
+
+# Si no existe el manifiesto, asumir que todos los agentes están activos
+[ -z "$ACTIVOS" ] && ACTIVOS="todos"
+```
+
+Si el manifiesto no existe, invocar primero `/resource-selector` (o continuar con todos activos si ir.json tampoco existe).
+
+Si el agente principal **no está en `agentes_activos`**, saltar directamente a las reglas de fallback.
+
 ## Reglas de fallback
 
-1. Si el agente principal está **desactivado** en config:
+1. Si el agente principal está **desactivado** en config o **no activo en sesión**:
    - Usa el secundario si existe
    - Si no, advierte al usuario:
      > ⚠️ Esta tarea requiere `[agente]` pero está desactivado.

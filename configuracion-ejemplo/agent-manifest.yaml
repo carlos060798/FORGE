@@ -1,0 +1,323 @@
+# agent-manifest.yaml
+# Manifiesto de activación condicional de agentes y skills.
+# Leído por la skill resource-selector para determinar qué recursos
+# cargar en cada sesión. Este archivo es de referencia — resource-selector
+# usa las condiciones inline, no este archivo directamente.
+#
+# Señales disponibles:
+#   complexity:        low | medium | high  (de ir.json)
+#   tipo:              api | saas | web | mobile | cli | other  (de ir.json)
+#   pipeline_step:     idea | discovery | ir | design | spec | plan | tasks | code | verify | deploy | done
+#   auth:              true si features menciona auth/login/jwt/oauth
+#   pagos:             true si features menciona pago/stripe/billing
+#   bd:                true si features menciona sql/postgres/mysql/mongo
+#   deploy:            true si features menciona deploy/docker/kubernetes/railway
+#   frontend:          true si tipo in [saas, web, mobile]
+#   perfil:            guiado | experto  (de sdd.config.yaml)
+#   modo_sesion:       normal | rapido | prototipo  (de sdd.config.yaml)
+
+agentes:
+  arquitecto:
+    activacion: siempre
+    justificacion: >
+      Toda spec requiere decisiones de arquitectura. Es el agente raíz del
+      pipeline y punto de entrada del plan de implementación.
+
+  desarrollador-backend:
+    activacion: siempre
+    justificacion: >
+      Toda spec tiene lógica de servidor, incluso una landing page simple
+      necesita un servidor de archivos o una función edge.
+
+  tester:
+    activacion: siempre
+    justificacion: >
+      Los tests son obligatorios según la constitución de FORGE (SDD+TDD).
+      No hay pipeline válido sin verificación.
+
+  revisor:
+    activacion:
+      siempre_si: complexity == high
+      condicional_si:
+        - pipeline_step in [code, verify]
+    justificacion: >
+      En proyectos complejos, la revisión es continua. En proyectos simples,
+      solo aplica al momento de verificar el código implementado.
+
+  critico:
+    activacion:
+      cualquiera_de:
+        - complexity == high
+        - auth == true
+        - pagos == true
+    justificacion: >
+      El agente crítico identifica riesgos de diseño. Indispensable cuando
+      hay complejidad alta o dominios sensibles (auth, pagos) que requieren
+      cuestionar supuestos antes de implementar.
+
+  seguridad:
+    activacion:
+      cualquiera_de:
+        - auth == true
+        - pagos == true
+        - complexity == high
+    justificacion: >
+      La auditoría de seguridad es crítica cuando hay autenticación o pagos.
+      En proyectos de alta complejidad, la superficie de ataque es mayor.
+
+  asesor-datos:
+    activacion:
+      cualquiera_de:
+        - bd == true
+        - complexity in [medium, high]
+    justificacion: >
+      El modelado de datos impacta toda la arquitectura. En complejidad media/alta
+      casi siempre hay decisiones de schema que justifican al especialista.
+
+  disenador-api:
+    activacion:
+      cualquiera_de:
+        - tipo in [api, saas]
+        - complexity in [medium, high]
+    justificacion: >
+      El diseño de contratos de API es crítico en proyectos de tipo API o SaaS.
+      En complejidad media/alta, la interfaz pública necesita diseño explícito.
+
+  desarrollador-frontend:
+    activacion:
+      cualquiera_de:
+        - frontend == true
+        - tipo in [saas, web, mobile]
+    justificacion: >
+      Solo se activa cuando hay UI. CLI y APIs puras no necesitan este agente.
+
+  product-designer:
+    activacion:
+      cualquiera_de:
+        - pipeline_step in [design]
+        - tipo in [saas, web, mobile]
+    justificacion: >
+      El diseño de producto solo es relevante cuando hay una etapa de diseño
+      explícita o cuando el producto tiene una interfaz de usuario.
+
+  architecture-designer:
+    activacion:
+      todos_de:
+        - pipeline_step in [design, plan]
+        - complexity in [medium, high]
+    justificacion: >
+      El diseño arquitectónico profundo solo se justifica en proyectos de
+      complejidad media o alta, y solo en las etapas de diseño/planificación.
+
+  operaciones:
+    activacion:
+      cualquiera_de:
+        - deploy == true
+        - complexity == high
+        - pipeline_step in [deploy]
+    justificacion: >
+      La infraestructura y el despliegue son relevantes cuando la spec menciona
+      deploy explícitamente, en sistemas complejos, o en la etapa de despliegue.
+
+  investigador:
+    activacion:
+      cualquiera_de:
+        - complexity == high
+        - pipeline_step in [discovery]
+    justificacion: >
+      La investigación profunda se justifica en sistemas complejos o durante
+      el discovery inicial cuando hay muchas incógnitas técnicas.
+
+  documentador:
+    activacion:
+      todos_de:
+        - complexity == high
+        - config_activo: true   # debe estar activo en sdd.config.yaml
+    justificacion: >
+      La documentación automática es valioso en sistemas complejos pero es
+      opt-in porque genera costo de tokens. Requiere habilitación explícita.
+
+skills:
+  # --- Skills siempre activas ---
+  gestion-estado:
+    activacion: siempre
+
+  enrutador-agentes:
+    activacion: siempre
+
+  effort-router:
+    activacion: siempre
+
+  constitucion-constraint:
+    activacion: siempre
+
+  token-budget:
+    activacion: siempre
+
+  memory-compactor:
+    activacion: siempre
+
+  # --- Skills de fase de descubrimiento ---
+  descubrir-idea:
+    activacion:
+      pipeline_step in: [discovery, idea]
+
+  interpretar-idea:
+    activacion:
+      pipeline_step in: [discovery, ir]
+
+  mejorar-prompt:
+    activacion:
+      pipeline_step in: [discovery, idea]
+
+  deteccion-stack:
+    activacion:
+      pipeline_step in: [discovery, plan]
+
+  # --- Skills de fase de diseño ---
+  elegir-direccion:
+    activacion:
+      todos_de:
+        - pipeline_step in [design]
+        - frontend == true
+
+  wireframe-mvp:
+    activacion:
+      todos_de:
+        - pipeline_step in [design]
+        - frontend == true
+
+  critica-diseno:
+    activacion:
+      todos_de:
+        - pipeline_step in [design]
+        - frontend == true
+
+  # --- Skills de fase de planificación/especificación ---
+  validacion-spec:
+    activacion:
+      pipeline_step in: [spec, plan]
+
+  indexador:
+    activacion:
+      todos_de:
+        - pipeline_step in [plan, code]
+        - complexity in [medium, high]
+
+  indexar-proyecto:
+    activacion:
+      todos_de:
+        - pipeline_step in [plan, code]
+        - complexity in [medium, high]
+
+  adr-indexer:
+    activacion:
+      complexity in: [medium, high]
+
+  # --- Skills de fase de implementación ---
+  mutation-detector:
+    activacion:
+      pipeline_step in: [code, verify]
+
+  verificador-implementacion:
+    activacion:
+      pipeline_step in: [verify, code]
+
+  orquestacion-ptc:
+    activacion:
+      cualquiera_de:
+        - complexity == high
+        - num_tareas > 6    # evaluado en tiempo de ejecución
+
+  # --- Skills de despliegue ---
+  deploy-vercel:
+    activacion:
+      todos_de:
+        - deploy == true
+        - destino_vercel: true   # evaluado de sdd.config.yaml
+
+  vercel-deploy:
+    activacion:
+      todos_de:
+        - deploy == true
+        - destino_vercel: true
+
+  github-connect:
+    activacion:
+      todos_de:
+        - pipeline_step in [deploy]
+        - repo_sin_remote: true   # evaluado en tiempo de ejecución
+
+  # --- Skills de observabilidad ---
+  observabilidad-consumo:
+    activacion:
+      cualquiera_de:
+        - complexity == high
+        - pipeline_step in [verify, deploy]
+
+  share-progress:
+    activacion:
+      complexity == high
+
+  cache-audit:
+    activacion:
+      complexity == high
+
+  # --- Skills de modo guiado ---
+  modo-guiado:
+    activacion:
+      perfil == guiado
+
+  explicame:
+    activacion:
+      perfil == guiado
+
+  # --- Skills de modo de sesión ---
+  compresion-tokens:
+    activacion:
+      modo_sesion in: [rapido, prototipo]
+
+# Escenarios predefinidos con la selección esperada
+# (útil para tests de regresión del resource-selector)
+escenarios_referencia:
+  landing_page_low:
+    inputs:
+      complexity: low
+      tipo: web
+      pipeline_step: plan
+      auth: false
+      pagos: false
+      bd: false
+      deploy: false
+      frontend: true
+      perfil: guiado
+    agentes_esperados: [arquitecto, desarrollador-backend, desarrollador-frontend, tester]
+    agentes_excluidos: [critico, seguridad, asesor-datos, operaciones, investigador, documentador]
+
+  api_rest_medium:
+    inputs:
+      complexity: medium
+      tipo: api
+      pipeline_step: plan
+      auth: true
+      pagos: false
+      bd: true
+      deploy: false
+      frontend: false
+      perfil: experto
+    agentes_esperados: [arquitecto, desarrollador-backend, tester, critico, seguridad, asesor-datos, disenador-api, architecture-designer]
+    agentes_excluidos: [desarrollador-frontend, product-designer, operaciones, investigador, documentador]
+
+  saas_pagos_high:
+    inputs:
+      complexity: high
+      tipo: saas
+      pipeline_step: code
+      auth: true
+      pagos: true
+      bd: true
+      deploy: true
+      frontend: true
+      perfil: experto
+    agentes_esperados: [arquitecto, desarrollador-backend, desarrollador-frontend, tester, revisor, critico, seguridad, asesor-datos, disenador-api, operaciones, investigador, product-designer]
+    agentes_excluidos: [documentador]  # documentador requiere config_activo: true explícito

@@ -58,7 +58,34 @@ find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" 
   -not -path "*/.sdd/*" | head -80
 ```
 
-## PASO 1b — Routing dinámico de modelo según complejidad del IR
+## PASO 1b — Selección autónoma de recursos activos
+
+Invoca la skill `resource-selector` para determinar qué agentes y skills son necesarios para esta spec. Esto evita cargar recursos irrelevantes en el contexto.
+
+```bash
+# Verifica si ya existe un manifiesto de sesión vigente
+MANIFIESTO_EXISTE=$([ -f ".sdd/recursos-sesion.json" ] && echo "true" || echo "false")
+
+if [ "$MANIFIESTO_EXISTE" = "false" ]; then
+  # resource-selector escribe .sdd/recursos-sesion.json
+  # La skill evalúa ir.json + estado.json + sdd.config.yaml
+  echo "Analizando spec para determinar recursos necesarios..."
+fi
+
+# Leer agentes activos del manifiesto (si existe)
+if [ -f ".sdd/recursos-sesion.json" ]; then
+  AGENTES_ACTIVOS=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('.sdd/recursos-sesion.json','utf8'));
+    console.log(m.agentes_activos.join(' '));
+  " 2>/dev/null || echo "todos")
+else
+  AGENTES_ACTIVOS="todos"
+fi
+```
+
+> Si `AGENTES_ACTIVOS == "todos"`, continúa con todos los agentes disponibles (comportamiento conservador cuando no hay IR).
+
+## PASO 1c — Routing dinámico de modelo según complejidad del IR
 
 ```bash
 # Lee forge.config.json para determinar si usar routing dinámico (default: true)

@@ -121,7 +121,8 @@
     "indexar-proyecto",
     "explicame",
     "deploy-vercel",
-    "share-progress"
+    "share-progress",
+    "resource-selector"
   ],
 
   "mcpServers": "./.mcp.json"
