@@ -9,6 +9,8 @@
  *   GET /verificar    → .sdd/verificacion.json  (o vacío si no existe)
  *   GET /consumo      → últimas 50 líneas de .sdd/observabilidad/consumo.jsonl
  *   GET /actividad    → últimas 50 entradas de consumo.jsonl en formato legible
+ *   GET /agentes      → agentes activos en los últimos 60s (de consumo.jsonl)
+ *   GET /agente/:n    → frontmatter + memoria + actividad reciente del agente n
  *   GET /             → sirve ui/index.html
  *   GET /assets/*     → sirve archivos estáticos de ui/assets/
  *
@@ -135,6 +137,58 @@ function handleRequest(req, res) {
       provider: e.provider || "anthropic",
     }));
     json(res, actividad);
+    return;
+  }
+  if (path === "/agentes") {
+    const entries = readLastJsonlLines(join(SDD_DIR, "observabilidad", "consumo.jsonl"), 100);
+    const now = Date.now();
+    const recientes = entries.filter(e => e.ts && (now - new Date(e.ts).getTime()) < 60_000);
+    const porAgente = {};
+    recientes.forEach(e => {
+      if (!e.agente) return;
+      if (!porAgente[e.agente] || e.ts > porAgente[e.agente].ts) porAgente[e.agente] = e;
+    });
+    const resultado = Object.values(porAgente).map(e => ({
+      nombre: e.agente,
+      tool: e.tool || "–",
+      archivo: e.archivo ? e.archivo.split(/[\\/]/).pop() : "–",
+      bytes: e.bytes || 0,
+      modelo: e.modelo || "–",
+      ts: e.ts,
+    }));
+    json(res, resultado);
+    return;
+  }
+  if (path.startsWith("/agente/")) {
+    const nombre = decodeURIComponent(path.slice("/agente/".length));
+    if (!nombre || nombre.includes("..") || nombre.includes("/")) {
+      notFound(res);
+      return;
+    }
+    // Buscar en .claude/agents/ (directorio global de Claude Code)
+    const globalAgentPath = join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".claude", "agents", nombre + ".md");
+    const localAgentPath  = join(process.cwd(), "FORGE", "agents", nombre + ".md");
+    const agentPath = existsSync(localAgentPath) ? localAgentPath : existsSync(globalAgentPath) ? globalAgentPath : null;
+    let frontmatter = null;
+    if (agentPath) {
+      const md = readFileSync(agentPath, "utf8");
+      const match = md.match(/^---\n([\s\S]*?)\n---/);
+      if (match) {
+        frontmatter = {};
+        match[1].split("\n").forEach(line => {
+          const [k, ...v] = line.split(":");
+          if (k && v.length) frontmatter[k.trim()] = v.join(":").trim().replace(/^"|"$/g, "");
+        });
+      }
+    }
+    const memoriaPath = join(SDD_DIR, "memoria", `agente-${nombre}.md`);
+    const memoria = existsSync(memoriaPath)
+      ? readFileSync(memoriaPath, "utf8").split("\n").slice(0, 25).join("\n")
+      : null;
+    // Última actividad del agente
+    const entries = readLastJsonlLines(join(SDD_DIR, "observabilidad", "consumo.jsonl"), 100);
+    const ultimaActividad = entries.filter(e => e.agente === nombre).slice(-5);
+    json(res, { nombre, frontmatter, memoria, ultimaActividad });
     return;
   }
 

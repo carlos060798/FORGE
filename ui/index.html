@@ -192,6 +192,119 @@
     /* ── Error ────────────────────────────────────────────────────────── */
     .error { color: #f87171; padding: 1rem; }
 
+    /* ── Pipeline SVG (grafo de nodos) ───────────────────────────────── */
+    .pipeline-svg-wrap { overflow-x: auto; margin-bottom: 1.25rem; }
+    .pipeline-svg text { font-family: var(--font-sans, system-ui, sans-serif); }
+    @keyframes pulse-node {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.6; }
+    }
+    .node-active { animation: pulse-node 1.5s ease infinite; }
+
+    .active-detail {
+      background: var(--bg-elev, #1c212b);
+      border: 1px solid var(--border, #272d39);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .active-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .cmd-badge {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.75rem;
+      background: var(--bg-soft, #161a21);
+      color: var(--accent, #6ea8fe);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+    .detail-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+    .detail-chip {
+      font-size: 0.78rem;
+      border: 1px solid var(--border, #272d39);
+      border-radius: 12px;
+      padding: 0.15rem 0.55rem;
+      color: var(--text-soft, #9aa3b2);
+      background: transparent;
+    }
+
+    /* ── Agentes activos (agents.js) ─────────────────────────────────── */
+    .agent-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.4rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .agent-row:hover { background: var(--bg-soft, #161a21); }
+    .agent-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      flex-shrink: 0;
+      box-shadow: 0 0 5px #4ade8088;
+    }
+    .agent-name   { font-weight: 600; color: var(--text, #e6e9ef); min-width: 7rem; }
+    .agent-model  { font-size: 0.72rem; flex-shrink: 0; }
+    .agent-tool   { color: var(--text-soft, #9aa3b2); min-width: 4.5rem; }
+    .agent-archivo { color: var(--text, #e6e9ef); flex: 1; font-family: var(--font-mono, monospace); }
+    .agent-bytes  { color: var(--text-faint, #6b7280); font-size: 0.72rem; }
+    .agents-empty { font-size: 0.8rem; color: var(--text-faint, #6b7280); padding: 0.25rem 0; }
+
+    /* ── Panel lateral de agente (agent-panel.js) ────────────────────── */
+    #agent-panel {
+      position: fixed;
+      top: 0; right: 0;
+      height: 100vh;
+      width: 320px;
+      max-width: 90vw;
+      background: var(--bg-soft, #161a21);
+      border-left: 1px solid var(--border, #272d39);
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 100;
+      padding: 1.25rem;
+      box-shadow: -4px 0 24px rgba(0,0,0,.4);
+    }
+    #agent-panel.open { transform: translateX(0); }
+    .ap-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .ap-name { font-size: 1.1rem; font-weight: 700; }
+    .ap-close {
+      background: none; border: none; font-size: 1.3rem;
+      color: var(--text-soft, #9aa3b2); cursor: pointer; line-height: 1;
+    }
+    .ap-close:hover { color: var(--text, #e6e9ef); }
+    .ap-section { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border, #272d39); }
+    .ap-section:last-child { border-bottom: none; margin-bottom: 0; }
+    .ap-section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint, #6b7280); margin-bottom: 0.4rem; }
+    .ap-meta-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .ap-label { color: var(--text-soft, #9aa3b2); min-width: 4rem; }
+    .ap-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .ap-body { font-size: 0.85rem; line-height: 1.5; }
+    .ap-soft { color: var(--text-soft, #9aa3b2); }
+    .ap-activity-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; padding: 0.2rem 0; }
+    .ap-hora  { color: var(--text-faint, #6b7280); min-width: 3.5rem; }
+    .ap-tool  { color: var(--text-soft, #9aa3b2); min-width: 3.5rem; }
+    .ap-archivo { flex: 1; font-family: var(--font-mono, monospace); }
+    .ap-bytes { color: var(--text-faint, #6b7280); }
+    .ap-memoria { font-size: 0.73rem; font-family: var(--font-mono, monospace); white-space: pre-wrap; word-break: break-word; color: var(--text-soft, #9aa3b2); max-height: 200px; overflow-y: auto; }
+    .ap-empty { font-size: 0.8rem; color: var(--text-faint, #6b7280); font-style: italic; }
+    .ap-loading, .ap-error { padding: 1rem; font-size: 0.875rem; color: var(--text-soft, #9aa3b2); }
+    .ap-error { color: #f87171; }
+
     /* ── Indicador de conexión ────────────────────────────────────────── */
     #connection-dot {
       width: 8px;
@@ -231,6 +344,8 @@
     import { init as initPipeline } from "/src/pipeline.js";
     import { init as initTasks    } from "/src/tasks.js";
     import { init as initVerify   } from "/src/verify.js";
+    import { init as initAgents   } from "/src/agents.js";
+    import { init as initAgentPanel } from "/src/agent-panel.js";
     import                                "/src/actividad.js";
 
     // ── Navegación ──────────────────────────────────────────────────────
@@ -249,6 +364,8 @@
     initPipeline();
     initTasks();
     initVerify();
+    initAgents();
+    initAgentPanel();
 
     // ── Indicador de conexión ───────────────────────────────────────────
     const dot = document.getElementById("connection-dot");

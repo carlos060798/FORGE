@@ -456,8 +456,25 @@ POR FAVOR REVISA EL PLAN. Cuando estés listo:
 
 ```bash
 # Actualizar plan: estado: aprobado
-# Actualizar .sdd/estado.json: plan_aprobado: true
+# Actualizar .sdd/estado.json: plan_aprobado: true + agentes_activos_ultimo_plan
 # Actualizar INDICE.md
+node -e "
+  const fs = require('fs');
+  const estado = JSON.parse(fs.readFileSync('.sdd/estado.json', 'utf8') || '{}');
+  estado.plan_aprobado = true;
+  estado.ultima_actualizacion = new Date().toISOString();
+  // artefactos_sesion — agentes_activos_ultimo_plan (A6)
+  // Se extrae del plan.md (las tareas aún no existen en este punto)
+  if (!estado.artefactos_sesion) estado.artefactos_sesion = {};
+  try {
+    const specId = estado.especificacion_activa;
+    const planMd = fs.readFileSync(\`.sdd/especificaciones/\${specId}/plan.md\`, 'utf8');
+    const matches = planMd.match(/\*\*Agentes?:\*\*\s*([^\n]+)/gi) ?? [];
+    const agentes = [...new Set(matches.flatMap(m => m.replace(/\*\*[Aa]gentes?:\*\*/,'').split(/[,\s]+/)).filter(a => a && !a.includes('*')))];
+    if (agentes.length) estado.artefactos_sesion.agentes_activos_ultimo_plan = agentes;
+  } catch {}
+  fs.writeFileSync('.sdd/estado.json', JSON.stringify(estado, null, 2));
+" 2>/dev/null || true
 ```
 
 ```
@@ -496,6 +513,17 @@ echo "Validación completada"
 ```
 
 Si falta alguna sección requerida, complétala antes de pedir aprobación.
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Plan técnico creado y aprobado.
+
+¿Continúo con `/sdd.tareas`?
+- **`sí`** → genero las tareas del plan automáticamente
+- **`no`** → me detengo para que revises el plan primero
+- **`[instrucción]`** → ajusto el plan antes de generar tareas
 
 ## VERIFICACIONES POST-EJECUCIÓN
 

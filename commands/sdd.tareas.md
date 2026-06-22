@@ -298,3 +298,14 @@ Si alguna verificación falla, corrige antes de habilitar el handoff a `/sdd.imp
 
 ---
 **HOOK:** `.sdd/hooks/despues_tareas.sh`
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Tareas generadas y listas para implementar.
+
+¿Continúo con `/sdd.implementar`?
+- **`sí`** → inicio la implementación automáticamente
+- **`no`** → me detengo para que revises las tareas primero
+- **`[instrucción]`** → ajusto alguna tarea antes de implementar

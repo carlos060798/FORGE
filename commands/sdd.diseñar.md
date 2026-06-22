@@ -29,6 +29,16 @@ cat .sdd/ir.json | node -e "
   console.log('Producto:', ir.product.name);
   console.log('Tipo:', ir.product.type);
 "
+
+# Routing condicional por confidence del IR
+CONFIDENCE=$(node -e "try{const ir=JSON.parse(require('fs').readFileSync('.sdd/ir.json','utf8'));console.log(ir.confidence??'0')}catch{console.log('0')}" 2>/dev/null || echo "0")
+if awk "BEGIN {exit !($CONFIDENCE < 0.7)}"; then
+  echo "⚠️  Confianza baja en el IR ($CONFIDENCE). Haré preguntas de clarificación antes de diseñar."
+elif awk "BEGIN {exit !($CONFIDENCE >= 0.85)}"; then
+  echo "✅ Confianza alta ($CONFIDENCE). Avanzo directo al diseño sin preguntas adicionales."
+else
+  echo "ℹ️  Confianza media ($CONFIDENCE). Diseñaré con las asunciones actuales."
+fi
 ```
 
 Si ya hay un `product-design.json`, pregunta:
@@ -142,6 +152,12 @@ node -e "
   const estado = JSON.parse(fs.readFileSync('.sdd/estado.json', 'utf8') || '{}');
   estado.product_design_aprobado = true;
   estado.ultima_actualizacion = new Date().toISOString();
+  // artefactos_sesion — stack_decidido (A6)
+  if (!estado.artefactos_sesion) estado.artefactos_sesion = {};
+  try {
+    const pd = JSON.parse(fs.readFileSync('.sdd/product-design.json', 'utf8'));
+    estado.artefactos_sesion.stack_decidido = pd.stack?.summary ?? pd.architecture?.stack ?? null;
+  } catch {}
   fs.writeFileSync('.sdd/estado.json', JSON.stringify(estado, null, 2));
 "
 ```

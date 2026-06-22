@@ -7,7 +7,10 @@
   "use strict";
 
   // ---- Estado ----
-  let lang = localStorage.getItem("forge-lang") || "es";
+  // forge-lang-v5: clave versionada para resetear preferencia al cambiar de versión.
+  const LANG_KEY = "forge-lang-v5";
+  const htmlLang = document.documentElement.getAttribute("data-lang") || "es";
+  let lang = localStorage.getItem(LANG_KEY) || htmlLang;
   let theme = localStorage.getItem("forge-theme") || "dark";
   const pageIds = Object.keys(PAGES);
   const defaultPage = pageIds[0];
@@ -137,7 +140,7 @@
   }
   function toggleLang() {
     lang = lang === "es" ? "en" : "es";
-    localStorage.setItem("forge-lang", lang);
+    localStorage.setItem(LANG_KEY, lang);
     document.documentElement.setAttribute("data-lang", lang);
     applyUiText();
     buildSidebar();

@@ -24,6 +24,15 @@ SPEC_DIR=".sdd/especificaciones/${SPEC_ID}"
 [ ! -f "${SPEC_DIR}/tareas.md" ] && echo "ERROR: ejecuta /sdd.tareas primero" && exit 1
 [ ! -f "${SPEC_DIR}/.estado-tareas.json" ] && echo "ERROR: estado de tareas no encontrado" && exit 1
 
+# Verificar checkpoint previo (durable execution)
+CHECKPOINT_FILE="${SPEC_DIR}/.estado-tareas.json"
+ULTIMA=$(node -e "try{const s=JSON.parse(require('fs').readFileSync('${CHECKPOINT_FILE}','utf8'));console.log(s.ultima_tarea_completada??'')}catch{}" 2>/dev/null || true)
+CHECKPOINT_TS=$(node -e "try{const s=JSON.parse(require('fs').readFileSync('${CHECKPOINT_FILE}','utf8'));console.log(s.ultimo_checkpoint_ts??'')}catch{}" 2>/dev/null || true)
+if [ -n "$ULTIMA" ] && [ -n "$CHECKPOINT_TS" ]; then
+  echo "🔄 Checkpoint detectado: última tarea completada fue **$ULTIMA** ($CHECKPOINT_TS)"
+  echo "Responde 'retomar' para continuar desde $ULTIMA, o 'reiniciar' para empezar desde T-001."
+fi
+
 cat .sdd/sdd.config.yaml
 cat "${SPEC_DIR}/spec.md"
 cat "${SPEC_DIR}/plan.md"
@@ -352,6 +361,18 @@ Si cualquier nivel falla:
 # .estado-tareas.json: T00X → completada
 # tareas.md: ✅ T00X, actualizar barra de progreso
 # .sdd/estado.json: ultima_actualizacion
+
+# Guardar checkpoint de sesión (durable execution)
+node -e "
+const fs = require('fs');
+const file = '${CHECKPOINT_FILE}';
+try {
+  const s = JSON.parse(fs.readFileSync(file, 'utf8'));
+  s.ultima_tarea_completada = process.env.TAREA_ID;
+  s.ultimo_checkpoint_ts = new Date().toISOString();
+  fs.writeFileSync(file, JSON.stringify(s, null, 2));
+} catch(e) { process.stderr.write('checkpoint error: ' + e.message + '\n'); }
+" 2>/dev/null || true
 ```
 
 ### 5.9 — Hook post-tarea (opcional)
@@ -626,3 +647,14 @@ SIGUIENTES PASOS RECOMENDADOS:
 ¿Quieres empezar otra feature?
    /sdd.especificar [descripción]
 ```
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Implementación completada.
+
+¿Continúo con `/sdd.verificar`?
+- **`sí`** → ejecuto la verificación automáticamente
+- **`no`** → me detengo para que revises el código primero
+- **`[instrucción]`** → ajusto algo antes de verificar

@@ -3,22 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FORGE — Documentación</title>
-  <meta name="description" content="Documentación de FORGE (SDD-ES): el marco de Spec-Driven Development en español para Claude Code.">
+  <title>FORGE v5 — Documentación Oficial</title>
+  <meta name="description" content="FORGE v5.0.0 — Framework SDD+TDD Claude Code-native. 14 agentes, 38 comandos, zero-deps.">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
-  <!-- Botón hamburguesa (móvil) -->
+
   <button id="menu-toggle" class="menu-toggle" aria-label="Abrir menú">☰</button>
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <a href="#bienvenida" class="brand-link">
-        <span class="brand-mark">⬡</span>
-        <span class="brand-name">FORGE</span>
+      <a href="#vision-general" class="brand-link">
+        <span class="brand-hex">F</span>
+        <div>
+          <span class="brand-name">FORGE <span class="brand-version" data-i18n="brand_tag">v5.0.0</span></span>
+          <span class="brand-tag">Claude Code-native · SDD+TDD</span>
+        </div>
       </a>
-      <span class="brand-tag" data-i18n="brand_tag">Documentación</span>
     </div>
 
     <button id="search-trigger" class="search-trigger" aria-label="Buscar">
@@ -55,14 +57,18 @@
     </main>
 
     <footer class="content-footer">
-      <span data-i18n="footer_text">FORGE · Spec-Driven Development en español para Claude Code · MIT</span>
+      <span data-i18n="footer_text">FORGE v5.0.0 · Claude Code-native · MIT License</span>
     </footer>
   </div>
 
   <!-- Modal de búsqueda -->
   <div class="search-modal" id="search-modal">
     <div class="search-box">
-      <input type="text" id="search-input" data-i18n-attr="placeholder" data-i18n="search_input_placeholder" placeholder="Buscar en la documentación…" autocomplete="off">
+      <input type="text" id="search-input"
+        data-i18n-attr="placeholder"
+        data-i18n="search_input_placeholder"
+        placeholder="Buscar en la documentación…"
+        autocomplete="off">
       <div class="search-results" id="search-results"></div>
       <div class="search-hint">
         <kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="search_navigate">navegar</span>

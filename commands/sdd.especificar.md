@@ -36,6 +36,16 @@ if [ -f ".sdd/memoria/contexto-descubrimiento.md" ]; then
   echo "CONTEXTO_DESCUBRIMIENTO_DISPONIBLE"
   cat .sdd/memoria/contexto-descubrimiento.md
 fi
+
+# Routing condicional por confidence del IR (si ya existe)
+if [ -f ".sdd/ir.json" ]; then
+  CONFIDENCE=$(node -e "try{const ir=JSON.parse(require('fs').readFileSync('.sdd/ir.json','utf8'));console.log(ir.confidence??'0')}catch{console.log('0')}" 2>/dev/null || echo "0")
+  if awk "BEGIN {exit !($CONFIDENCE < 0.7)}"; then
+    echo "⚠️  Confianza baja en el IR ($CONFIDENCE). Haré preguntas de clarificación antes de especificar."
+  elif awk "BEGIN {exit !($CONFIDENCE >= 0.85)}"; then
+    echo "✅ Confianza alta ($CONFIDENCE). Avanzo directo a la spec sin preguntas adicionales."
+  fi
+fi
 ```
 
 > Si se detecta `contexto-descubrimiento.md`, úsalo como fuente principal para pre-rellenar la spec. No vuelvas a preguntar lo que ya está respondido ahí. Marca con `[POR_DEFINIR]` solo lo que falte.
@@ -306,3 +316,14 @@ SIGUIENTES PASOS:
    /sdd.checklist     — validar calidad de la spec (recomendado)
    /sdd.planificar    — pasar al plan técnico
 ```
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Especificación creada y lista.
+
+¿Continúo con `/sdd.planificar`?
+- **`sí`** → ejecuto `/sdd.planificar` automáticamente
+- **`no`** → me detengo para que revises la spec primero
+- **`[instrucción]`** → ajusto la spec antes de continuar

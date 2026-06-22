@@ -318,3 +318,14 @@ Si el argumento contiene `pm`, `arq` o `dev`, adapta el reporte final:
 **Modo `arq`:** Enfatiza el cumplimiento de constitución, los ADRs afectados y los requisitos no funcionales. Incluye la tabla de CAs con archivos.
 
 **Modo `dev`:** El reporte completo del PASO 10 con todas las tablas y rutas (comportamiento actual).
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Verificación completada.
+
+¿Continúo con `/sdd.desplegar`?
+- **`sí`** → inicio el despliegue automáticamente
+- **`no`** → me detengo (puedes hacer ajustes o ir a `/sdd.snapshot`)
+- **`[instrucción]`** → corrijo algo antes de desplegar

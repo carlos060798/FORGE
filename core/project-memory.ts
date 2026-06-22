@@ -28,6 +28,14 @@ export interface ForgeEstado {
   spec_draft_path?: string;
   pipeline_step?: 'idea' | 'discovery' | 'ir' | 'design' | 'spec' | 'plan' | 'tasks' | 'code' | 'done';
   ultima_actualizacion?: string;
+
+  // Inter-agent state (A6)
+  artefactos_sesion?: {
+    ir_confidence?: number | null;
+    stack_decidido?: string | null;
+    complejidad_estimada?: string | null;
+    agentes_activos_ultimo_plan?: string[];
+  };
 }
 
 export interface ValidationResult {

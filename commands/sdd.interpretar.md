@@ -110,9 +110,14 @@ if [ -f ".sdd/estado.json" ]; then
   node -e "
     const fs = require('fs');
     const estado = JSON.parse(fs.readFileSync('.sdd/estado.json', 'utf8'));
+    const ir = JSON.parse(fs.readFileSync('.sdd/ir.json', 'utf8'));
     estado.ir_generado = true;
-    estado.ir_id = JSON.parse(fs.readFileSync('.sdd/ir.json', 'utf8')).id;
+    estado.ir_id = ir.id;
     estado.ultima_actualizacion = new Date().toISOString();
+    // artefactos_sesion (A6)
+    if (!estado.artefactos_sesion) estado.artefactos_sesion = {};
+    estado.artefactos_sesion.ir_confidence = ir.confidence ?? null;
+    estado.artefactos_sesion.complejidad_estimada = ir.complexity ?? null;
     fs.writeFileSync('.sdd/estado.json', JSON.stringify(estado, null, 2));
   " 2>/dev/null || echo "{ \"ir_generado\": true, \"ultima_actualizacion\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" }" > .sdd/estado.json
 fi

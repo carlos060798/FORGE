@@ -2,11 +2,11 @@
 /**
  * agent-memory.js — Hook PostToolUse para memoria persistente + ledger de consumo
  *
- * 1. Memoria por agente — dos backends seleccionables en sdd.config.yaml:
- *    - "markdown" (default, Node >= 18): .sdd/memoria/agente-{nombre}.md
- *    - "sqlite"   (Node >= 22.5, nativo): .sdd/memoria/memoria.db
+ * 1. Memoria por agente — backend auto-seleccionado:
+ *    - "sqlite"   (auto si Node >= 22.5): .sdd/memoria/memoria.db — O(log n)
  *      Tabla: entradas(ts, agente, archivo, resumen, bytes)
- *      Ventaja: recuperación selectiva O(log n) sin leer archivos completos.
+ *    - "markdown" (auto si Node < 22.5): .sdd/memoria/agente-{nombre}.md — O(n)
+ *    Override manual via sdd.config.yaml → memoria.backend: "sqlite"|"markdown"
  *
  * 2. Índice invertido JSONL: .sdd/memoria/indice.jsonl — siempre activo,
  *    independientemente del backend. Habilita query-memory.js.
@@ -67,12 +67,22 @@ function leerForgeConfig(cwd) {
   } catch { return defaults; }
 }
 
+// Auto-detecta si Node >= 22.5 tiene node:sqlite disponible
+function nodeSoportaSQLite() {
+  try {
+    const [major, minor] = process.versions.node.split(".").map(Number);
+    return major > 22 || (major === 22 && minor >= 5);
+  } catch { return false; }
+}
+
 function leerConfig(cwd) {
   const forgeConfig = leerForgeConfig(cwd);
   const configPath = join(cwd, ".sdd", "sdd.config.yaml");
+  // Por defecto: SQLite si Node >= 22.5, Markdown si no
+  const backendDefault = nodeSoportaSQLite() ? "sqlite" : "markdown";
   const defaults = {
     umbral_bytes: forgeConfig.memoria.umbral_compresion_bytes,
-    backend: "markdown",
+    backend: backendDefault,
     recuperacion_por_defecto: 10,
   };
   if (!existsSync(configPath)) return defaults;
@@ -83,7 +93,8 @@ function leerConfig(cwd) {
     const recup = yaml.match(/^[ \t]+recuperacion_por_defecto:\s*(\d+)/m);
     return {
       umbral_bytes: umbral ? parseInt(umbral[1], 10) : defaults.umbral_bytes,
-      // SQLite requiere Node >= 22.5 — fallback a markdown en Node < 22
+      // Si el usuario especificó backend explícitamente en YAML, respetarlo
+      // Si no, usar el default auto-detectado (sqlite en Node >= 22.5)
       backend: backend ? backend[1] : defaults.backend,
       recuperacion_por_defecto: recup ? parseInt(recup[1], 10) : defaults.recuperacion_por_defecto,
     };
@@ -477,8 +488,8 @@ async function main(raw) {
   if (CONFIG.backend === "sqlite") {
     const ok = escribirMemoriaSQLite(memoriaDir, agente, archivoModificado, resumen, bytes);
     if (!ok) {
-      // Fallback a markdown si SQLite falla (Node < 22.5 o error de runtime)
-      process.stderr.write(`⚠️  [agent-memory] SQLite no disponible, usando markdown como fallback\n`);
+      // Fallback a markdown si SQLite falla (Node < 22.5 o error de runtime en Node 22.5+)
+      process.stderr.write(`⚠️  [agent-memory] SQLite falló, usando markdown como fallback (Node ${process.versions.node})\n`);
       escribirMemoriaMarkdown(cwd, agente, archivoModificado, resumen);
     }
   } else {
