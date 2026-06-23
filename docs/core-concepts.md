@@ -131,6 +131,83 @@ Esto elimina la deriva arquitectónica — la tendencia de un asistente de IA a 
 
 ---
 
+## Aclaración: Etapas, Comandos y Estados del Pipeline
+
+Cuando hablamos de "el pipeline de FORGE", podemos referirse a 3 niveles de granularidad distintos. Es importante distinguir:
+
+### Nivel 1: Etapas conceptuales (5 totales)
+
+Las 5 fases conceptuales del ciclo de desarrollo, desde idea a producción:
+
+1. **Especificación** — de idea a requisitos precisos
+   - Incluye: Descubrimiento, Interpretación (IR), Diseño, Especificación, Aclaración
+   
+2. **Diseño** — de requisitos a arquitectura y mockups
+   - Incluye: Product Design, Wireframes, Stack Selection
+
+3. **Implementación** — de arquitectura a código
+   - Incluye: Planificación, Desglose de tareas, Codificación
+
+4. **Verificación** — de código a producto validado
+   - Incluye: Testing, QA, Criterios de aceptación
+
+5. **Despliegue** — de producto a producción
+   - Incluye: Release, Health checks, Monitoreo
+
+### Nivel 2: Comandos ejecutables (8 principales)
+
+Los 8 comandos slash que avanzan el pipeline de forma lineal y que invoca el usuario:
+
+1. `/sdd.descubrir` — extrae requisitos brutos del usuario
+2. `/sdd.interpretar` — genera IR estructurado (confidence score)
+3. `/sdd.diseñar` — crea ProductDesign
+4. `/sdd.especificar` — genera spec.md con criterios de aceptación
+5. `/sdd.planificar` — diseña plan técnico detallado
+6. `/sdd.tareas` — desglosa en tareas atómicas
+7. `/sdd.implementar` — ejecuta tareas con agentes paralelos
+8. `/sdd.desplegar` — lleva a producción
+
+**Nota:** `/sdd.aclarar` es un comando condicional que ramifica desde `/sdd.especificar` cuando hay ambigüedades.
+
+### Nivel 3: Estados de máquina (11 totales)
+
+Los 11 valores posibles de `estado.json → pipeline_step`, que registran el progreso exacto del proyecto:
+
+```
+idea 
+  ↓
+discovery (después de /sdd.descubrir)
+  ↓
+ir (después de /sdd.interpretar)
+  ↓
+diseño (después de /sdd.diseñar)
+  ↓
+spec (después de /sdd.especificar)
+  ↓
+aclaracion (si hay ambigüedades; regresa a spec después de /sdd.aclarar)
+  ↓
+plan (después de /sdd.planificar)
+  ↓
+tareas (después de /sdd.tareas)
+  ↓
+codigo (durante /sdd.implementar)
+  ↓
+verificacion (durante /sdd.verificar; puede regre sar a spec si falla)
+  ↓
+despliegue (después de /sdd.desplegar)
+  ↓
+[finalizado]
+```
+
+### Cuándo usamos cada término
+
+- **"Etapas"** — cuando hablamos de nivel conceptual (especificación, diseño, implementación, etc.)
+- **"Comandos"** — cuando hablamos de lo que invoca el usuario (`/sdd.especificar`, etc.)
+- **"Estados"** — cuando debuggeamos o consultamos `estado.json`
+- **"Pipeline"** — cuando nos referimos al sistema completo (ambiguo, pero generalmente significa Nivel 2)
+
+---
+
 ## El pipeline de etapas
 
 El **pipeline** es la secuencia ordenada de transformaciones que llevan una idea a un producto desplegado. Cada etapa tiene:

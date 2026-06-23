@@ -262,7 +262,7 @@ function validate(filePath, content, conv, ext) {
   if (conv.quoteStyle && [".js",".ts",".jsx",".tsx",".mjs",".cjs"].includes(ext)) {
     const wrong = conv.quoteStyle === "single"
       ? lines.filter((l,i) => i < 200 && /"[^"]*"/.test(l) && !l.includes("//") && !l.trim().startsWith("*")).length
-      : lines.filter((l,i) => i < 200 && /'[^']*'/.test(l) && !l.includes("//") && !l.trim().startsWith("*")).test;
+      : lines.filter((l,i) => i < 200 && /'[^']*'/.test(l) && !l.includes("//") && !l.trim().startsWith("*")).length;
     if (wrong > 5) {
       const expected = conv.quoteStyle === "single" ? "comillas simples" : "comillas dobles";
       warnings.push(`comillas: el proyecto usa ${expected} pero se encontraron ${wrong} líneas con el estilo opuesto`);

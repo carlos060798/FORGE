@@ -2,6 +2,8 @@
 
 FORGE es un **framework de Desarrollo Guiado por Especificaciones (SDD)** que corre completamente dentro de [Claude Code](https://claude.ai/code). Provee un pipeline estructurado, un equipo de 14 agentes de IA especializados, memoria persistente de proyecto y un conjunto de restricciones constitucionales, para que construir software desde una idea en lenguaje natural sea un proceso repetible y auditable, no una conversación improvisada.
 
+**Nota:** Si encuentras términos poco claros (SDD, agente, comando, skill, hook, pipeline, etapa), consulta el [Glosario](GLOSARIO.md) para definiciones canónicas.
+
 ---
 
 ## El problema que resuelve FORGE
@@ -30,10 +32,10 @@ No es un proceso separado. No es un servicio web. No es un wrapper alrededor de 
 
 Concretamente, FORGE instala:
 
-- **38 comandos slash** (archivos `.md` en `.claude/commands/`) — las etapas del pipeline y operaciones de utilidad
-- **14 definiciones de agentes** (archivos `.md` en `.claude/agents/`) — prompts de sistema específicos por rol con restricciones de herramientas
-- **29 skills** (archivos `.md` en `.claude/skills/`) — capacidades reutilizables invocadas por los comandos
-- **3 hooks de runtime** (archivos `.js` en `.claude/hooks/`) — guardia PreToolUse, memoria PostToolUse, convenciones PostToolUse
+- **39 [comandos](GLOSARIO.md#comando) slash** (archivos `.md` en `.claude/commands/`) — las etapas del pipeline y operaciones de utilidad
+- **14 definiciones de [agentes](GLOSARIO.md#agente)** (archivos `.md` en `.claude/agents/`) — prompts de sistema específicos por rol con restricciones de herramientas
+- **30 [skills](GLOSARIO.md#skill)** (archivos `.md` en `.claude/skills/`) — capacidades reutilizables invocadas por los comandos
+- **3 [hooks](GLOSARIO.md#hook) de runtime** (archivos `.js` en `.claude/hooks/`) — guardia PreToolUse, memoria PostToolUse, convenciones PostToolUse
 - **Un directorio de estado del proyecto** (`.sdd/`) — almacenamiento duradero para todos los artefactos del pipeline
 
 ---
@@ -102,7 +104,7 @@ FORGE está organizado en seis capas:
 |------|-----------|
 | **L0 — Modelos** | Claude Opus, Sonnet, Haiku; OpenAI/Google opcionales vía variables de entorno |
 | **L1 — Memoria** | `.sdd/memoria/` — archivos Markdown por agente o SQLite |
-| **L2 — Interfaz** | 38 comandos, 29 skills — la API del pipeline |
+| **L2 — Interfaz** | 39 comandos, 30 skills — la API del pipeline |
 | **L3 — Herramientas** | Herramientas nativas de Claude Code: Read, Write, Bash, Task |
 | **L4 — Orquestación** | 14 agentes despachados secuencialmente o en paralelo |
 | **L5 — Gobernanza** | 3 hooks: pre-tool-guard, agent-memory, post-write-conventions |

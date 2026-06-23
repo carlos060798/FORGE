@@ -5,8 +5,22 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 export const SCHEMA_VERSION = "1.0" as const;
+
+// Transiciones válidas del pipeline — previene saltos de etapa que omitan pasos obligatorios
+const PIPELINE_TRANSITIONS: Record<NonNullable<ForgeEstado['pipeline_step']>, NonNullable<ForgeEstado['pipeline_step']>[]> = {
+  idea:        ['discovery'],
+  discovery:   ['ir'],
+  ir:          ['design'],
+  design:      ['spec'],
+  spec:        ['plan'],
+  plan:        ['tasks'],
+  tasks:       ['code'],
+  code:        ['done'],
+  done:        [],
+};
 
 export interface ForgeEstado {
   // Schema contract — required in all new states
@@ -48,6 +62,7 @@ export class ProjectMemory {
   private sddDir: string;
   private _cache: ForgeEstado | null = null;
   private _cacheMtime: number = 0;
+  private _cacheSize: number = 0;
 
   constructor(cwd: string = process.cwd()) {
     this.sddDir = path.join(cwd, '.sdd');
@@ -61,13 +76,14 @@ export class ProjectMemory {
       return {};
     }
     try {
-      const mtime = fs.statSync(this.estadoPath).mtimeMs;
-      if (this._cache !== null && mtime === this._cacheMtime) {
+      const stat = fs.statSync(this.estadoPath);
+      if (this._cache !== null && stat.mtimeMs === this._cacheMtime && stat.size === this._cacheSize) {
         return this._cache;
       }
       const parsed = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
       this._cache = parsed;
-      this._cacheMtime = mtime;
+      this._cacheMtime = stat.mtimeMs;
+      this._cacheSize = stat.size;
       return this._cache!;
     } catch {
       return {};
@@ -83,7 +99,10 @@ export class ProjectMemory {
       ultima_actualizacion: new Date().toISOString(),
     };
     this.ensureSddDir();
-    fs.writeFileSync(this.estadoPath, JSON.stringify(updated, null, 2));
+    // Escritura atómica: tmp → rename para evitar corrupción si el proceso muere en medio
+    const tmpPath = this.estadoPath + '.tmp';
+    fs.writeFileSync(tmpPath, JSON.stringify(updated, null, 2));
+    fs.renameSync(tmpPath, this.estadoPath);
     this._cache = null;
     return updated;
   }
@@ -131,7 +150,9 @@ export class ProjectMemory {
       ultima_actualizacion: new Date().toISOString(),
     };
     this.ensureSddDir();
-    fs.writeFileSync(this.estadoPath, JSON.stringify(migrado, null, 2));
+    const tmpPath = this.estadoPath + '.tmp';
+    fs.writeFileSync(tmpPath, JSON.stringify(migrado, null, 2));
+    fs.renameSync(tmpPath, this.estadoPath);
     this._cache = null;
     return migrado;
   }
@@ -139,7 +160,7 @@ export class ProjectMemory {
   saveIR(ir: object): string {
     this.ensureSddDir();
     const irPath = path.join(this.sddDir, 'ir.json');
-    fs.writeFileSync(irPath, JSON.stringify(ir, null, 2));
+    this.writeAtomic(irPath, JSON.stringify(ir, null, 2));
     this.update({ ir_generado: true, ir_path: '.sdd/ir.json' });
     return irPath;
   }
@@ -147,7 +168,7 @@ export class ProjectMemory {
   saveProductDesign(pd: object): string {
     this.ensureSddDir();
     const pdPath = path.join(this.sddDir, 'product-design.json');
-    fs.writeFileSync(pdPath, JSON.stringify(pd, null, 2));
+    this.writeAtomic(pdPath, JSON.stringify(pd, null, 2));
     this.update({
       product_design_generado: true,
       product_design_path: '.sdd/product-design.json',
@@ -171,7 +192,20 @@ export class ProjectMemory {
     return JSON.parse(fs.readFileSync(pdPath, 'utf8'));
   }
 
-  setPipelineStep(step: ForgeEstado['pipeline_step']): void {
+  setPipelineStep(step: ForgeEstado['pipeline_step'], force = false): void {
+    if (!force && step) {
+      const current = this.read().pipeline_step;
+      if (current && current !== step) {
+        const allowed = PIPELINE_TRANSITIONS[current] ?? [];
+        if (!allowed.includes(step)) {
+          throw new Error(
+            `Transición de pipeline inválida: "${current}" → "${step}". ` +
+            `Pasos permitidos desde "${current}": [${allowed.join(', ') || 'ninguno'}]. ` +
+            `Usa force=true para forzar si es intencional.`
+          );
+        }
+      }
+    }
     this.update({ pipeline_step: step });
   }
 
@@ -202,6 +236,13 @@ export class ProjectMemory {
     if (!fs.existsSync(this.sddDir)) {
       fs.mkdirSync(this.sddDir, { recursive: true });
     }
+  }
+
+  // Escritura atómica: escribe a .tmp y luego rename para evitar corrupción parcial
+  private writeAtomic(filePath: string, content: string): void {
+    const tmp = filePath + '.tmp';
+    fs.writeFileSync(tmp, content);
+    fs.renameSync(tmp, filePath);
   }
 }
 

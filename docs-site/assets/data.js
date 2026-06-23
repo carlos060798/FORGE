@@ -147,7 +147,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <p class="lead">Lo que FORGE puede hacer hoy, con qué madurez y qué componentes están involucrados.</p>
 
       <h2>Pipeline SDD+TDD completo</h2>
-      <p>38 comandos que implementan el ciclo completo de desarrollo de software, desde la idea hasta el despliegue.</p>
+      <p>39 comandos que implementan el ciclo completo de desarrollo de software, desde la idea hasta el despliegue.</p>
 
       <table>
         <thead><tr><th>Fase</th><th>Comando</th><th>Artefacto</th><th>Estado</th></tr></thead>
@@ -204,7 +204,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <p class="lead">What FORGE can do today, at what maturity level, and which components are involved.</p>
 
       <h2>Complete SDD+TDD Pipeline</h2>
-      <p>38 commands implementing the full software development cycle, from idea to deployment.</p>
+      <p>39 commands implementing the full software development cycle, from idea to deployment.</p>
 
       <table>
         <thead><tr><th>Phase</th><th>Command</th><th>Artifact</th><th>Status</th></tr></thead>
@@ -327,7 +327,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <table>
         <thead><tr><th>Área</th><th>Estado</th><th>Justificación</th></tr></thead>
         <tbody>
-          <tr><td>Pipeline SDD (38 comandos)</td><td>✅ Producción</td><td>Implementación completa, handoffs probados, gates funcionales</td></tr>
+          <tr><td>Pipeline SDD (39 comandos)</td><td>✅ Producción</td><td>Implementación completa, handoffs probados, gates funcionales</td></tr>
           <tr><td>14 agentes especializados</td><td>✅ Producción</td><td>Frontmatter estable, memoria operativa, restricciones implementadas</td></tr>
           <tr><td>Guardrails (pre-tool-guard)</td><td>✅ Producción</td><td>Patrones de detección exhaustivos, configurables, probados</td></tr>
           <tr><td>Memoria persistente (Markdown)</td><td>✅ Producción</td><td>Auto-compresión, índice invertido, recuperación selectiva</td></tr>
@@ -361,7 +361,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <table>
         <thead><tr><th>Area</th><th>Status</th><th>Justification</th></tr></thead>
         <tbody>
-          <tr><td>SDD Pipeline (38 commands)</td><td>✅ Production</td><td>Complete implementation, tested handoffs, functional gates</td></tr>
+          <tr><td>SDD Pipeline (39 commands)</td><td>✅ Production</td><td>Complete implementation, tested handoffs, functional gates</td></tr>
           <tr><td>14 specialized agents</td><td>✅ Production</td><td>Stable frontmatter, operative memory, restrictions implemented</td></tr>
           <tr><td>Guardrails (pre-tool-guard)</td><td>✅ Production</td><td>Exhaustive detection patterns, configurable, tested</td></tr>
           <tr><td>Persistent memory (Markdown)</td><td>✅ Production</td><td>Auto-compression, inverted index, selective retrieval</td></tr>
@@ -1381,7 +1381,7 @@ version: 1.0.0
       <ul>
         <li><strong>WebSockets en dashboard</strong> — Evaluar Server-Sent Events (SSE) como alternativa zero-dep intermedia al polling</li>
         <li><strong>Marketplace de templates</strong> — El formato ya es estable; crear repositorio de templates de la comunidad</li>
-        <li><strong>Documentación bilingüe de comandos SDD</strong> — Los 38 comandos están en español; añadir soporte EN para la comunidad internacional</li>
+        <li><strong>Documentación bilingüe de comandos SDD</strong> — Los 39 comandos están en español; añadir soporte EN para la comunidad internacional</li>
       </ul>
 
       <h2>Para contribuir</h2>

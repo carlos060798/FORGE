@@ -10,6 +10,20 @@ Esta guía te lleva de cero a un pipeline FORGE funcionando en menos de 10 minut
 - **Claude Code** — [instrucciones de instalación](https://claude.ai/code)
 - Un directorio de proyecto (existente o nuevo)
 
+### Matriz de compatibilidad Node.js
+
+| Versión Node.js | Soportada | Backend recomendado | Características |
+|---|---|---|---|
+| 16.x o anterior | ❌ No | — | FORGE requiere Node.js ≥ 18 |
+| 18.x - 20.x | ✅ Sí | **Markdown** (únicamente) | SQLite no disponible |
+| 21.x - 22.4 | ✅ Sí | **Markdown** (únicamente) | SQLite no disponible |
+| 22.5+ | ✅ Sí | **Markdown o SQLite** | SQLite auto-detectado si está instalado |
+| 23.x+ | ✅ Sí | **Markdown o SQLite** | Mismo soporte que 22.5+ |
+
+**Notas:**
+- Si especificas `backend: sqlite` en `sdd.config.yaml` pero tu Node.js es <22.5, FORGE caerá automáticamente a Markdown y registrará un warning.
+- La mayoría de usuarios deberían dejar `backend: markdown` (predeterminado) a menos que explícitamente necesiten SQLite para proyectos muy grandes.
+
 ---
 
 ## Paso 1 — Instalar FORGE
@@ -25,9 +39,9 @@ FORGE se instala en el directorio `.claude/` de tu proyecto:
 ```
 tu-proyecto/
 ├── .claude/
-│   ├── commands/        ← 38 comandos slash
+│   ├── commands/        ← 39 comandos slash
 │   ├── agents/          ← 14 definiciones de agentes
-│   ├── skills/          ← 29 skills
+│   ├── skills/          ← 30 skills
 │   └── hooks/           ← 3 hooks de runtime
 └── .sdd/
     ├── sdd.config.yaml  ← tu configuración

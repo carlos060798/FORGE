@@ -33,7 +33,7 @@ FORGE es un **plugin** — corre dentro de Claude Code, no junto a él. No exist
 graph BT
     L0["L0 — Modelos base\nClaude Opus · Sonnet · Haiku\nOpenAI GPT-4o · Google Gemini"]
     L1["L1 — Memoria y persistencia\n.sdd/memoria/ · estado.json · consumo.jsonl\nBackend Markdown o SQLite (Node ≥22.5)"]
-    L2["L2 — Interfaz agente-computadora\n38 Comandos · 29 Skills\nAPI del pipeline"]
+    L2["L2 — Interfaz agente-computadora\n39 Comandos · 30 Skills\nAPI del pipeline"]
     L3["L3 — Herramientas nativas\nRead · Write · Edit · Bash · Task\n(integradas en Claude Code)"]
     L4["L4 — Orquestación\n14 Agentes especializados\nDespacho secuencial + paralelo"]
     L5["L5 — Gobernanza\npre-tool-guard · agent-memory\npost-write-conventions"]
@@ -62,7 +62,7 @@ La capa de memoria almacena: registros de actividad por agente, la máquina de e
 
 ### L2 — Interfaz Agente-Computadora (ACI)
 
-Los 38 comandos y 29 skills forman la API pública de FORGE. Los comandos son archivos `.md` — prompts estructurados que definen una etapa del pipeline. Las skills son capacidades reutilizables que los comandos invocan. Ambos son Markdown; ninguno es código compilado.
+Los 39 comandos y 30 skills forman la API pública de FORGE. Los comandos son archivos `.md` — prompts estructurados que definen una etapa del pipeline. Las skills son capacidades reutilizables que los comandos invocan. Ambos son Markdown; ninguno es código compilado.
 
 ### L3 — Herramientas nativas
 
@@ -119,8 +119,8 @@ graph LR
     CLI["cli/index.js\nforge / sdd-es"] --> PM["core/project-memory.ts\nForgeEstado · IR · ProductDesign"]
     CLI --> MR["claude-hooks/model-registry.js\nDetección de proveedores · Enrutamiento por nivel"]
 
-    CMD["commands/*.md\n38 comandos del pipeline"] --> PM
-    CMD --> SK["skills/*/SKILL.md\n29 skills reutilizables"]
+    CMD["commands/*.md\n39 comandos del pipeline"] --> PM
+    CMD --> SK["skills/*/SKILL.md\n30 skills reutilizables"]
     CMD --> AG["agents/*.md\n14 agentes especializados"]
 
     AG --> MR

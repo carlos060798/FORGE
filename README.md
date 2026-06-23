@@ -15,7 +15,9 @@
 
 ---
 
-FORGE es un **framework de Desarrollo Guiado por Especificaciones (SDD)** que corre dentro de [Claude Code](https://claude.ai/code). Convierte una idea en lenguaje natural en un producto implementado, probado y desplegado, orquestando un equipo de 14 agentes especializados a través de un pipeline estructurado de 38 comandos.
+**FORGE** es un framework de Desarrollo Guiado por Especificaciones (SDD) para Claude Code. Convierte ideas en productos implementados, probados y desplegados — orquestando un equipo de 14 agentes especializados a través de un pipeline estructurado de 39 comandos.
+
+→ [Ver definición completa en Introducción](docs/introduction.md#qué-es-forge)
 
 ```
 Tú: "Necesito una API REST con autenticación JWT y PostgreSQL"
@@ -64,7 +66,7 @@ npx forge-sdd init
 
 ## Cómo funciona
 
-FORGE implementa un **pipeline de 10 etapas** que mapea directamente el proceso de un equipo profesional de software:
+FORGE implementa un **pipeline de 8 etapas principales** que mapea directamente el proceso de un equipo profesional de software:
 
 ```
 idea → descubrimiento → IR → diseño → spec → plan → tareas → código → verificación → despliegue
@@ -119,20 +121,9 @@ npx forge-sdd init --preset enterprise  # máximas verificaciones de calidad
 
 ## El pipeline de un vistazo
 
-| Etapa | Comando | Salida |
-|-------|---------|--------|
-| Descubrimiento | `/sdd.descubrir` | Captura estructurada de intención |
-| Interpretación | `/sdd.interpretar` | `ir.json` — IR con puntuación de confianza |
-| Diseño | `/sdd.diseñar` | `product-design.json` — pantallas, stack |
-| Especificación | `/sdd.especificar` | `spec.md` — criterios de aceptación |
-| Aclaración | `/sdd.aclarar` | Ambigüedades resueltas |
-| Planificación | `/sdd.planificar` | `plan.md` — plan técnico |
-| Desglose de tareas | `/sdd.tareas` | `tareas.md` — tareas atómicas con agentes |
-| Implementación | `/sdd.implementar` | Código, tests, commits |
-| Verificación | `/sdd.verificar` | `verificacion.json` — pasa/falla |
-| Despliegue | `/sdd.desplegar` | Endpoint activo + health check |
+8 comandos principales: descubrimiento → interpretación → diseño → especificación → planificación → tareas → implementación → verificación → despliegue
 
-→ Ver [Flujos de trabajo](docs/workflows.md) para documentación detallada de cada etapa.
+→ [Ver documentación completa de cada etapa en Flujos de trabajo](docs/workflows.md)
 
 ---
 
@@ -140,14 +131,9 @@ npx forge-sdd init --preset enterprise  # máximas verificaciones de calidad
 
 FORGE despacha trabajo a 14 agentes especializados. Cada agente tiene un rol fijo, un modelo configurado y acceso solo a las herramientas que necesita.
 
-| Nivel | Agentes | Modelo predeterminado |
-|-------|---------|----------------------|
-| Estratégico | `arquitecto`, `critico`, `revisor`, `seguridad` | Claude Opus |
-| Diseño | `product-designer`, `asesor-datos` | Claude Opus |
-| Implementación | `desarrollador-backend`, `desarrollador-frontend`, `tester`, `operaciones` | Claude Sonnet |
-| Soporte | `disenador-api`, `architecture-designer`, `investigador`, `documentador` | Claude Sonnet |
+**Niveles:** Estratégico (Opus), Diseño (Opus), Implementación (Sonnet), Soporte (Sonnet)
 
-→ Ver [Agentes](docs/agents.md) para perfiles completos.
+→ [Ver tabla completa y perfiles en Agentes](docs/agents.md#tabla-de-referencia-rápida)
 
 ---
 
@@ -212,7 +198,7 @@ FORGE está diseñado para extenderse sin modificar su núcleo:
 | [Conceptos fundamentales](docs/core-concepts.md) | SDD, IR, pipeline, estado, memoria |
 | [Runtime](docs/runtime.md) | Hooks, guardias, memoria, registro de modelos |
 | [Agentes](docs/agents.md) | Los 14 agentes, roles, modelos, herramientas |
-| [Herramientas](docs/tools.md) | Biblioteca de skills — las 29 skills |
+| [Herramientas](docs/tools.md) | Biblioteca de skills — las 30 skills |
 | [Flujos de trabajo](docs/workflows.md) | Etapas del pipeline, flags, ejemplos |
 | [Configuración](docs/configuration.md) | Referencia de sdd.config.yaml |
 | [Extender FORGE](docs/extending-forge.md) | Agentes, comandos y hooks personalizados |

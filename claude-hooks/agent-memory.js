@@ -24,7 +24,7 @@
 import { createInterface } from "node:readline";
 import {
   existsSync, mkdirSync, appendFileSync, statSync,
-  readFileSync, writeFileSync, renameSync,
+  readFileSync, writeFileSync, renameSync, unlinkSync,
 } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { homedir } from "node:os";
@@ -44,74 +44,10 @@ async function registry() {
   return _registry;
 }
 
-// ── Configuración ────────────────────────────────────────────────────────────
+// ── Configuración (importada desde módulo compartido) ─────────────────────────
+import { leerSddConfig, leerMaxMBConsumo } from "./shared/config.js";
 
-function leerForgeConfig(cwd) {
-  const configPath = join(cwd, "forge.config.json");
-  const defaults = {
-    memoria: { umbral_compresion_bytes: 40_000, max_archivos_agente: 3 },
-    routing: { usar_complexity_ir: true, complexity_umbral_opus: "high" },
-    guardrails: { write_safety: true, verify_local_imports: false },
-    ignore_patterns: [],
-  };
-  if (!existsSync(configPath)) return defaults;
-  try {
-    const raw = readFileSync(configPath, "utf8");
-    const parsed = JSON.parse(raw);
-    return {
-      memoria: { ...defaults.memoria, ...(parsed.memoria ?? {}) },
-      routing: { ...defaults.routing, ...(parsed.routing ?? {}) },
-      guardrails: { ...defaults.guardrails, ...(parsed.guardrails ?? {}) },
-      ignore_patterns: parsed.ignore_patterns ?? [],
-    };
-  } catch { return defaults; }
-}
-
-// Auto-detecta si Node >= 22.5 tiene node:sqlite disponible
-function nodeSoportaSQLite() {
-  try {
-    const [major, minor] = process.versions.node.split(".").map(Number);
-    return major > 22 || (major === 22 && minor >= 5);
-  } catch { return false; }
-}
-
-function leerConfig(cwd) {
-  const forgeConfig = leerForgeConfig(cwd);
-  const configPath = join(cwd, ".sdd", "sdd.config.yaml");
-  // Por defecto: SQLite si Node >= 22.5, Markdown si no
-  const backendDefault = nodeSoportaSQLite() ? "sqlite" : "markdown";
-  const defaults = {
-    umbral_bytes: forgeConfig.memoria.umbral_compresion_bytes,
-    backend: backendDefault,
-    recuperacion_por_defecto: 10,
-  };
-  if (!existsSync(configPath)) return defaults;
-  try {
-    const yaml = readFileSync(configPath, "utf8");
-    const umbral = yaml.match(/^[ \t]+umbral_bytes:\s*(\d+)/m);
-    const backend = yaml.match(/^[ \t]+backend:\s*"?(sqlite|markdown)"?/m);
-    const recup = yaml.match(/^[ \t]+recuperacion_por_defecto:\s*(\d+)/m);
-    return {
-      umbral_bytes: umbral ? parseInt(umbral[1], 10) : defaults.umbral_bytes,
-      // Si el usuario especificó backend explícitamente en YAML, respetarlo
-      // Si no, usar el default auto-detectado (sqlite en Node >= 22.5)
-      backend: backend ? backend[1] : defaults.backend,
-      recuperacion_por_defecto: recup ? parseInt(recup[1], 10) : defaults.recuperacion_por_defecto,
-    };
-  } catch { return defaults; }
-}
-
-const CONFIG = leerConfig(process.cwd());
-
-function leerMaxMBConsumo(cwd) {
-  const configPath = join(cwd, ".sdd", "sdd.config.yaml");
-  if (!existsSync(configPath)) return 10;
-  try {
-    const yaml = readFileSync(configPath, "utf8");
-    const m = yaml.match(/consumo_max_mb:\s*(\d+)/);
-    return m ? parseInt(m[1], 10) : 10;
-  } catch { return 10; }
-}
+const CONFIG = leerSddConfig(process.cwd());
 
 // ── Lectura de stdin ─────────────────────────────────────────────────────────
 
@@ -188,7 +124,7 @@ function rotarJSONL(rutaJSONL, maxMB = 10) {
     const b3 = rutaJSONL + ".3";
     const b2 = rutaJSONL + ".2";
     const b1 = rutaJSONL + ".1";
-    if (existsSync(b3)) { try { renameSync(b3, rutaJSONL + ".tmp_delete"); } catch { /* Silencioso */ } }
+    if (existsSync(b3)) { try { unlinkSync(b3); } catch { /* Silencioso */ } }
     if (existsSync(b2)) { try { renameSync(b2, b3); } catch { /* Silencioso */ } }
     if (existsSync(b1)) { try { renameSync(b1, b2); } catch { /* Silencioso */ } }
     renameSync(rutaJSONL, b1);
@@ -213,7 +149,10 @@ async function registrarLedger(cwd, agente, toolName, archivoModificado, conteni
       effort_level: tier ?? null,
     });
     appendFileSync(ledgerFile, linea + "\n", "utf8");
-  } catch { /* Silencioso */ }
+  } catch (err) {
+    // Fallo operativo: alertar pero nunca bloquear la ejecución
+    process.stderr.write(`⚠️  [agent-memory] Error registrando ledger: ${err?.message ?? err}\n`);
+  }
 }
 
 function registrarMutacion(cwd, agente, archivoModificado, toolName) {
@@ -229,7 +168,9 @@ function registrarMutacion(cwd, agente, archivoModificado, toolName) {
       tipo: toolName === "Edit" ? "partial" : "full",
     });
     appendFileSync(mutFile, linea + "\n", "utf8");
-  } catch { /* Silencioso */ }
+  } catch (err) {
+    process.stderr.write(`⚠️  [agent-memory] Error registrando mutación: ${err?.message ?? err}\n`);
+  }
 }
 
 // ── Índice invertido JSONL ────────────────────────────────────────────────────
@@ -241,6 +182,7 @@ function actualizarIndice(cwd, agente, archivo, resumen, bytes) {
   const indiceFile = join(memoriaDir, "indice.jsonl");
   try {
     if (!existsSync(memoriaDir)) mkdirSync(memoriaDir, { recursive: true });
+    rotarJSONL(indiceFile, leerMaxMBConsumo(cwd));
     const linea = JSON.stringify({
       ts: new Date().toISOString(),
       fecha: new Date().toISOString().slice(0, 10),
@@ -336,16 +278,16 @@ function escribirMemoriaSQLite(memoriaDir, agente, archivo, resumen, bytes) {
       "SELECT COUNT(*) as n FROM entradas WHERE agente = ? AND archivo = ?"
     ).get(agente, archivo);
     if (count.n > 10) {
-      // Conserva solo las 5 más recientes por archivo+agente
-      db.exec(`
-        DELETE FROM entradas
-        WHERE agente = '${agente.replace(/'/g, "''")}' AND archivo = '${archivo.replace(/'/g, "''")}'
-        AND id NOT IN (
-          SELECT id FROM entradas
-          WHERE agente = '${agente.replace(/'/g, "''")}' AND archivo = '${archivo.replace(/'/g, "''")}'
-          ORDER BY ts DESC LIMIT 5
-        )
-      `);
+      // Conserva solo las 5 más recientes por archivo+agente (usando subquery con parámetros)
+      const ids = db.prepare(
+        "SELECT id FROM entradas WHERE agente = ? AND archivo = ? ORDER BY ts DESC LIMIT 5"
+      ).all(agente, archivo).map(r => r.id);
+      if (ids.length > 0) {
+        const placeholders = ids.map(() => "?").join(",");
+        db.prepare(
+          `DELETE FROM entradas WHERE agente = ? AND archivo = ? AND id NOT IN (${placeholders})`
+        ).run(agente, archivo, ...ids);
+      }
     }
 
     db.close();
@@ -488,12 +430,21 @@ async function main(raw) {
   if (CONFIG.backend === "sqlite") {
     const ok = escribirMemoriaSQLite(memoriaDir, agente, archivoModificado, resumen, bytes);
     if (!ok) {
-      // Fallback a markdown si SQLite falla (Node < 22.5 o error de runtime en Node 22.5+)
-      process.stderr.write(`⚠️  [agent-memory] SQLite falló, usando markdown como fallback (Node ${process.versions.node})\n`);
-      escribirMemoriaMarkdown(cwd, agente, archivoModificado, resumen);
+      // Fallback a markdown si SQLite falla — siempre alertar para que el usuario sepa
+      process.stderr.write(
+        `⚠️  [agent-memory] SQLite no disponible (Node ${process.versions.node}), ` +
+        `usando markdown como fallback. Para SQLite actualiza a Node >=22.5.\n`
+      );
+      const mdOk = escribirMemoriaMarkdown(cwd, agente, archivoModificado, resumen);
+      if (!mdOk) {
+        process.stderr.write(`❌ [agent-memory] Error crítico: no se pudo persistir memoria de ${agente}. Verifica permisos de escritura en .sdd/memoria/\n`);
+      }
     }
   } else {
-    escribirMemoriaMarkdown(cwd, agente, archivoModificado, resumen);
+    const mdOk = escribirMemoriaMarkdown(cwd, agente, archivoModificado, resumen);
+    if (!mdOk) {
+      process.stderr.write(`❌ [agent-memory] Error crítico: no se pudo persistir memoria de ${agente}. Verifica permisos de escritura en .sdd/memoria/\n`);
+    }
   }
 
   process.stderr.write(`🧠 [agent-memory] ${agente} → ${archivoModificado}\n`);

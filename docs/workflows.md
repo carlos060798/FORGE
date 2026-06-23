@@ -2,6 +2,8 @@
 
 Este documento describe cada etapa del pipeline de FORGE, los comandos disponibles, sus flags, entradas, salidas y cuándo usarlos.
 
+**Conceptos previos:** Si no estás familiarizado con SDD (Spec-Driven Development), pipeline de etapas, o máquina de estados, [lee primero Conceptos Fundamentales](core-concepts.md).
+
 ---
 
 ## El pipeline completo

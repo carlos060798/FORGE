@@ -14,31 +14,11 @@
  */
 
 import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, appendFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 
-// ── forge.config.json ────────────────────────────────────────────────────────
-
-function leerForgeConfig(cwd) {
-  const configPath = join(cwd, "forge.config.json");
-  const defaults = {
-    memoria: { umbral_compresion_bytes: 40_000, max_archivos_agente: 3 },
-    routing: { usar_complexity_ir: true, complexity_umbral_opus: "high" },
-    guardrails: { write_safety: true, verify_local_imports: false },
-    ignore_patterns: [],
-  };
-  if (!existsSync(configPath)) return defaults;
-  try {
-    const raw = readFileSync(configPath, "utf8");
-    const parsed = JSON.parse(raw);
-    return {
-      memoria: { ...defaults.memoria, ...(parsed.memoria ?? {}) },
-      routing: { ...defaults.routing, ...(parsed.routing ?? {}) },
-      guardrails: { ...defaults.guardrails, ...(parsed.guardrails ?? {}) },
-      ignore_patterns: parsed.ignore_patterns ?? [],
-    };
-  } catch { return defaults; }
-}
+// ── Configuración (importada desde módulo compartido) ─────────────────────────
+import { leerForgeConfig } from "./shared/config.js";
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
 
@@ -82,10 +62,12 @@ const PROHIBIDOS = [
   /rm\s+.*C:\\Windows\\/i,
   /rm\s+.*C:\\Program Files\\/i,
 
-  // Exposición de secrets
-  /cat\s+.*\.env(?!\.example|\.template)/,
-  /type\s+.*\.env(?!\.example|\.template)/i,  // Windows
-  /Get-Content\s+.*\.env(?!\.example|\.template)/i,
+  // Exposición de archivos .env (cubre variantes de nombre y de comando de lectura)
+  // Permitidos: .env.example, .env.template, .env.sample
+  /\b(?:cat|less|more|head|tail|bat|nl|tac|view)\s+.*\.env(?!\.(?:example|template|sample)\b)/,
+  /\btype\s+.*\.env(?!\.(?:example|template|sample)\b)/i,           // Windows cmd
+  /\bGet-Content\s+.*\.env(?!\.(?:example|template|sample)\b)/i,    // PowerShell
+  /\bgrep\b.*\.env(?!\.(?:example|template|sample)\b)/,             // grep sobre .env
 
   // Permisos inseguros
   /chmod\s+777\b/,                             // chmod 777 (todos los permisos)
@@ -140,6 +122,15 @@ function main(raw) {
   const toolName = event?.tool_name ?? "";
   const toolInput = event?.tool_input ?? {};
   const agentName = process.env.CLAUDE_AGENT_NAME ?? "";
+
+  // AG-01: Advertir si la variable de identidad del agente no está disponible.
+  // Cuando está vacía, los guardias de agentes read-only quedan desactivados.
+  if (!agentName && (toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit")) {
+    process.stderr.write(
+      `⚠️  [pre-tool-guard] CLAUDE_AGENT_NAME no disponible — los guardias de agentes read-only están desactivados.\n` +
+      `   Actualiza Claude Code a la versión que expone esta variable de entorno en hooks.\n`
+    );
+  }
 
   // ── 0. Write/Edit/MultiEdit: permisos por agente + secrets en contenido ─
   const isWriteTool = toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit";

@@ -804,15 +804,21 @@ function cmdDoctor() {
     aviso("CLAUDE.md: ⚠️ no existe en el directorio actual — ejecuta 'forge init'");
   }
 
-  // ── Providers LLM ──────────────────────────────────────────────────────────
-  titulo("Verificando providers LLM...");
-  const hasOpenAI  = !!process.env.OPENAI_API_KEY;
-  const hasGoogle  = !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
-  info("Claude Code (Anthropic)  ✅ activo — provider principal de FORGE");
-  if (hasOpenAI)  info("OpenAI                   ✅ disponible — registro en consumo.jsonl (routing real en v5.1)");
-  else            aviso("OpenAI                   ⚠️  no configurado (opcional) — OPENAI_API_KEY no encontrada");
-  if (hasGoogle)  info("Google / Gemini          ✅ disponible — registro en consumo.jsonl (routing real en v5.1)");
-  else            aviso("Google / Gemini          ⚠️  no configurado (opcional) — GOOGLE_API_KEY no encontrada");
+  // ── CLAUDE_AGENT_NAME (AG-01) ──────────────────────────────────────────────
+  titulo("Verificando variable de identidad de agentes...");
+  // Esta variable la inyecta Claude Code en cada hook — determina qué agente ejecuta cada tool.
+  // Si no está disponible, los guardias read-only y la memoria por agente quedan desactivados.
+  const agentNameEnv = process.env.CLAUDE_AGENT_NAME;
+  if (agentNameEnv !== undefined) {
+    info(`CLAUDE_AGENT_NAME disponible ✓ (valor actual: "${agentNameEnv || '<vacío en contexto doctor>'}")`);
+  } else {
+    aviso(
+      "CLAUDE_AGENT_NAME no encontrada en este entorno (normal fuera de un hook activo).\n" +
+      "   Esta variable la inyecta Claude Code automáticamente durante la ejecución de hooks.\n" +
+      "   Si los agentes read-only no están bloqueando escrituras, actualiza Claude Code."
+    );
+  }
+  info("Provider: Claude Code (Anthropic) — provider único de FORGE");
 
   // ── schemaVersion del estado ────────────────────────────────────────────────
   titulo("Verificando esquema .sdd/estado.json...");

@@ -73,7 +73,10 @@ graph TD
 - Generar ADRs para decisiones de alto impacto
 - Revisar el plan técnico producido por otros agentes
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus
+- **Proveedor:** Fijo en Anthropic (no intercambiable con OpenAI o Google)
+- **Versión:** Configurable via `sdd.config.yaml`, pero siempre Opus
+- **Fallback:** Si Anthropic indisponible, FORGE falla con error claro
 
 **Herramientas:** Read, Write (documentos de arquitectura únicamente)
 
@@ -101,7 +104,7 @@ graph TD
 - Evaluar si el alcance del MVP es realista
 - Marcar cuando una spec es ambigua o contradictoria
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus (proveedor fijo en Anthropic, versión configurable en sdd.config.yaml)
 
 **Herramientas:** Read (solo lectura)
 
@@ -128,7 +131,7 @@ graph TD
 - Revisar que la constitución fue respetada durante la implementación
 - Producir un reporte de verificación claro (pasa/falla por criterio)
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus (proveedor fijo en Anthropic, versión configurable en sdd.config.yaml)
 
 **Herramientas:** Read (solo lectura)
 
@@ -152,7 +155,7 @@ graph TD
 - Revisar configuración de CORS, CSP, headers de seguridad
 - Evaluar el modelo de autenticación/autorización
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus (proveedor fijo en Anthropic, versión configurable en sdd.config.yaml)
 
 **Herramientas:** Read (solo lectura)
 
@@ -179,7 +182,7 @@ graph TD
 - Determinar el alcance mínimo viable del MVP
 - Producir el artefacto `product-design.json`
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus (proveedor fijo en Anthropic, versión configurable en sdd.config.yaml)
 
 **Herramientas:** Read, Write
 
@@ -202,7 +205,7 @@ graph TD
 - Revisar consultas para detectar N+1, full table scans, locks
 - Recomendar estrategia de acceso a datos (ORM, query builder, SQL directo)
 
-**Modelo:** Claude Opus (fijo — no configurable)
+**Modelo:** Claude Opus (proveedor fijo en Anthropic, versión configurable en sdd.config.yaml)
 
 **Herramientas:** Read, Write
 

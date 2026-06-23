@@ -1,6 +1,6 @@
 # Herramientas (Skills)
 
-FORGE incluye 29 skills: capacidades reutilizables que los comandos invocan para realizar tareas específicas. Cada skill vive en su propia carpeta dentro de `.claude/skills/` y se define en un archivo `SKILL.md`.
+FORGE incluye 30 skills: capacidades reutilizables que los comandos invocan para realizar tareas específicas. Cada skill vive en su propia carpeta dentro de `.claude/skills/` y se define en un archivo `SKILL.md`.
 
 ---
 
