@@ -1,17 +1,17 @@
 ﻿/* ============================================================
-   FORGE Docs — datos v5.0.0 (bilingüe ES/EN)
+   FORGE Docs — datos v3.0.0 (bilingüe ES/EN)
    12 secciones de documentación oficial
    ============================================================ */
 
 const UI = {
   es: {
-    brand_tag: "v5.0.0",
+    brand_tag: "v3.0.0",
     search_placeholder: "Buscar…",
     search_input_placeholder: "Buscar en la documentación…",
     search_navigate: "navegar",
     search_open: "abrir",
     search_close: "cerrar",
-    footer_text: "FORGE v5.0.0 · Claude Code-native · MIT License",
+    footer_text: "FORGE v3.0.0 · Claude Code-native · MIT License",
     search_no_results: "Sin resultados",
     groups: {
       overview:  "◈ El framework",
@@ -21,13 +21,13 @@ const UI = {
     }
   },
   en: {
-    brand_tag: "v5.0.0",
+    brand_tag: "v3.0.0",
     search_placeholder: "Search…",
     search_input_placeholder: "Search the docs…",
     search_navigate: "navigate",
     search_open: "open",
     search_close: "close",
-    footer_text: "FORGE v5.0.0 · Claude Code-native · MIT License",
+    footer_text: "FORGE v3.0.0 · Claude Code-native · MIT License",
     search_no_results: "No results",
     groups: {
       overview:  "◈ The framework",
@@ -193,7 +193,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
         <li><strong>Observabilidad completa</strong> — <code>consumo.jsonl</code> registra cada acción; dashboard en <code>localhost:3001</code></li>
         <li><strong>Templates de inicio rápido</strong> — <code>api-rest</code>, <code>cli-tool</code>, <code>saas-mvp</code></li>
         <li><strong>Integración CLAUDE.md</strong> — Registro idempotente en el archivo de instrucciones del proyecto</li>
-        <li><strong>26 skills especializadas</strong> — <code>explicame</code>, <code>deploy-vercel</code>, <code>share-progress</code>, y más</li>
+        <li><strong>30 skills especializadas</strong> — <code>explicame</code>, <code>deploy-vercel</code>, <code>share-progress</code>, y más</li>
       </ul>
     `
   },
@@ -600,7 +600,7 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <p>Persiste el contexto de cada agente entre sesiones y mantiene el ledger de observabilidad.</p>
 
       <h3>Selección automática de backend</h3>
-      <p>A partir de v5.0.0, el backend se auto-selecciona según la versión de Node.js. No se requiere configuración:</p>
+      <p>A partir de v3.0.0, el backend se auto-selecciona según la versión de Node.js. No se requiere configuración:</p>
       <table>
         <thead><tr><th>Node.js</th><th>Backend activo</th><th>Consulta</th><th>Storage</th></tr></thead>
         <tbody>
@@ -833,10 +833,10 @@ npx forge init --template saas-mvp</code></pre>
 
       <h2>Qué instala <code>forge init</code></h2>
       <pre><code class="text">.claude/
-  ├── commands/     (38 archivos .md)
+  ├── commands/     (39 archivos .md)
   ├── agents/       (14 archivos .md)
-  ├── skills/       (26 directorios)
-  └── claude-hooks/ (7 archivos .js)
+  ├── skills/       (30 directorios)
+  └── claude-hooks/ (8 archivos .js)
 
 .sdd/
   ├── estado.json
@@ -1531,12 +1531,12 @@ Decisions stored in memory/ under "jwt-postgres-api"</code></pre>
   es: {
     titulo: "Agente Crítico",
     html: `
-      <h1>Agente Crítico (Sonnet)</h1>
+      <h1>Agente Crítico (Opus)</h1>
       <p class="lead">Adversario del sistema. Busca activamente problemas: lógica faltante, edge cases no considerados, riesgos de seguridad, performance degradada.</p>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>80,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>20-30s por análisis</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo crítica, nunca propone soluciones. Documenta hallazgos en <code>critica.md</code></td></tr>
@@ -1576,12 +1576,12 @@ Salida: critica.md con 8 puntos sin resolver</code></pre>
   en: {
     titulo: "Critical Agent",
     html: `
-      <h1>Critical Agent (Sonnet)</h1>
+      <h1>Critical Agent (Opus)</h1>
       <p class="lead">System adversary. Actively searches for problems: missing logic, unhandled edge cases, security risks, performance degradation.</p>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>80,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>20-30s per analysis</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Critique only, never proposes solutions. Documents findings in <code>critica.md</code></td></tr>
@@ -1625,12 +1625,12 @@ Output: critica.md with 8 unresolved points</code></pre>
   es: {
     titulo: "Agente Revisor (Code Review)",
     html: `
-      <h1>Agente Revisor (Sonnet)</h1>
+      <h1>Agente Revisor (Opus)</h1>
       <p class="lead">Valida código contra especificación. Verifica que Backend, Frontend y Data cumplan letra del spec, patrones de proyecto y principios SOLID.</p>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>40-60s por 500 LoC</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo revisa, no escribe. Devuelve diff sugerencias.</td></tr>
@@ -1672,12 +1672,12 @@ Salida: users.ts.review.md con diffs sugeridos</code></pre>
   en: {
     titulo: "Reviewer Agent",
     html: `
-      <h1>Reviewer Agent (Sonnet)</h1>
+      <h1>Reviewer Agent (Opus)</h1>
       <p class="lead">Validates code against specification. Verifies that Backend, Frontend and Data comply with spec letter, project patterns and SOLID principles.</p>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>40-60s per 500 LoC</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Only reviews, doesn't write. Returns suggested diffs.</td></tr>
@@ -1823,12 +1823,12 @@ Output: security.md "High: 2 findings, Medium: 3 findings"</code></pre>
   es: {
     titulo: "Agente Product Designer",
     html: `
-      <h1>Agente Product Designer (Sonnet)</h1>
+      <h1>Agente Product Designer (Opus)</h1>
       <p class="lead">Diseña UX/UI desde requisitos. Crea wireframes, user flows, componentes, tokens de diseño y guía de interacción. Genera design.md y assets.</p>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>90,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>30-50s por entrega de diseño</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Especificación de diseño solo. No implementa React/Vue.</td></tr>
@@ -1870,12 +1870,12 @@ Salida:
   en: {
     titulo: "Product Designer Agent",
     html: `
-      <h1>Product Designer Agent (Sonnet)</h1>
+      <h1>Product Designer Agent (Opus)</h1>
       <p class="lead">Designs UX/UI from requirements. Creates wireframes, user flows, components, design tokens and interaction guide. Generates design.md and assets.</p>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>90,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>30-50s per design delivery</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Design specification only. Doesn't implement React/Vue.</td></tr>
@@ -1926,7 +1926,7 @@ Output:
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>150,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>60-120s por endpoint</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo TypeScript/Node.js. Delega testing a Testing agent.</td></tr>
@@ -1975,7 +1975,7 @@ Pruebas: delegadas a Testing agent</code></pre>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>150,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>60-120s per endpoint</td></tr>
         <tr><td><strong>Constraints</strong></td><td>TypeScript/Node.js only. Delegates testing to Testing agent.</td></tr>
@@ -2229,12 +2229,12 @@ Command: npm test -- users.test.ts</code></pre>
   es: {
     titulo: "Agente DevOps",
     html: `
-      <h1>Agente DevOps (Opus)</h1>
+      <h1>Agente DevOps (Sonnet)</h1>
       <p class="lead">Configura infrastructure, CI/CD, deployment, Docker, variables de entorno, monitoreo. Genera Dockerfile, GitHub Actions, secrets management.</p>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>40-60s por configuración</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>No deploya directamente. Genera IaC que CI/CD ejecuta.</td></tr>
@@ -2278,12 +2278,12 @@ Archivos: Dockerfile, docker-compose.yml, .github/workflows/</code></pre>
   en: {
     titulo: "DevOps Agent",
     html: `
-      <h1>DevOps Agent (Opus)</h1>
+      <h1>DevOps Agent (Sonnet)</h1>
       <p class="lead">Configures infrastructure, CI/CD, deployment, Docker, environment variables, monitoring. Generates Dockerfile, GitHub Actions, secrets management.</p>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>40-60s per configuration</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Doesn't deploy directly. Generates IaC that CI/CD executes.</td></tr>
@@ -2438,7 +2438,7 @@ Files: schema.prisma, migrations/, data-model.md</code></pre>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Haiku 3.5</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Haiku 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>50,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>5-10s por respuesta</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo Q&A y sugerencias. Delega decisiones a Arquitecto.</td></tr>
@@ -2485,7 +2485,7 @@ Decisión final → delegada a Arquitecto o especialista</code></pre>
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Haiku 3.5</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Haiku 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>50,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>5-10s per response</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Q&A and suggestions only. Delegates decisions to Architect.</td></tr>
@@ -2643,12 +2643,12 @@ Generated spec:
   es: {
     titulo: "Agente Descubridor",
     html: `
-      <h1>Agente Descubridor (Opus)</h1>
+      <h1>Agente Descubridor (Sonnet)</h1>
       <p class="lead">Agente de descubrimiento. Analiza codebases existentes, identifica patrones, deuda técnica, oportunidades de refactoring. Genera audit.md detallado.</p>
 
       <h2>Perfil</h2>
       <table>
-        <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>180,000 tokens</td></tr>
         <tr><td><strong>Latencia objetivo</strong></td><td>90-150s por codebase</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo análisis e inspección. Genera reportes, nunca modifica.</td></tr>
@@ -2706,7 +2706,7 @@ Audit generado:
 
       <h2>Profile</h2>
       <table>
-        <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
+        <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>180,000 tokens</td></tr>
         <tr><td><strong>Target latency</strong></td><td>90-150s per codebase</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Analysis and inspection only. Generates reports, never modifies.</td></tr>
@@ -3097,9 +3097,9 @@ Generated documentation:
       </table>
 
       <h2>Crear una skill personalizada</h2>
-      <pre><code>mkdir .claude/skills/mi-skill
+      <pre><code>mkdir skills/mi-skill
 
-cat > .claude/skills/mi-skill/SKILL.md &lt;&lt; 'EOF'
+cat > skills/mi-skill/SKILL.md &lt;&lt; 'EOF'
 ---
 name: mi-skill
 description: Qué hace esta skill
@@ -3114,7 +3114,7 @@ EOF</code></pre>
       <h1>Skills — 30 Reusable Capabilities</h1>
       <p class="lead">30 encapsulated capabilities invoked internally by commands across 7 categories: Pipeline (5), Discovery (4), Design (3), Quality (4), Memory (5), Observability (3), Compression (2), Deploy (3).</p>
       <h2>Create a custom skill</h2>
-      <pre><code>mkdir .claude/skills/my-skill
+      <pre><code>mkdir skills/my-skill
 # Add SKILL.md with instructions for Claude</code></pre>
     `
   }
@@ -3183,10 +3183,10 @@ L0 ├────────────────────────�
       </table>
 
       <h2>L2 — Skills (30)</h2>
-      <p>Capacidades reutilizables en <code>.claude/skills/{nombre}/SKILL.md</code>. Los agentes las invocan describiendo qué quieren hacer y FORGE selecciona la skill adecuada.</p>
+      <p>Capacidades reutilizables en <code>skills/{nombre}/SKILL.md</code>. Los agentes las invocan describiendo qué quieren hacer y FORGE selecciona la skill adecuada.</p>
 
       <h2>L3 — Agentes (14)</h2>
-      <p>Definidos en <code>.claude/agents/{nombre}.md</code> con frontmatter de restricciones:</p>
+      <p>Definidos en <code>agents/{nombre}.md</code> con frontmatter de restricciones:</p>
       <pre><code>---
 name: desarrollador-backend
 model: claude-opus-4-8
@@ -3197,7 +3197,7 @@ description: "Especialista Backend. Solo TypeScript/Node.js."
 [prompt de especialidad]</code></pre>
 
       <h2>L4 — Comandos SDD (39)</h2>
-      <p>Definidos en <code>.claude/commands/sdd.*.md</code>. Cada comando especifica: agentes que invoca, skills que usa, artefactos que produce, y cómo actualiza el estado del pipeline.</p>
+      <p>Definidos en <code>commands/sdd.*.md</code>. Cada comando especifica: agentes que invoca, skills que usa, artefactos que produce, y cómo actualiza el estado del pipeline.</p>
 
       <h2>Flujo de datos entre capas</h2>
       <pre><code>Usuario → /sdd.implementar backend        (L4 comando)
@@ -3567,15 +3567,15 @@ perfil: "guiado"         # guiado | experto
 
 agentes:
   arquitecto:            { modelo: "claude-opus-4-8" }
-  critico:               { modelo: "claude-sonnet-4-6" }
-  revisor:               { modelo: "claude-sonnet-4-6" }
+  critico:               { modelo: "claude-opus-4-8" }
+  revisor:               { modelo: "claude-opus-4-8" }
   seguridad:             { modelo: "claude-opus-4-8" }
-  product-designer:      { modelo: "claude-sonnet-4-6" }
+  product-designer:      { modelo: "claude-opus-4-8" }
   disenador-api:         { modelo: "claude-sonnet-4-6" }
-  desarrollador-backend: { modelo: "claude-opus-4-8" }
+  desarrollador-backend: { modelo: "claude-sonnet-4-6" }
   desarrollador-frontend:{ modelo: "claude-sonnet-4-6" }
   tester:                { modelo: "claude-sonnet-4-6" }
-  operaciones:           { modelo: "claude-opus-4-8" }
+  operaciones:           { modelo: "claude-sonnet-4-6" }
   asesor-datos:          { modelo: "claude-opus-4-8" }
   asesor:                { modelo: "claude-haiku-4-5-20251001" }
   investigador:          { modelo: "claude-sonnet-4-6" }
