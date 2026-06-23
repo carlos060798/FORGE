@@ -1438,7 +1438,7 @@ npm run typecheck</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>200,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>60-90s por decisión</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~15-90s (estimación; depende del modelo y carga del servidor)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Nunca toma decisiones de implementación. Siempre delega specs a especialistas.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Orquestación, decisiones estratégicas, validación cross-fase</td></tr>
       </table>
@@ -1486,7 +1486,7 @@ Decisiones registradas en memoria/ bajo "jwt-postgres-api"</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>200,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>60-90s per decision</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~15-90s (estimate; depends on model and server load)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Never makes implementation decisions. Always delegates specs to specialists.</td></tr>
         <tr><td><strong>Role</strong></td><td>Orchestration, strategic decisions, cross-phase validation</td></tr>
       </table>
@@ -1538,7 +1538,7 @@ Decisions stored in memory/ under "jwt-postgres-api"</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>80,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>20-30s por análisis</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~10-45s (estimación; Opus, varía con longitud del contexto)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo crítica, nunca propone soluciones. Documenta hallazgos en <code>critica.md</code></td></tr>
         <tr><td><strong>Rol</strong></td><td>Análisis adversario, QA mental, validación de robustez</td></tr>
       </table>
@@ -1583,7 +1583,7 @@ Salida: critica.md con 8 puntos sin resolver</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>80,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>20-30s per analysis</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~10-45s (estimate; Opus, varies with context length)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Critique only, never proposes solutions. Documents findings in <code>critica.md</code></td></tr>
         <tr><td><strong>Role</strong></td><td>Adversarial analysis, mental QA, robustness validation</td></tr>
       </table>
@@ -1632,7 +1632,7 @@ Output: critica.md with 8 unresolved points</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>40-60s por 500 LoC</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~10-45s (estimación; Opus, varía con longitud del contexto)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo revisa, no escribe. Devuelve diff sugerencias.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Validación especificación↔código, mejoras de legibilidad, pattern compliance</td></tr>
       </table>
@@ -1679,7 +1679,7 @@ Salida: users.ts.review.md con diffs sugeridos</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>40-60s per 500 LoC</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~10-45s (estimate; Opus, varies with context length)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Only reviews, doesn't write. Returns suggested diffs.</td></tr>
         <tr><td><strong>Role</strong></td><td>Specification↔code validation, readability improvements, pattern compliance</td></tr>
       </table>
@@ -1730,7 +1730,7 @@ Output: users.ts.review.md with suggested diffs</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>120,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>45-75s por análisis</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~15-90s (estimación; Opus, análisis exhaustivo)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo análisis, nunca código. Responsable de OWASP top 10.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Auditoría de seguridad, penetration testing mental, compliance check</td></tr>
       </table>
@@ -1778,7 +1778,7 @@ Salida: security.md "High: 2 findings, Medium: 3 findings"</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>120,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>45-75s per analysis</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~15-90s (estimate; Opus, thorough security analysis)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Analysis only, never code. Responsible for OWASP top 10.</td></tr>
         <tr><td><strong>Role</strong></td><td>Security audit, mental penetration testing, compliance check</td></tr>
       </table>
@@ -1830,7 +1830,7 @@ Output: security.md "High: 2 findings, Medium: 3 findings"</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>90,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>30-50s por entrega de diseño</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~10-45s (estimación; Opus, varía con complejidad del wireframe)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Especificación de diseño solo. No implementa React/Vue.</td></tr>
         <tr><td><strong>Rol</strong></td><td>UX/UI design, design systems, user research, interaction patterns</td></tr>
       </table>
@@ -1877,7 +1877,7 @@ Salida:
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>90,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>30-50s per design delivery</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~10-45s (estimate; Opus, varies with wireframe complexity)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Design specification only. Doesn't implement React/Vue.</td></tr>
         <tr><td><strong>Role</strong></td><td>UX/UI design, design systems, user research, interaction patterns</td></tr>
       </table>
@@ -1928,7 +1928,7 @@ Output:
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>150,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>60-120s por endpoint</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-45s (estimación; Sonnet, varía con número de archivos)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo TypeScript/Node.js. Delega testing a Testing agent.</td></tr>
         <tr><td><strong>Rol</strong></td><td>API implementation, database queries, middleware, error handling</td></tr>
       </table>
@@ -1977,7 +1977,7 @@ Pruebas: delegadas a Testing agent</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>150,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>60-120s per endpoint</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-45s (estimate; Sonnet, varies with number of files)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>TypeScript/Node.js only. Delegates testing to Testing agent.</td></tr>
         <tr><td><strong>Role</strong></td><td>API implementation, database queries, middleware, error handling</td></tr>
       </table>
@@ -2030,7 +2030,7 @@ Tests: delegated to Testing agent</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>130,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>50-100s por componente</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-45s (estimación; Sonnet, varía con complejidad del componente)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>React o Vue (nunca ambos en proyecto). Delega tests a Testing.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Component implementation, state management, API integration, styling</td></tr>
       </table>
@@ -2080,7 +2080,7 @@ Tests: delegados a Testing agent</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>130,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>50-100s per component</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-45s (estimate; Sonnet, varies with component complexity)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>React or Vue (never both in one project). Delegates tests to Testing.</td></tr>
         <tr><td><strong>Role</strong></td><td>Component implementation, state management, API integration, styling</td></tr>
       </table>
@@ -2134,7 +2134,7 @@ Tests: delegated to Testing agent</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>30-60s por test suite</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-40s (estimación; Sonnet, varía con cobertura requerida)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Tests solo. Input: código Backend/Frontend implementado.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Test writing, coverage validation, edge case discovery</td></tr>
       </table>
@@ -2183,7 +2183,7 @@ Comando: npm test -- users.test.ts</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>30-60s per test suite</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-40s (estimate; Sonnet, varies with coverage required)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Tests only. Input: implemented Backend/Frontend code.</td></tr>
         <tr><td><strong>Role</strong></td><td>Test writing, coverage validation, edge case discovery</td></tr>
       </table>
@@ -2236,7 +2236,7 @@ Command: npm test -- users.test.ts</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>40-60s por configuración</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-45s (estimación; Sonnet, varía con proveedor de deploy)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>No deploya directamente. Genera IaC que CI/CD ejecuta.</td></tr>
         <tr><td><strong>Rol</strong></td><td>IaC, CI/CD pipelines, containerization, secrets, monitoring</td></tr>
       </table>
@@ -2285,7 +2285,7 @@ Archivos: Dockerfile, docker-compose.yml, .github/workflows/</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>100,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>40-60s per configuration</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-45s (estimate; Sonnet, varies with deploy provider)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Doesn't deploy directly. Generates IaC that CI/CD executes.</td></tr>
         <tr><td><strong>Role</strong></td><td>IaC, CI/CD pipelines, containerization, secrets, monitoring</td></tr>
       </table>
@@ -2338,7 +2338,7 @@ Files: Dockerfile, docker-compose.yml, .github/workflows/</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>120,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>45-75s por schema</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~10-45s (estimación; Opus, varía con complejidad del modelo)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Especificación + queries. No ejecuta DDL en producción.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Database design, query optimization, migrations, data modeling</td></tr>
       </table>
@@ -2387,7 +2387,7 @@ Archivos: schema.prisma, migrations/, data-model.md</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Opus 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>120,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>45-75s per schema</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~10-45s (estimate; Opus, varies with model complexity)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Specification + queries. Doesn't execute DDL in production.</td></tr>
         <tr><td><strong>Role</strong></td><td>Database design, query optimization, migrations, data modeling</td></tr>
       </table>
@@ -2440,7 +2440,7 @@ Files: schema.prisma, migrations/, data-model.md</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Haiku 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>50,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>5-10s por respuesta</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~2-12s (estimación; Haiku, modelo más rápido)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo Q&A y sugerencias. Delega decisiones a Arquitecto.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Requirements clarification, quick suggestions, QA mental</td></tr>
       </table>
@@ -2487,7 +2487,7 @@ Decisión final → delegada a Arquitecto o especialista</code></pre>
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Haiku 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>50,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>5-10s per response</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~2-12s (estimate; Haiku, fastest model)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Q&A and suggestions only. Delegates decisions to Architect.</td></tr>
         <tr><td><strong>Role</strong></td><td>Requirements clarification, quick suggestions, mental QA</td></tr>
       </table>
@@ -2538,7 +2538,7 @@ Final decision → delegated to Architect or specialist</code></pre>
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>110,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>30-50s por spec</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-40s (estimación; Sonnet, varía con longitud de la descripción)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo especificación. Input: requisitos en lenguaje natural.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Requirement analysis, specification writing, traceability</td></tr>
       </table>
@@ -2592,7 +2592,7 @@ Spec generado:
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>110,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>30-50s per spec</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-40s (estimate; Sonnet, varies with description length)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Specification only. Input: natural language requirements.</td></tr>
         <tr><td><strong>Role</strong></td><td>Requirement analysis, specification writing, traceability</td></tr>
       </table>
@@ -2650,7 +2650,7 @@ Generated spec:
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>180,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>90-150s por codebase</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~8-45s (estimación; Sonnet, varía con tamaño del codebase)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Solo análisis e inspección. Genera reportes, nunca modifica.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Codebase analysis, pattern discovery, technical debt assessment</td></tr>
       </table>
@@ -2708,7 +2708,7 @@ Audit generado:
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>180,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>90-150s per codebase</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~8-45s (estimate; Sonnet, varies with codebase size)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Analysis and inspection only. Generates reports, never modifies.</td></tr>
         <tr><td><strong>Role</strong></td><td>Codebase analysis, pattern discovery, technical debt assessment</td></tr>
       </table>
@@ -2770,7 +2770,7 @@ Generated audit:
       <table>
         <tr><td><strong>Modelo</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>95,000 tokens</td></tr>
-        <tr><td><strong>Latencia objetivo</strong></td><td>25-45s por documento</td></tr>
+        <tr><td><strong>Tiempo de respuesta</strong></td><td>~5-30s (estimación; Sonnet, varía con extensión del documento)</td></tr>
         <tr><td><strong>Restricciones</strong></td><td>Documentación solo. Input: código/spec implementados.</td></tr>
         <tr><td><strong>Rol</strong></td><td>Technical writing, API docs, user guides, diagram generation</td></tr>
       </table>
@@ -2820,7 +2820,7 @@ Documentación generada:
       <table>
         <tr><td><strong>Model</strong></td><td>Claude Sonnet 4</td></tr>
         <tr><td><strong>Token budget</strong></td><td>95,000 tokens</td></tr>
-        <tr><td><strong>Target latency</strong></td><td>25-45s per document</td></tr>
+        <tr><td><strong>Response time</strong></td><td>~5-30s (estimate; Sonnet, varies with document length)</td></tr>
         <tr><td><strong>Constraints</strong></td><td>Documentation only. Input: implemented code/spec.</td></tr>
         <tr><td><strong>Role</strong></td><td>Technical writing, API docs, user guides, diagram generation</td></tr>
       </table>
