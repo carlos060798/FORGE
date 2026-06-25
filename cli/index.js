@@ -315,7 +315,7 @@ FORGE está activo en este proyecto. Es tu equipo de ingeniería en Claude Code.
 Para modo avanzado: usa \`/sdd\` en lugar de \`/forge\`.
 `;
 
-const CLAUDE_MD_VERSION = "5.0.0";
+const CLAUDE_MD_VERSION = pluginVersion();
 const CLAUDE_MD_VERSION_TAG = `<!-- forge-version: ${CLAUDE_MD_VERSION} -->`;
 
 function integrarClaudeMd(cwd) {
@@ -640,6 +640,17 @@ function cmdDoctor() {
     problemas++;
   }
 
+  // ANTHROPIC_API_KEY
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+  if (!apiKey) {
+    problemas++;
+    aviso("ANTHROPIC_API_KEY no está definida — los agentes LLM no funcionarán");
+    aviso("  Solución: export ANTHROPIC_API_KEY=sk-ant-... (o añádela a tu .env)");
+  } else {
+    const preview = apiKey.slice(0, 8) + "..." + apiKey.slice(-4);
+    info(`ANTHROPIC_API_KEY presente (${preview}) ✓`);
+  }
+
   // Claude CLI
   if (claudeEnPath()) {
     info("Claude Code CLI detectado en PATH ✓");
@@ -759,6 +770,26 @@ function cmdDoctor() {
         info(`agent-memory registrado en ${sp.replace(process.cwd(), ".")} ✓`);
       } else {
         aviso(`agent-memory NO encontrado en ${sp.replace(process.cwd(), ".")} — memoria de agentes inactiva`);
+      }
+
+      // Verificar que los archivos de hook existen físicamente y tienen sintaxis válida
+      const hooksDir = join(process.cwd(), ".claude", "hooks");
+      const hooksRequeridos = ["pre-tool-guard.js", "agent-memory.js", "post-write-conventions.js"];
+      for (const hookFile of hooksRequeridos) {
+        const hookPath = join(hooksDir, hookFile);
+        if (!existsSync(hookPath)) {
+          problemas++;
+          aviso(`Hook no encontrado en disco: .claude/hooks/${hookFile}`);
+          info(`  Ejecuta: npx forge init  para reinstalar los hooks`);
+        } else {
+          try {
+            execSync(`node --check "${hookPath}"`, { stdio: "pipe" });
+            info(`Hook válido: .claude/hooks/${hookFile} ✓`);
+          } catch {
+            problemas++;
+            aviso(`Hook con error de sintaxis: .claude/hooks/${hookFile}`);
+          }
+        }
       }
 
       // Validar estado.json si existe

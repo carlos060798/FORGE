@@ -46,6 +46,8 @@ export interface AgentResult {
   outputTokens?: number;
   durationMs: number;
   error?: string;
+  /** ID del modelo LLM utilizado (e.g. "claude-sonnet-4-6") */
+  modelo?: string;
 }
 
 export interface Agent {
@@ -201,6 +203,7 @@ export class LlmAgentAdapter implements Agent {
           agentName: this.definition.name,
           output: `[stub] Agente "${this.definition.name}" ejecutado sin API key. Prompt: ${ctx.userPrompt.slice(0, 100)}`,
           durationMs: Date.now() - start,
+          modelo: modelId,
         };
       }
 
@@ -222,6 +225,7 @@ export class LlmAgentAdapter implements Agent {
         inputTokens: response.usage?.input_tokens,
         outputTokens: response.usage?.output_tokens,
         durationMs: Date.now() - start,
+        modelo: modelId,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -231,6 +235,7 @@ export class LlmAgentAdapter implements Agent {
         output: '',
         durationMs: Date.now() - start,
         error: msg,
+        modelo: modelId,
       };
     }
   }

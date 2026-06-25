@@ -51,7 +51,7 @@ FORGE:
 
 ```bash
 # Instalar en tu proyecto
-npx forge-sdd init
+npx forge init
 
 # Comenzar desde una idea en lenguaje natural
 /forge
@@ -88,7 +88,7 @@ Cada etapa produce un **artefacto duradero** almacenado en el directorio `.sdd/`
 ### Instalación en proyecto
 
 ```bash
-npx forge-sdd init
+npx forge init
 ```
 
 Copia comandos, agentes, skills y hooks en el directorio `.claude/` del proyecto y crea un `sdd.config.yaml` con valores predeterminados.
@@ -96,7 +96,7 @@ Copia comandos, agentes, skills y hooks en el directorio `.claude/` del proyecto
 ### Instalación global
 
 ```bash
-npx forge-sdd init --global
+npx forge init --global
 ```
 
 Disponibiliza FORGE en todos los proyectos de la máquina.
@@ -104,7 +104,7 @@ Disponibiliza FORGE en todos los proyectos de la máquina.
 ### Configuración guiada (recomendada para nuevos usuarios)
 
 ```bash
-npx forge-sdd init --guided
+npx forge init --guided
 ```
 
 Asistente interactivo: pregunta sobre tu perfil, stack, destino de despliegue y nivel de modelo preferido, luego genera un `sdd.config.yaml` preconfigurado.
@@ -112,9 +112,9 @@ Asistente interactivo: pregunta sobre tu perfil, stack, destino de despliegue y 
 ### Presets
 
 ```bash
-npx forge-sdd init --preset lean        # mínimo, bajo costo
-npx forge-sdd init --preset startup     # equilibrado, estándar
-npx forge-sdd init --preset enterprise  # máximas verificaciones de calidad
+npx forge init --preset lean        # mínimo, bajo costo
+npx forge init --preset startup     # equilibrado, estándar
+npx forge init --preset enterprise  # máximas verificaciones de calidad
 ```
 
 ---

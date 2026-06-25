@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, appendFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
-import { leerForgeConfig } from "./shared/config.js";
+import { leerForgeConfig, leerNivelEjecucion } from "./shared/config.js";
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
 
@@ -62,12 +62,15 @@ const PROHIBIDOS = [
   /rm\s+.*C:\\Windows\\/i,
   /rm\s+.*C:\\Program Files\\/i,
 
-  // Exposición de archivos .env (cubre variantes de nombre y de comando de lectura)
+  // Escritura directa en .env — solo ESCRITURA está bloqueada; lectura (grep, cat, less…) está permitida
   // Permitidos: .env.example, .env.template, .env.sample
-  /\b(?:cat|less|more|head|tail|bat|nl|tac|view)\s+.*\.env(?!\.(?:example|template|sample)\b)/,
-  /\btype\s+.*\.env(?!\.(?:example|template|sample)\b)/i,           // Windows cmd
-  /\bGet-Content\s+.*\.env(?!\.(?:example|template|sample)\b)/i,    // PowerShell
-  /\bgrep\b.*\.env(?!\.(?:example|template|sample)\b)/,             // grep sobre .env
+  /\b(?:echo|printf|tee)\b.*\.env(?!\.(?:example|template|sample)\b)/,           // echo/printf/tee > .env
+  /\bcat\s*>+\s*.*\.env(?!\.(?:example|template|sample)\b)/,                     // cat > .env  o  cat >> .env
+  /\bcp\s+\S+\s+\.env(?!\.(?:example|template|sample)\b)/,                       // cp archivo .env
+  /\bmv\s+\S+\s+\.env(?!\.(?:example|template|sample)\b)/,                       // mv archivo .env
+  /\b(?:nano|vim?|vi|emacs|code)\s+.*\.env(?!\.(?:example|template|sample)\b)/i, // editores sobre .env
+  /\bSet-Content\s+.*\.env(?!\.(?:example|template|sample)\b)/i,                 // PowerShell Set-Content
+  /\bOut-File\s+.*\.env(?!\.(?:example|template|sample)\b)/i,                    // PowerShell Out-File
 
   // Permisos inseguros
   /chmod\s+777\b/,                             // chmod 777 (todos los permisos)
@@ -122,6 +125,9 @@ function main(raw) {
   const toolName = event?.tool_name ?? "";
   const toolInput = event?.tool_input ?? {};
   const agentName = process.env.CLAUDE_AGENT_NAME ?? "";
+
+  // ── CircuitBreaker: leer nivel de ejecución actual ─────────────────────
+  const nivel = leerNivelEjecucion(process.cwd());
 
   // AG-01: Advertir si la variable de identidad del agente no está disponible.
   // Cuando está vacía, los guardias de agentes read-only quedan desactivados.
@@ -235,6 +241,22 @@ function main(raw) {
   }
 
   // ── 1. Verificar prohibidos ─────────────────────────────────────────────
+  // Patrones de escritura en .env — mensaje de error específico
+  const ENV_WRITE_PATTERNS = PROHIBIDOS.slice(
+    PROHIBIDOS.findIndex((r) => r.toString().includes("echo|printf|tee")),
+    PROHIBIDOS.findIndex((r) => r.toString().includes("Out-File")) + 1
+  );
+  for (const re of ENV_WRITE_PATTERNS) {
+    if (re.test(cmd)) {
+      process.stderr.write(
+        `Escritura directa en .env bloqueada — usa variables de entorno o un gestor de secretos.\n` +
+        `Ejemplo: exporta la variable en tu shell o usa un servicio como Doppler, 1Password CLI o Vault.\n` +
+        `Comando bloqueado: ${cmd.slice(0, 120)}\n`
+      );
+      process.exit(2);
+    }
+  }
+
   for (const re of PROHIBIDOS) {
     if (re.test(cmd)) {
       process.stderr.write(
@@ -268,6 +290,34 @@ function main(raw) {
       );
       // Exit 0 — dejamos que el flujo normal de permisos de Claude Code actúe
       process.exit(0);
+    }
+  }
+
+  // ── 4. Restricciones dinámicas según nivel del CircuitBreaker ──────────
+  if (nivel === 'sandbox') {
+    if (toolName === 'Bash') {
+      console.log(JSON.stringify({
+        action: 'block',
+        message: 'CircuitBreaker activo: nivel sandbox — Bash bloqueado tras fallos consecutivos. Resuelve los errores antes de continuar.'
+      }));
+      process.exit(1);
+    }
+    // Bloquear Write/Edit fuera del cwd
+    if (toolName === 'Write' || toolName === 'Edit') {
+      const filePath = toolInput?.file_path || toolInput?.path || '';
+      const cwd = process.cwd();
+      if (filePath && !filePath.startsWith(cwd)) {
+        console.log(JSON.stringify({
+          action: 'block',
+          message: `CircuitBreaker nivel sandbox — escritura fuera del proyecto bloqueada: ${filePath}`
+        }));
+        process.exit(1);
+      }
+    }
+  } else if (nivel === 'confirmado') {
+    // En nivel confirmado, solo advertir (no bloquear)
+    if (toolName === 'Bash') {
+      process.stderr.write(`[forge] Nivel confirmado — Bash irrestricto activo\n`);
     }
   }
 

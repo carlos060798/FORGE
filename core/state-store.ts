@@ -25,11 +25,13 @@ export interface StateStore {
 
 export class FileSystemStateStore implements StateStore {
   private readonly estadoPath: string;
+  private readonly sddDir: string;
   private _cache: ForgeEstado | null = null;
   private _cacheMtime: number = 0;
   private _cacheSize: number = 0;
 
   constructor(sddDir: string) {
+    this.sddDir = sddDir;
     this.estadoPath = path.join(sddDir, 'estado.json');
     fs.mkdirSync(sddDir, { recursive: true });
   }
@@ -55,7 +57,32 @@ export class FileSystemStateStore implements StateStore {
     }
   }
 
+  private saveSnapshot(estado: ForgeEstado): void {
+    try {
+      const snapshotsDir = path.join(this.sddDir, '.snapshots');
+      fs.mkdirSync(snapshotsDir, { recursive: true });
+
+      // Mantener solo los últimos 5 snapshots
+      const existing = fs.readdirSync(snapshotsDir)
+        .filter(f => f.startsWith('estado-') && f.endsWith('.json'))
+        .sort();
+      if (existing.length >= 5) {
+        fs.unlinkSync(path.join(snapshotsDir, existing[0]));
+      }
+
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      fs.writeFileSync(
+        path.join(snapshotsDir, `estado-${ts}.json`),
+        JSON.stringify(estado, null, 2),
+        'utf8'
+      );
+    } catch {
+      // No debe fallar el save principal si el snapshot falla
+    }
+  }
+
   write(estado: ForgeEstado): void {
+    this.saveSnapshot(estado);
     const tmp = this.estadoPath + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(estado, null, 2));
     fs.renameSync(tmp, this.estadoPath); // atómico: falla o completa, nunca parcial

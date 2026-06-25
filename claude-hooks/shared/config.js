@@ -107,3 +107,18 @@ export function leerSddConfig(cwd = process.cwd()) {
 export function leerMaxMBConsumo(cwd = process.cwd()) {
   return leerSddConfig(cwd).consumo_max_mb;
 }
+
+/**
+ * Lee el nivel de ejecución actual escrito por CircuitBreaker en .sdd/execution-level.json.
+ * Permite que pre-tool-guard conozca el nivel sin importar el módulo TS.
+ * @param {string} cwd directorio de trabajo
+ * @returns {'sandbox'|'local'|'confirmado'}
+ */
+export function leerNivelEjecucion(cwd = process.cwd()) {
+  try {
+    const p = join(cwd, '.sdd', 'execution-level.json');
+    if (!existsSync(p)) return 'local';
+    const { nivel } = JSON.parse(readFileSync(p, 'utf8'));
+    return ['sandbox', 'local', 'confirmado'].includes(nivel) ? nivel : 'local';
+  } catch { return 'local'; }
+}

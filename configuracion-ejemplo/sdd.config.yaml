@@ -30,78 +30,82 @@ perfil: guiado
 # ============================================================
 
 agentes:
+  # Preset "lean" por defecto — activa solo los agentes esenciales para minimizar costo.
+  # Para activar todos: cambia perfil a "enterprise" o descomenta los agentes necesarios.
+  # Agentes opcionales: critico, seguridad, asesor-datos, disenador-api, investigador, operaciones, product-designer, architecture-designer
+
   # ---------- Diseño y arquitectura ----------
   arquitecto:
     activo: true
-    modelo: opus          # Recomendado: opus (decisiones difíciles de revertir)
+    modelo: opus          # HIGH — Recomendado: opus (decisiones difíciles de revertir)
     descripcion: "Toma decisiones de arquitectura del sistema y diseño técnico de alto nivel."
 
   architecture-designer:
-    activo: true
+    activo: false         # Opcional — actívalo para proyectos nuevos que necesitan elegir stack
     modelo: sonnet        # Recomendado: sonnet (stack técnico para MVPs)
     descripcion: "Recomienda el stack técnico más simple viable: frontend, backend, BD, deploy."
 
   product-designer:
-    activo: true
+    activo: false         # Opcional — actívalo para diseño de producto completo (P0/P1/P2)
     modelo: opus          # Recomendado: opus (decisiones de producto son difíciles de revertir)
     descripcion: "Genera el ProductDesign completo: pantallas P0/P1/P2, user flow, mvp_scope."
 
   disenador-api:
-    activo: true
+    activo: false         # Opcional — actívalo cuando el proyecto requiera contratos de API formales
     modelo: sonnet        # Recomendado: sonnet (contratos estructurados)
     descripcion: "Diseña contratos de API (OpenAPI, GraphQL, gRPC, eventos)."
 
   asesor-datos:
-    activo: true
+    activo: false         # Opcional — actívalo para proyectos con BD compleja o migraciones críticas
     modelo: opus          # Recomendado: opus (errores en BD son costosos de revertir)
     descripcion: "Diseño de esquemas, queries, índices, migraciones, performance de BD."
 
   # ---------- Implementación ----------
   desarrollador-backend:
     activo: true
-    modelo: sonnet        # Recomendado: sonnet (codificación)
+    modelo: sonnet        # MEDIUM — Recomendado: sonnet (codificación)
     descripcion: "Implementa lógica de servidor: servicios, APIs, manejo de datos."
 
   desarrollador-frontend:
     activo: true
-    modelo: sonnet        # Recomendado: sonnet (codificación)
+    modelo: sonnet        # MEDIUM — Recomendado: sonnet (codificación)
     descripcion: "Implementa UI: componentes, vistas, estado del cliente."
     # Desactívalo si tu proyecto es backend-only:
     # activo: false
 
   operaciones:
-    activo: true
+    activo: false         # Opcional — actívalo para proyectos con CI/CD o despliegue automatizado
     modelo: sonnet        # Recomendado: sonnet
     descripcion: "CI/CD, despliegues, infraestructura, configuración."
 
   # ---------- Calidad ----------
   tester:
     activo: true
-    modelo: sonnet        # Recomendado: sonnet (genera tests útiles)
+    modelo: sonnet        # MEDIUM — Recomendado: sonnet (genera tests útiles)
     descripcion: "Genera y ejecuta tests unitarios, integración y E2E."
 
   revisor:
     activo: true
-    modelo: opus          # Recomendado: opus (revisión profunda atrapa más bugs)
+    modelo: opus          # HIGH — Recomendado: opus (revisión profunda atrapa más bugs; crítico para EvaluatorOptimizer)
     descripcion: "Revisa código contra spec, calidad y constitución."
 
   critico:
-    activo: true
+    activo: false         # Opcional — actívalo para análisis de riesgos en cambios importantes
     modelo: opus          # Recomendado: opus (encontrar puntos ciegos requiere abstracción)
     descripcion: "Identifica riesgos, puntos ciegos y asunciones del plan."
 
   seguridad:
-    activo: true
+    activo: false         # Opcional — actívalo para auditorías de seguridad o cambios sensibles
     modelo: opus          # Recomendado: opus (auditoría de seguridad seria)
     descripcion: "Audita vulnerabilidades en cambios sensibles."
 
   documentador:
-    activo: false         # Desactivado por defecto — actívalo si tu proyecto requiere docs formales
-    modelo: sonnet
+    activo: true          # LOW — activo para proyectos que requieren docs formales
+    modelo: haiku         # Recomendado: haiku (tarea de formateo, no razonamiento profundo)
     descripcion: "Genera documentación técnica útil (no obvia)."
 
   investigador:
-    activo: true          # Recopila contexto técnico antes de especificar
+    activo: false         # Opcional — actívalo para proyectos existentes con deuda técnica compleja
     modelo: sonnet
     descripcion: "Analiza el proyecto existente — stack, patrones, deuda técnica — antes de especificar."
 

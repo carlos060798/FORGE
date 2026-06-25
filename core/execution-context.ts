@@ -12,6 +12,8 @@
  * Inspirado en el patrón Redis Sentinel adaptado a proceso local único.
  */
 
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { bus } from './event-bus.js';
 import type { ForgeEvents } from './event-bus.js';
 
@@ -84,6 +86,15 @@ export class CircuitBreaker {
       if (fallos >= this.maxFallos) {
         const anterior = this.nivelActual;
         this.nivelActual = degradar(this.nivelActual);
+        try {
+          const sddDir = join(process.cwd(), '.sdd');
+          mkdirSync(sddDir, { recursive: true });
+          writeFileSync(
+            join(sddDir, 'execution-level.json'),
+            JSON.stringify({ nivel: this.nivelActual, ts: new Date().toISOString() }),
+            'utf8'
+          );
+        } catch { /* no interrumpir el flujo */ }
 
         if (anterior !== this.nivelActual) {
           process.stderr.write(
@@ -118,6 +129,15 @@ export class CircuitBreaker {
   forzarNivel(nivel: ConfianzaNivel): void {
     this.nivelActual = nivel;
     this.fallosPorAgente.clear();
+    try {
+      const sddDir = join(process.cwd(), '.sdd');
+      mkdirSync(sddDir, { recursive: true });
+      writeFileSync(
+        join(sddDir, 'execution-level.json'),
+        JSON.stringify({ nivel: this.nivelActual, ts: new Date().toISOString() }),
+        'utf8'
+      );
+    } catch { /* no interrumpir el flujo */ }
   }
 
   /** Devuelve cuántos fallos consecutivos lleva un agente. */

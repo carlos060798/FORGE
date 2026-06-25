@@ -26,6 +26,8 @@ import { detectStack } from './stack-detector.js';
 import { runnerForStack } from './runners/index.js';
 import { parseSpecMd, validateSpec, checkCoverage } from './spec.js';
 import type { Task } from './orchestrator.js';
+import { sessionBudget } from './session-budget.js';
+import { circuitBreaker } from './execution-context.js';
 
 // ── Colores de terminal ────────────────────────────────────────────────────────
 
@@ -93,6 +95,9 @@ async function cmdStatus(cwd: string): Promise<void> {
   if (avail.length > 0) {
     dim(`  Próximo paso posible: ${avail.join(', ')}`);
   }
+
+  console.log(`\n💰 Presupuesto sesión: ${sessionBudget.resumen()}`);
+  console.log(`🔒 Circuit breaker:   ${circuitBreaker.nivel}`);
 }
 
 async function cmdResume(cwd: string): Promise<void> {

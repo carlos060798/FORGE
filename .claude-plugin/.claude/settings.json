@@ -29,27 +29,16 @@
   },
   "permissions": {
     "allow": [
-      "PowerShell(New-Item -ItemType Directory -Path \"C:\\\\Users\\\\usuario\\\\sdd-lite\\\\sdd-lite\\\\tests\" -Force)",
       "Bash(node --test tests/commands.test.js)",
       "Bash(node --test --reporter=spec tests/commands.test.js tests/agents.test.js tests/presets.test.js tests/consistency.test.js)",
       "Bash(node --test tests/commands.test.js tests/agents.test.js tests/presets.test.js tests/consistency.test.js)",
       "WebSearch",
       "WebFetch(domain:arxiv.org)",
-      "Read(//c/Users/usuario/.claude/**)",
-      "Bash(cp \"C:\\\\Users\\\\usuario\\\\.claude\\\\hooks\\\\pre-tool-guard.js\" \"c:\\\\Users\\\\usuario\\\\sdd-lite\\\\sdd-lite\\\\claude-hooks\\\\pre-tool-guard.js\")",
-      "Bash(cp \"C:\\\\Users\\\\usuario\\\\.claude\\\\hooks\\\\post-write-conventions.js\" \"c:\\\\Users\\\\usuario\\\\sdd-lite\\\\sdd-lite\\\\claude-hooks\\\\post-write-conventions.js\")",
-      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:\\\\\\\\Users\\\\\\\\usuario\\\\\\\\.claude\\\\\\\\settings.json','utf8'\\)\\); console.log\\('JSON válido'\\)\")",
-      "Bash(node -e \"const fs=require\\('fs'\\); JSON.parse\\(fs.readFileSync\\(process.argv[1],'utf8'\\)\\); console.log\\('OK'\\)\" \"C:/Users/usuario/.claude/settings.json\")",
-      "Bash(node -e \"const fs=require\\('fs'\\); JSON.parse\\(fs.readFileSync\\(process.argv[1],'utf8'\\)\\); console.log\\('OK'\\)\" \"C:/Users/usuario/sdd-lite/sdd-lite/.claude/settings.json\")",
       "Bash(node --test tests/)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\usuario\\\\sdd-lite\" -Recurse -Name | Where-Object { $_ -notmatch \"\\\\.git\" } | Sort-Object)",
       "Bash(git rm *)",
       "Bash(rm .gitmodules)"
-    ],
-    "additionalDirectories": [
-      "C:\\Users\\usuario\\.claude"
     ]
   }
 }

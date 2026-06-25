@@ -20,6 +20,9 @@ import type { Runner } from './runners/runner.js';
 import type { PipelineStateMachine } from './state-machine.js';
 import type { EventLog } from './event-log.js';
 import type { StateStore } from './state-store.js';
+import { bus } from './event-bus.js';
+import { sessionBudget } from './session-budget.js';
+import { circuitBreaker } from './execution-context.js';
 
 // ── Tipos de tarea ─────────────────────────────────────────────────────────────
 
@@ -207,6 +210,7 @@ export class Orchestrator {
     if (!def) {
       const error = `Agente desconocido: "${task.agente}"`;
       this.log.append('task_failed', { taskId: task.id, error }, { taskId: task.id });
+      await bus.emit('task:failed', { taskId: task.id, agente: task.agente, error });
       return { taskId: task.id, agente: task.agente, status: 'fallida', output: '', durationMs: Date.now() - start, error };
     }
 
@@ -230,10 +234,20 @@ export class Orchestrator {
       inputTokens: agentResult.inputTokens,
       outputTokens: agentResult.outputTokens,
     }, { taskId: task.id, agent: task.agente });
+    await bus.emit('agent:result', {
+      agente: task.agente,
+      taskId: task.id,
+      tokens_input: agentResult.inputTokens ?? 0,
+      tokens_output: agentResult.outputTokens ?? 0,
+      modelo: agentResult.modelo ?? 'claude-sonnet-4-6',
+      durationMs: agentResult.durationMs ?? 0,
+      ok: agentResult.ok,
+    });
 
     if (!agentResult.ok) {
       const error = agentResult.error ?? 'El agente falló sin mensaje de error';
       this.log.append('task_failed', { taskId: task.id, error }, { taskId: task.id });
+      await bus.emit('task:failed', { taskId: task.id, agente: task.agente, error });
       return { taskId: task.id, agente: task.agente, status: 'fallida', output: '', durationMs: Date.now() - start, error };
     }
 
@@ -246,6 +260,7 @@ export class Orchestrator {
 
       if (!rr.ok) {
         this.log.append('task_failed', { taskId: task.id, reason: 'runner_failed' }, { taskId: task.id });
+        await bus.emit('task:failed', { taskId: task.id, agente: task.agente, error: `Runner falló: ${rr.stderr.slice(0, 300)}` });
         return {
           taskId: task.id, agente: task.agente, status: 'fallida',
           output: agentResult.output, durationMs: Date.now() - start,
@@ -255,6 +270,7 @@ export class Orchestrator {
     }
 
     this.log.append('task_completed', { taskId: task.id }, { taskId: task.id });
+    await bus.emit('task:completed', { taskId: task.id, agente: task.agente, durationMs: agentResult.durationMs ?? 0 });
     return {
       taskId: task.id,
       agente: task.agente,
@@ -304,7 +320,7 @@ export class Orchestrator {
         remaining.delete(doneId);
         for (const task of tasks) {
           if ((task.dependencias ?? []).includes(doneId)) {
-            inDegree.set(task.id, (inDegree.get(task.id) ?? 1) - 1);
+            inDegree.set(task.id, Math.max(0, (inDegree.get(task.id) ?? 1) - 1));
           }
         }
       }

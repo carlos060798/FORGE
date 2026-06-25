@@ -112,11 +112,27 @@ export function validateSpec(spec: SpecDocument, ir?: IR): ValidationResult {
 // ── Verificador de cobertura req→code ─────────────────────────────────────────
 
 /**
+ * Elimina comentarios de un archivo de código fuente antes de buscar IDs
+ * de requisitos, evitando falsos positivos por menciones en comentarios.
+ */
+function stripComments(content: string): string {
+  return content
+    // Eliminar comentarios de línea // ...
+    .replace(/\/\/[^\n]*/g, '')
+    // Eliminar comentarios de bloque /* ... */
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // Eliminar comentarios Python/Ruby/Shell # ...
+    .replace(/#[^\n]*/g, '')
+    // Eliminar comentarios HTML <!-- ... -->
+    .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+/**
  * Analiza el directorio src/ para detectar qué requisitos tienen
  * evidencia de implementación en el código generado.
  *
- * Estrategia: busca el ID del requisito (e.g. "REQ-001") en comentarios
- * o en el nombre de archivos/funciones. Simple pero efectivo para el MVP.
+ * Estrategia: busca el ID del requisito (e.g. "REQ-001") en el código
+ * fuente limpio (sin comentarios) para evitar falsos positivos.
  */
 export function checkCoverage(spec: SpecDocument, srcDir: string): CoverageResult {
   const covered: SpecRequirement[] = [];
@@ -127,19 +143,22 @@ export function checkCoverage(spec: SpecDocument, srcDir: string): CoverageResul
   const codeFiles = collectCodeFiles(srcDir);
   filesScanned = codeFiles.length;
 
-  // Leer contenido de todos los archivos (en memoria)
+  // Leer contenido de todos los archivos (en memoria), eliminando comentarios
   const allContent = codeFiles.map(f => {
-    try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
+    try { return stripComments(fs.readFileSync(f, 'utf8')); } catch { return ''; }
   }).join('\n');
 
   for (const req of spec.requirements) {
-    // Buscar el ID del requisito en el código
+    // Buscar el ID del requisito en el código limpio (sin comentarios)
     const found = allContent.includes(req.id);
 
     if (found) {
-      // Encontrar qué archivos lo mencionan
+      // Encontrar qué archivos lo mencionan (también sin comentarios)
       const mentioningFiles = codeFiles.filter(f => {
-        try { return fs.readFileSync(f, 'utf8').includes(req.id); } catch { return false; }
+        try {
+          const cleanContent = stripComments(fs.readFileSync(f, 'utf8'));
+          return cleanContent.includes(req.id);
+        } catch { return false; }
       });
       covered.push({ ...req, coveredBy: mentioningFiles.map(f => path.relative(srcDir, f)) });
     } else {
