@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node claude-hooks/pre-tool-guard.js"
+            "command": "node .claude/hooks/pre-tool-guard.js"
           }
         ]
       }
@@ -17,11 +17,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node claude-hooks/agent-memory.js"
+            "command": "node .claude/hooks/agent-memory.js"
           },
           {
             "type": "command",
-            "command": "node claude-hooks/post-write-conventions.js"
+            "command": "node .claude/hooks/post-write-conventions.js"
           }
         ]
       }

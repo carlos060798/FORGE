@@ -155,7 +155,14 @@ function copiarSettings(claudeDir) {
     return;
   }
   if (!existsSync(dest)) {
-    cpSync(src, dest);
+    // Reescribir rutas de hooks: la plantilla usa "claude-hooks/" (válida en el repo
+    // del plugin), pero los hooks se instalan en "<claudeDir>/hooks/".
+    // Claude Code ejecuta los hooks con CWD = proyecto del usuario, así que la ruta
+    // debe ser relativa a .claude/ o absoluta. Usamos ".claude/hooks/" (relativa a CWD
+    // del proyecto) que es el destino real donde el instalador los deja.
+    let settings = readFileSync(src, "utf8");
+    settings = settings.replaceAll("claude-hooks/", ".claude/hooks/");
+    writeFileSync(dest, settings, "utf8");
     info(`Settings de seguridad instalados (${dest})`);
   } else {
     aviso(`settings.json ya existe en ${claudeDir} — no se sobreescribe`);
