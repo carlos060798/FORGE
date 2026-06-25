@@ -145,6 +145,7 @@ async function registrarLedger(cwd, agente, toolName, archivoModificado, conteni
       tool: toolName,
       archivo: archivoModificado,
       bytes: Buffer.byteLength(contenido ?? "", "utf8"),
+      tokens_est: Math.ceil(Buffer.byteLength(contenido ?? "", "utf8") / 3.5),
       provider,
       effort_level: tier ?? null,
     });
@@ -376,6 +377,36 @@ function alertarMemoryMdGlobal(cwd) {
   } catch { /* Silencioso */ }
 }
 
+// ── Propagación a memoria global de Claude Code ──────────────────────────────
+
+async function propagarAMemoriaGlobal(agente, resumen, archivo) {
+  try {
+    const slug = basename(process.cwd()).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const memoriaDir = join(homedir(), '.claude', 'projects', slug, 'memory');
+    mkdirSync(memoriaDir, { recursive: true });
+
+    const memoriaFile = join(memoriaDir, `agente-${agente}.md`);
+    const fecha = new Date().toISOString().slice(0, 10);
+    const entrada = `\n- [${fecha}] ${basename(archivo)}: ${resumen.slice(0, 120)}`;
+
+    let contenido = existsSync(memoriaFile)
+      ? readFileSync(memoriaFile, 'utf8')
+      : `# Memoria FORGE: ${agente}\n`;
+
+    const lineas = contenido.split('\n').filter(l => l.startsWith('- ['));
+    if (lineas.length >= 10) {
+      // Comprimir las más antiguas — conserva solo las últimas 9 + resumen
+      const antiguas = lineas.slice(0, lineas.length - 9);
+      const resumenAntiguas = `- [comprimido] ${antiguas.length} entradas anteriores resumidas al ${fecha}`;
+      contenido = contenido.replace(antiguas.join('\n'), resumenAntiguas);
+    }
+
+    writeFileSync(memoriaFile, contenido + entrada, 'utf8');
+  } catch {
+    // No debe fallar el hook si la escritura global falla
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(raw) {
@@ -446,6 +477,8 @@ async function main(raw) {
       process.stderr.write(`❌ [agent-memory] Error crítico: no se pudo persistir memoria de ${agente}. Verifica permisos de escritura en .sdd/memoria/\n`);
     }
   }
+
+  await propagarAMemoriaGlobal(agente, resumen, archivoModificado);
 
   process.stderr.write(`🧠 [agent-memory] ${agente} → ${archivoModificado}\n`);
 

@@ -223,6 +223,14 @@ node -e "
 "
 ```
 
+## Artefacto obligatorio: DESIGN.md
+
+Al finalizar el diseño, genera el archivo `DESIGN.md` en la raíz del proyecto completando la plantilla con los valores reales del proyecto. Este archivo es la fuente de verdad visual que usan:
+- El agente `desarrollador-frontend` para implementar con fidelidad
+- El `EvaluatorOptimizer` para verificar paridad visual (checks RV-01 a RV-12)
+
+Usa `/plantillas/DESIGN.md` como base y rellena todos los campos con los valores específicos del proyecto.
+
 ---
 
 ## Skills obligatorios — leer antes de diseñar

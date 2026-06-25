@@ -49,6 +49,41 @@ export const GRUPO_OPUS = new Set([
   'revisor',
 ]);
 
+/** Agentes de diseño/frontend que usan la rubric visual de 12 checks */
+export const GRUPO_DISENO = new Set([
+  'product-designer',
+  'architecture-designer',
+  'desarrollador-frontend',
+]);
+
+export function requiereRubricVisual(agenteNombre: string): boolean {
+  return GRUPO_DISENO.has(agenteNombre);
+}
+
+/**
+ * Rubric de paridad visual (12 checks booleanos, adaptada de open-codesign).
+ * Cada check vale 1 punto. Score = checks_pasados / 12 * 10.
+ */
+export const RUBRIC_VISUAL: CriterioAceptacion[] = [
+  { id: 'RV-01', descripcion: 'La paleta de colores coincide con el design token definido (primario, secundario, neutros)' },
+  { id: 'RV-02', descripcion: 'La tipografía usa la familia y escala de tamaños correctas (h1-h6, body, caption)' },
+  { id: 'RV-03', descripcion: 'Los espaciados (padding/margin/gap) siguen la escala de 4px base' },
+  { id: 'RV-04', descripcion: 'Los componentes interactivos tienen estado hover, focus y disabled visibles' },
+  { id: 'RV-05', descripcion: 'El contraste de texto cumple WCAG AA (≥4.5:1 para texto normal, ≥3:1 para grande)' },
+  { id: 'RV-06', descripcion: 'Los iconos son consistentes en estilo, tamaño y peso visual' },
+  { id: 'RV-07', descripcion: 'El layout usa grid o flex de forma coherente sin posicionamiento absoluto arbitrario' },
+  { id: 'RV-08', descripcion: 'Los bordes, sombras y radios son consistentes con el design system' },
+  { id: 'RV-09', descripcion: 'Los componentes son responsivos y no se rompen en mobile (≤375px) ni desktop (≥1280px)' },
+  { id: 'RV-10', descripcion: 'Las animaciones y transiciones son suaves (≤300ms ease) y no distraen' },
+  { id: 'RV-11', descripcion: 'El flujo de usuario principal es completo y no tiene pantallas rotas o estados vacíos sin diseño' },
+  { id: 'RV-12', descripcion: 'El output es coherente con el DESIGN.md del proyecto (si existe)' },
+];
+
+/** Convierte el score booleano de la rubric visual al rango 0-10. */
+export function calcularScoreVisual(checksAprobados: number): number {
+  return Math.round((checksAprobados / RUBRIC_VISUAL.length) * 10 * 10) / 10;
+}
+
 export function requiereEvaluador(agenteNombre: string): boolean {
   return GRUPO_OPUS.has(agenteNombre);
 }

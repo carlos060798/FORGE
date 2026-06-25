@@ -191,7 +191,7 @@ solo editar archivos:
 5. Hooks pre/post fase                 → .sdd/hooks/*.sh
 6. Permisos y protecciones             → .sdd/sdd.config.yaml
 
-Ver detalles en: docs/PERSONALIZACION.md
+Ver detalles en: docs/configuration.md
 
 ═══════════════════════════════════════════════════════════════════════
   🔌 HOOKS PERSONALIZABLES
@@ -225,12 +225,12 @@ Casos de uso típicos:
   📖 DOCUMENTACIÓN ADICIONAL
 ═══════════════════════════════════════════════════════════════════════
 
-   docs/FILOSOFIA.md          Qué es SDD y por qué funciona
-   docs/FLUJO.md              Diagrama del flujo completo
-   docs/AGENTES.md            Cuándo usar cada agente
-   docs/MODELOS.md            Recomendaciones de modelos
-   docs/PERSONALIZACION.md    Guía exhaustiva de personalización
-   docs/EJEMPLOS.md           Ejemplos completos de uso
+   docs/introduction.md       Introducción al proyecto
+   docs/core-concepts.md      Qué es SDD y por qué funciona
+   docs/workflows.md          Flujos de trabajo completos
+   docs/agents.md             Cuándo usar cada agente
+   docs/configuration.md      Configuración de agentes y modelos
+   docs/examples.md           Ejemplos completos de uso
    docs/FABRICA.md            Recorrido idea→deploy para no-programadores
 
 ═══════════════════════════════════════════════════════════════════════
