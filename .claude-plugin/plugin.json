@@ -122,7 +122,8 @@
     "explicame",
     "deploy-vercel",
     "share-progress",
-    "resource-selector"
+    "resource-selector",
+    "decompose-to-ui-kit"
   ],
 
   "mcpServers": "./.mcp.json"

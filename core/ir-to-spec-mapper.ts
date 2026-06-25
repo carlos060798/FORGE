@@ -183,30 +183,32 @@ function generateAC(feature: string, screen?: { name: string; elements: Array<{ 
   return ac;
 }
 
-// CLI usage: node ir-to-spec-mapper.js
-if (require.main === module) {
-  const fs = require('fs');
-  const path = require('path');
+// CLI usage: node core/ir-to-spec-mapper.js
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
 
-  const irPath = path.join(process.cwd(), '.sdd/ir.json');
-  const pdPath = path.join(process.cwd(), '.sdd/product-design.json');
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  const irPath = join(process.cwd(), '.sdd/ir.json');
+  const pdPath = join(process.cwd(), '.sdd/product-design.json');
 
-  if (!fs.existsSync(irPath)) {
+  if (!existsSync(irPath)) {
     console.error('Error: .sdd/ir.json no encontrado. Ejecuta /sdd.interpretar primero.');
     process.exit(1);
   }
 
-  if (!fs.existsSync(pdPath)) {
+  if (!existsSync(pdPath)) {
     console.error('Error: .sdd/product-design.json no encontrado. Ejecuta /sdd.diseñar primero.');
     process.exit(1);
   }
 
-  const ir: IR = JSON.parse(fs.readFileSync(irPath, 'utf8'));
-  const pd: ProductDesign = JSON.parse(fs.readFileSync(pdPath, 'utf8'));
+  const ir: IR = JSON.parse(readFileSync(irPath, 'utf8'));
+  const pd: ProductDesign = JSON.parse(readFileSync(pdPath, 'utf8'));
   const spec = mapIRToSpec(ir, pd);
 
-  const specPath = path.join(process.cwd(), '.sdd/spec-draft.json');
-  fs.writeFileSync(specPath, JSON.stringify(spec, null, 2));
+  const specPath = join(process.cwd(), '.sdd/spec-draft.json');
+  writeFileSync(specPath, JSON.stringify(spec, null, 2));
   console.log(`✅ Spec generada en ${specPath}`);
   console.log(`   ${spec.user_stories.length} historias de usuario`);
   console.log(`   ${spec.functional_requirements.length} requerimientos funcionales`);
