@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "forge-sdd",
   "version": "4.0.0",
   "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 30 skills, pipeline SDD+TDD.",
@@ -8,10 +8,11 @@
     "sdd-es": "cli/index.js"
   },
   "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.js __tests__/*.test.js",
     "test:verbose": "node --test --reporter=spec tests/*.test.js __tests__/*.test.js",
     "coverage": "node --test --experimental-test-coverage tests/*.test.js __tests__/*.test.js",
-    "typecheck": "tsc --noEmit",
     "init": "echo 'Instala con: npx forge init  (o npx sdd-es init)'",
     "doctor": "node cli/index.js doctor"
   },
@@ -22,6 +23,7 @@
     "cli/",
     "bin/",
     "core/",
+    "dist/",
     "commands/",
     "agents/",
     "skills/",
@@ -68,6 +70,7 @@
     "acorn": "^8.17.0"
   },
   "devDependencies": {
-    "@types/node": "^26.0.0"
+    "@types/node": "^26.0.1",
+    "typescript": "^6.0.3"
   }
 }

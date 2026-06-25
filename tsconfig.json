@@ -1,15 +1,19 @@
 {
   "compilerOptions": {
-    "noEmit": true,
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "strict": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022", "ES2022.Array"],
     "types": ["node"],
-    "allowImportingTsExtensions": false,
     "skipLibCheck": true
   },
-  "include": ["core/*.ts"],
+  "include": ["core/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

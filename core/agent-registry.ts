@@ -191,7 +191,8 @@ export class LlmAgentAdapter implements Agent {
     try {
       // Intento dinámico de importar el SDK — sin hacerlo una dependencia dura
       // para que el módulo compile aunque el SDK no esté instalado localmente.
-      const sdkModule = await import('@anthropic-ai/sdk').catch(() => null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sdkModule = await (import('@anthropic-ai/sdk' as string) as Promise<any>).catch(() => null);
 
       if (!sdkModule || !this.apiKey) {
         // Modo stub: devuelve una respuesta vacía trazable (útil en tests sin API key)

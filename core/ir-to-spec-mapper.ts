@@ -3,7 +3,7 @@
  * Converts features.core[] to User Stories and core_screens[] to RF + Actors.
  */
 
-import { IR, ProductDesign } from './ir.types';
+import { IR, ProductDesign } from './ir.types.js';
 
 export interface UserStory {
   id: string;
