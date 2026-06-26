@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/schemas/ir/1.0",
+  "title": "FORGE Interpreted Requirement (IR)",
+  "description": "Interpretación estructurada de la idea del usuario. Artefacto portable entre hosts.",
+  "type": "object",
+  "required": ["schemaVersion", "id", "created_at", "raw_input", "confidence", "product", "features", "constraints", "assumptions", "ambiguities", "requires_clarification"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "raw_input": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "product": {
+      "type": "object",
+      "required": ["name", "type", "tagline", "value_proposition", "target_users"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["saas", "mobile", "web", "api", "cli", "other"] },
+        "tagline": { "type": "string" },
+        "value_proposition": { "type": "string" },
+        "target_users": { "type": "string" }
+      }
+    },
+    "features": {
+      "type": "object",
+      "required": ["core"],
+      "properties": {
+        "core": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 5 },
+        "nice_to_have": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "budget": { "type": "string" },
+        "timeline": { "type": "string" },
+        "team_size": { "type": "string" },
+        "tech_preference": { "type": ["string", "null"] }
+      }
+    },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "ambiguities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "issue", "resolution"],
+        "properties": {
+          "field": { "type": "string" },
+          "issue": { "type": "string" },
+          "resolution": { "type": "string" }
+        }
+      }
+    },
+    "requires_clarification": { "type": "boolean" },
+    "questions_for_user": { "type": "array", "items": { "type": "string" } }
+  }
+}

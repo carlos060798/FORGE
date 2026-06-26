@@ -1325,6 +1325,11 @@ Uso:
   npx forge config set <clave> <v>   Cambia un valor en sdd.config.yaml
   npx forge config validate          Valida la estructura del config
   npx forge logs [--last N]          Historial de consumo de tokens (default: 20 entradas)
+  npx forge export [--format=speckit|openspec] [--out=dir]
+                                     Exporta .sdd/ a formato portable (Spec Kit / OpenSpec)
+  npx forge import --from=speckit --dir=<dir> [--merge]
+  npx forge import --from=openspec --file=<file.json> [--merge]
+                                     Importa artefactos portables de vuelta a .sdd/
   npx forge --version                Muestra la versión
 
   (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
@@ -1369,6 +1374,12 @@ function main() {
       break;
     case "logs":
       cmdLogs(args.slice(1));
+      break;
+    case "export":
+      import("./export.js").then(({ cmdExport }) => cmdExport(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "import":
+      import("./import.js").then(({ cmdImport }) => cmdImport(args.slice(1))).catch(e => error(e.message));
       break;
     case "--version":
     case "-v":
