@@ -31,7 +31,7 @@ Esta guía te lleva de cero a un pipeline FORGE funcionando en menos de 10 minut
 Abre una terminal en la raíz de tu proyecto y ejecuta:
 
 ```bash
-npx forge-sdd init
+npx forge init
 ```
 
 FORGE se instala en el directorio `.claude/` de tu proyecto:
@@ -53,14 +53,14 @@ tu-proyecto/
 Si es tu primera vez usando FORGE, usa el instalador guiado:
 
 ```bash
-npx forge-sdd init --guided
+npx forge init --guided
 ```
 
 Te hará cuatro preguntas:
 
 ```
 ? Perfil: guiado (no-técnico) | experto (desarrollador)
-? Stack: Node.js / Python / Go / otro
+? Stack: Node.js / Python / Go / Ruby / PHP / Rust / Java / otro
 ? Despliegue: Vercel / Railway / Docker / ninguno
 ? Calidad de modelos: alta (Opus) / equilibrada (Sonnet) / bajo costo (Haiku)
 ```
@@ -72,9 +72,9 @@ Luego genera un `sdd.config.yaml` preconfigurado según tus respuestas.
 Para equipos que quieren un punto de partida conocido:
 
 ```bash
-npx forge-sdd init --preset startup     # recomendado para la mayoría de proyectos
-npx forge-sdd init --preset lean        # bajo costo, menos verificaciones de calidad
-npx forge-sdd init --preset enterprise  # máxima rigurosidad
+npx forge init --preset startup     # recomendado para la mayoría de proyectos
+npx forge init --preset lean        # bajo costo, menos verificaciones de calidad
+npx forge init --preset enterprise  # máxima rigurosidad
 ```
 
 ---
@@ -88,7 +88,9 @@ forge doctor
 Salida esperada:
 
 ```
+✓ ANTHROPIC_API_KEY presente
 ✓ Hooks de Claude Code registrados (PreToolUse, PostToolUse)
+✓ Archivos de hook presentes en disco (.claude/hooks/)
 ✓ Sintaxis de sdd.config.yaml válida
 ✓ Agentes activos: 13/14
 ✓ estado.json presente

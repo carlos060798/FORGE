@@ -216,6 +216,53 @@ export function detectStack(cwd: string = process.cwd()): StackInfo {
     };
   }
 
+  // ── Ruby ─────────────────────────────────────────────────────────────────────
+  const hasGemspec = (() => { try { return fs.readdirSync(cwd).some(f => f.endsWith('.gemspec')); } catch { return false; } })();
+  if (exists('Gemfile') || hasGemspec) {
+    const gemfile = read('Gemfile');
+    señales.push(exists('Gemfile') ? 'Gemfile presente' : '*.gemspec presente');
+    let framework: string | null = null;
+    if (contains(gemfile, 'rails')) { framework = 'Rails'; señales.push('dep: rails'); }
+    else if (contains(gemfile, 'sinatra')) { framework = 'Sinatra'; señales.push('dep: sinatra'); }
+    else { framework = 'Ruby'; }
+
+    return {
+      lenguaje: 'ruby',
+      runtime: 'Ruby',
+      framework,
+      base_datos: null,
+      test_cmd: exists('spec') ? 'bundle exec rspec' : 'bundle exec rake test',
+      lint_cmd: 'bundle exec rubocop',
+      build_cmd: null,
+      install_cmd: 'bundle install',
+      confianza: 'alta',
+      señales,
+    };
+  }
+
+  // ── PHP ──────────────────────────────────────────────────────────────────────
+  if (exists('composer.json')) {
+    señales.push('composer.json presente');
+    const composer = read('composer.json');
+    let framework: string | null = null;
+    if (contains(composer, 'laravel/framework')) { framework = 'Laravel'; señales.push('dep: laravel/framework'); }
+    else if (contains(composer, 'symfony/')) { framework = 'Symfony'; señales.push('dep: symfony/'); }
+    else { framework = 'PHP'; }
+
+    return {
+      lenguaje: 'php',
+      runtime: 'PHP',
+      framework,
+      base_datos: null,
+      test_cmd: exists('vendor/bin/phpunit') ? './vendor/bin/phpunit' : 'php artisan test',
+      lint_cmd: exists('vendor/bin/phpstan') ? './vendor/bin/phpstan analyse' : null,
+      build_cmd: null,
+      install_cmd: 'composer install',
+      confianza: 'alta',
+      señales,
+    };
+  }
+
   // ── Desconocido ──────────────────────────────────────────────────────────────
   return {
     lenguaje: 'unknown',

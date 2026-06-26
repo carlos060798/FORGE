@@ -305,19 +305,40 @@ desarrollador-backend   operaciones</code></pre>
 </table>
 </div>
 </details>
+<details>
+<summary>Arquitectura observable (v4.0.0)</summary>
+<div class="details-body">
+<p>Tres módulos core añadidos en v4.0.0 que convierten FORGE en un sistema totalmente observable y seguro:</p>
+<table>
+  <thead><tr><th>Módulo</th><th>Responsabilidad</th></tr></thead>
+  <tbody>
+    <tr><td><code>core/event-bus.ts</code></td><td>Bus de eventos observable — conecta hooks, CLI y dashboard sin polling</td></tr>
+    <tr><td><code>core/session-budget.ts</code></td><td>Presupuesto USD por sesión con alertas configurables en tiempo real</td></tr>
+    <tr><td><code>core/circuit-breaker.ts</code></td><td>3 niveles: <strong>sandbox</strong> (solo lectura) / <strong>local</strong> (escribe en disco) / <strong>confirmado</strong> (operaciones irreversibles)</td></tr>
+    <tr><td><code>core/stack-detector.ts</code></td><td>Detecta automáticamente Node, Python, Go, Rust, Java, <strong>Ruby</strong>, <strong>PHP</strong></td></tr>
+  </tbody>
+</table>
+</div>
+</details>
 
 <h3 id="dev-install">Instalación técnica</h3>
-<pre><code class="lang-bash"># 1. Clonar FORGE en tu proyecto
-git clone https://github.com/&lt;org&gt;/forge .sdd-forge
+<pre><code class="lang-bash"># 1. Instalar FORGE
+npx forge init
 
-# 2. Copiar comandos, agentes, skills y hooks a tu .claude/
-#    (o usar el instalador del repo si está disponible)
+# 2. Verificar instalación (API key, hooks en disco y sintaxis)
+forge doctor
 
-# 3. Configurar tokens en .env.local  (NUNCA se commitea)
+# 3. Ver presupuesto y circuit breaker
+forge status
+
+# 4. Consultar logs en tiempo real
+forge logs --last 20
+
+# 5. Configurar tokens en .env.local  (NUNCA se commitea)
 echo "GITHUB_TOKEN=ghp_xxx"   >> .env.local
 echo "VERCEL_TOKEN=vercel_xxx" >> .env.local
 
-# 4. Abrir Claude Code y arrancar el pipeline
+# 6. Abrir Claude Code y arrancar el pipeline
 #    /sdd.constitucion   → fija principios del proyecto
 #    /sdd.especificar    → primera fase</code></pre>
 <div class="callout warn"><code>.env.local</code> debe estar en <code>.gitignore</code>. Los tokens son <em>scoped</em>: dan acceso solo al repo/proyecto que autorizas, y se revocan en GitHub/Vercel sin afectar tu código ya desplegado.</div>
@@ -337,7 +358,7 @@ echo "VERCEL_TOKEN=vercel_xxx" >> .env.local
 <table>
   <thead><tr><th>✅ Capacidades</th><th>⚠️ Limitaciones</th></tr></thead>
   <tbody>
-    <tr><td>Pipeline completo idea → deploy</td><td>Estado experimental (v2.6.0); valida antes de prod crítica</td></tr>
+    <tr><td>Pipeline completo idea → deploy</td><td>v4.0.0 — 907/907 tests; valida antes de prod crítica</td></tr>
     <tr><td>14 agentes en paralelo con modelos por dominio</td><td>Apps móviles nativas iOS/Android en roadmap</td></tr>
     <tr><td>Auditoría de seguridad y tests automáticos</td><td>Depende de las cuotas/modelos de tu cuenta Claude Code</td></tr>
     <tr><td>Memoria y ledger persistentes entre sesiones</td><td>Proyectos muy especializados pueden requerir intervención manual</td></tr>
@@ -368,6 +389,12 @@ echo "VERCEL_TOKEN=vercel_xxx" >> .env.local
 │  claude-hooks/                                                   │
 │  pre-tool-guard.js (PreToolUse)   — bloqueo y advertencias       │
 │  agent-memory.js   (PostToolUse)  — memoria + ledger             │
+│                                                                  │
+│  core/ (v4.0.0)                                                  │
+│  event-bus.ts      — bus observable hooks↔CLI↔dashboard          │
+│  session-budget.ts — presupuesto USD en tiempo real              │
+│  circuit-breaker.ts— 3 niveles: sandbox/local/confirmado         │
+│  stack-detector.ts — Node·Python·Go·Rust·Java·Ruby·PHP           │
 └───────────────────────────┬──────────────────────────────────────┘
                             │  primitivas oficiales
 ┌───────────────────────────▼──────────────────────────────────────┐
@@ -402,7 +429,7 @@ echo "VERCEL_TOKEN=vercel_xxx" >> .env.local
 <!-- ============ CONCLUSIÓN ============ -->
 <section id="conclusion">
 <h2>Conclusión y próximos pasos</h2>
-<p>Has visto FORGE desde los dos ángulos: como <strong>usuario no-técnico</strong> (qué hace, las 6 fases, los 14 especialistas, qué controlas y sus límites) y como <strong>developer</strong> (el pipeline, los componentes —14 agentes, 35 comandos, 25 skills, 2 hooks—, la instalación y la arquitectura). La idea central es la misma para ambos: <strong>FORGE es transparente y tu código siempre es tuyo.</strong></p>
+<p>Has visto FORGE desde los dos ángulos: como <strong>usuario no-técnico</strong> (qué hace, las 6 fases, los 14 especialistas, qué controlas y sus límites) y como <strong>developer</strong> (el pipeline, los componentes —14 agentes, 39 comandos, 30 skills, hooks más arquitectura observable—, la instalación y la arquitectura). La idea central es la misma para ambos: <strong>FORGE es transparente y tu código siempre es tuyo.</strong> (v4.0.0 — 907/907 tests)</p>
 
 <h3>¿Dónde ir desde aquí?</h3>
 <table>

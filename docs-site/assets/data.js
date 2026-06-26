@@ -1,17 +1,17 @@
 ﻿/* ============================================================
-   FORGE Docs — datos v3.0.0 (bilingüe ES/EN)
+   FORGE Docs — datos v4.0.0 (bilingüe ES/EN)
    12 secciones de documentación oficial
    ============================================================ */
 
 const UI = {
   es: {
-    brand_tag: "v3.0.0",
+    brand_tag: "v4.0.0",
     search_placeholder: "Buscar…",
     search_input_placeholder: "Buscar en la documentación…",
     search_navigate: "navegar",
     search_open: "abrir",
     search_close: "cerrar",
-    footer_text: "FORGE v3.0.0 · Claude Code-native · MIT License",
+    footer_text: "FORGE v4.0.0 · Claude Code-native · MIT License",
     search_no_results: "Sin resultados",
     groups: {
       overview:  "◈ El framework",
@@ -21,13 +21,13 @@ const UI = {
     }
   },
   en: {
-    brand_tag: "v3.0.0",
+    brand_tag: "v4.0.0",
     search_placeholder: "Search…",
     search_input_placeholder: "Search the docs…",
     search_navigate: "navigate",
     search_open: "open",
     search_close: "close",
-    footer_text: "FORGE v3.0.0 · Claude Code-native · MIT License",
+    footer_text: "FORGE v4.0.0 · Claude Code-native · MIT License",
     search_no_results: "No results",
     groups: {
       overview:  "◈ The framework",
@@ -332,7 +332,10 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
           <tr><td>Guardrails (pre-tool-guard)</td><td>✅ Producción</td><td>Patrones de detección exhaustivos, configurables, probados</td></tr>
           <tr><td>Memoria persistente (Markdown)</td><td>✅ Producción</td><td>Auto-compresión, índice invertido, recuperación selectiva</td></tr>
           <tr><td>Observabilidad (consumo.jsonl)</td><td>✅ Producción</td><td>Rotación automática, campos estables, telemetría completa</td></tr>
-          <tr><td>CLI (forge init/doctor/ui)</td><td>✅ Producción</td><td>Zero-deps, multiplataforma, diagnósticos exhaustivos</td></tr>
+          <tr><td>CLI (forge init/doctor/status/logs/ui)</td><td>✅ Producción</td><td>Zero-deps, multiplataforma, diagnósticos exhaustivos con verificación de API key, hooks y sintaxis</td></tr>
+          <tr><td>Event-bus observable</td><td>✅ Producción</td><td>Bus de eventos que conecta hooks, CLI y dashboard sin polling</td></tr>
+          <tr><td>SessionBudget (presupuesto USD)</td><td>✅ Producción</td><td>Seguimiento de gasto en tiempo real con alertas configurables</td></tr>
+          <tr><td>CircuitBreaker (3 niveles)</td><td>✅ Producción</td><td>sandbox / local / confirmado — protección en cascada de operaciones irreversibles</td></tr>
           <tr><td>Tests de contrato (hooks)</td><td>✅ Producción</td><td>15 tests que detectan cambios en la API de Claude Code</td></tr>
           <tr><td>Memoria persistente (SQLite)</td><td>✅ Producción</td><td>Auto-activado en Node ≥22.5 sin configuración manual. Fallback automático a Markdown en Node &lt;22.5.</td></tr>
           <tr><td>Dashboard UI</td><td>🔵 Beta</td><td>Funcional pero sin autenticación ni WebSockets (polling cada 5s)</td></tr>
@@ -454,13 +457,17 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <table>
         <thead><tr><th>Módulo</th><th>Ubicación</th><th>Responsabilidad</th><th>Estado</th></tr></thead>
         <tbody>
-          <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init, update, doctor, config, ui</td><td>Core</td></tr>
+          <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init, update, doctor, config, ui, logs, status</td><td>Core</td></tr>
           <tr><td><code>pre-tool-guard.js</code></td><td>PreToolUse</td><td>Bloquea operaciones destructivas (9 categorías)</td><td>Core</td></tr>
           <tr><td><code>agent-memory.js</code></td><td>PostToolUse</td><td>Memoria persistente + ledger consumo.jsonl</td><td>Core</td></tr>
           <tr><td><code>post-write-conventions.js</code></td><td>PostToolUse</td><td>Valida convenciones del proyecto</td><td>Core</td></tr>
           <tr><td><code>ast-indexer.js</code></td><td>PostToolUse</td><td>Índice AST de archivos JS/TS modificados</td><td>Beta</td></tr>
           <tr><td><code>model-registry.js</code></td><td>Librería hook</td><td>Resolución de provider/modelo (observabilidad, no routing real)</td><td>Experimental</td></tr>
           <tr><td><code>core/project-memory.ts</code></td><td>Core TS</td><td>Lectura/escritura de estado.json con cache y migración</td><td>Beta</td></tr>
+          <tr><td><code>core/event-bus.ts</code></td><td>Core TS</td><td>Bus de eventos observable — conecta hooks, CLI y dashboard en tiempo real</td><td>Core</td></tr>
+          <tr><td><code>core/session-budget.ts</code></td><td>Core TS</td><td>Presupuesto USD por sesión con alertas configurables</td><td>Core</td></tr>
+          <tr><td><code>core/circuit-breaker.ts</code></td><td>Core TS</td><td>3 niveles: sandbox / local / confirmado — protege operaciones irreversibles</td><td>Core</td></tr>
+          <tr><td><code>core/stack-detector.ts</code></td><td>Core TS</td><td>Detecta stack técnico (Node, Python, Go, Rust, Java, Ruby, PHP)</td><td>Core</td></tr>
           <tr><td><code>ui/server.js</code></td><td>Dashboard</td><td>HTTP server loopback — 6 endpoints de solo lectura</td><td>Beta</td></tr>
         </tbody>
       </table>
@@ -541,11 +548,15 @@ AUDIENCIA:      Dev prof.   No-developer  No técnico  No técnico</code></pre>
       <table>
         <thead><tr><th>Module</th><th>Location</th><th>Responsibility</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init, update, doctor, config, ui</td><td>Core</td></tr>
+          <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init, update, doctor, config, ui, logs, status</td><td>Core</td></tr>
           <tr><td><code>pre-tool-guard.js</code></td><td>PreToolUse</td><td>Blocks destructive operations (9 categories)</td><td>Core</td></tr>
           <tr><td><code>agent-memory.js</code></td><td>PostToolUse</td><td>Persistent memory + consumo.jsonl ledger</td><td>Core</td></tr>
           <tr><td><code>model-registry.js</code></td><td>Hook library</td><td>Provider/model resolution (observability, not real routing)</td><td>Experimental</td></tr>
           <tr><td><code>core/project-memory.ts</code></td><td>Core TS</td><td>Read/write estado.json with cache and migration</td><td>Beta</td></tr>
+          <tr><td><code>core/event-bus.ts</code></td><td>Core TS</td><td>Observable event bus — connects hooks, CLI and dashboard in real time</td><td>Core</td></tr>
+          <tr><td><code>core/session-budget.ts</code></td><td>Core TS</td><td>USD budget per session with configurable alerts</td><td>Core</td></tr>
+          <tr><td><code>core/circuit-breaker.ts</code></td><td>Core TS</td><td>3 levels: sandbox / local / confirmed — protects irreversible operations</td><td>Core</td></tr>
+          <tr><td><code>core/stack-detector.ts</code></td><td>Core TS</td><td>Detects tech stack (Node, Python, Go, Rust, Java, Ruby, PHP)</td><td>Core</td></tr>
           <tr><td><code>ui/server.js</code></td><td>Dashboard</td><td>Loopback HTTP server — 6 read-only endpoints</td><td>Beta</td></tr>
         </tbody>
       </table>
@@ -646,7 +657,9 @@ consumo.jsonl.3      → más antiguo (máximo 3 backups)</code></pre>
 forge init --template api-rest # Con template
 forge init --guided            # Wizard interactivo
 forge update                   # Actualiza núcleo
-forge doctor                   # Diagnóstico completo
+forge doctor                   # Diagnóstico: API key, hooks en disco y sintaxis
+forge status                   # Presupuesto USD y estado del circuit breaker
+forge logs [--last N]          # Últimas entradas de consumo.jsonl
 forge ui [--port N]            # Dashboard
 forge config show | get | set  # Configuración</code></pre>
 
@@ -685,7 +698,9 @@ forge config show | get | set  # Configuración</code></pre>
       <p>Installer and terminal entry point. Zero-deps.</p>
       <pre><code class="bash">forge init                    # Install FORGE
 forge init --template api-rest # With template
-forge doctor                   # Full diagnostic
+forge doctor                   # Diagnostic: API key, hooks on disk, syntax
+forge status                   # USD budget and circuit breaker status
+forge logs [--last N]          # Last consumo.jsonl entries
 forge ui [--port N]            # Dashboard</code></pre>
     `
   }
@@ -914,7 +929,7 @@ npx forge init --template saas-mvp</code></pre>
       <table>
         <thead><tr><th>Preset</th><th>Uso</th><th>Características</th></tr></thead>
         <tbody>
-          <tr><td><code>lean</code></td><td>Proyectos personales</td><td>Haiku para tareas simples, Sonnet para dev</td></tr>
+          <tr><td><code>lean</code></td><td>Proyectos personales</td><td>6 agentes activos por defecto — Haiku para tareas simples, Sonnet para dev</td></tr>
           <tr><td><code>startup</code></td><td>MVP ágil</td><td>Sonnet como default, Opus solo para arquitectura</td></tr>
           <tr><td><code>enterprise</code></td><td>Proyectos corporativos</td><td>Opus extensivo, todos los guardrails, ADR obligatorio</td></tr>
         </tbody>
@@ -1036,7 +1051,10 @@ forge init --preset enterprise # Corporate</code></pre>
       </table>
 
       <h2>Comandos de diagnóstico</h2>
-      <pre><code class="bash">forge doctor         # Diagnóstico completo
+      <pre><code class="bash">forge doctor         # Diagnóstico: API key, hooks en disco y sintaxis
+forge status         # Presupuesto USD y estado del circuit breaker
+forge logs           # Últimas entradas de consumo.jsonl (cola viva)
+forge logs --last 20 # Últimas N entradas
 forge ui             # Dashboard en localhost:3001
 /sdd.estado          # Estado actual del pipeline (dentro de Claude Code)
 /sdd.snapshot        # Guarda snapshot antes de pausar</code></pre>
@@ -1109,7 +1127,10 @@ forge init --guided           # Wizard interactivo
 forge init --preset &lt;name&gt;    # lean | startup | enterprise
 forge init --ui               # Incluye dashboard
 forge update                  # Actualiza núcleo sin tocar .sdd/
-forge doctor                  # Diagnóstico completo
+forge doctor                  # Diagnóstico: API key, hooks en disco y sintaxis
+forge status                  # Presupuesto USD y estado del circuit breaker
+forge logs                    # Últimas entradas de consumo.jsonl (cola viva)
+forge logs --last 20          # Últimas N entradas
 forge ui [--port N]           # Abre dashboard en navegador
 forge config show             # Muestra sdd.config.yaml
 forge config get &lt;key&gt;        # Lee valor específico
@@ -1139,7 +1160,10 @@ forge --version               # Versión instalada</code></pre>
       <h2>Terminal CLI</h2>
       <pre><code class="bash">forge init                    # Install FORGE
 forge init --template api-rest # With template
-forge doctor                   # Full diagnostic
+forge doctor                   # Diagnostic: API key, hooks on disk, syntax
+forge status                   # USD budget and circuit breaker status
+forge logs                     # Last consumo.jsonl entries (live tail)
+forge logs --last 20           # Last N entries
 forge ui [--port N]            # Open dashboard</code></pre>
     `
   }
@@ -1310,9 +1334,12 @@ version: 1.0.0
       <h2>Verificar MCPs detectados</h2>
       <pre><code class="bash">forge doctor
 # Muestra:
-#   Vercel MCP: ✅ detectado
-#   GitHub MCP: ✅ detectado
-#   Figma MCP:  ⚠️  no instalado (opcional)</code></pre>
+#   API key Anthropic: ✅ configurada
+#   Hooks en disco:    ✅ pre-tool-guard.js, agent-memory.js, post-write-conventions.js
+#   Sintaxis de hooks: ✅ sin errores
+#   Vercel MCP:        ✅ detectado
+#   GitHub MCP:        ✅ detectado
+#   Figma MCP:         ⚠️  no instalado (opcional)</code></pre>
     `
   },
   en: {
@@ -1334,9 +1361,12 @@ version: 1.0.0
       <h2>Verify detected MCPs</h2>
       <pre><code class="bash">forge doctor
 # Shows:
-#   Vercel MCP: ✅ detected
-#   GitHub MCP: ✅ detected
-#   Figma MCP:  ⚠️  not installed (optional)</code></pre>
+#   Anthropic API key: ✅ configured
+#   Hooks on disk:     ✅ pre-tool-guard.js, agent-memory.js, post-write-conventions.js
+#   Hook syntax:       ✅ no errors
+#   Vercel MCP:        ✅ detected
+#   GitHub MCP:        ✅ detected
+#   Figma MCP:         ⚠️  not installed (optional)</code></pre>
     `
   }
 },
@@ -1353,7 +1383,7 @@ version: 1.0.0
 
       <div class="callout warning">
         <p><strong>Tests E2E del pipeline</strong></p>
-        <p>Los 900+ tests actuales cubren infraestructura pero no el flujo de usuario. Una regresión en <code>sdd.interpretar</code> que cambia el formato de <code>ir.json</code> puede pasar desapercibida.</p>
+        <p>Los 907/907 tests actuales cubren infraestructura pero no el flujo de usuario. Una regresión en <code>sdd.interpretar</code> que cambia el formato de <code>ir.json</code> puede pasar desapercibida.</p>
         <p><strong>Acción:</strong> Crear <code>tests/e2e/pipeline-flow.test.js</code> que simule un ciclo completo idea → ir → spec → estado usando fixtures, sin llamar al LLM.</p>
       </div>
 
@@ -1401,7 +1431,7 @@ npm run typecheck  # Type-check sin errores</code></pre>
       <h2>High priority</h2>
       <div class="callout warning">
         <p><strong>Pipeline E2E tests</strong></p>
-        <p>900+ existing tests cover infrastructure but not user flow. Create <code>tests/e2e/pipeline-flow.test.js</code> to simulate a complete cycle without calling the LLM.</p>
+        <p>907/907 existing tests cover infrastructure but not user flow. Create <code>tests/e2e/pipeline-flow.test.js</code> to simulate a complete cycle without calling the LLM.</p>
       </div>
 
       <div class="callout warning">
@@ -3029,7 +3059,7 @@ Generated documentation:
         <tbody>
           <tr><td><code>descubrir-idea</code></td><td>Hace 5 preguntas clave para clarificar idea inicial</td></tr>
           <tr><td><code>interpretar-idea</code></td><td>Convierte descripción libre en IR con confidence score</td></tr>
-          <tr><td><code>deteccion-stack</code></td><td>Detecta tecnologías del proyecto (package.json, configs)</td></tr>
+          <tr><td><code>deteccion-stack</code></td><td>Detecta tecnologías del proyecto (Node, Python, Go, Rust, Java, Ruby, PHP)</td></tr>
           <tr><td><code>mejorar-prompt</code></td><td>Reformula requisito ambiguo en descripción precisa</td></tr>
         </tbody>
       </table>

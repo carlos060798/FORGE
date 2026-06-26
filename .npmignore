@@ -1,0 +1,9 @@
+# Excluir de npm publish
+FORGE/
+scripts/test-bus.mjs
+tests/
+__tests__/
+.claude/
+.sdd/
+*.jsonl
+tsconfig.json

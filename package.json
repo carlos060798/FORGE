@@ -14,7 +14,8 @@
     "test:verbose": "node --test --reporter=spec tests/*.test.js __tests__/*.test.js",
     "coverage": "node --test --experimental-test-coverage tests/*.test.js __tests__/*.test.js",
     "init": "echo 'Instala con: npx forge init  (o npx sdd-es init)'",
-    "doctor": "node cli/index.js doctor"
+    "doctor": "node cli/index.js doctor",
+    "prepublishOnly": "npm run build && npm test"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -36,6 +37,7 @@
     "docs/",
     "ui/",
     ".claude-plugin/",
+    "scripts/",
     ".gitignore",
     ".mcp.json",
     "instalar.sh",

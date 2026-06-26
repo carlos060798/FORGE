@@ -19,6 +19,12 @@ export interface AgentDefinition {
   tools: string[];
   goal?: string;
   backstory?: string;
+  /**
+   * Timeout en milisegundos para este agente específico.
+   * Si se omite, se usa el timeout global de la configuración FORGE.
+   * Ejemplos: 300000 (5 min), 120000 (2 min), 60000 (1 min).
+   */
+  timeout_ms?: number;
   /** Cuerpo Markdown sin el bloque YAML de frontmatter */
   systemPrompt: string;
   /** Ruta absoluta al archivo .md */
@@ -162,13 +168,19 @@ export class AgentRegistry {
 // ── LlmAgentAdapter ───────────────────────────────────────────────────────────
 // Implementación real cuando el SDK está disponible; stub cuando no.
 
+/** Timeout global por defecto (2 minutos) usado cuando el agente no define timeout_ms. */
+const DEFAULT_GLOBAL_TIMEOUT_MS = 120_000;
+
 export class LlmAgentAdapter implements Agent {
   readonly definition: AgentDefinition;
   private readonly apiKey: string;
+  /** Timeout global de la configuración FORGE; se sobreescribe por agente si define timeout_ms. */
+  private readonly globalTimeoutMs: number;
 
-  constructor(definition: AgentDefinition, apiKey?: string) {
+  constructor(definition: AgentDefinition, apiKey?: string, globalTimeoutMs?: number) {
     this.definition = definition;
     this.apiKey = apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? '';
+    this.globalTimeoutMs = globalTimeoutMs ?? DEFAULT_GLOBAL_TIMEOUT_MS;
   }
 
   async execute(ctx: AgentContext): Promise<AgentResult> {
@@ -207,13 +219,26 @@ export class LlmAgentAdapter implements Agent {
         };
       }
 
+      // Timeout efectivo: primero el del agente, luego el global, luego el defecto.
+      const effectiveTimeoutMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
+
       const client = new sdkModule.default({ apiKey: this.apiKey });
-      const response = await client.messages.create({
-        model: modelId,
-        max_tokens: 8192,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: ctx.userPrompt }],
-      });
+      let response: Awaited<ReturnType<typeof client.messages.create>>;
+      try {
+        response = await client.messages.create(
+          {
+            model: modelId,
+            max_tokens: 8192,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: ctx.userPrompt }],
+          },
+          { signal: controller.signal },
+        );
+      } finally {
+        clearTimeout(timer);
+      }
 
       const textBlocks = response.content.filter((b: { type: string }) => b.type === 'text');
       const output = textBlocks.map((b: { text: string }) => b.text).join('\n');

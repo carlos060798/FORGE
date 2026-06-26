@@ -16,7 +16,7 @@ quieres; FORGE decide lo técnico, lo construye y te explica cada paso sin jerga
 En tu terminal:
 
 ```bash
-npx sdd-es init
+npx forge init
 ```
 
 Esto deja FORGE listo dentro de Claude Code. Solo se hace una vez.

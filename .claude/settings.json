@@ -1,4 +1,29 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"leerConfig\\\\|SQLite\\\\|backend\")",
+      "Bash(xargs grep -l \"leerConfig\\\\|sqlite\")",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Filter '*.js' -o -Filter '*.ts' | Select-String 'leerConfig|sqlite' -List | Select Path | head -20\")",
+      "Bash(cd /d/new_forge/FORGE && find . -type f -name \"package.json\" | head -5)",
+      "Read(//d/d/new_forge/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat: añadir Mermaid.js al HTML para renderizar diagramas *)",
+      "Bash(grep \"\\\\.md$\")",
+      "Bash(awk '{print $9, \"\\(\" $5 \"\\)\"}')",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\new_forge\\\\\" | Where-Object {$_.Name -match \"AUDITORIA|MAESTRO|EJECUTIVO|ENTREGA-FINAL\"} | Select-Object Name, @{Name=\"Tamaño\";Expression={\"{0:N0} KB\" -f \\($_.Length/1KB\\)}} | Format-Table -AutoSize)",
+      "Bash(node -c data.js)",
+      "Bash(node -e \"const {UI, GROUP_ORDER, PAGES} = require\\('./data.js'\\); console.log\\('✓ JSON válido y cargado'\\); console.log\\('Total pages:', Object.keys\\(PAGES\\).length\\); console.log\\('Agentes \\(14\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('agentes'\\)\\).length\\); console.log\\('Comandos \\(2\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('comandos'\\)\\).length\\); console.log\\('Skills \\(5\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('skills'\\)\\).length\\);\")",
+      "Bash(cat /tmp/test-forge-fresh/.claude/settings.json | grep -A5 \"command\")",
+      "Read(//tmp/test-forge-fresh/.claude/**)",
+      "Bash(ls /tmp/test-forge-fresh/.claude/hooks/)",
+      "Read(//tmp/**)",
+      "Bash(node \"d:\\\\\\\\new_forge\\\\\\\\cli\\\\\\\\index.js\" doctor)",
+      "Bash(grep -c \"C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\usuario\")",
+      "Bash(cd d:\\\\\\\\new_forge)",
+      "Bash(npx -p forge-sdd sdd-es --version)",
+      "Bash(npx -p forge-sdd forge --version)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -34,22 +59,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(xargs grep -l \"leerConfig\\\\|SQLite\\\\|backend\")",
-      "Bash(xargs grep -l \"leerConfig\\\\|sqlite\")",
-      "Bash(powershell -Command \"Get-ChildItem -Recurse -Filter '*.js' -o -Filter '*.ts' | Select-String 'leerConfig|sqlite' -List | Select Path | head -20\")",
-      "Bash(cd /d/new_forge/FORGE && find . -type f -name \"package.json\" | head -5)",
-      "Read(//d/d/new_forge/**)",
-      "Bash(git add *)",
-      "Bash(git commit -m 'feat: añadir Mermaid.js al HTML para renderizar diagramas *)",
-      "Bash(grep \"\\\\.md$\")",
-      "Bash(awk '{print $9, \"\\(\" $5 \"\\)\"}')",
-      "PowerShell(Get-ChildItem -Path \"d:\\\\new_forge\\\\\" | Where-Object {$_.Name -match \"AUDITORIA|MAESTRO|EJECUTIVO|ENTREGA-FINAL\"} | Select-Object Name, @{Name=\"Tamaño\";Expression={\"{0:N0} KB\" -f \\($_.Length/1KB\\)}} | Format-Table -AutoSize)",
-      "Bash(node -c data.js)",
-      "Bash(node -e \"const {UI, GROUP_ORDER, PAGES} = require\\('./data.js'\\); console.log\\('✓ JSON válido y cargado'\\); console.log\\('Total pages:', Object.keys\\(PAGES\\).length\\); console.log\\('Agentes \\(14\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('agentes'\\)\\).length\\); console.log\\('Comandos \\(2\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('comandos'\\)\\).length\\); console.log\\('Skills \\(5\\):', Object.keys\\(PAGES\\).filter\\(k => k.startsWith\\('skills'\\)\\).length\\);\")"
     ]
   }
 }

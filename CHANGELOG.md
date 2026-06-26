@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] — 2026-06-25
+
+### Añadido
+- `forge logs [--last N]`: historial de consumo de tokens con totales USD
+- Event-bus en proceso (`core/event-bus.ts`): SessionBudget y CircuitBreaker conectados al Orchestrator
+- `forge doctor`: verifica `ANTHROPIC_API_KEY`, archivos de hook en disco y sintaxis via `node --check`
+- `forge status`: muestra presupuesto de sesión (tokens + USD) y nivel del circuit breaker
+- Stack detector: soporte Ruby (Rails/Sinatra) y PHP (Laravel/Symfony)
+- Timeouts por agente configurables vía `timeout_ms` en `sdd.config.yaml`
+- Snapshots automáticos de `estado.json` (retiene últimos 5)
+
+### Mejorado
+- Preset lean por defecto: 6 agentes activos (arquitecto, backend, tester, revisor, seguridad, documentador), 8 opcionales con documentación
+- `pre-tool-guard`: restricciones dinámicas sandbox/local/confirmado por nivel del CircuitBreaker — nivel sandbox bloquea Bash
+- `checkCoverage`: filtra comentarios JS/Python/HTML antes de buscar `REQ-NNN`
+- `CLAUDE_MD_VERSION`: usa `pluginVersion()` dinámica en lugar de string hardcodeada
+
+### Corregido
+- `npx forge-sdd` → `npx forge` en README (7 ocurrencias)
+- Bug in-degree negativo en ordenación topológica de Kahn del Orchestrator
+- Falso positivo grep `.env` en `pre-tool-guard` (ahora solo bloquea escrituras)
+- Paths hardcodeados `C:\Users\usuario\` eliminados del template `settings.json`
+
+### Tests
+- 907/907 tests pasando (antes: 848)
+
+---
+
 ## [3.1.0] - 2026-06-21
 
 ### Added

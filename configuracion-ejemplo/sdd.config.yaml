@@ -34,6 +34,16 @@ agentes:
   # Para activar todos: cambia perfil a "enterprise" o descomenta los agentes necesarios.
   # Agentes opcionales: critico, seguridad, asesor-datos, disenador-api, investigador, operaciones, product-designer, architecture-designer
 
+  # ── Timeout por agente (opcional) ──────────────────────────────────────────
+  # Cada agente puede declarar timeout_ms para sobreescribir el timeout global.
+  # Si no se declara, se usa el valor global de LlmAgentAdapter (120 000 ms).
+  # Ejemplo:
+  #   arquitecto:
+  #     timeout_ms: 300000  # 5 min — análisis complejo de arquitectura
+  #   tester:
+  #     timeout_ms: 120000  # 2 min — generación de tests simples
+  # ───────────────────────────────────────────────────────────────────────────
+
   # ---------- Diseño y arquitectura ----------
   arquitecto:
     activo: true

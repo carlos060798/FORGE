@@ -150,6 +150,21 @@ agentes:
 | `activo` | boolean | Si el agente participa en el pipeline |
 | `modelo` | string | `opus` \| `sonnet` \| `haiku` |
 | `descripcion` | string | Texto libre (informativo) |
+| `timeout_ms` | integer | Tiempo máximo en milisegundos que puede ejecutarse el agente (predeterminado: sin límite) |
+
+**Ejemplo con `timeout_ms`:**
+
+```yaml
+agentes:
+  tester:
+    activo: true
+    modelo: sonnet
+    timeout_ms: 120000    # 2 minutos — aborta si los tests tardan más
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet
+    timeout_ms: 300000    # 5 minutos
+```
 
 ### Restricciones
 
@@ -446,7 +461,7 @@ compresion:
   modo_agentes_internos: comprimido
 ```
 
-Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario.
+Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario. Activa **6 agentes** por defecto (`arquitecto`, `desarrollador-backend`, `desarrollador-frontend`, `tester`, `revisor`, `investigador`) y desactiva los más costosos (`critico`, `seguridad`, `documentador`, etc.).
 
 ### `startup.yaml`
 
@@ -512,9 +527,59 @@ forge doctor
 ```
 
 `forge doctor` verifica:
+- Variable de entorno `ANTHROPIC_API_KEY` presente
+- Los hooks están registrados en `.claude/settings.json`
+- Los archivos de hook existen en disco (`.claude/hooks/*.js`)
 - Sintaxis YAML válida
 - Claves obligatorias presentes (`agentes`, `comportamiento`)
 - `memoria.umbral_bytes` es un número positivo
 - Los modelos declarados son valores válidos (`opus`, `sonnet`, `haiku`)
-- Los hooks están registrados en `.claude/settings.json`
 - `estado.json` presente y con `schemaVersion: "1.0"`
+
+---
+
+## Sección: `circuit_breaker`
+
+Controla el nivel de ejecución de los agentes. El estado persiste en `.sdd/execution-level.json`.
+
+```yaml
+circuit_breaker:
+  nivel: "sandbox"
+```
+
+| Nivel | Comportamiento |
+|-------|---------------|
+| `sandbox` | Los agentes solo pueden leer archivos y proponer cambios — ningún Bash ni Write real |
+| `local` | Permite escritura de archivos pero no comandos de shell destructivos |
+| `confirmado` | Ejecución completa con confirmación explícita para comandos de alto riesgo |
+
+El nivel se puede cambiar en tiempo de ejecución desde Claude Code:
+
+```
+/sdd.configurar set circuit_breaker.nivel local
+```
+
+O ver el nivel actual con:
+
+```bash
+forge status
+```
+
+---
+
+## Sección: `session_budget`
+
+Configura el acumulador de costo USD de la sesión.
+
+```yaml
+session_budget:
+  alerta_usd: 1.00      # Emite warning al superar este umbral
+  maximo_usd: 5.00      # Pausa el pipeline al superar este límite
+```
+
+| Clave | Tipo | Descripción |
+|-------|------|-------------|
+| `alerta_usd` | float | Umbral en dólares para mostrar advertencia de costo |
+| `maximo_usd` | float | Límite máximo — el pipeline se pausa hasta confirmación explícita |
+
+El costo acumulado se puede ver en cualquier momento con `forge status` o consultando `forge logs`.

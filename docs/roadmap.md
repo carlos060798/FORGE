@@ -15,7 +15,7 @@ La versión 4.0.0 completó cuatro fases de desarrollo:
 | Dashboard vanilla JS | Servidor loopback, 6 vistas, polling 5s, auto-cierre 30min | ✅ Completo |
 | Multi-LLM + empaquetado | `model-registry.js`, presets, `forge doctor` extendido | ✅ Completo |
 
-**Tests:** 848 pasando (8 con fallos conocidos en entorno de test — no afectan uso real)
+**Tests:** 907/907 pasando (branch `feature/engine-ejecutable`)
 
 ---
 

@@ -66,21 +66,78 @@ forge doctor
 ```
 
 **Verificaciones:**
-1. Hooks registrados en `.claude/settings.json`
-2. Sintaxis de `sdd.config.yaml` válida
-3. Claves obligatorias presentes (`agentes`, `comportamiento`)
-4. `memoria.umbral_bytes` es número positivo (si está presente)
-5. Modelos declarados son valores válidos
-6. `estado.json` presente con `schemaVersion: "1.0"`
-7. Versión de Node ≥ 18.0.0
-8. Providers detectados (Anthropic siempre, OpenAI/Google si hay env vars)
-9. Backend SQLite disponible (si Node ≥ 22.5)
-10. Servidor UI: `forge ui` disponible
+1. Variable de entorno `ANTHROPIC_API_KEY` presente
+2. Hooks registrados en `.claude/settings.json`
+3. Archivos de hook presentes en disco (`.claude/hooks/*.js`)
+4. Sintaxis de `sdd.config.yaml` válida
+5. Claves obligatorias presentes (`agentes`, `comportamiento`)
+6. `memoria.umbral_bytes` es número positivo (si está presente)
+7. Modelos declarados son valores válidos
+8. `estado.json` presente con `schemaVersion: "1.0"`
+9. Versión de Node ≥ 18.0.0
+10. Providers detectados (Anthropic siempre, OpenAI/Google si hay env vars)
+11. Backend SQLite disponible (si Node ≥ 22.5)
+12. Servidor UI: `forge ui` disponible
 
 **Códigos de salida:**
 - `0` — todo correcto
 - `1` — advertencias (funcional pero mejorable)
 - `2` — errores críticos (FORGE no funcionará correctamente)
+
+---
+
+### `forge status`
+
+Muestra el estado del proyecto con presupuesto de sesión y nivel del circuit breaker.
+
+```bash
+forge status
+```
+
+**Salida ejemplo:**
+
+```
+FORGE v4.0.0 — Estado del proyecto
+
+  Pipeline:          implementar (etapa 6/10)
+  Spec activa:       2026-06-21-auth-jwt
+  Presupuesto:       $0.38 USD gastados esta sesión
+  Circuit breaker:   sandbox  (niveles: sandbox → local → confirmado)
+  Agentes activos:   6/14
+  Tests:             907/907 ✅
+```
+
+El campo **Presupuesto** acumula el costo USD de la sesión actual usando `SessionBudget` (lee `consumo.jsonl`). El campo **Circuit breaker** refleja el nivel de ejecución persistido en `.sdd/execution-level.json` — ver [Configuración: circuit_breaker](#sección-circuit_breaker).
+
+---
+
+### `forge logs`
+
+Muestra el historial de consumo de la sesión actual o de sesiones anteriores.
+
+```bash
+forge logs [opciones]
+```
+
+| Opción | Tipo | Descripción |
+|--------|------|-------------|
+| `--last <N>` | integer | Muestra las últimas N entradas del log (predeterminado: 20) |
+
+**Fuente de datos:** Lee `.sdd/observabilidad/consumo.jsonl` — el ledger NDJSON que `agent-memory.js` actualiza tras cada llamada a herramienta. Cada línea contiene: `timestamp`, `agente`, `accion`, `tokens_in`, `tokens_out`, `costo_usd`.
+
+**Ejemplo:**
+
+```bash
+forge logs --last 5
+```
+
+```
+2026-06-25T14:32:01Z  arquitecto      write    in=1240 out=890   $0.021
+2026-06-25T14:32:45Z  desarrollador-backend  bash  in=320  out=50    $0.004
+2026-06-25T14:33:10Z  tester          bash     in=410  out=120   $0.006
+2026-06-25T14:33:55Z  revisor         read     in=890  out=340   $0.014
+2026-06-25T14:34:20Z  arquitecto      edit     in=560  out=230   $0.010
+```
 
 ---
 

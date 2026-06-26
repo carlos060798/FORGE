@@ -9,7 +9,7 @@
 [![Versión](https://img.shields.io/badge/versión-4.0.0-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
-[![Tests](https://img.shields.io/badge/tests-848%20pasando-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-907%20pasando-brightgreen)](tests/)
 
 </div>
 
@@ -76,6 +76,16 @@ Cada etapa produce un **artefacto duradero** almacenado en el directorio `.sdd/`
 
 → Ver [Arquitectura](docs/architecture.md) para el diagrama completo del sistema.
 
+**Módulos principales del runtime:**
+
+| Módulo | Responsabilidad |
+|---|---|
+| `core/event-bus.ts` | Bus de eventos en proceso; conecta Orchestrator con SessionBudget y CircuitBreaker |
+| `core/session-budget.ts` | Acumula tokens y USD de la sesión; alimenta `forge status` |
+| `core/circuit-breaker.ts` | Tres niveles (local / sandbox / confirmado); pre-tool-guard aplica restricciones dinámicas |
+| `core/stack-detector.ts` | Detecta lenguaje y framework del proyecto |
+| `core/agent-registry.ts` | Registro de 14 agentes con roles, modelos y `timeout_ms` |
+
 ---
 
 ## Instalación
@@ -133,6 +143,8 @@ FORGE despacha trabajo a 14 agentes especializados. Cada agente tiene un rol fij
 
 **Niveles:** Estratégico (Opus), Diseño (Opus), Implementación (Sonnet), Soporte (Sonnet)
 
+**Preset lean** (por defecto con `--preset lean`): activa **6 agentes** (arquitecto, backend, tester, revisor, seguridad, documentador). Los 8 agentes restantes están disponibles como opcionales y se documentan en `docs/agents.md`.
+
 → [Ver tabla completa y perfiles en Agentes](docs/agents.md#tabla-de-referencia-rápida)
 
 ---
@@ -160,6 +172,26 @@ memoria:
 
 → Ver [Configuración](docs/configuration.md) para todas las opciones.
 
+Cada agente puede tener su propio timeout:
+
+```yaml
+agentes:
+  backend:
+    timeout_ms: 120000   # 2 minutos
+```
+
+### Detección de stack automática
+
+FORGE detecta el lenguaje/framework del proyecto y ajusta los agentes activos, linters y heurísticas de cobertura. Lenguajes soportados:
+
+| Lenguaje | Frameworks detectados |
+|---|---|
+| Node / TypeScript | Express, NestJS, Next.js |
+| Python | Django, FastAPI, Flask |
+| Java | Spring Boot, Maven, Gradle |
+| Ruby | Rails, Sinatra |
+| PHP | Laravel, Symfony |
+
 ---
 
 ## Observabilidad
@@ -167,9 +199,17 @@ memoria:
 ```bash
 forge ui            # abre el dashboard en localhost:3001
 forge ui --port 4000
+forge status        # presupuesto USD de sesión y nivel del circuit breaker
+forge logs          # historial de consumo de tokens (consumo.jsonl)
+forge logs --last 20
+forge doctor        # verifica ANTHROPIC_API_KEY, hooks en disco y sintaxis
 ```
 
 El dashboard muestra el estado en vivo del pipeline, agentes activos, progreso de tareas y línea de tiempo de actividad, todo desde `.sdd/` sin ningún servicio externo.
+
+`forge status` incluye el presupuesto de tokens consumidos en la sesión actual, su equivalente en USD y el nivel activo del circuit breaker (local / sandbox / confirmado).
+
+`forge doctor` comprueba: presencia de `ANTHROPIC_API_KEY` en el entorno, existencia de los archivos de hook en disco y validez de sintaxis de los scripts JavaScript via `node --check`.
 
 ---
 

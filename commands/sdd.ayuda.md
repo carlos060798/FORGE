@@ -81,6 +81,12 @@ Muestra esta guía formateada:
    /sdd.optimizar                    Optimizar artefactos SDD para reducir uso de contexto
    /sdd.optimizar-memoria            Compactar la memoria del agente activo
 
+🖥️  CLI (terminal, fuera de Claude Code)
+   forge status                      Estado del proyecto con presupuesto USD y nivel circuit breaker
+   forge logs [--last N]             Historial de consumo de agentes desde consumo.jsonl
+   forge doctor                      Verificar instalación: API key, hooks en disco, sintaxis YAML
+   forge ui                          Iniciar dashboard en localhost:3001
+
 ═══════════════════════════════════════════════════════════════════════
   🔄 FLUJOS RECOMENDADOS
 ═══════════════════════════════════════════════════════════════════════

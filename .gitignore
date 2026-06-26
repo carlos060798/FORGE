@@ -15,3 +15,5 @@ sdd-lite/mcp-figma/dist/
 # Variables de entorno
 .env
 .env.local
+
+FORGE/

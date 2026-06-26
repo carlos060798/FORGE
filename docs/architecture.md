@@ -310,6 +310,26 @@ graph LR
 
 ---
 
+## Detección de stack (`core/stack-detector.ts`)
+
+FORGE detecta automáticamente el stack tecnológico del proyecto al iniciar `forge init` o `forge doctor`. La detección inspecciona los archivos del proyecto (manifests, lock files, archivos de configuración) para identificar el lenguaje y los frameworks en uso.
+
+**Stacks soportados:**
+
+| Lenguaje | Frameworks / indicadores detectados |
+|----------|-------------------------------------|
+| Node.js | `package.json`, `node_modules/`, Express, NestJS, Next.js, Nuxt |
+| Python | `requirements.txt`, `pyproject.toml`, Django, FastAPI, Flask |
+| Go | `go.mod`, `go.sum` |
+| Rust | `Cargo.toml`, `Cargo.lock` |
+| Java | `pom.xml`, `build.gradle`, Spring Boot |
+| Ruby | `Gemfile`, `Gemfile.lock`, Rails, Sinatra |
+| PHP | `composer.json`, `composer.lock`, Laravel, Symfony |
+
+Cuando el stack es detectado, FORGE preconfigurar el agente `investigador` con contexto específico del lenguaje y ajusta las verificaciones de `forge doctor` (por ejemplo, verifica `bundle install` en proyectos Ruby, `composer install` en PHP).
+
+---
+
 ## Decisiones arquitectónicas clave
 
 ### ¿Por qué Markdown para comandos y agentes?
