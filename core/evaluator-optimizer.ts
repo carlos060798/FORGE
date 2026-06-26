@@ -11,8 +11,10 @@
  * generó el output que se va a evaluar.
  */
 
+import { execSync } from 'child_process';
 import type { Agent, AgentContext, AgentResult } from './agent-registry.js';
 import type { EventLog } from './event-log.js';
+import { detectStack } from './stack-detector.js';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -86,6 +88,22 @@ export function calcularScoreVisual(checksAprobados: number): number {
 
 export function requiereEvaluador(agenteNombre: string): boolean {
   return GRUPO_OPUS.has(agenteNombre);
+}
+
+// ── Helper: ejecutar suite de tests real ──────────────────────────────────────
+
+function ejecutarTestsSuite(cwd: string): { ok: boolean; salida: string; duracionMs: number } {
+  try {
+    const stack = detectStack(cwd);
+    const cmd = stack?.test_cmd;
+    if (!cmd) return { ok: true, salida: 'Sin test_cmd detectado — se omite verificación', duracionMs: 0 };
+    const inicio = Date.now();
+    execSync(cmd, { cwd, stdio: 'pipe', timeout: 120_000 });
+    return { ok: true, salida: 'Tests pasando ✓', duracionMs: Date.now() - inicio };
+  } catch (err: unknown) {
+    const salida = err instanceof Error ? err.message.slice(0, 500) : String(err);
+    return { ok: false, salida, duracionMs: 0 };
+  }
 }
 
 // ── EvaluatorOptimizer ────────────────────────────────────────────────────────
@@ -179,14 +197,35 @@ export class EvaluatorOptimizer {
       }
 
       // ── Paso 3: Parsear la respuesta del evaluador ────────────────────────
-      const evaluacion = this.parseEvaluacion(evalResult.output, criterios, i);
+      const evaluacionLLM = this.parseEvaluacion(evalResult.output, criterios, i);
+      const scoreTexto = evaluacionLLM.score;
+
+      // Ejecutar tests reales como señal de verificación objetiva
+      const resultadoTests = ejecutarTestsSuite(process.cwd());
+      const scoreFinal = resultadoTests.ok
+        ? Math.round((scoreTexto * 0.4 + 10 * 0.6) * 10) / 10
+        : Math.round(scoreTexto * 0.4 * 10) / 10;
+
+      let { feedback } = evaluacionLLM;
+      if (!resultadoTests.ok) {
+        feedback += `\n\n⚠ Tests fallando (verificación objetiva):\n${resultadoTests.salida}`;
+      }
+
+      const evaluacion: EvaluacionIteracion = {
+        ...evaluacionLLM,
+        score: scoreFinal,
+        feedback,
+        aprobado: scoreFinal >= this.umbral,
+      };
       historial.push(evaluacion);
 
       this.log.append('custom', {
         taskId,
         tipo: 'evaluacion',
         iteracion: i,
-        score: evaluacion.score,
+        score: scoreFinal,
+        scoreTexto,
+        testsOk: resultadoTests.ok,
         aprobado: evaluacion.aprobado,
       }, { taskId });
 
@@ -197,7 +236,7 @@ export class EvaluatorOptimizer {
           iteraciones: i,
           outputFinal: outputActual,
           historial,
-          scoreFinal: evaluacion.score,
+          scoreFinal,
         };
       }
 

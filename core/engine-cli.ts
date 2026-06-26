@@ -101,7 +101,8 @@ async function cmdStatus(cwd: string): Promise<void> {
 }
 
 async function cmdResume(cwd: string): Promise<void> {
-  const { log, fsm } = buildDeps(cwd);
+  const { log, fsm, store, registry, runner } = buildDeps(cwd);
+  const apiKey = process.env['ANTHROPIC_API_KEY'];
 
   if (!log.exists()) {
     warn('No hay event log — nada que retomar. Usa "forge run" para iniciar.');
@@ -122,8 +123,65 @@ async function cmdResume(cwd: string): Promise<void> {
 
   if (pendientes.length === 0) {
     ok('Todas las tareas registradas están completadas.');
-  } else {
+    return;
+  }
+
+  // Recopilar tareas fallidas y en_progreso del event log
+  const completed = new Set(
+    [...taskStates.entries()]
+      .filter(([, v]) => v.estado === 'completada')
+      .map(([id]) => id),
+  );
+
+  const tareasARelanzar = pendientes
+    .filter(([, v]) => v.estado === 'fallida' || v.estado === 'en_progreso')
+    .map(([id]) => id)
+    .filter(id => !completed.has(id));
+
+  if (tareasARelanzar.length === 0) {
     dim('  Ejecuta "forge run --tasks <json>" con las tareas pendientes para continuar.');
+    return;
+  }
+
+  // Cargar definición completa de tareas desde .sdd/estado-tareas.json
+  let todasLasTareas: Task[] = [];
+  const estadoTareasPath = path.join(cwd, '.sdd', 'estado-tareas.json');
+  if (fs.existsSync(estadoTareasPath)) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(estadoTareasPath, 'utf8')) as Record<string, unknown>;
+      if (Array.isArray(raw['tareas'])) {
+        todasLasTareas = raw['tareas'] as Task[];
+      }
+    } catch { /* ignorar */ }
+  }
+
+  const tareasParaCorrer = todasLasTareas.filter(t => tareasARelanzar.includes(t.id));
+
+  if (tareasParaCorrer.length === 0) {
+    warn('No se encontraron definiciones de tareas en .sdd/estado-tareas.json. Usa "forge run --tasks <json>" manualmente.');
+    return;
+  }
+
+  console.log(`\n🔄 Relanzando ${tareasParaCorrer.length} tarea(s) fallidas/interrumpidas...`);
+
+  const orch = new Orchestrator(registry, fsm, log, store, {
+    cwd,
+    parallelThreshold: 3,
+    stopOnFailure: false,
+    runner,
+  });
+
+  const result = await orch.run(tareasParaCorrer, apiKey);
+
+  console.log('');
+  if (result.ok) {
+    ok(`Resume completado: ${result.completedTasks.length} tareas en ${(result.totalDurationMs / 1000).toFixed(1)}s`);
+  } else {
+    for (const t of result.failedTasks) {
+      console.log(`  ${c.rojo('✗')} ${t.taskId} (${t.agente}): ${t.error?.slice(0, 120) ?? 'sin detalle'}`);
+    }
+    warn(`${result.failedTasks.length} tareas aún fallidas.`);
+    process.exit(1);
   }
 }
 

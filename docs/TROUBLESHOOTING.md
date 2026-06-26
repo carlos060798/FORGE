@@ -8,6 +8,83 @@ Para problemas de negocio o escenarios de usuario (deploy falló, cambié de ide
 
 ## Instalación y arranque
 
+### `npx forge init` falla con 404 o conflicto de paquete
+
+**Causa**: en npm existe otro paquete llamado `forge` que puede colisionar con el comando.
+
+**Solución**: el paquete se publica como `forge-sdd`. Usa el nombre exacto:
+```bash
+npx forge-sdd init
+# o instala globalmente:
+npm install -g forge-sdd
+forge init
+```
+
+---
+
+### Los agentes no responden
+
+**Causa probable**: `ANTHROPIC_API_KEY` no está definida en el entorno.
+
+**Diagnóstico**:
+```bash
+forge doctor   # mostrará ⚠ si la clave no está configurada
+```
+
+**Solución**: exporta la clave en tu shell o añádela a `.env`:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+---
+
+### `forge ui` falla al iniciarse
+
+**Causa**: el dashboard UI requiere instalación explícita con el flag `--ui`.
+
+**Solución**:
+```bash
+npx forge-sdd init --ui   # instala también el servidor de dashboard
+forge ui
+```
+
+---
+
+### Los comandos `/sdd.X` no hacen nada en la terminal
+
+**Causa**: los comandos `/sdd.*` son instrucciones para Claude Code, no comandos de shell.
+
+**Solución**: escribe los comandos `/sdd.X` directamente en el **chat de Claude Code**, no en la terminal.
+
+---
+
+### Las protecciones de `sdd.config.yaml` no bloquean nada
+
+**Causa**: la sección `protecciones` en `sdd.config.yaml` es declarativa — los hooks que la hacen cumplir se instalan en `.claude/hooks/` al ejecutar `forge init`.
+
+**Solución**:
+```bash
+npx forge-sdd init   # instala los hooks en .claude/hooks/
+```
+
+Verifica que los hooks estén registrados:
+```bash
+cat .claude/settings.json | grep -A5 "hooks"
+```
+
+---
+
+### El pipeline se detuvo a mitad
+
+**Solución**: usa `forge resume` para ver tareas pendientes y relanzarlas:
+```bash
+forge resume
+```
+
+O consulta el estado completo con `/sdd.estado` en Claude Code.
+
+---
+
 ### `Error: Cannot find module 'sdd-es'`
 
 **Causa**: el paquete no está instalado globalmente o el PATH no lo incluye.

@@ -21,6 +21,14 @@ npx forge init
 
 Esto deja FORGE listo dentro de Claude Code. Solo se hace una vez.
 
+> **Nota:** Si `npx forge init` falla (conflicto con otro paquete `forge`), usa:
+> ```bash
+> npx forge-sdd init   # nombre exacto del paquete npm
+> # o instala globalmente:
+> npm install -g forge-sdd
+> forge init
+> ```
+
 ### 2. Cuéntale tu idea
 
 Abre Claude Code y escribe `/sdd` seguido de lo que quieres, con tus palabras:
@@ -87,21 +95,10 @@ En cualquier momento puedes escribir:
 
 ## Configura FORGE para tu proyecto (opcional)
 
-Crea un archivo `forge.config.json` en la raíz de tu proyecto para ajustar el comportamiento:
-
-```json
-{
-  "memoria": {
-    "umbral_compresion_bytes": 40000
-  },
-  "routing": {
-    "usar_complexity_ir": true
-  },
-  "guardrails": {
-    "verify_local_imports": false
-  }
-}
-```
+### Personalización (opcional)
+La configuración real de FORGE vive en `.sdd/sdd.config.yaml` (creado automáticamente por `forge init`).
+Para ver todas las opciones: `forge config show`
+Para cambiar un valor: `forge config set sesion.modo experto`
 
 Sin este archivo, FORGE usa valores predeterminados seguros. **No es obligatorio.**
 

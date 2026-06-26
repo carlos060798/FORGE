@@ -26,9 +26,17 @@ export class EventBus {
     if (idx >= 0) hs.splice(idx, 1);
   }
 
-  async emit<T>(event: string, payload: T): Promise<void> {
-    const hs = this.handlers.get(event) ?? [];
-    await Promise.all(hs.map(h => h(payload)));
+  async emit<K extends keyof ForgeEvents>(event: K, payload: ForgeEvents[K]): Promise<void> {
+    const hs = this.handlers.get(event as string) ?? [];
+    await Promise.all(
+      hs.map(h =>
+        Promise.resolve()
+          .then(() => (h as (p: ForgeEvents[K]) => void | Promise<void>)(payload))
+          .catch(err => {
+            process.stderr.write(`[forge/event-bus] Error en listener de "${event}": ${err?.message ?? err}\n`);
+          })
+      )
+    );
   }
 
   /** Registra un handler que se dispara una sola vez y luego se elimina. */

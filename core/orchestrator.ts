@@ -14,7 +14,7 @@
  *   - StateStore → lee y escribe el ForgeEstado
  */
 
-import type { AgentRegistry, Agent, AgentContext } from './agent-registry.js';
+import type { AgentRegistry, Agent, AgentContext, AgentDefinition } from './agent-registry.js';
 import { LlmAgentAdapter } from './agent-registry.js';
 import type { Runner } from './runners/runner.js';
 import type { PipelineStateMachine } from './state-machine.js';
@@ -181,7 +181,19 @@ export class Orchestrator {
   private async runParallel(tasks: Task[], apiKey?: string): Promise<TaskResult[]> {
     this.log.append('custom', { message: `Iniciando ${tasks.length} tareas en paralelo`, taskIds: tasks.map(t => t.id) });
     const promises = tasks.map(t => this.executeTask(t, apiKey));
-    return Promise.all(promises);
+    const results = await Promise.allSettled(promises);
+    return results.map((r, i) => {
+      if (r.status === 'fulfilled') return r.value;
+      const task = tasks[i];
+      return {
+        taskId: task.id,
+        agente: task.agente,
+        status: 'fallida' as const,
+        output: '',
+        error: r.reason?.message ?? 'Error no capturado en ejecución paralela',
+        durationMs: 0,
+      } satisfies TaskResult;
+    });
   }
 
   // ── Ejecución secuencial ────────────────────────────────────────────────────
@@ -202,6 +214,19 @@ export class Orchestrator {
 
   private async executeTask(task: Task, apiKey?: string): Promise<TaskResult> {
     const start = Date.now();
+
+    if (circuitBreaker.nivel === 'sandbox') {
+      const resultado: TaskResult = {
+        taskId: task.id,
+        agente: task.agente,
+        status: 'omitida',
+        output: '',
+        error: `CircuitBreaker activo (nivel sandbox) — tarea omitida automáticamente. Resuelve los errores anteriores y ejecuta /sdd.estado para resetear.`,
+        durationMs: 0,
+      };
+      await bus.emit('task:failed', { taskId: task.id, agente: task.agente, error: resultado.error! });
+      return resultado;
+    }
 
     this.log.append('task_started', { taskId: task.id, agente: task.agente }, { taskId: task.id, agent: task.agente });
 
@@ -253,7 +278,7 @@ export class Orchestrator {
 
     // Ejecutar runner (tests/lint) si hay uno disponible y la tarea es de código
     let runnerResult: TaskResult['runnerResult'];
-    if (this.options.runner && this.isCodeTask(task)) {
+    if (this.options.runner && this.isCodeTask(task, def)) {
       const rr = await this.runTests();
       runnerResult = { ok: rr.ok, stdout: rr.stdout, stderr: rr.stderr };
       this.log.append('runner_result', { taskId: task.id, ok: rr.ok, exitCode: rr.exitCode }, { taskId: task.id });
@@ -333,9 +358,12 @@ export class Orchestrator {
     return tasks.find(t => t.id === taskId)?.opcional ?? false;
   }
 
-  private isCodeTask(task: Task): boolean {
-    const codeAgents = ['desarrollador-backend', 'desarrollador-frontend', 'tester', 'architecture-designer'];
-    return codeAgents.includes(task.agente);
+  private isCodeTask(task: Task, agent: AgentDefinition | undefined): boolean {
+    // Si el agente declara explícitamente is_code_agent, úsalo
+    if (agent?.is_code_agent !== undefined) return agent.is_code_agent;
+    // Fallback: lista curada (sin architecture-designer que es diseño, no código)
+    const CODE_AGENTS = new Set(['desarrollador-backend', 'desarrollador-frontend', 'tester']);
+    return CODE_AGENTS.has(task.agente);
   }
 
   private async runTests(): Promise<{ ok: boolean; exitCode: number; stdout: string; stderr: string }> {

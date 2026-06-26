@@ -127,6 +127,14 @@ npx forge init --preset startup     # equilibrado, estándar
 npx forge init --preset enterprise  # máximas verificaciones de calidad
 ```
 
+> **Nota:** Si `npx forge init` falla (conflicto con otro paquete `forge`), usa:
+> ```bash
+> npx forge-sdd init   # nombre exacto del paquete npm
+> # o instala globalmente:
+> npm install -g forge-sdd
+> forge init
+> ```
+
 ---
 
 ## El pipeline de un vistazo

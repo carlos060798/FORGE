@@ -14,7 +14,7 @@
  */
 
 import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
@@ -113,6 +113,40 @@ const READ_ONLY_AGENTS = new Set([
   'investigador', 'revisor', 'disenador-api'
 ]);
 
+// ── ADR activo: verificar decisiones arquitectónicas registradas ──────────────
+function cargarADRs(cwd) {
+  try {
+    const adrDir = join(cwd, '.sdd', 'adrs');
+    if (!existsSync(adrDir)) return [];
+    return readdirSync(adrDir)
+      .filter(f => f.endsWith('.md') || f.endsWith('.json'))
+      .map(f => {
+        try { return readFileSync(join(adrDir, f), 'utf8'); } catch { return ''; }
+      })
+      .filter(Boolean);
+  } catch { return []; }
+}
+
+function extraerPatronesProhibidos(adrs) {
+  const patrones = [];
+  for (const adr of adrs) {
+    // Buscar líneas con "NO usar X", "prohibido X", "evitar X", "banned: X"
+    const matches = adr.matchAll(/(?:NO usar|prohibido|evitar|banned?|no\s+use?)\s*[:\-]?\s*`?([^`\n,]+)`?/gi);
+    for (const m of matches) {
+      const término = m[1].trim();
+      if (término.length > 2 && término.length < 50) {
+        patrones.push(término.toLowerCase());
+      }
+    }
+  }
+  return [...new Set(patrones)];
+}
+
+function verificarViolacionADR(contenido, patrones) {
+  const contenidoLower = contenido.toLowerCase();
+  return patrones.find(p => contenidoLower.includes(p)) ?? null;
+}
+
 function main(raw) {
   let event;
   try {
@@ -141,6 +175,21 @@ function main(raw) {
   // ── 0. Write/Edit/MultiEdit: permisos por agente + secrets en contenido ─
   const isWriteTool = toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit";
   if (isWriteTool) {
+    // 0aa. Verificación ADR activo
+    const adrs = cargarADRs(process.cwd());
+    if (adrs.length > 0) {
+      const patrones = extraerPatronesProhibidos(adrs);
+      const contenidoPropuesto = String(toolInput?.content ?? toolInput?.new_string ?? '');
+      const violacion = verificarViolacionADR(contenidoPropuesto, patrones);
+      if (violacion) {
+        process.stderr.write(JSON.stringify({
+          action: 'block',
+          message: `Violación de ADR: el contenido contiene "${violacion}" que está marcado como prohibido en un ADR registrado. Revisa .sdd/adrs/ antes de continuar.`
+        }) + '\n');
+        process.exit(2);
+      }
+    }
+
     // 0a. Agentes read-only no pueden modificar archivos
     if (agentName && READ_ONLY_AGENTS.has(agentName)) {
       process.stderr.write(
@@ -300,7 +349,7 @@ function main(raw) {
         action: 'block',
         message: 'CircuitBreaker activo: nivel sandbox — Bash bloqueado tras fallos consecutivos. Resuelve los errores antes de continuar.'
       }));
-      process.exit(1);
+      process.exit(2);
     }
     // Bloquear Write/Edit fuera del cwd
     if (toolName === 'Write' || toolName === 'Edit') {
@@ -311,7 +360,7 @@ function main(raw) {
           action: 'block',
           message: `CircuitBreaker nivel sandbox — escritura fuera del proyecto bloqueada: ${filePath}`
         }));
-        process.exit(1);
+        process.exit(2);
       }
     }
   } else if (nivel === 'confirmado') {

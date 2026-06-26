@@ -82,6 +82,7 @@ export class FileSystemStateStore implements StateStore {
   }
 
   write(estado: ForgeEstado): void {
+    this._cache = null;
     this.saveSnapshot(estado);
     const tmp = this.estadoPath + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(estado, null, 2));

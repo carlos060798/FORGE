@@ -25,6 +25,12 @@ export interface AgentDefinition {
    * Ejemplos: 300000 (5 min), 120000 (2 min), 60000 (1 min).
    */
   timeout_ms?: number;
+  /**
+   * Indica explícitamente si este agente produce código que debe pasar
+   * por el runner (tests/lint). Si se omite, se usa la lista curada
+   * de CODE_AGENTS como fallback.
+   */
+  is_code_agent?: boolean;
   /** Cuerpo Markdown sin el bloque YAML de frontmatter */
   systemPrompt: string;
   /** Ruta absoluta al archivo .md */
@@ -165,6 +171,37 @@ export class AgentRegistry {
   }
 }
 
+// ── Retry con backoff exponencial ─────────────────────────────────────────────
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: { maxAttempts?: number; backoffMs?: number; retryOn?: (e: unknown) => boolean } = {}
+): Promise<T> {
+  const { maxAttempts = 3, backoffMs = 1000, retryOn } = opts;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      lastError = err;
+      const shouldRetry = retryOn ? retryOn(err) : isRetryable(err);
+      if (!shouldRetry || attempt === maxAttempts) throw err;
+      await new Promise(r => setTimeout(r, backoffMs * attempt));
+    }
+  }
+  throw lastError;
+}
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    return msg.includes('429') || msg.includes('rate limit') ||
+           msg.includes('timeout') || msg.includes('econnreset') ||
+           msg.includes('enotfound') || msg.includes('503');
+  }
+  return false;
+}
+
 // ── LlmAgentAdapter ───────────────────────────────────────────────────────────
 // Implementación real cuando el SDK está disponible; stub cuando no.
 
@@ -227,14 +264,15 @@ export class LlmAgentAdapter implements Agent {
       const client = new sdkModule.default({ apiKey: this.apiKey });
       let response: Awaited<ReturnType<typeof client.messages.create>>;
       try {
-        response = await client.messages.create(
-          {
-            model: modelId,
-            max_tokens: 8192,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: ctx.userPrompt }],
-          },
-          { signal: controller.signal },
+        const params = {
+          model: modelId,
+          max_tokens: 8192,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: ctx.userPrompt }],
+        };
+        response = await withRetry(
+          () => client.messages.create(params, { signal: controller.signal }),
+          { maxAttempts: 3, backoffMs: 1000 },
         );
       } finally {
         clearTimeout(timer);
