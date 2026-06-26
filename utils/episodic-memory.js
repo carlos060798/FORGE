@@ -49,19 +49,31 @@ function parseMemoryFile(filepath) {
     const title = lines[0] || '';
 
     // Detecta tipo de episodio por patrón en el título
+    const titleNorm = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     let type = 'patrón';
-    if (title.toLowerCase().includes('error') || title.toLowerCase().includes('fallida')) {
+    if (titleNorm.includes('error') || titleNorm.includes('fallida')) {
       type = 'error';
-    } else if (title.toLowerCase().includes('exito') || title.toLowerCase().includes('logrado')) {
+    } else if (titleNorm.includes('exito') || titleNorm.includes('logrado')) {
       type = 'exito';
-    } else if (title.toLowerCase().includes('decision') || title.toLowerCase().includes('elegimos')) {
+    } else if (titleNorm.includes('decision') || titleNorm.includes('elegimos')) {
       type = 'decision';
     }
 
-    // Extrae contexto, acción, resultado de la estructura
-    const context = lines.slice(1, 3).join(' ').slice(0, 150);
-    const action = lines.slice(3, 6).join(' ').slice(0, 150) || 'Sin acción registrada';
-    const result = lines.slice(6, 9).join(' ').slice(0, 150) || 'Sin resultado registrado';
+    // Extrae contexto, acción, resultado buscando etiquetas explícitas primero,
+    // luego fallback a posición para episodios sin etiquetas
+    const extractSection = (label) => {
+      const idx = lines.findIndex(l => l.toLowerCase().startsWith(label));
+      if (idx === -1) return null;
+      const collected = [];
+      for (let i = idx; i < lines.length && i < idx + 4; i++) {
+        if (i !== idx && lines[i].match(/^(contexto|acción|accion|resultado):/i)) break;
+        collected.push(lines[i]);
+      }
+      return collected.join(' ').slice(0, 150).trim();
+    };
+    const context = extractSection('contexto:') || lines.slice(1, 3).join(' ').slice(0, 150);
+    const action = extractSection('acción:') || extractSection('accion:') || lines.slice(3, 6).join(' ').slice(0, 150) || 'Sin acción registrada';
+    const result = extractSection('resultado:') || lines.slice(6, 9).join(' ').slice(0, 150) || 'Sin resultado registrado';
 
     // Genera tags simples (primera palabra + tipo)
     const tags = [type, title.split(' ')[0].toLowerCase()].filter(Boolean);
@@ -159,7 +171,7 @@ if (command === 'index' && process.argv[3]) {
   const episodes = loadIndex(indexPath);
   const results = queryEpisodes(episodes, type, tags);
 
-  console.log(`Episodios (${results.length} encontrados):`);
+  console.log(`Top resultados: (${results.length} encontrados)`);
   results.forEach((ep, i) => {
     console.log(`\n${i + 1}. [${ep.type.toUpperCase()}] ${ep.timestamp.slice(0, 10)}`);
     console.log(`   Contexto: ${ep.context}`);

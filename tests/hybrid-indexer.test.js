@@ -131,13 +131,11 @@ validate [validation.ts]
     const output = execSync(`node ${indexerPath} query ${indexFile} "authenticate"`, { encoding: 'utf8' });
 
     // Extrae relevancia de cada resultado
-    const relevances = output.match(/relevance: ([\d.]+)%/g) || [];
+    const relevances = [...output.matchAll(/relevance: ([\d.]+)%/g)].map(m => parseFloat(m[1]));
 
     // Verifica que estén ordenados (descendente)
     for (let i = 1; i < relevances.length; i++) {
-      const prev = parseFloat(relevances[i - 1]);
-      const curr = parseFloat(relevances[i]);
-      assert.ok(prev >= curr, 'Resultados deberían estar en orden descendente de relevancia');
+      assert.ok(relevances[i - 1] >= relevances[i], 'Resultados deberían estar en orden descendente de relevancia');
     }
   } finally {
     try { unlinkSync(symbolsFile); } catch { }
