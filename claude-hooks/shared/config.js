@@ -11,7 +11,9 @@
  *   import { leerForgeConfig, leerSddConfig } from './shared/config.js';
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, appendFileSync } from "node:fs";
+
+const _fs = { mkdirSync, appendFileSync };
 import { join } from "node:path";
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
@@ -114,6 +116,26 @@ export function leerMaxMBConsumo(cwd = process.cwd()) {
  * @param {string} cwd directorio de trabajo
  * @returns {'sandbox'|'local'|'confirmado'}
  */
+/**
+ * Dead Letter Queue — registra un fallo de hook para reintento posterior.
+ * Escribe en .sdd/observabilidad/dlq.jsonl (append-only).
+ *
+ * @param {string} cwd directorio de trabajo
+ * @param {{ hook: string, tool: string, input: unknown, error: string, retryable?: boolean }} entry
+ */
+export function dlqAppend(cwd, entry) {
+  try {
+    const { mkdirSync, appendFileSync } = _fs;
+    const dir = join(cwd, ".sdd", "observabilidad");
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(
+      join(dir, "dlq.jsonl"),
+      JSON.stringify({ ts: new Date().toISOString(), retryable: true, ...entry }) + "\n",
+      "utf8"
+    );
+  } catch { /* DLQ nunca debe romper el hook padre */ }
+}
+
 export function leerNivelEjecucion(cwd = process.cwd()) {
   try {
     const p = join(cwd, '.sdd', 'execution-level.json');

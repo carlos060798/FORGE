@@ -228,7 +228,20 @@ export class Orchestrator {
       return resultado;
     }
 
-    this.log.append('task_started', { taskId: task.id, agente: task.agente }, { taskId: task.id, agent: task.agente });
+    // Per-agent circuit breaker: omitir si el agente está en estado 'open'
+    if (!circuitBreaker.puedeEjecutarAgente(task.agente)) {
+      const cbState = circuitBreaker.estadoAgente(task.agente);
+      const error = `Agente "${task.agente}" en circuit breaker (${cbState.state}) — omitido. Se reintentará automáticamente tras 30 s de enfriamiento.`;
+      await bus.emit('task:failed', { taskId: task.id, agente: task.agente, error });
+      return { taskId: task.id, agente: task.agente, status: 'omitida', output: '', error, durationMs: 0 };
+    }
+
+    this.log.appendEnvelope(
+      'task_started',
+      { taskId: task.id, agente: task.agente },
+      { from: 'orchestrator', to: `agente:${task.agente}` },
+      { taskId: task.id, agent: task.agente },
+    );
 
     // Obtener la definición del agente
     const def = this.registry.get(task.agente);
@@ -294,7 +307,12 @@ export class Orchestrator {
       }
     }
 
-    this.log.append('task_completed', { taskId: task.id }, { taskId: task.id });
+    this.log.appendEnvelope(
+      'task_completed',
+      { taskId: task.id },
+      { from: `agente:${task.agente}`, to: 'pipeline' },
+      { taskId: task.id },
+    );
     await bus.emit('task:completed', { taskId: task.id, agente: task.agente, durationMs: agentResult.durationMs ?? 0 });
     return {
       taskId: task.id,

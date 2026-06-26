@@ -21,6 +21,19 @@ import type { ForgeEvents } from './event-bus.js';
 
 export type ConfianzaNivel = 'sandbox' | 'local' | 'confirmado';
 
+// ── Per-agent circuit breaker ─────────────────────────────────────────────────
+
+export type AgentCBState = 'closed' | 'open' | 'half_open';
+
+export interface AgentCircuitState {
+  state: AgentCBState;
+  failureCount: number;
+  lastFailureTs?: number;
+  openedAt?: number;
+}
+
+const HALF_OPEN_AFTER_MS = 30_000; // intentar de nuevo tras 30 s
+
 export interface ExecutionContext {
   nivel: ConfianzaNivel;
   maxDuracionMs: number;
@@ -71,6 +84,7 @@ export class CircuitBreaker {
   private nivelActual: ConfianzaNivel;
   private readonly maxFallos: number;
   private fallosPorAgente = new Map<string, number>();
+  private readonly agentStates = new Map<string, AgentCircuitState>();
 
   constructor(options: CircuitBreakerOptions = {}) {
     this.nivelActual = options.nivelInicial ?? 'local';
@@ -82,6 +96,7 @@ export class CircuitBreaker {
     bus.on<ForgeEvents['task:failed']>('task:failed', async ({ agente, error }) => {
       const fallos = (this.fallosPorAgente.get(agente) ?? 0) + 1;
       this.fallosPorAgente.set(agente, fallos);
+      this.registrarFalloAgente(agente);
 
       if (fallos >= this.maxFallos) {
         const anterior = this.nivelActual;
@@ -114,6 +129,7 @@ export class CircuitBreaker {
     bus.on<ForgeEvents['task:completed']>('task:completed', ({ agente }) => {
       // Reset de fallos consecutivos al completar con éxito
       this.fallosPorAgente.delete(agente);
+      this.registrarExitoAgente(agente);
     });
   }
 
@@ -145,9 +161,53 @@ export class CircuitBreaker {
     return this.fallosPorAgente.get(agente) ?? 0;
   }
 
+  // ── Per-agent circuit breaker ──────────────────────────────────────────────
+
+  /** Estado del circuit breaker individual de un agente. */
+  estadoAgente(agente: string): AgentCircuitState {
+    return this.agentStates.get(agente) ?? { state: 'closed', failureCount: 0 };
+  }
+
+  /** Registra un fallo para el agente y actualiza su CB state. */
+  registrarFalloAgente(agente: string): AgentCircuitState {
+    const current = this.estadoAgente(agente);
+    const failureCount = current.failureCount + 1;
+    const now = Date.now();
+    const next: AgentCircuitState = failureCount >= this.maxFallos
+      ? { state: 'open', failureCount, lastFailureTs: now, openedAt: now }
+      : { state: 'closed', failureCount, lastFailureTs: now };
+    this.agentStates.set(agente, next);
+    return next;
+  }
+
+  /** Registra un éxito: cierra el CB del agente. */
+  registrarExitoAgente(agente: string): void {
+    this.agentStates.set(agente, { state: 'closed', failureCount: 0 });
+  }
+
+  /**
+   * ¿Puede el agente ejecutar?
+   * - closed → sí
+   * - open y han pasado HALF_OPEN_AFTER_MS → transiciona a half_open, permite un intento
+   * - open y no han pasado → no
+   * - half_open → permite (se espera que el resultado cierre o reabra)
+   */
+  puedeEjecutarAgente(agente: string): boolean {
+    const s = this.estadoAgente(agente);
+    if (s.state === 'closed') return true;
+    if (s.state === 'half_open') return true;
+    // open: comprobar si ya pasó el tiempo de enfriamiento
+    if (s.openedAt && Date.now() - s.openedAt >= HALF_OPEN_AFTER_MS) {
+      this.agentStates.set(agente, { ...s, state: 'half_open' });
+      return true;
+    }
+    return false;
+  }
+
   reset(): void {
     this.nivelActual = 'local';
     this.fallosPorAgente.clear();
+    this.agentStates.clear();
   }
 }
 

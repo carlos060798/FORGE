@@ -39,6 +39,15 @@ export interface ForgeEvent {
   pipelineStep?: string;
   /** Payload arbitrario del evento */
   payload: Record<string, unknown>;
+  /** Message Envelope — trazabilidad de quién emite y quién recibe */
+  envelope?: MessageEnvelope;
+}
+
+/** Envelope para trazabilidad de comunicaciones entre módulos/agentes */
+export interface MessageEnvelope {
+  from: string;   // quién emite: "orchestrator", "agente:arquitecto", "circuit-breaker", etc.
+  to: string;     // quién recibe: "event-log", "session-budget", "pipeline", etc.
+  retryCount?: number;
 }
 
 // ── EventLog ─────────────────────────────────────────────────────────────────
@@ -50,6 +59,19 @@ export class EventLog {
   constructor(sddDir: string) {
     this.logPath = path.join(sddDir, 'events.jsonl');
     fs.mkdirSync(sddDir, { recursive: true });
+  }
+
+  /**
+   * Append de un evento al log con envelope de trazabilidad.
+   * Usar cuando se conoce quién emite y quién recibe.
+   */
+  appendEnvelope(
+    type: EventType,
+    payload: Record<string, unknown>,
+    envelope: MessageEnvelope,
+    meta: Partial<Omit<ForgeEvent, 'id' | 'type' | 'ts' | 'payload' | 'envelope'>> = {},
+  ): ForgeEvent {
+    return this.append(type, payload, { ...meta, envelope });
   }
 
   /** Append de un evento al log. Nunca sobreescribe, nunca falla silenciosamente. */

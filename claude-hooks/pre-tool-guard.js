@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync } from
 import { join, resolve, dirname } from "node:path";
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
-import { leerForgeConfig, leerNivelEjecucion } from "./shared/config.js";
+import { leerForgeConfig, leerNivelEjecucion, dlqAppend } from "./shared/config.js";
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
 
@@ -26,6 +26,25 @@ const rl = createInterface({ input: process.stdin, terminal: false });
 let raw = "";
 rl.on("line", (l) => (raw += l + "\n"));
 rl.on("close", () => main(raw.trim()));
+
+// ── Helper: bloquear con DLQ ─────────────────────────────────────────────────
+
+/**
+ * Escribe el motivo en stderr, registra en DLQ y sale con código 2.
+ * @param {string} mensaje  — texto visible para el usuario
+ * @param {{ tool?: string, input?: unknown, hook?: string }} meta
+ */
+function bloquear(mensaje, meta = {}) {
+  process.stderr.write(mensaje + "\n");
+  dlqAppend(process.cwd(), {
+    hook: meta.hook ?? "pre-tool-guard",
+    tool: meta.tool ?? "unknown",
+    input: meta.input ?? null,
+    error: mensaje.slice(0, 300),
+    retryable: false,
+  });
+  process.exit(2);
+}
 
 // ── Comandos prohibidos — bloqueo duro, sin confirmación ───────────────────
 const PROHIBIDOS = [
@@ -345,22 +364,20 @@ function main(raw) {
   // ── 4. Restricciones dinámicas según nivel del CircuitBreaker ──────────
   if (nivel === 'sandbox') {
     if (toolName === 'Bash') {
-      console.log(JSON.stringify({
-        action: 'block',
-        message: 'CircuitBreaker activo: nivel sandbox — Bash bloqueado tras fallos consecutivos. Resuelve los errores antes de continuar.'
-      }));
-      process.exit(2);
+      bloquear(
+        'CircuitBreaker activo: nivel sandbox — Bash bloqueado tras fallos consecutivos. Resuelve los errores antes de continuar.',
+        { tool: toolName, input: toolInput }
+      );
     }
     // Bloquear Write/Edit fuera del cwd
     if (toolName === 'Write' || toolName === 'Edit') {
       const filePath = toolInput?.file_path || toolInput?.path || '';
       const cwd = process.cwd();
       if (filePath && !filePath.startsWith(cwd)) {
-        console.log(JSON.stringify({
-          action: 'block',
-          message: `CircuitBreaker nivel sandbox — escritura fuera del proyecto bloqueada: ${filePath}`
-        }));
-        process.exit(2);
+        bloquear(
+          `CircuitBreaker nivel sandbox — escritura fuera del proyecto bloqueada: ${filePath}`,
+          { tool: toolName, input: { file_path: filePath } }
+        );
       }
     }
   } else if (nivel === 'confirmado') {
