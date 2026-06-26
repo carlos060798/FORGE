@@ -774,7 +774,7 @@ function cmdDoctor() {
 
       // Verificar que los archivos de hook existen físicamente y tienen sintaxis válida
       const hooksDir = join(process.cwd(), ".claude", "hooks");
-      const hooksRequeridos = ["pre-tool-guard.js", "agent-memory.js", "post-write-conventions.js"];
+      const hooksRequeridos = ["pre-tool-guard.js", "agent-memory.js", "post-write-conventions.js", "context-manager.js"];
       for (const hookFile of hooksRequeridos) {
         const hookPath = join(hooksDir, hookFile);
         if (!existsSync(hookPath)) {
