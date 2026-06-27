@@ -1,4 +1,6 @@
 // @ts-check
+import { onEstado } from "/src/sse.js";
+
 // Vista 3 — Verificación: resultado del último /sdd.verificar en lenguaje simple.
 
 // Traduce mensajes técnicos de criterios fallidos a lenguaje humano.
@@ -74,24 +76,25 @@ function formatDate(iso) {
   } catch { return String(iso); }
 }
 
+// ─── SSE + Carga inicial ─────────────────────────────────────────────────────
+
 let lastHash = "";
 
-async function refresh() {
-  try {
-    const res  = await fetch("/verificar");
-    const data = await res.json();
-    const hash = JSON.stringify(data);
-    if (hash !== lastHash) {
-      lastHash = hash;
-      render(data);
-    }
-  } catch {
-    const container = document.getElementById("view-verify");
-    if (container) container.innerHTML = `<p class="error">No se puede conectar con el servidor FORGE.</p>`;
-  }
+function recargarVerificacion() {
+  fetch("/verificar")
+    .then(r => r.json())
+    .then(data => {
+      const hash = JSON.stringify(data);
+      if (hash !== lastHash) { lastHash = hash; render(data); }
+    })
+    .catch(() => {
+      const container = document.getElementById("view-verify");
+      if (container) container.innerHTML = `<p class="error">No se puede conectar con el servidor FORGE.</p>`;
+    });
 }
 
 export function init() {
-  refresh();
-  setInterval(refresh, 5000);
+  recargarVerificacion();
+  // Refrescar verificación cuando cambia estado.json (via SSE o fallback polling)
+  onEstado(recargarVerificacion);
 }

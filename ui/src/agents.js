@@ -1,4 +1,6 @@
 // @ts-check
+import { onConsumo } from "/src/sse.js";
+
 // Módulo de agentes activos — se embebe dentro del nodo activo del grafo.
 // Pollea /agentes c/3s y actualiza el slot #agents-inline en pipeline.
 
@@ -52,23 +54,21 @@ function renderAgentes(agentes) {
   });
 }
 
+// -- SSE + Carga inicial
+
 let lastHash = "";
 
-async function fetchAgentes() {
-  try {
-    const res = await fetch("/agentes");
-    const data = await res.json();
-    const hash = JSON.stringify(data);
-    if (hash !== lastHash) {
-      lastHash = hash;
-      renderAgentes(data);
-    }
-  } catch {
-    // Silencioso — el error del pipeline ya lo muestra
-  }
+function recargarAgentes() {
+  fetch("/agentes")
+    .then(r => r.json())
+    .then(data => {
+      const hash = JSON.stringify(data);
+      if (hash !== lastHash) { lastHash = hash; renderAgentes(data); }
+    })
+    .catch(() => {});
 }
 
 export function init() {
-  fetchAgentes();
-  setInterval(fetchAgentes, 3000);
+  recargarAgentes();
+  onConsumo(recargarAgentes);
 }

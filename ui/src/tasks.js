@@ -1,4 +1,6 @@
 // @ts-check
+import { onEstado } from "/src/sse.js";
+
 // Vista 2 — Tareas: tablero de estado ✅/🔄/⬜/❌. Las 🔄 primero.
 
 const STATUS_ICON  = { done: "✅", in_progress: "🔄", pending: "⬜", failed: "❌" };
@@ -64,24 +66,22 @@ function esc(str) {
   return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+// ─── SSE + Carga inicial ─────────────────────────────────────────────────────
+
 let lastHash = "";
 
-async function refresh() {
-  try {
-    const res  = await fetch("/tareas");
-    const data = await res.json();
-    const hash = JSON.stringify(data);
-    if (hash !== lastHash) {
-      lastHash = hash;
-      render(data);
-    }
-  } catch {
-    const container = document.getElementById("view-tasks");
-    if (container) container.innerHTML = `<p class="error">No se puede conectar con el servidor FORGE.</p>`;
-  }
+function recargarTareas() {
+  fetch("/tareas")
+    .then(r => r.json())
+    .then(data => {
+      const hash = JSON.stringify(data);
+      if (hash !== lastHash) { lastHash = hash; render(data); }
+    })
+    .catch(() => {});
 }
 
 export function init() {
-  refresh();
-  setInterval(refresh, 5000);
+  recargarTareas();
+  // Refrescar tareas cuando cambia estado.json (via SSE o fallback polling)
+  onEstado(recargarTareas);
 }
