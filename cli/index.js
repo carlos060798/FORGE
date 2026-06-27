@@ -624,7 +624,148 @@ function cmdUpdate(global) {
   console.log("");
 }
 
-function cmdDoctor() {
+async function cmdDoctorLlm(apiKey, { problemas }) {
+  // 1. Detectar modo de ejecución: Claude Code (hooks) vs API directa
+  const enClaudeCode = !!(
+    process.env.CLAUDE_AGENT_NAME ||
+    process.env.CLAUDE_SESSION_ID ||
+    existsSync(join(process.cwd(), ".claude", "settings.json")) ||
+    existsSync(join(process.cwd(), ".claude-plugin", ".claude", "settings.json"))
+  );
+
+  if (enClaudeCode) {
+    info("Modo Claude Code detectado — el LLM lo gestiona Claude Code, no FORGE directamente ✓");
+    info("  El SDK @anthropic-ai/sdk no es necesario en este modo");
+  } else {
+    info("Modo API directa — FORGE llamará al LLM vía @anthropic-ai/sdk");
+  }
+
+  // 2. SDK disponible (solo necesario en modo API directa)
+  let sdk = null;
+  try {
+    sdk = await import('@anthropic-ai/sdk');
+    info("SDK @anthropic-ai/sdk disponible ✓");
+  } catch {
+    if (enClaudeCode) {
+      info("SDK @anthropic-ai/sdk no instalado — no es necesario en modo Claude Code ✓");
+    } else {
+      aviso("@anthropic-ai/sdk no instalado — necesario para modo API directa");
+      aviso("  Solución: npm install @anthropic-ai/sdk");
+      problemas(1);
+    }
+    // En modo Claude Code podemos hacer diagnóstico parcial sin SDK
+    if (!enClaudeCode) return;
+  }
+
+  // 3. API key presente (necesaria para el ping)
+  if (!apiKey) {
+    if (enClaudeCode) {
+      aviso("ANTHROPIC_API_KEY no definida — Claude Code la gestiona internamente");
+      aviso("  Si los agentes fallan, verifica que Claude Code tiene la key configurada");
+    } else {
+      aviso("Sin API key — se omite el ping al LLM");
+      problemas(1);
+    }
+    // Sin key no podemos hacer ping
+    if (!apiKey) return;
+  }
+
+  // 3. Ping real al LLM con mensaje mínimo
+  titulo("Ping al LLM (modelo: claude-haiku-4-5-20251001)...");
+  const PING_PROMPT = "Responde exactamente con el JSON: {\"ok\":true}";
+  const PING_TIMEOUT_MS = 10_000;
+  let respuestaRaw = "";
+  try {
+    const client = new sdk.default({ apiKey });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    const res = await client.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 32,
+        messages: [{ role: "user", content: PING_PROMPT }],
+      },
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    respuestaRaw = res.content?.[0]?.text ?? "";
+    info(`LLM responde ✓ (${res.usage?.output_tokens ?? "?"} tokens de salida)`);
+  } catch (e) {
+    if (e?.name === "AbortError" || e?.code === "UND_ERR_CONNECT_TIMEOUT") {
+      aviso(`LLM no respondió en ${PING_TIMEOUT_MS / 1000}s — posible problema de red o API key inválida`);
+    } else if (e?.status === 401) {
+      aviso("API key rechazada (401 Unauthorized) — verifica ANTHROPIC_API_KEY");
+    } else if (e?.status === 429) {
+      aviso("Rate limit alcanzado (429) — espera unos segundos y vuelve a intentarlo");
+    } else if (e?.status >= 500) {
+      aviso(`Error del servidor Anthropic (${e.status}) — reintenta más tarde`);
+    } else {
+      aviso(`Error inesperado al contactar el LLM: ${e?.message ?? e}`);
+    }
+    problemas(1);
+    return;
+  }
+
+  // 4. Validar que la respuesta es JSON parseable
+  try {
+    const parsed = JSON.parse(respuestaRaw.match(/\{[\s\S]*\}/)?.[0] ?? "");
+    if (parsed?.ok === true) {
+      info("LLM devuelve JSON válido ✓");
+    } else {
+      aviso(`LLM respondió JSON pero sin {ok:true}: ${respuestaRaw.slice(0, 80)}`);
+    }
+  } catch {
+    aviso(`LLM no devolvió JSON parseable — respuesta: ${respuestaRaw.slice(0, 120)}`);
+    aviso("  Esto puede causar fallos silenciosos en ir.json y spec.md");
+    problemas(1);
+  }
+
+  // 5. Latencia orientativa
+  const t0 = Date.now();
+  try {
+    const client = new sdk.default({ apiKey });
+    await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1,
+      messages: [{ role: "user", content: "di: ok" }],
+    });
+    const latencia = Date.now() - t0;
+    if (latencia < 3000) {
+      info(`Latencia de red: ~${latencia}ms ✓`);
+    } else {
+      aviso(`Latencia alta: ~${latencia}ms — el pipeline puede ser lento`);
+    }
+  } catch { /* no bloquear por latencia */ }
+
+  // 6. Modelo configurado en sdd.config.yaml
+  const configPath = join(process.cwd(), ".sdd", "sdd.config.yaml");
+  if (existsSync(configPath)) {
+    const yaml = readFileSync(configPath, "utf8");
+    const modeloMatch = yaml.match(/modelo:\s*(\S+)/);
+    const modeloConfig = modeloMatch?.[1] ?? "sonnet";
+    const modelosValidos = ["opus", "sonnet", "haiku",
+      "claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"];
+    if (modelosValidos.includes(modeloConfig)) {
+      info(`Modelo configurado: "${modeloConfig}" ✓`);
+    } else {
+      aviso(`Modelo desconocido en sdd.config.yaml: "${modeloConfig}"`);
+      aviso("  Válidos: opus | sonnet | haiku");
+      problemas(1);
+    }
+  }
+
+  // 7. Capacidad de SQLite para el decision store
+  const nodeMajor = Number(process.versions.node.split(".")[0]);
+  const nodeMinor = Number(process.versions.node.split(".")[1] ?? "0");
+  if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 5)) {
+    info("node:sqlite nativo disponible — decision store con búsqueda semántica ✓");
+  } else {
+    aviso(`Node ${process.versions.node} < 22.5 — decision store usa JSONL sin búsqueda semántica`);
+    aviso("  Actualiza a Node ≥22.5 para SQLite nativo");
+  }
+}
+
+async function cmdDoctor() {
   banner();
   console.log("  Diagnóstico de SDD-ES");
   console.log("");
@@ -919,6 +1060,10 @@ function cmdDoctor() {
   } else {
     aviso("Dashboard no disponible — instala con: forge init --ui");
   }
+
+  // ── Diagnóstico del LLM ──────────────────────────────────────────────────────
+  titulo("Diagnosticando conexión con el LLM...");
+  await cmdDoctorLlm(apiKey, { problemas: (n) => { problemas += n; } });
 
   console.log("");
   if (problemas === 0) {
@@ -1346,7 +1491,7 @@ Tras instalar, abre Claude Code y escribe:
 
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
-function main() {
+async function main() {
   const args    = process.argv.slice(2);
   const comando = args[0];
   const global  = args.includes("--global") || args.includes("-g");
@@ -1369,7 +1514,7 @@ function main() {
       cmdUpdate(global);
       break;
     case "doctor":
-      cmdDoctor();
+      await cmdDoctor();
       break;
     case "config":
       cmdConfig(args.slice(1));
