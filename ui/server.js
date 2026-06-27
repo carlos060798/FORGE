@@ -21,7 +21,7 @@
  */
 
 import { createServer } from "node:http";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, watch } from "node:fs";
 import { join, resolve, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,6 +31,34 @@ const SDD_DIR   = join(process.cwd(), ".sdd");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
 let   idleTimer;
+
+// ─── SSE — clientes suscritos ─────────────────────────────────────────────────
+const sseClients = new Set();
+
+function sseEmit(event, data) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(payload); } catch { sseClients.delete(res); }
+  }
+}
+
+function iniciarWatchers() {
+  const archivosVigilados = [
+    join(SDD_DIR, "estado.json"),
+    join(SDD_DIR, "observabilidad", "consumo.jsonl"),
+  ];
+  for (const ruta of archivosVigilados) {
+    try {
+      watch(ruta, { persistent: false }, (_evt) => {
+        const tipo = ruta.endsWith("estado.json") ? "estado" : "consumo";
+        const datos = tipo === "estado"
+          ? (readJson(ruta) ?? {})
+          : readLastJsonlLines(ruta, 1);
+        sseEmit(tipo, datos);
+      });
+    } catch { /* archivo no existe aún — se ignora */ }
+  }
+}
 
 function resetIdle(server) {
   clearTimeout(idleTimer);
@@ -73,7 +101,7 @@ function json(res, data, status = 200) {
   res.writeHead(status, {
     "Content-Type":  "application/json; charset=utf-8",
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "http://localhost:" + (server?.address()?.port ?? 3001),
+    "Access-Control-Allow-Origin": "*",
   });
   res.end(body);
 }
@@ -192,6 +220,29 @@ function handleRequest(req, res) {
     return;
   }
 
+  // SSE — stream de eventos en tiempo real
+  if (path === "/events") {
+    res.writeHead(200, {
+      "Content-Type":  "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache",
+      "Connection":    "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+    // Enviar estado inicial inmediatamente
+    const estadoActual = readJson(join(SDD_DIR, "estado.json"));
+    if (estadoActual) {
+      res.write(`event: estado\ndata: ${JSON.stringify(estadoActual)}\n\n`);
+    }
+    res.write(`: conectado\n\n`); // comentario SSE para keep-alive inicial
+
+    sseClients.add(res);
+
+    // Limpiar cuando el cliente desconecta
+    req.on("close", () => sseClients.delete(res));
+    req.on("error", () => sseClients.delete(res));
+    return; // no cerrar la respuesta — SSE es long-lived
+  }
+
   // Archivos estáticos — solo desde ui/
   if (path === "/" || path === "/index.html") {
     staticFile(res, join(UI_DIR, "index.html"));
@@ -231,7 +282,9 @@ export function startServer(port = 3001) {
     const addr = server.address();
     const p = typeof addr === "object" ? addr?.port : port;
     process.stdout.write(`[forge ui] Dashboard en http://localhost:${p}\n`);
+    process.stdout.write(`[forge ui] SSE activo en http://localhost:${p}/events\n`);
     resetIdle(server);
+    iniciarWatchers(); // arrancar fs.watch una vez que el servidor está listo
   });
 
   server.on("error", (err) => {
@@ -248,10 +301,7 @@ export function startServer(port = 3001) {
 
 // ─── Arranque directo (node ui/server.js [port]) ─────────────────────────────
 
-// Variable para referencia en closure de json()
-let server;
-
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const port = parseInt(process.env.FORGE_UI_PORT ?? process.argv[2] ?? "3001", 10);
-  server = startServer(port);
+  startServer(port);
 }

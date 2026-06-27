@@ -109,6 +109,18 @@ function registrarADRs(cwd, agente, archivo, adrs) {
       };
       // JSONL — siempre (compatibilidad + respaldo)
       appendFileSync(ledgerFile, JSON.stringify(entrada) + "\n", "utf8");
+
+      // Memoria compartida — cualquier agente puede leer las decisiones de otros
+      try {
+        const compartidaDir = join(cwd, ".sdd", "memoria", "compartida");
+        if (!existsSync(compartidaDir)) mkdirSync(compartidaDir, { recursive: true });
+        const compartidaFile = join(compartidaDir, "decisiones-clave.md");
+        const ts = entrada.ts.slice(0, 10);
+        const linea = `\n## [${ts}] ${agente}: ${entrada.decision}\n` +
+          (entrada.context ? `> ${entrada.context}\n` : '') +
+          `> Estado: ${entrada.status}\n`;
+        appendFileSync(compartidaFile, linea, "utf8");
+      } catch { /* Silencioso */ }
     }
     // SQLite — dual-write asíncrono y defensivo (no bloquea ni falla si el store no carga)
     const storePath = join(dirname(fileURLToPath(import.meta.url)), "..", "core", "decisions", "decision-store.js");

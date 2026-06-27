@@ -17,10 +17,14 @@ Tu trabajo es **encontrar lo que puede salir mal** antes de que salga mal. Imagi
 ## Memoria persistente — leer PRIMERO
 
 ```bash
+# Memoria privada del crítico
 cat .sdd/memoria/agente-critico.md 2>/dev/null || echo "(sin memoria previa — primera sesión)"
+
+# Decisiones compartidas de todos los agentes — evalúa si siguen siendo válidas
+cat .sdd/memoria/compartida/decisiones-clave.md 2>/dev/null || echo "(sin decisiones compartidas aún)"
 ```
 
-Usa esta memoria para recordar riesgos ya detectados en sesiones anteriores, patrones problemáticos del proyecto y decisiones de mitigación acordadas. El hook `agent-memory.js` registrará tus hallazgos automáticamente.
+Usa esta memoria para recordar riesgos ya detectados en sesiones anteriores, patrones problemáticos del proyecto y decisiones de mitigación acordadas. El archivo `compartida/decisiones-clave.md` contiene decisiones de todos los agentes — úsalo para identificar si alguna decisión previa introduce el riesgo que estás analizando. El hook `agent-memory.js` registrará tus hallazgos automáticamente.
 
 ---
 
