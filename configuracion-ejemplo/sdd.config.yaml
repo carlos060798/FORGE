@@ -8,6 +8,49 @@
 # IDIOMA — todos los artefactos generados estarán en este idioma
 idioma: español
 
+# ============================================================
+# LLM — Provider y modelo a usar para los agentes
+# ============================================================
+# provider: anthropic   → Claude (Anthropic API) — default
+#           openai      → GPT-4o / Codex / Azure / GitHub Models / Cursor
+#           ollama      → Modelos locales (llama3, deepseek, qwen, mistral…)
+#           stub        → Sin LLM — solo para tests y CI
+#
+# Variables de entorno alternativas (sin tocar este archivo):
+#   FORGE_LLM_PROVIDER=ollama
+#   FORGE_LLM_PROVIDER=openai  OPENAI_API_KEY=sk-...
+#   FORGE_LLM_PROVIDER=stub    (para CI)
+#
+# Ejemplos de config por provider:
+#
+#   # Anthropic (default — requiere ANTHROPIC_API_KEY)
+#   llm:
+#     provider: anthropic
+#     model: sonnet
+#
+#   # OpenAI
+#   llm:
+#     provider: openai
+#     api_key: sk-...
+#     model: gpt-4o
+#
+#   # GitHub Models / Cursor / Azure (endpoint compatible con OpenAI)
+#   llm:
+#     provider: openai
+#     base_url: https://models.inference.ai.azure.com
+#     api_key: ghp_...
+#     model: gpt-4o
+#
+#   # Ollama local
+#   llm:
+#     provider: ollama
+#     base_url: http://localhost:11434
+#     model: qwen2.5-coder:7b
+# ============================================================
+llm:
+  provider: anthropic
+  model: sonnet
+
 # PERFIL — cómo se conduce el flujo con el usuario
 #   guiado  → (POR DEFECTO) no programa: el sistema decide lo técnico, explica
 #             sin jerga, confirma antes de actuar y encadena los pasos solo.

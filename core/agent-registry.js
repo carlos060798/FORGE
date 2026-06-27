@@ -1,9 +1,16 @@
 /**
  * agent-registry.js — Carga agents/*.md como objetos tipados e invoca al LLM
+ *
+ * El provider de LLM se resuelve en orden:
+ *   1. FORGE_LLM_PROVIDER env var
+ *   2. llm.provider en .sdd/sdd.config.yaml
+ *   3. Detección automática por env vars (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)
+ *   4. Fallback: anthropic
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { crearProvider } from './llm-providers/index.js';
 
 const DEFAULT_GLOBAL_TIMEOUT_MS = 120_000;
 
@@ -101,10 +108,21 @@ function isRetryable(err) {
 }
 
 export class LlmAgentAdapter {
-  constructor(definition, apiKey, globalTimeoutMs) {
-    this.definition = definition;
-    this.apiKey = apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? '';
+  /**
+   * @param {object} definition
+   * @param {string} [apiKey]  — solo necesario para provider anthropic
+   * @param {number} [globalTimeoutMs]
+   * @param {string} [cwd]     — directorio del proyecto para leer sdd.config.yaml
+   */
+  constructor(definition, apiKey, globalTimeoutMs, cwd) {
+    this.definition      = definition;
     this.globalTimeoutMs = globalTimeoutMs ?? DEFAULT_GLOBAL_TIMEOUT_MS;
+    this.cwd             = cwd ?? process.cwd();
+    // El provider se crea una vez y se reutiliza por instancia
+    this._provider = crearProvider({
+      cwd: this.cwd,
+      config: apiKey ? { api_key: apiKey } : {},
+    });
   }
 
   async execute(ctx) {
@@ -114,65 +132,49 @@ export class LlmAgentAdapter {
     if (ctx.forgeState)       systemParts.push(`\n## Estado FORGE actual\n\`\`\`json\n${ctx.forgeState}\n\`\`\``);
     if (ctx.extraContext)     systemParts.push(`\n## Contexto adicional\n${ctx.extraContext}`);
     const systemPrompt = systemParts.join('\n');
-    const modelId = this._resolveModelId(this.definition.model);
+
+    const modelAlias = this.definition.model ?? 'sonnet';
+    const modelId    = this._provider.resolveModelId(modelAlias);
+
+    const effectiveTimeoutMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
     try {
-      const sdkModule = await (import('@anthropic-ai/sdk').catch(() => null));
-
-      if (!sdkModule || !this.apiKey) {
-        return {
-          ok: true,
-          agentName: this.definition.name,
-          output: `[stub] Agente "${this.definition.name}" ejecutado sin API key. Prompt: ${ctx.userPrompt.slice(0, 100)}`,
-          durationMs: Date.now() - start,
-          modelo: modelId,
-        };
-      }
-
-      const effectiveTimeoutMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
-
-      const client = new sdkModule.default({ apiKey: this.apiKey });
-      let response;
-      try {
-        const params = {
-          model: modelId,
-          max_tokens: 8192,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: ctx.userPrompt }],
-        };
-        response = await withRetry(
-          () => client.messages.create(params, { signal: controller.signal }),
-          { maxAttempts: 3, backoffMs: 1000 },
-        );
-      } finally {
-        clearTimeout(timer);
-      }
-
-      const textBlocks = response.content.filter(b => b.type === 'text');
-      const output = textBlocks.map(b => b.text).join('\n');
+      const result = await withRetry(
+        () => this._provider.complete({
+          model:        modelAlias,
+          systemPrompt,
+          userPrompt:   ctx.userPrompt,
+          maxTokens:    8192,
+          signal:       controller.signal,
+        }),
+        { maxAttempts: 3, backoffMs: 1000 },
+      );
 
       return {
-        ok: true,
-        agentName: this.definition.name,
-        output,
-        inputTokens: response.usage?.input_tokens,
-        outputTokens: response.usage?.output_tokens,
-        durationMs: Date.now() - start,
-        modelo: modelId,
+        ok:           true,
+        agentName:    this.definition.name,
+        output:       result.output,
+        inputTokens:  result.inputTokens,
+        outputTokens: result.outputTokens,
+        durationMs:   Date.now() - start,
+        modelo:       modelId,
+        provider:     this._provider.nombre,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false, agentName: this.definition.name, output: '', durationMs: Date.now() - start, error: msg, modelo: modelId };
-    }
-  }
-
-  _resolveModelId(model) {
-    switch (model) {
-      case 'opus':  return 'claude-opus-4-8';
-      case 'haiku': return 'claude-haiku-4-5-20251001';
-      default:      return 'claude-sonnet-4-6';
+      return {
+        ok:        false,
+        agentName: this.definition.name,
+        output:    '',
+        durationMs: Date.now() - start,
+        error:     msg,
+        modelo:    modelId,
+        provider:  this._provider.nombre,
+      };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }
