@@ -21,7 +21,8 @@ import {
   existsSync, mkdirSync, writeFileSync, readFileSync,
   readdirSync, statSync,
 } from "node:fs";
-import { join, extname, relative, basename } from "node:path";
+import { join, extname, relative, basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const EXTENSIONES_SOPORTADAS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"]);
 
@@ -47,7 +48,7 @@ function parsearArchivo(codigo, archivo) {
   }
 }
 
-function limpiarTypeScript(codigo) {
+export function limpiarTypeScript(codigo) {
   // Eliminación progresiva de sintaxis TS/JSX que acorn no entiende.
   // El objetivo es que acorn no crashee — no reproducir el compilador TS.
   // Orden importa: de lo más específico a lo más general.
@@ -296,4 +297,7 @@ function main() {
   process.exit(0);
 }
 
-main();
+// Solo ejecutar como script directo, no cuando se importa como módulo
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main();
+}
