@@ -24,7 +24,7 @@ test('2.5.1 — Codifica delta entre dos objetos JSON', (t) => {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
     // Verifica que la salida sea un delta JSON válido
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     assert.ok(delta.operations, 'Delta debe tener operations');
     assert.ok(delta.operations.length > 0, 'Debe haber cambios');
@@ -58,7 +58,7 @@ test('2.5.2 — Comprime deltas significativamente', (t) => {
 
     // El delta debe ser mucho más pequeño que el archivo completo
     const prevSize = JSON.stringify(prev).length;
-    const deltaSize = output.split('\n')[0].length; // Primera línea es el JSON delta
+    const deltaSize = (output.match(/\{[\s\S]*\}/) || [''])[0].length;
 
     const ratio = (deltaSize / prevSize) * 100;
     assert.ok(ratio < 50, `Compresión debería ser >50%, obtuvo ${ratio.toFixed(1)}%`);
@@ -87,7 +87,7 @@ test('2.5.3 — Aplica delta correctamente al archivo anterior', (t) => {
   try {
     const output = execSync(`node ${deltaPath} decode ${prevFile} ${deltaFile}`, { encoding: 'utf8' });
 
-    const result = JSON.parse(output.split('\n')[0]);
+    const result = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     assert.strictEqual(result.name, 'Bobby', 'name debe actualizarse');
     assert.strictEqual(result.count, 6, 'count debe actualizarse');
@@ -110,7 +110,7 @@ test('2.5.4 — Detecta cambios de campo', (t) => {
   try {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     // Solo debe haber una operación (y cambió)
     assert.strictEqual(delta.operations.length, 1, 'Solo y debe cambiar');
@@ -133,7 +133,7 @@ test('2.5.5 — Maneja archivos sin cambios', (t) => {
   try {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     assert.strictEqual(delta.operations.length, 0, 'No debería haber cambios');
   } finally {
@@ -165,7 +165,7 @@ test('2.5.6 — Soporta múltiples tipos de cambios', (t) => {
   try {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     // Debe detectar cambios en name, scores y nuevo newField
     const changeCount = delta.operations.length;
@@ -189,7 +189,7 @@ test('2.5.7 — Valida base hash para integridad', (t) => {
   try {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     assert.ok(delta.base_hash, 'Debe calcular base_hash');
     assert.ok(typeof delta.base_hash === 'string', 'base_hash debe ser string');
@@ -213,7 +213,7 @@ test('2.5.8 — Maneja objetos anidados', (t) => {
   try {
     const output = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
 
-    const delta = JSON.parse(output.split('\n')[0]);
+    const delta = JSON.parse(output.match(/\{[\s\S]*\}/)[0]);
 
     // Aunque el cambio está anidado, el delta debe detectarlo
     assert.ok(delta.operations.length > 0, 'Debería detectar cambios anidados');
@@ -237,12 +237,12 @@ test('2.5.9 — Roundtrip: encode luego decode recupera el original', (t) => {
   try {
     // Encode
     const encodeOutput = execSync(`node ${deltaPath} encode ${prevFile} ${currFile}`, { encoding: 'utf8' });
-    const delta = JSON.parse(encodeOutput.split('\n')[0]);
+    const delta = JSON.parse(encodeOutput.match(/\{[\s\S]*\}/)[0]);
     writeFileSync(deltaFile, JSON.stringify(delta));
 
     // Decode
     const decodeOutput = execSync(`node ${deltaPath} decode ${prevFile} ${deltaFile}`, { encoding: 'utf8' });
-    const recovered = JSON.parse(decodeOutput.split('\n')[0]);
+    const recovered = JSON.parse(decodeOutput.match(/\{[\s\S]*\}/)[0]);
 
     // Debe ser idéntico al curr
     assert.deepStrictEqual(recovered, curr, 'Roundtrip debería recuperar el valor exacto');

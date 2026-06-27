@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/schemas/adr/1.0",
+  "title": "FORGE Architecture Decision Record (ADR entry)",
+  "description": "Una línea del ledger ADRs.jsonl. Portable entre hosts como trazabilidad de decisiones.",
+  "type": "object",
+  "required": ["ts", "decision", "status", "agente"],
+  "properties": {
+    "ts": { "type": "string", "format": "date-time" },
+    "decision": { "type": "string" },
+    "context": { "type": "string" },
+    "alternatives": { "type": "array", "items": { "type": "string" } },
+    "status": { "type": "string", "enum": ["accepted", "rejected", "deprecated", "superseded"] },
+    "archivo": { "type": "string" },
+    "agente": { "type": "string" }
+  }
+}

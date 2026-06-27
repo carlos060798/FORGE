@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "1.0",
   "id": "ir-template-api-rest",
   "created_at": "TEMPLATE",
   "raw_input": "Quiero construir una API REST con autenticación y operaciones CRUD sobre recursos",

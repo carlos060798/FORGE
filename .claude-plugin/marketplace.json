@@ -1,19 +1,19 @@
 {
-  "name": "sdd-es-marketplace",
+  "name": "forge-marketplace",
   "owner": {
-    "name": "SDD-ES",
+    "name": "FORGE",
     "url": "https://github.com/carlos060798/FORGE"
   },
   "metadata": {
-    "description": "Marketplace de SDD-ES — Spec-Driven Development en español para Claude Code.",
-    "version": "4.0.0"
+    "description": "FORGE — Spec-Driven Development en español para Claude Code.",
+    "version": "4.2.0"
   },
   "plugins": [
     {
-      "name": "sdd-es",
+      "name": "forge",
       "source": "./",
-      "description": "Fábrica de software agnóstica al stack: de la idea al despliegue. 39 comandos, 14 agentes especializados, 30 skills, mapas estáticos, hooks de seguridad, compresión de tokens, routing inteligente de modelos (Haiku/Sonnet/Opus), memoria persistente entre sesiones, observabilidad integrada (v4.0.0). Pipeline completo: Idea → IR → Spec → Plan → Tareas → Implementación → Verificación → Deploy.",
-      "version": "4.0.0",
+      "description": "Fábrica de software agnóstica al stack: de la idea al despliegue. 39 comandos, 14 agentes especializados, 30 skills, hooks de seguridad (JS+Bash), motor LLM agnóstico (Anthropic/OpenAI/Ollama), memoria compartida entre agentes, dashboard SSE tiempo real, aprobación humana obligatoria antes de planificar, observabilidad completa. Pipeline completo: Idea → IR → Spec → Plan → Tareas → Implementación → Verificación → Deploy.",
+      "version": "4.2.0",
       "author": {
         "name": "Danilo Angarita",
         "email": "daniloangaritagarcia@gmail.com"
@@ -25,9 +25,13 @@
         "español",
         "agentes",
         "mcp",
-        "agnóstico-al-stack",
+        "llm-agnostico",
+        "anthropic",
+        "openai",
+        "ollama",
         "tokens-optimization",
-        "memory-persistence"
+        "memory-persistence",
+        "sse-dashboard"
       ]
     }
   ]

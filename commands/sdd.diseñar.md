@@ -33,11 +33,34 @@ cat .sdd/ir.json | node -e "
 # Routing condicional por confidence del IR
 CONFIDENCE=$(node -e "try{const ir=JSON.parse(require('fs').readFileSync('.sdd/ir.json','utf8'));console.log(ir.confidence??'0')}catch{console.log('0')}" 2>/dev/null || echo "0")
 if awk "BEGIN {exit !($CONFIDENCE < 0.7)}"; then
-  echo "⚠️  Confianza baja en el IR ($CONFIDENCE). Haré preguntas de clarificación antes de diseñar."
+  echo "⚠️  Confianza baja en el IR (confidence=$CONFIDENCE < 0.7)."
+  echo ""
+  echo "Antes de diseñar necesito aclararte algunas ambigüedades del IR:"
+  node -e "
+    try {
+      const ir = JSON.parse(require('fs').readFileSync('.sdd/ir.json','utf8'));
+      const ambig = ir.ambiguities ?? [];
+      const qfu   = ir.questions_for_user ?? [];
+      const puntos = [...ambig, ...qfu].slice(0, 5);
+      if (puntos.length > 0) {
+        puntos.forEach((p, i) => console.log('  ' + (i+1) + '. ' + p));
+      } else {
+        console.log('  (El IR no especifica ambigüedades — revisa raw_input)');
+      }
+    } catch(e) { console.log('  (No se pudo leer el IR)'); }
+  " 2>/dev/null
+  echo ""
+  echo "Por favor responde estas preguntas y luego vuelve a ejecutar /sdd.diseñar"
+  echo "O si quieres continuar de todas formas: /sdd.diseñar --forzar"
+  # Salir aquí si no se pasó --forzar
+  if [[ "$*" != *"--forzar"* ]]; then
+    exit 0
+  fi
+  echo "Continuando con --forzar a pesar de la confianza baja..."
 elif awk "BEGIN {exit !($CONFIDENCE >= 0.85)}"; then
   echo "✅ Confianza alta ($CONFIDENCE). Avanzo directo al diseño sin preguntas adicionales."
 else
-  echo "ℹ️  Confianza media ($CONFIDENCE). Diseñaré con las asunciones actuales."
+  echo "ℹ️  Confianza media ($CONFIDENCE). Diseñaré con las asunciones actuales del IR."
 fi
 ```
 
@@ -202,3 +225,14 @@ Después de `/sdd.diseñar`:
 /sdd.exportar    → Exportar bundle del proyecto
 /sdd.estado      → Ver estado del proyecto
 ```
+
+---
+
+## SIGUIENTE PASO SUGERIDO
+
+✅ Diseño completado y aprobado.
+
+¿Continúo con `/sdd.especificar`?
+- **`sí`** → genero la especificación técnica automáticamente
+- **`no`** → me detengo para que revises el diseño primero
+- **`[instrucción]`** → ajusto el diseño antes de especificar

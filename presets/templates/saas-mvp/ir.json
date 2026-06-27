@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "1.0",
   "id": "ir-template-saas-mvp",
   "created_at": "TEMPLATE",
   "raw_input": "Quiero construir un SaaS MVP con registro de usuarios, autenticación, un recurso principal y dashboard básico",

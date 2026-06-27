@@ -4,7 +4,7 @@
  * Polling cada 3 segundos contra /actividad
  */
 
-const POLL_MS = 3000;
+import { onConsumo } from "/src/sse.js";
 
 function esc(str) {
   return String(str)
@@ -99,6 +99,6 @@ async function actualizarActividad() {
   }
 }
 
-// Arranque
+// Arranque via SSE (fallback polling gestionado en sse.js)
 actualizarActividad();
-setInterval(actualizarActividad, POLL_MS);
+onConsumo(actualizarActividad);

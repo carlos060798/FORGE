@@ -382,18 +382,22 @@ sequenceDiagram
 
 ### `/sdd.estado`
 
-Dashboard de progreso en texto plano. Muestra el estado actual del pipeline, spec activa, última tarea, modo de sesión.
+Dashboard de progreso en texto plano. Muestra el estado actual del pipeline, spec activa, última tarea, modo de sesión, presupuesto USD de la sesión y nivel del circuit breaker.
 
 ```
 FORGE v4.0.0 — Estado del proyecto
 
-  Pipeline:     implementar (etapa 6/10)
-  Spec activa:  2026-06-21-auth-jwt
-  Progreso:     T-008 / T-012 (67%)
-  Modo:         normal
-  Tests:        52/52 ✅
-  Último cambio: arquitecto — src/auth/jwt.service.ts (hace 3 min)
+  Pipeline:          implementar (etapa 6/10)
+  Spec activa:       2026-06-21-auth-jwt
+  Progreso:          T-008 / T-012 (67%)
+  Modo:              normal
+  Tests:             52/52 ✅
+  Presupuesto:       $0.38 USD esta sesión
+  Circuit breaker:   sandbox
+  Último cambio:     arquitecto — src/auth/jwt.service.ts (hace 3 min)
 ```
+
+Equivalente en CLI: `forge status`.
 
 ---
 
@@ -450,6 +454,19 @@ Gestionar registros de decisiones arquitectónicas manualmente.
 /sdd.adr listar    → ver todos los ADRs del proyecto
 /sdd.adr ver ADR-003
 ```
+
+---
+
+### `forge logs`
+
+Muestra el historial de consumo de agentes desde `.sdd/observabilidad/consumo.jsonl`.
+
+```bash
+forge logs          # últimas 20 entradas
+forge logs --last 5 # últimas 5 entradas
+```
+
+Cada entrada incluye: timestamp, agente, acción, tokens entrada/salida y costo estimado en USD. Útil para auditar qué agente consumió más en una sesión o diagnosticar dónde se detuvo el pipeline.
 
 ---
 
@@ -537,6 +554,8 @@ Genera un servidor MCP empaquetado como `.mcpb` para distribuir como plugin de C
 | `/sdd.desplegar` | Despliegue | **Sí** (siempre) |
 | `/sdd.canary` | Monitoreo | No |
 | `/sdd.estado` | Utilidad | No |
+| `forge status` | CLI Utilidad | No |
+| `forge logs` | CLI Utilidad | No |
 | `/sdd.modo` | Utilidad | No |
 | `/sdd.configurar` | Utilidad | No |
 | `/sdd.comprimir` | Utilidad | No |

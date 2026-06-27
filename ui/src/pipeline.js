@@ -1,5 +1,7 @@
-// @ts-check
-// Vista 1 — Pipeline: grafo SVG de nodos conectados. Refresco cada 5s.
+﻿// @ts-check
+import { onEstado } from "/src/sse.js";
+
+// Vista 1 — Pipeline: grafo SVG de nodos conectados. Actualización via SSE.
 
 const PIPELINE_STEPS = [
   { id: "idea",      label: "Idea",      emoji: "💡", cmd: "/forge" },
@@ -177,42 +179,28 @@ function formatDate(iso) {
   catch { return iso; }
 }
 
-// ─── Polling ─────────────────────────────────────────────────────────────────
+// ─── SSE + Carga inicial ─────────────────────────────────────────────────────
 
 let lastHash = "";
 
-async function refresh() {
-  try {
-    const res = await fetch("/estado");
-    const data = await res.json();
-    const hash = JSON.stringify(data);
-    if (hash !== lastHash) {
-      lastHash = hash;
-      render(data);
-    }
-  } catch {
-    const c = document.getElementById("view-pipeline");
-    if (c) c.innerHTML = `<p class="error">No se puede conectar con el servidor FORGE.</p>`;
+function handleEstado(data) {
+  const hash = JSON.stringify(data);
+  if (hash !== lastHash) {
+    lastHash = hash;
+    render(data);
   }
-}
-
-function render(estado) {
-  const container = document.getElementById("view-pipeline");
-  if (!container) return;
-
-  if (!estado || Object.keys(estado).length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>No hay ningún proyecto activo todavía.</p>
-        <p>Abre Claude Code y escribe <code>/forge "tu idea"</code> para empezar.</p>
-      </div>`;
-    return;
-  }
-
-  container.innerHTML = buildSVG(estado.pipeline_step ?? "idea", estado);
 }
 
 export function init() {
-  refresh();
-  setInterval(refresh, 5000);
+  // Carga inicial
+  fetch("/estado")
+    .then(r => r.json())
+    .then(handleEstado)
+    .catch(() => {
+      const c = document.getElementById("view-pipeline");
+      if (c) c.innerHTML = `<p class="error">No se puede conectar con el servidor FORGE.</p>`;
+    });
+
+  // Actualizaciones en tiempo real via SSE (fallback polling gestionado en sse.js)
+  onEstado(handleEstado);
 }

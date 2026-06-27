@@ -21,7 +21,8 @@ import {
   existsSync, mkdirSync, writeFileSync, readFileSync,
   readdirSync, statSync,
 } from "node:fs";
-import { join, extname, relative, basename } from "node:path";
+import { join, extname, relative, basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const EXTENSIONES_SOPORTADAS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"]);
 
@@ -47,20 +48,36 @@ function parsearArchivo(codigo, archivo) {
   }
 }
 
-function limpiarTypeScript(codigo) {
-  // Eliminación básica de sintaxis TS que acorn no entiende:
-  // - Anotaciones de tipo en parámetros: (x: string) → (x)
-  // - Tipos de retorno: ): void { → ) {
-  // - Interfaces y types completos → comentario vacío
-  // - Genéricos simples: Array<string> → Array
-  // - as casts: x as string → x
-  // No es un compilador TS — solo lo suficiente para que acorn no crashee
+export function limpiarTypeScript(codigo) {
+  // Eliminación progresiva de sintaxis TS/JSX que acorn no entiende.
+  // El objetivo es que acorn no crashee — no reproducir el compilador TS.
+  // Orden importa: de lo más específico a lo más general.
   return codigo
-    .replace(/:\s*[A-Z][A-Za-z<>\[\]|&\s,]+(?=[,)\n{=])/g, "") // anotaciones de tipo
-    .replace(/\binterface\s+\w+\s*\{[^}]*\}/gs, "/* interface */")
-    .replace(/\btype\s+\w+\s*=\s*[^;]+;/g, "/* type */")
-    .replace(/\bas\s+[A-Za-z<>\[\]]+/g, "")
-    .replace(/<[A-Za-z,\s]+>/g, "");
+    // 1. Eliminar bloques completos de interface y type alias (multilínea)
+    .replace(/\binterface\s+\w+[\w\s,<>]*\s*\{[^}]*\}/gs, "/* interface */")
+    .replace(/\btype\s+\w+[\w\s,<>]*\s*=\s*[\s\S]*?;/g, "/* type */")
+    // 2. Eliminar decoradores de clase/método (@Component, @Injectable, etc.)
+    .replace(/^\s*@\w+(?:\([^)]*\))?\s*$/gm, "")
+    // 3. Eliminar modificadores de visibilidad en parámetros de constructor
+    .replace(/\b(public|private|protected|readonly)\s+(\w)/g, "$2")
+    // 4. Eliminar 'declare' statements
+    .replace(/^\s*declare\s+.*$/gm, "")
+    // 5. Eliminar anotaciones de tipo en parámetros: (x: string, y: number[])
+    //    Cubre tipos primitivos, union, intersection, array, genéricos básicos
+    .replace(/:\s*(?:readonly\s+)?[\w.]+(?:<[^>]*>)?(?:\[\])*(?:\s*[|&]\s*[\w.]+(?:<[^>]*>)?(?:\[\])*)*(?=\s*[,)=\n{])/g, "")
+    // 6. Eliminar tipo de retorno de función: ): ReturnType {  →  ) {
+    .replace(/\)\s*:\s*(?:readonly\s+)?[\w.]+(?:<[^>]*>)?(?:\[\])*(?:\s*[|&]\s*[\w.]+(?:<[^>]*>)?(?:\[\])*)*\s*(?=[{])/g, ") ")
+    // 7. Eliminar 'as' type casts: value as string  →  value
+    .replace(/\bas\s+[\w.]+(?:<[^>]*>)?(?:\[\])*/g, "")
+    // 8. Eliminar genéricos simples en llamadas y declaraciones: Array<string> → Array
+    //    Solo genéricos de una palabra para no romper comparadores < >
+    .replace(/<\s*[\w.,\s|&?]+\s*>/g, "")
+    // 9. Convertir JSX a comentarios (componentes JSX que acorn no puede parsear)
+    //    Detecta líneas con <ComponentName o </ComponentName
+    .replace(/<[A-Z]\w*(?:\s[^>]*)?\/?>/g, "null /* JSX */")
+    .replace(/<\/[A-Z]\w*>/g, "")
+    // 10. Eliminar satisfies operator: value satisfies Type
+    .replace(/\bsatisfies\s+[\w.]+(?:<[^>]*>)?/g, "");
 }
 
 // ── Extractor de símbolos ─────────────────────────────────────────────────────
@@ -266,6 +283,13 @@ function main() {
     }
   }
 
+  // TODO: integrar deltaEncode de core/ cuando el módulo exista
+  // Si core/ast-delta.js (o similar) expone deltaEncode(oldIndex, newIndex), llamar:
+  //   const oldIndex = existsSync(indiceFile) ? readFileSync(indiceFile, 'utf8') : '';
+  //   const delta = deltaEncode(oldIndex, simbolosTotales);
+  //   writeFileSync(indiceFile, delta, 'utf8');
+  // Hasta entonces, se hace full-rebuild (comportamiento actual).
+
   // Escribir índice (sobrescribe — el índice es regenerable)
   const lineas = simbolosTotales.map((s) => JSON.stringify(s)).join("\n");
   writeFileSync(indiceFile, lineas + (lineas ? "\n" : ""), "utf8");
@@ -280,4 +304,7 @@ function main() {
   process.exit(0);
 }
 
-main();
+// Solo ejecutar como script directo, no cuando se importa como módulo
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main();
+}

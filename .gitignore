@@ -2,6 +2,9 @@
 node_modules/
 package-lock.json
 
+# Artefactos de compilación TypeScript — generados por `npm run build`
+dist/
+
 # MCP — dependencias y compilado (no se versionan)
 sdd-lite/mcp-figma/node_modules/
 sdd-lite/mcp-figma/dist/
@@ -12,3 +15,5 @@ sdd-lite/mcp-figma/dist/
 # Variables de entorno
 .env
 .env.local
+
+FORGE/

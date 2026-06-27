@@ -77,11 +77,13 @@ El **IR (Interpreted Requirement)** es la primera transformación estructurada d
 
 ### La puntuación de confianza
 
-El campo `confidence` (0.0–1.0) indica cuánta información tiene el IR para proceder sin aclaraciones adicionales. El umbral de preparación es `0.7`:
+El campo `confidence` (0.0–1.0) indica cuánta información tiene el IR para proceder sin aclaraciones adicionales. Es un campo orientativo generado por el agente — **no es un guard automático de la state machine** (la transición `discovery → ir` solo requiere `ir_generado: true`, no un umbral de confidence).
 
-- `≥ 0.7` — el IR está listo; puede proceder al diseño
-- `< 0.7` — se recomienda ejecutar `/sdd.aclarar` antes de continuar
-- `requires_clarification: true` — hay ambigüedades explícitas que bloquean el avance
+Interpretación recomendada:
+
+- `≥ 0.7` — el IR está listo; puede proceder al diseño directamente
+- `< 0.7` — se recomienda ejecutar `/sdd.aclarar` antes de continuar para evitar specs ambiguas
+- `requires_clarification: true` — el agente detectó ambigüedades explícitas; ejecutar `/sdd.aclarar` antes de avanzar
 
 El IR es inmutable una vez aprobado. Si los requisitos cambian sustancialmente, se genera un nuevo IR y se crea una nueva rama de especificación.
 

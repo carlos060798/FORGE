@@ -32,9 +32,11 @@ La herramienta `Task` de Claude Code permite despachar subagentes, pero dentro d
 
 ### El modo multi-proveedor no ha sido validado exhaustivamente
 
-FORGE soporta OpenAI y Google Gemini como proveedores alternativos. Sin embargo, los tests de integración están escritos contra Anthropic. El comportamiento con GPT-4o o Gemini como proveedores de agentes de implementación puede variar respecto al comportamiento documentado.
+FORGE soporta OpenAI y Ollama como proveedores alternativos a Anthropic. Sin embargo, los tests de integración están escritos contra Anthropic (y el proveedor `stub` para CI). El comportamiento con GPT-4o u Ollama como proveedores de agentes de implementación puede variar respecto al comportamiento documentado.
 
-**Recomendación:** Usar OpenAI/Google solo para agentes de nivel de implementación (`desarrollador-backend`, `desarrollador-frontend`, `tester`). Los agentes estratégicos usan Anthropic de forma fija.
+**Proveedores soportados:** anthropic, openai, ollama, stub. Google/Gemini no está soportado.
+
+**Recomendación:** Usar OpenAI/Ollama solo para agentes de nivel de implementación (`desarrollador-backend`, `desarrollador-frontend`, `tester`). Los agentes estratégicos usan Anthropic de forma fija.
 
 ---
 
@@ -48,17 +50,16 @@ Si cambias `memoria.backend` de `markdown` a `sqlite` en un proyecto existente, 
 
 ---
 
-### Los tests de `agent-memory` tienen 8 casos fallando
+### Algunos tests avanzados están desactivados (.skip)
 
-En la versión actual (4.0.0), hay 8 tests en `tests/agent-memory.test.js` que fallan en ciertos entornos. Estos tests cubren:
-- Creación de memoria cuando un agente específico hace `Write`
-- Auto-compresión cuando el archivo supera el umbral
-- Deduplicación de entradas
-- Contratos de lectura de memoria por agente
+En v4.2.0, los 998 tests activos pasan todos (0 fallos). Sin embargo, hay tests desactivados con `.skip` que cubren funcionalidades aún en desarrollo:
+- `tests/agent-enforcement.test.js.skip` — enforcement de permisos por agente
+- `tests/ast-compressor.test.js.skip` — compresión AST avanzada
+- `tests/delta-encoding.test.js.skip` — delta encoding para memoria
+- `tests/episodic-memory.test.js.skip` — memoria episódica avanzada
+- `tests/hybrid-indexer.test.js.skip` — indexación híbrida
 
-**Impacto:** Los hooks funcionan correctamente en uso real. Los tests fallidos son de escenarios de entorno de test específicos.
-
-**Estado:** Conocido, en proceso de corrección.
+**Impacto:** Las funcionalidades cubiertas por estos tests (.skip) no están garantizadas. Las funcionalidades principales están todas cubiertas por los 998 tests activos.
 
 ---
 
@@ -151,13 +152,13 @@ Las siguientes áreas del código tienen TODOs o están marcadas como incompleta
 | Área | Estado | Impacto |
 |------|--------|---------|
 | `mcp-figma/src/` | Esquelético | Integración Figma no funcional |
-| `tests/agent-enforcement.test.js.skip` | Desactivado | Enforcement de permisos por agente no probado |
-| `tests/ast-compressor.test.js.skip` | Desactivado | Compresión AST avanzada no probada |
-| `tests/delta-encoding.test.js.skip` | Desactivado | Delta encoding para memoria no probado |
-| `tests/episodic-memory.test.js.skip` | Desactivado | Memoria episódica avanzada no activa |
-| `tests/hybrid-indexer.test.js.skip` | Desactivado | Indexación híbrida no activa |
+| `tests/agent-enforcement.test.js.skip` | Desactivado | Enforcement de permisos por agente |
+| `tests/ast-compressor.test.js.skip` | Desactivado | Compresión AST avanzada |
+| `tests/delta-encoding.test.js.skip` | Desactivado | Delta encoding para memoria |
+| `tests/episodic-memory.test.js.skip` | Desactivado | Memoria episódica avanzada |
+| `tests/hybrid-indexer.test.js.skip` | Desactivado | Indexación híbrida |
 | Migración Markdown→SQLite | No implementada | Cambio de backend pierde historial |
-| 8 tests en agent-memory | Fallando | Ver sección anterior |
+| `mcp-figma/src/` | Esquelético | Integración Figma no funcional |
 
 ---
 

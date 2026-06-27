@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/schemas/estado/1.0",
+  "title": "FORGE Pipeline State (estado.json)",
+  "description": "Estado del pipeline FORGE. Fuente de verdad del progreso del proyecto. Portable entre hosts.",
+  "type": "object",
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "pipeline_step": {
+      "type": "string",
+      "enum": ["idea", "discovery", "ir", "design", "spec", "plan", "tasks", "code", "done"]
+    },
+    "ultima_actualizacion": { "type": "string", "format": "date-time" },
+    "ir_generado": { "type": "boolean" },
+    "ir_path": { "type": "string" },
+    "product_design_generado": { "type": "boolean" },
+    "product_design_aprobado": { "type": "boolean" },
+    "product_design_path": { "type": "string" },
+    "design_direction": { "type": "string" },
+    "design_system_path": { "type": "string" },
+    "spec_draft_path": { "type": "string" },
+    "spec_activa": { "type": "string" },
+    "plan_activo": { "type": "string" },
+    "artefactos_sesion": {
+      "type": "object",
+      "properties": {
+        "ir_confidence": { "type": ["number", "null"] },
+        "stack_decidido": { "type": ["string", "null"] },
+        "complejidad_estimada": { "type": ["string", "null"] },
+        "agentes_activos_ultimo_plan": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

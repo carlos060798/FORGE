@@ -27,6 +27,9 @@ SPEC_ID=$(grep -o '"especificacion_activa": "[^"]*"' .sdd/estado.json 2>/dev/nul
 # CAPA 2 — constitución completa (necesaria para verificar compliance)
 cat .sdd/memoria/constitucion.md 2>/dev/null
 cat .eslintrc* ruff.toml clippy.toml 2>/dev/null | head -20
+
+# CAPA 3 — decisiones compartidas de todos los agentes (verifica coherencia)
+cat .sdd/memoria/compartida/decisiones-clave.md 2>/dev/null || true
 ```
 
 **CRÍTICO**: solo puedes leer (READ-ONLY). No modificas código — señalas problemas y el implementador los corrige.

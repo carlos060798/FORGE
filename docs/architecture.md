@@ -1,329 +1,245 @@
 # Arquitectura
 
-Este documento describe el diseño del sistema FORGE: el modelo de seis capas, cómo se relacionan los componentes y cómo fluyen los datos a través del pipeline.
+Este documento describe el diseño del sistema FORGE: el modelo de seis capas, los componentes principales y cómo fluyen los datos a través del pipeline.
 
 ---
 
-## Visión general del sistema
+## Modelo de seis capas
 
-```mermaid
-graph TD
-    Usuario["👤 Desarrollador / Usuario"]
-    CC["Claude Code\n(CLI / extensión IDE)"]
-    FORGE["Plugin FORGE\n(.claude/)"]
-    SDD[".sdd/\nEstado del proyecto"]
-    Modelos["Modelos base\n(Anthropic / OpenAI / Google)"]
-    UI["Dashboard\nlocalhost:3001"]
-
-    Usuario -->|comandos slash| CC
-    CC -->|despacha| FORGE
-    FORGE -->|lee/escribe| SDD
-    FORGE -->|invoca| Modelos
-    SDD -->|servido por| UI
-    Usuario -->|monitorea| UI
 ```
-
-FORGE es un **plugin** — corre dentro de Claude Code, no junto a él. No existe un proceso FORGE separado. El plugin consiste en archivos Markdown (comandos, agentes, skills) y hooks JavaScript que Claude Code carga y ejecuta de forma nativa.
-
----
-
-## El modelo de seis capas
-
-```mermaid
-graph BT
-    L0["L0 — Modelos base\nClaude Opus · Sonnet · Haiku\nOpenAI GPT-4o · Google Gemini"]
-    L1["L1 — Memoria y persistencia\n.sdd/memoria/ · estado.json · consumo.jsonl\nBackend Markdown o SQLite (Node ≥22.5)"]
-    L2["L2 — Interfaz agente-computadora\n39 Comandos · 30 Skills\nAPI del pipeline"]
-    L3["L3 — Herramientas nativas\nRead · Write · Edit · Bash · Task\n(integradas en Claude Code)"]
-    L4["L4 — Orquestación\n14 Agentes especializados\nDespacho secuencial + paralelo"]
-    L5["L5 — Gobernanza\npre-tool-guard · agent-memory\npost-write-conventions"]
-
-    L0 --> L1
-    L1 --> L2
-    L2 --> L3
-    L3 --> L4
-    L4 --> L5
-```
-
-### L0 — Modelos base
-
-Los modelos de lenguaje subyacentes que ejecutan cada tarea. FORGE es agnóstico de modelo en esta capa: los modelos Anthropic son el predeterminado y siempre están disponibles como respaldo, pero los proveedores OpenAI y Google son compatibles si la clave de API correspondiente está presente en el entorno.
-
-La asignación de modelos es por agente y por nivel de esfuerzo. Los agentes estratégicos (arquitecto, crítico, revisor, seguridad) están fijados a Anthropic y siempre usan Opus. Los agentes de implementación usan Sonnet por defecto pero son configurables por proyecto.
-
-### L1 — Memoria y persistencia
-
-Todo el estado duradero vive en `.sdd/`. Hay dos backends de almacenamiento disponibles:
-
-- **Markdown** (predeterminado) — archivos legibles por humanos, funciona con todas las versiones de Node
-- **SQLite** (opcional) — requiere Node ≥22.5, habilita consultas indexadas más rápidas
-
-La capa de memoria almacena: registros de actividad por agente, la máquina de estados del pipeline, artefactos JSON de IR y ProductDesign, documentos de especificación, registros ADR y el ledger de observabilidad.
-
-### L2 — Interfaz Agente-Computadora (ACI)
-
-Los 39 comandos y 30 skills forman la API pública de FORGE. Los comandos son archivos `.md` — prompts estructurados que definen una etapa del pipeline. Las skills son capacidades reutilizables que los comandos invocan. Ambos son Markdown; ninguno es código compilado.
-
-### L3 — Herramientas nativas
-
-Claude Code proporciona los primitivos: `Read`, `Write`, `Edit`, `Bash`, `Task`. FORGE no implementa su propio I/O de archivos ni ejecución de shell — los usa a través de los comandos que emite a los agentes. La herramienta `Task` habilita el despacho paralelo de agentes (Programmatic Tool Calling).
-
-### L4 — Orquestación
-
-Cuando un comando como `/sdd.implementar` se ejecuta, despacha tareas a agentes. Cada agente es un prompt de sistema específico de rol que restringe lo que el modelo puede hacer. Los agentes corren secuencialmente por defecto; `/sdd.analizar` y `/sdd.implementar` pueden despachar múltiples agentes en paralelo vía PTC (Programmatic Tool Calling) cuando la skill `orquestacion-ptc` está activa.
-
-### L5 — Gobernanza
-
-Tres hooks imponen restricciones a nivel de llamada a herramientas de Claude Code:
-
-| Hook | Disparador | Acción |
-|------|-----------|--------|
-| `pre-tool-guard.js` | PreToolUse (Bash, Write, Edit) | Bloquea comandos destructivos; detecta secrets |
-| `agent-memory.js` | PostToolUse (Write, Edit) | Registra cambios en memoria por agente |
-| `post-write-conventions.js` | PostToolUse (Write, Edit) | Valida el archivo contra las convenciones del proyecto |
-
-Estos hooks corren fuera del control del agente — el agente no puede eludirlos.
-
----
-
-## Máquina de estados del pipeline
-
-```mermaid
-stateDiagram-v2
-    [*] --> idea
-    idea --> descubrimiento : /sdd.descubrir
-    descubrimiento --> ir : /sdd.interpretar
-    ir --> diseño : /sdd.diseñar
-    diseño --> spec : /sdd.especificar
-    spec --> aclaracion : marcas [NECESITA_ACLARACION] presentes
-    aclaracion --> spec : /sdd.aclarar
-    spec --> plan : /sdd.planificar
-    plan --> tareas : /sdd.tareas
-    tareas --> codigo : /sdd.implementar
-    codigo --> codigo : bucle de tareas (reanudable)
-    codigo --> verificacion : /sdd.verificar
-    verificacion --> spec : verificación fallida
-    verificacion --> despliegue : /sdd.desplegar
-    despliegue --> hecho : health check pasado
-    hecho --> [*]
-```
-
-La etapa actual se almacena en `estado.json → pipeline_step`. Cada transición escribe en disco antes de continuar, haciendo el pipeline reanudable en cualquier punto.
-
----
-
-## Mapa de dependencias entre componentes
-
-```mermaid
-graph LR
-    CLI["cli/index.js\nforge / sdd-es"] --> PM["core/project-memory.ts\nForgeEstado · IR · ProductDesign"]
-    CLI --> MR["claude-hooks/model-registry.js\nDetección de proveedores · Enrutamiento por nivel"]
-
-    CMD["commands/*.md\n39 comandos del pipeline"] --> PM
-    CMD --> SK["skills/*/SKILL.md\n30 skills reutilizables"]
-    CMD --> AG["agents/*.md\n14 agentes especializados"]
-
-    AG --> MR
-    AG --> TOOLS["Herramientas nativas de Claude Code\nRead · Write · Edit · Bash · Task"]
-
-    HOOKS["claude-hooks/\npre-tool-guard\nagent-memory\npost-write-conventions"] --> PM
-    HOOKS --> SDD[".sdd/ directorio de estado"]
-
-    UI["ui/server.js\nlocalhost:3001"] --> SDD
-    SK --> SDD
-    PM --> SDD
+┌─────────────────────────────────────────────────────────┐
+│  L0 — Providers LLM                                      │
+│  core/llm-providers/  (anthropic · openai · ollama · stub)│
+├─────────────────────────────────────────────────────────┤
+│  L1 — Memoria y estado                                   │
+│  .sdd/estado.json  ·  .sdd/memoria/  ·  SQLite          │
+│  core/state-store.js  ·  core/decisions/decision-store.js│
+├─────────────────────────────────────────────────────────┤
+│  L2 — Interfaz de usuario                                │
+│  39 commands/*.md  ·  31 skills/*/SKILL.md              │
+├─────────────────────────────────────────────────────────┤
+│  L3 — Herramientas del host                              │
+│  Claude Code nativas: Read · Write · Bash · Task · Edit  │
+├─────────────────────────────────────────────────────────┤
+│  L4 — Orquestación                                       │
+│  core/orchestrator.js  ·  14 agents/*.md                │
+│  core/agent-registry.js  ·  core/engine-cli.js          │
+├─────────────────────────────────────────────────────────┤
+│  L5 — Gobernanza                                         │
+│  claude-hooks/pre-tool-guard.js/.sh                      │
+│  claude-hooks/agent-memory.js/.sh                        │
+│  claude-hooks/post-write-conventions.js/.sh              │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Flujo de datos: pipeline de extremo a extremo
+## L0 — Providers LLM
 
-```mermaid
-sequenceDiagram
-    actor Usuario
-    participant CC as Claude Code
-    participant CMD as Comando (.md)
-    participant AG as Agente
-    participant HOOK as Hooks
-    participant SDD as .sdd/
+**Archivos:** `core/llm-providers/`
 
-    Usuario->>CC: /sdd.descubrir mi idea
-    CC->>CMD: carga sdd.descubrir.md
-    CMD->>AG: despacha investigador
-    AG->>SDD: lee estado.json
-    AG->>SDD: escribe ir.json
-    HOOK->>SDD: agent-memory registra escritura
-    CMD->>SDD: actualiza pipeline_step → ir
-    CC->>Usuario: IR listo (confianza: 0.92)
+FORGE es agnóstico al proveedor de LLM. La resolución es automática:
 
-    Usuario->>CC: /sdd.planificar
-    CC->>CMD: carga sdd.planificar.md
-    CMD->>AG: despacha arquitecto
-    AG->>SDD: lee ir.json, spec.md
-    CMD->>AG: despacha critico (paso de crítica)
-    CMD->>AG: despacha seguridad (paso de seguridad)
-    AG->>SDD: escribe plan.md
-    CMD->>SDD: actualiza pipeline_step → plan
-    CC->>Usuario: Plan listo — ¿aprobar? (s/n)
+```
+1. Variable FORGE_LLM_PROVIDER
+2. llm.provider en .sdd/sdd.config.yaml
+3. Detección automática (ANTHROPIC_API_KEY → anthropic, etc.)
+4. Fallback: anthropic
+```
 
-    Usuario->>CC: s
-    Usuario->>CC: /sdd.implementar
-    CC->>CMD: carga sdd.implementar.md
-    loop para cada tarea en tareas.md
-        CMD->>AG: despacha agente asignado
-        AG->>HOOK: Write/Edit dispara hooks
-        HOOK->>SDD: registra en consumo.jsonl
-        HOOK->>SDD: actualiza agente-{nombre}.md
-        AG->>SDD: actualiza .estado-tareas.json
-    end
-    CC->>Usuario: Implementación completa
+| Provider | Aliases | Modelos por defecto |
+|---|---|---|
+| `anthropic` | `claude` | claude-opus-4-8, claude-sonnet-4-6, claude-haiku-4-5-20251001 |
+| `openai` | `gpt`, `azure`, `github-models`, `cursor` | gpt-4o, gpt-4o-mini |
+| `ollama` | `local`, `llama`, `deepseek` | qwen2.5-coder:7b, llama3, deepseek-r1:14b |
+| `stub` | `test` | Respuestas determinísticas para CI |
+
+Los alias de modelos (`opus`, `sonnet`, `haiku`) se resuelven al modelo real de cada proveedor en `core/llm-providers/index.js`.
+
+---
+
+## L1 — Memoria y estado
+
+**Estado del pipeline:** `core/state-store.js` + `core/state-machine.js`
+
+El estado vive en `.sdd/estado.json`. La state machine formal define 9 estados y 8 transiciones con guards:
+
+```
+idea → discovery → ir → design → spec → plan → tasks → code → done
+                                   ↑
+                             [forge aprobar spec]
+                              guard: spec_aprobado === true
+```
+
+Guards completos:
+
+| Transición | Guard |
+|---|---|
+| discovery → ir | `ir_generado === true` |
+| ir → design | `ir_path` registrado |
+| design → spec | `product_design_aprobado === true` |
+| spec → plan | `(spec_activa OR spec_draft_path) AND spec_aprobado === true` |
+| plan → tasks | `plan_activo` registrado |
+
+**Memoria de agentes:** `core/project-memory.js` + `claude-hooks/agent-memory.js`
+
+Dos backends, auto-detectados:
+- **SQLite** (`node:sqlite`, Node ≥22.5): búsqueda TF-IDF semántica, 8 fuentes de recuperación
+- **Markdown** (fallback): archivos `.sdd/memoria/agente-{nombre}.md`, índice JSONL
+
+**Decision store:** `core/decisions/decision-store.js`
+
+Almacena ADRs con búsqueda semántica TF-IDF + similitud coseno. Funciona bien hasta cientos de ADRs.
+
+**Memoria compartida:** `.sdd/memoria/compartida/decisiones-clave.md`
+
+Todos los agentes leen y escriben aquí — canal de comunicación asíncrono entre agentes.
+
+---
+
+## L2 — Interfaz
+
+**Comandos** (`commands/`): 39 archivos `.md`. Cada uno es un slash command de Claude Code (`/sdd.descubrir`, `/forge`, etc.). Los comandos son texto puro con instrucciones para el modelo — no son código ejecutable.
+
+**Skills** (`skills/`): 31 directorios, cada uno con un `SKILL.md`. Las skills son capacidades reutilizables invocadas por los comandos.
+
+**Plantillas** (`plantillas/`): 17 archivos `.md`. Esqueletos para artefactos del pipeline (spec, plan, ADR, etc.).
+
+**Presets** (`presets/`): 3 configuraciones predefinidas (lean, startup, enterprise). Definen qué agentes están activos y con qué modelo.
+
+---
+
+## L3 — Herramientas del host
+
+FORGE usa exclusivamente las herramientas nativas de Claude Code: `Read`, `Write`, `Edit`, `Bash`, `Task`, `Glob`, `Grep`. No invoca APIs externas directamente desde los comandos — eso lo hace el motor (L4) o los providers (L0).
+
+---
+
+## L4 — Orquestación
+
+**Motor central:** `core/orchestrator.js`
+
+El orchestrator ejecuta tareas con estas garantías:
+- Orden topológico respetando dependencias entre tareas
+- Retry automático en caso de fallo
+- Circuit breaker por agente (sandbox / local / confirmado)
+- Checkpoint persistente — reanudable tras interrupción
+
+**Agentes:** `agents/*.md` (14 archivos)
+
+Cada agente es un prompt de sistema fijo con restricciones de herramientas. No son clases ni objetos — son instrucciones de rol en Markdown.
+
+| Grupo | Agentes | Modelo |
+|---|---|---|
+| Estratégico | arquitecto, asesor-datos, critico, seguridad | opus |
+| Diseño | product-designer, revisor | opus |
+| Implementación | desarrollador-backend, desarrollador-frontend, disenador-api, tester, documentador, investigador, operaciones, architecture-designer | sonnet |
+
+7 agentes son estrictamente read-only (enforced en `pre-tool-guard.js`): arquitecto, asesor-datos, critico, seguridad, investigador, revisor, disenador-api.
+
+**Registro de agentes:** `core/agent-registry.js`
+
+Carga los `.md` de agentes, parsea el frontmatter (model, name, description, tools), instancia el provider LLM correspondiente, ejecuta el prompt y retorna el resultado.
+
+**CLI del engine:** `core/engine-cli.js`
+
+Entry point para `forge run` / `forge resume` / `forge status` / `forge validate`. Expone `main()` para que `cli/index.js` lo llame.
+
+---
+
+## L5 — Gobernanza
+
+Tres hooks de Claude Code, cada uno con versión `.js` (lógica completa) y `.sh` (lógica mínima Bash para proyectos sin Node):
+
+### `pre-tool-guard.js` (PreToolUse)
+
+Se ejecuta antes de cada llamada a herramienta. Bloquea:
+- Comandos destructivos en agentes read-only (Write, Edit, Bash con rm/drop/delete)
+- Comandos que tocan archivos protegidos (`.env`, secrets, ramas protegidas)
+- Operaciones que violan ADRs registrados
+- Nivel de ejecución según circuit breaker (`sandbox` bloquea Bash, `local` restringe writes fuera de cwd)
+
+### `agent-memory.js` (PostToolUse)
+
+Se ejecuta después de cada write/edit. Registra:
+- El artefacto escrito, el agente que lo escribió y el timestamp
+- Decisiones arquitectónicas detectadas como ADRs
+- Entrada en memoria compartida cuando el agente registra una decisión clave
+
+### `post-write-conventions.js` (PostToolUse)
+
+Se ejecuta después de writes. Verifica convenciones de código (imports relativos existentes, encoding, formato).
+
+---
+
+## Observabilidad
+
+Cuatro archivos JSONL en `.sdd/`:
+
+| Archivo | Contenido |
+|---|---|
+| `consumo.jsonl` | Tokens y USD por operación, modelo usado |
+| `mutaciones.jsonl` | Cada write/edit con agente, archivo y timestamp |
+| `events.jsonl` | Transiciones de pipeline, eventos del orchestrator |
+| `agent-tool-audit.jsonl` | Cada herramienta invocada por cada agente |
+
+El dashboard (`ui/server.js`, localhost:3001) lee estos archivos y emite actualizaciones por SSE. Se cierra automáticamente tras 30 minutos sin peticiones.
+
+---
+
+## Flujo de datos completo
+
+```
+Usuario escribe /forge
+    ↓
+Claude Code ejecuta commands/forge.md
+    ↓
+Llama a skills/descubrir-idea/SKILL.md
+    ↓
+El agente product-designer genera discovery
+    ↓
+pre-tool-guard.js verifica (L5) → permite Write
+    ↓
+Artefacto escrito en .sdd/discovery/
+    ↓
+agent-memory.js registra la mutación (L5)
+    ↓
+state-store.js actualiza estado.json
+    ↓
+SSE emite evento al dashboard (L1)
+    ↓
+Siguiente etapa...
 ```
 
 ---
 
-## Estructura del directorio `.sdd/`
+## Directorio de archivos clave
 
-```mermaid
-graph TD
-    SDD[".sdd/"]
-    SDD --> CFG["sdd.config.yaml\nConfiguración del proyecto"]
-    SDD --> EST["estado.json\nMáquina de estados del pipeline"]
-    SDD --> MEM["memoria/\nMemoria por agente"]
-    SDD --> ESP["especificaciones/\nUn directorio por spec"]
-    SDD --> ARC["arquitectura/\nRegistros ADR"]
-    SDD --> DOM["dominio/\nglosario.md"]
-    SDD --> OBS["observabilidad/\nconsumo.jsonl · mutaciones.jsonl"]
-    SDD --> IR["ir.json\nRequisito interpretado"]
-    SDD --> PD["product-design.json\nArtefacto ProductDesign"]
-    SDD --> SNAP["SNAPSHOT.md\nInstantánea del estado del producto"]
-
-    MEM --> CONST["constitucion.md\nConstitución del proyecto"]
-    MEM --> AGM["agente-{nombre}.md\nRegistros por agente"]
-    MEM --> IDX["indice.jsonl\nÍndice invertido para consultas"]
-    MEM --> DB["memoria.db\n(SQLite, solo Node ≥22.5)"]
-
-    ESP --> SPEC["spec.md\nCriterios de aceptación"]
-    ESP --> PLAN["plan.md\nPlan técnico"]
-    ESP --> TASKS["tareas.md\nLista de tareas atómicas"]
-    ESP --> ETASKS[".estado-tareas.json\nCheckpoint de tareas"]
-    ESP --> QA["qa.md\nResultados de QA"]
-    ESP --> VER["verificacion.json\nReporte de verificación"]
 ```
+core/
+├── state-machine.js      FSM formal — 9 estados, 8 transiciones, guards
+├── state-store.js        Persistencia estado.json
+├── orchestrator.js       Motor de ejecución de tareas
+├── agent-registry.js     Carga y ejecuta agentes
+├── engine-cli.js         CLI del motor (run/resume/status/validate)
+├── event-log.js          Log append-only de eventos
+├── execution-context.js  Circuit breaker por agente
+├── session-budget.js     Acumulador de costo USD por sesión
+├── quality-gate.js       Gate de calidad (tests + lint + criterios)
+├── stack-detector.js     Detección de lenguaje/framework (18 lenguajes)
+├── project-memory.js     Persistencia de memoria de agentes
+├── decisions/            Decision store SQLite + TF-IDF
+├── llm-providers/        Anthropic, OpenAI, Ollama, Stub
+├── runners/              Node, Python, Go, Rust
+└── adapters/             ClaudeCodeAdapter, SpecKitAdapter
 
----
-
-## Modelo de despacho de agentes
-
-```mermaid
-graph TD
-    CMD["Comando\n(ej. /sdd.planificar)"]
-    ROUTER["enrutador-agentes\nskill"]
-    SEQ["Despacho secuencial\n(predeterminado)"]
-    PAR["Despacho paralelo\n(PTC — skill orquestacion-ptc)"]
-
-    CMD --> ROUTER
-    ROUTER --> SEQ
-    ROUTER --> PAR
-
-    SEQ --> A1["arquitecto\n(opus)"]
-    SEQ --> A2["critico\n(opus)"]
-    SEQ --> A3["seguridad\n(opus)"]
-
-    PAR --> B1["desarrollador-backend\n(sonnet)"]
-    PAR --> B2["desarrollador-frontend\n(sonnet)"]
-    PAR --> B3["tester\n(sonnet)"]
-    PAR --> AGGS["Agrega:\nPASA/FALLA + diff mínimo"]
+claude-hooks/
+├── pre-tool-guard.js/.sh     Guard PreToolUse
+├── agent-memory.js/.sh       Memoria PostToolUse
+├── post-write-conventions.js/.sh  Convenciones PostToolUse
+├── ast-indexer.js            Índice AST de símbolos JS/TS
+├── ast-query.js              Queries sobre el índice AST
+├── context-manager.js        Gestión de contexto
+├── model-registry.js         Registro de modelos (observabilidad)
+└── query-memory.js           Queries sobre memoria de agentes
 ```
-
-El despacho paralelo reduce el uso de tokens en ~85% para la sobrecarga de orquestación — los agentes producen solo un resultado pasa/falla y un diff mínimo en lugar de todo el contexto de conversación.
-
----
-
-## Modelo de ejecución de hooks
-
-```mermaid
-flowchart TD
-    TOOL["Llamada a herramienta\nde Claude Code"]
-    PRE{"PreToolUse\npre-tool-guard.js"}
-    EXEC["Herramienta se ejecuta"]
-    POST{"PostToolUse\nagent-memory.js\npost-write-conventions.js"}
-    DONE["Resultado devuelto\nal agente"]
-
-    TOOL --> PRE
-    PRE -->|exit 2: bloqueado| BLOCKED["Llamada a herramienta\nbloqueada"]
-    PRE -->|exit 0: permitido| EXEC
-    EXEC --> POST
-    POST -->|exit 2: revertir| REVERTED["Escritura\nrevertida"]
-    POST -->|exit 0: ok| DONE
-```
-
-Códigos de salida de los hooks:
-- `0` — permitir / continuar
-- `2` — bloquear / rechazar (la llamada a herramienta no se ejecuta, o la escritura se revierte)
-
----
-
-## Enrutamiento multi-proveedor de modelos
-
-```mermaid
-graph LR
-    ENV["Variables de entorno"]
-    ENV -->|OPENAI_API_KEY| OAI["OpenAI\ngpt-4o · gpt-4o-mini"]
-    ENV -->|GOOGLE_API_KEY\nGEMINI_API_KEY| GOO["Google\ngemini-2.0-flash"]
-    ENV -->|siempre disponible| ANT["Anthropic\nOpus · Sonnet · Haiku"]
-
-    MR["model-registry.js"]
-    ANT --> MR
-    OAI --> MR
-    GOO --> MR
-
-    MR -->|nivel: alto| OPUS["opus / gpt-4o / gemini-2.0-flash"]
-    MR -->|nivel: medio| SONNET["sonnet / gpt-4o-mini / gemini-2.0-flash"]
-    MR -->|nivel: bajo| HAIKU["haiku / gpt-4o-mini / gemini-2.0-flash-lite"]
-
-    CRITICAL["Agentes críticos\narquitecto · critico · revisor · seguridad\nasesor-datos · product-designer"]
-    CRITICAL -->|siempre Anthropic| ANT
-```
-
----
-
-## Arquitectura de observabilidad
-
-```mermaid
-graph LR
-    AG["Agente\n(cualquiera)"]
-    HK["agent-memory.js\n(hook PostToolUse)"]
-    CONS["consumo.jsonl\n.sdd/observabilidad/"]
-    MUT["mutaciones.jsonl"]
-    MEM["agente-{nombre}.md\n.sdd/memoria/"]
-    SRV["ui/server.js\nGET /consumo\nGET /agentes\nGET /actividad"]
-    DASH["Dashboard\nlocalhost:3001"]
-
-    AG -->|Write/Edit| HK
-    HK --> CONS
-    HK --> MUT
-    HK --> MEM
-    CONS --> SRV
-    MEM --> SRV
-    SRV --> DASH
-```
-
----
-
-## Decisiones arquitectónicas clave
-
-### ¿Por qué Markdown para comandos y agentes?
-
-Que los comandos y agentes sean archivos Markdown significa que cualquiera puede editarlos sin escribir JavaScript. Pueden versionarse, compararse y revisarse en un pull request. Son la capa de configuración, no la capa de ejecución.
-
-### ¿Por qué hooks en lugar de instrucciones en el prompt?
-
-Las instrucciones en el prompt ("no borres archivos") pueden ignorarse u olvidarse a medida que el contexto crece. Los hooks se ejecutan a nivel de proceso del sistema operativo — no pueden ser ignorados por el modelo a mitad de una conversación.
-
-### ¿Por qué `.sdd/` en lugar de una base de datos?
-
-Los archivos locales son universalmente accesibles: `cat`, `git diff`, cualquier editor de texto, cualquier pipeline de CI. Una base de datos requeriría un servidor en ejecución y herramientas de migración. `.sdd/` es portable, inspeccionable y versionable.
-
-### ¿Por qué módulos ESM con dependencias mínimas?
-
-FORGE se instala en proyectos que pueden tener cualquier tipo de árbol de dependencias. Dos dependencias pequeñas (`acorn`, `sqlite-wasm`) mantienen `npm install` rápido y eliminan el riesgo de conflictos de versiones. Las APIs nativas de Node (`fs`, `http`, `readline`, `child_process`) son estables y no requieren npm.

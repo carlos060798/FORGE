@@ -11,7 +11,9 @@
  *   import { leerForgeConfig, leerSddConfig } from './shared/config.js';
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, appendFileSync } from "node:fs";
+
+const _fs = { mkdirSync, appendFileSync };
 import { join } from "node:path";
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
@@ -106,4 +108,39 @@ export function leerSddConfig(cwd = process.cwd()) {
  */
 export function leerMaxMBConsumo(cwd = process.cwd()) {
   return leerSddConfig(cwd).consumo_max_mb;
+}
+
+/**
+ * Lee el nivel de ejecución actual escrito por CircuitBreaker en .sdd/execution-level.json.
+ * Permite que pre-tool-guard conozca el nivel sin importar el módulo TS.
+ * @param {string} cwd directorio de trabajo
+ * @returns {'sandbox'|'local'|'confirmado'}
+ */
+/**
+ * Dead Letter Queue — registra un fallo de hook para reintento posterior.
+ * Escribe en .sdd/observabilidad/dlq.jsonl (append-only).
+ *
+ * @param {string} cwd directorio de trabajo
+ * @param {{ hook: string, tool: string, input: unknown, error: string, retryable?: boolean }} entry
+ */
+export function dlqAppend(cwd, entry) {
+  try {
+    const { mkdirSync, appendFileSync } = _fs;
+    const dir = join(cwd, ".sdd", "observabilidad");
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(
+      join(dir, "dlq.jsonl"),
+      JSON.stringify({ ts: new Date().toISOString(), retryable: true, ...entry }) + "\n",
+      "utf8"
+    );
+  } catch { /* DLQ nunca debe romper el hook padre */ }
+}
+
+export function leerNivelEjecucion(cwd = process.cwd()) {
+  try {
+    const p = join(cwd, '.sdd', 'execution-level.json');
+    if (!existsSync(p)) return 'local';
+    const { nivel } = JSON.parse(readFileSync(p, 'utf8'));
+    return ['sandbox', 'local', 'confirmado'].includes(nivel) ? nivel : 'local';
+  } catch { return 'local'; }
 }

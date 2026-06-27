@@ -347,6 +347,7 @@
     import { init as initAgents   } from "/src/agents.js";
     import { init as initAgentPanel } from "/src/agent-panel.js";
     import                                "/src/actividad.js";
+    import { connected, onEstado }    from "/src/sse.js";
 
     // ── Navegación ──────────────────────────────────────────────────────
     const buttons = document.querySelectorAll("nav button");
@@ -367,19 +368,26 @@
     initAgents();
     initAgentPanel();
 
-    // ── Indicador de conexión ───────────────────────────────────────────
+    // ── Indicador de conexión (SSE-aware) ──────────────────────────────
     const dot = document.getElementById("connection-dot");
-    async function checkConnection() {
-      try {
-        await fetch("/estado");
-        dot.classList.remove("offline");
-        dot.title = "Conectado";
-      } catch {
-        dot.classList.add("offline");
-        dot.title = "Sin conexión con el servidor FORGE";
-      }
+
+    function actualizarDot(online) {
+      dot.classList.toggle("offline", !online);
+      dot.title = online ? "Conectado · SSE activo" : "Sin conexión con el servidor FORGE";
     }
-    setInterval(checkConnection, 10000);
+
+    // Inicializar con un ping inmediato
+    fetch("/estado").then(() => actualizarDot(true)).catch(() => actualizarDot(false));
+
+    // El dot refleja eventos SSE en tiempo real
+    onEstado(() => actualizarDot(true));
+
+    // Fallback: comprobar conectividad cada 15s si SSE no está activo
+    setInterval(() => {
+      if (!connected()) {
+        fetch("/estado").then(() => actualizarDot(true)).catch(() => actualizarDot(false));
+      }
+    }, 15000);
   </script>
 </body>
 </html>

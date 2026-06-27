@@ -30,6 +30,14 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const HOOK = join(__dir, "../claude-hooks/agent-memory.js");
 
 /**
+ * Devuelve true si el runtime de Node.js incluye node:sqlite (>= 22.5.0).
+ */
+function nodeSoportaSQLite() {
+  const [major, minor] = process.versions.node.split('.').map(Number);
+  return major > 22 || (major === 22 && minor >= 5);
+}
+
+/**
  * Ejecuta el hook en un directorio temporal aislado.
  */
 function runHook(event, { agentName = "", cwd = "" } = {}) {
@@ -78,20 +86,26 @@ describe("agent-memory — captura de memoria", () => {
     try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
   });
 
-  test("crea agente-arquitecto.md cuando arquitecto hace Write", () => {
+  test("crea archivo de memoria cuando arquitecto hace Write", () => {
     const r = runHook(
       writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
       { agentName: "arquitecto", cwd: tmpDir }
     );
     assert.equal(r.exitCode, 0);
 
-    const memoriaFile = join(tmpDir, ".sdd/memoria/agente-arquitecto.md");
-    assert.ok(existsSync(memoriaFile), "debe crear el archivo de memoria");
+    const memoriaDir = join(tmpDir, ".sdd/memoria");
+    const memoriaFileMd = join(memoriaDir, "agente-arquitecto.md");
+    const memoriaFileDb = join(memoriaDir, "memoria.db");
+    const existeAlgun = existsSync(memoriaFileMd) || existsSync(memoriaFileDb);
+    assert.ok(existeAlgun, "debe crear agente-arquitecto.md (markdown) o memoria.db (sqlite)");
 
-    const contenido = readFileSync(memoriaFile, "utf8");
-    assert.ok(contenido.includes("arquitecto"), "debe incluir nombre del agente");
-    assert.ok(contenido.includes("src/auth.ts") || contenido.includes("auth.ts"),
-      "debe registrar el archivo modificado");
+    // Si es markdown, verificar contenido; si es sqlite, solo verificar exitCode (ya validado)
+    if (existsSync(memoriaFileMd)) {
+      const contenido = readFileSync(memoriaFileMd, "utf8");
+      assert.ok(contenido.includes("arquitecto"), "debe incluir nombre del agente");
+      assert.ok(contenido.includes("src/auth.ts") || contenido.includes("auth.ts"),
+        "debe registrar el archivo modificado");
+    }
   });
 
   test("NO crea archivo de memoria para agente sin CLAUDE_AGENT_NAME", () => {
@@ -116,8 +130,13 @@ describe("agent-memory — captura de memoria", () => {
     );
     assert.equal(r.exitCode, 0);
 
-    const memoriaFile = join(tmpDir, ".sdd/memoria/agente-desarrollador-backend.md");
-    assert.ok(existsSync(memoriaFile), "Edit también debe registrar en memoria");
+    const memoriaDir = join(tmpDir, ".sdd/memoria");
+    const memoriaFileMd = join(memoriaDir, "agente-desarrollador-backend.md");
+    const memoriaFileDb = join(memoriaDir, "memoria.db");
+    assert.ok(
+      existsSync(memoriaFileMd) || existsSync(memoriaFileDb),
+      "Edit también debe registrar en memoria (agente-desarrollador-backend.md o memoria.db)"
+    );
   });
 
   test("mensaje en stderr confirma captura", () => {
@@ -249,6 +268,13 @@ describe("agent-memory — auto-compresión", () => {
     // Crear directorio de memoria y pre-poblar con archivo grande
     const memoriaDir = join(tmpDir, ".sdd/memoria");
     mkdirSync(memoriaDir, { recursive: true });
+    // Forzar backend markdown para que el hook use el archivo pre-poblado (agnóstico al backend por defecto)
+    mkdirSync(join(tmpDir, ".sdd"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      'memoria:\n  backend: "markdown"\n  umbral_bytes: 50000\n',
+      "utf8"
+    );
     const memoriaFile = join(memoriaDir, "agente-arquitecto.md");
 
     // Contenido con muchas entradas DUPLICADAS para que el dedup comprima de verdad
@@ -295,6 +321,13 @@ describe("agent-memory — auto-compresión", () => {
   test("deduplicación: mantiene solo la última entrada por filepath", () => {
     const memoriaDir = join(tmpDir, ".sdd/memoria");
     mkdirSync(memoriaDir, { recursive: true });
+    // Forzar backend markdown para que el hook use el archivo pre-poblado (agnóstico al backend por defecto)
+    mkdirSync(join(tmpDir, ".sdd"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      'memoria:\n  backend: "markdown"\n  umbral_bytes: 50000\n',
+      "utf8"
+    );
     const memoriaFile = join(memoriaDir, "agente-arquitecto.md");
 
     // 3 entradas del mismo archivo — solo debe quedar 1 tras comprimir
@@ -512,6 +545,14 @@ describe("agent-memory — contrato lectura de memoria por agente", () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "forge-lectura-"));
+    // Forzar backend markdown: este bloque verifica el contrato de archivos .md
+    // que los agentes leen al inicio de sesión, independiente de la versión de Node.
+    mkdirSync(join(tmpDir, ".sdd"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, ".sdd", "sdd.config.yaml"),
+      'memoria:\n  backend: "markdown"\n  umbral_bytes: 50000\n',
+      "utf8"
+    );
   });
 
   after(() => {
@@ -708,8 +749,7 @@ describe("agent-memory — backend SQLite", () => {
   let tmpDir;
 
   // Detectar si node:sqlite está disponible en este runtime
-  const [major, minor] = process.versions.node.split(".").map(Number);
-  const sqliteDisponible = major > 22 || (major === 22 && minor >= 5);
+  const sqliteDisponible = nodeSoportaSQLite();
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "forge-sqlite-"));

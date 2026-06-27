@@ -29,9 +29,9 @@ function toFileUrl(absPath) {
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
 describe("CLI — forge --version", () => {
-  test("reporta versión 4.0.0", () => {
+  test("reporta versión 4.2.0", () => {
     const out = execSync(`node ${join(ROOT, "cli", "index.js")} --version`, { encoding: "utf8" }).trim();
-    assert.equal(out, "4.0.0");
+    assert.equal(out, "4.2.0");
   });
 
   test("--help menciona 'forge ui'", () => {
@@ -175,8 +175,8 @@ describe("package.json — manifiesto del paquete", () => {
     assert.equal(pkg.name, "forge-sdd");
   });
 
-  test("version es 4.0.0", () => {
-    assert.equal(pkg.version, "4.0.0");
+  test("version es 4.2.0", () => {
+    assert.equal(pkg.version, "4.2.0");
   });
 
   test("bin incluye 'forge'", () => {

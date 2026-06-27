@@ -150,6 +150,21 @@ agentes:
 | `activo` | boolean | Si el agente participa en el pipeline |
 | `modelo` | string | `opus` \| `sonnet` \| `haiku` |
 | `descripcion` | string | Texto libre (informativo) |
+| `timeout_ms` | integer | Tiempo máximo en milisegundos que puede ejecutarse el agente (predeterminado: sin límite) |
+
+**Ejemplo con `timeout_ms`:**
+
+```yaml
+agentes:
+  tester:
+    activo: true
+    modelo: sonnet
+    timeout_ms: 120000    # 2 minutos — aborta si los tests tardan más
+  desarrollador-backend:
+    activo: true
+    modelo: sonnet
+    timeout_ms: 300000    # 5 minutos
+```
 
 ### Restricciones
 
@@ -446,7 +461,7 @@ compresion:
   modo_agentes_internos: comprimido
 ```
 
-Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario.
+Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario. Activa **6 agentes** por defecto (`arquitecto`, `desarrollador-backend`, `desarrollador-frontend`, `tester`, `revisor`, `investigador`) y desactiva los más costosos (`critico`, `seguridad`, `documentador`, etc.).
 
 ### `startup.yaml`
 
@@ -512,9 +527,84 @@ forge doctor
 ```
 
 `forge doctor` verifica:
+- Variable de entorno `ANTHROPIC_API_KEY` presente
+- Los hooks están registrados en `.claude/settings.json`
+- Los archivos de hook existen en disco (`.claude/hooks/*.js`)
 - Sintaxis YAML válida
 - Claves obligatorias presentes (`agentes`, `comportamiento`)
 - `memoria.umbral_bytes` es un número positivo
 - Los modelos declarados son valores válidos (`opus`, `sonnet`, `haiku`)
-- Los hooks están registrados en `.claude/settings.json`
 - `estado.json` presente y con `schemaVersion: "1.0"`
+
+---
+
+## Sección: `circuit_breaker`
+
+Controla el nivel de ejecución de los agentes. El estado persiste en `.sdd/execution-level.json`.
+
+```yaml
+circuit_breaker:
+  nivel: "sandbox"
+```
+
+| Nivel | Comportamiento |
+|-------|---------------|
+| `sandbox` | Los agentes solo pueden leer archivos y proponer cambios — ningún Bash ni Write real |
+| `local` | Permite escritura de archivos pero no comandos de shell destructivos |
+| `confirmado` | Ejecución completa con confirmación explícita para comandos de alto riesgo |
+
+El nivel se puede cambiar en tiempo de ejecución desde Claude Code:
+
+```
+/sdd.configurar set circuit_breaker.nivel local
+```
+
+O ver el nivel actual con:
+
+```bash
+forge status
+```
+
+---
+
+## Sección: `session_budget`
+
+Configura el acumulador de costo USD de la sesión.
+
+```yaml
+session_budget:
+  alerta_usd: 1.00      # Emite warning al superar este umbral
+  maximo_usd: 5.00      # Pausa el pipeline al superar este límite
+```
+
+| Clave | Tipo | Descripción |
+|-------|------|-------------|
+| `alerta_usd` | float | Umbral en dólares para mostrar advertencia de costo |
+| `maximo_usd` | float | Límite máximo — el pipeline se pausa hasta confirmación explícita |
+
+El costo acumulado se puede ver en cualquier momento con `forge status` o consultando `forge logs`.
+
+---
+
+## Variables de entorno
+
+Complementan o sobreescriben la configuración de `sdd.config.yaml`. Útiles para CI/CD o entornos donde no se puede escribir el archivo de configuración.
+
+| Variable | Default | Fuente | Descripción |
+|---|---|---|---|
+| `FORGE_LLM_PROVIDER` | `anthropic` | `core/llm-providers/index.js` | Proveedor LLM activo: `anthropic`, `openai`, `ollama`, `stub` |
+| `ANTHROPIC_API_KEY` | — | `core/llm-providers/anthropic.js` | API key de Anthropic (obligatoria si provider=anthropic) |
+| `OPENAI_API_KEY` | — | `core/llm-providers/openai.js` | API key de OpenAI (obligatoria si provider=openai) |
+| `FORGE_BUDGET_USD` | `1.0` | `core/session-budget.js` | Presupuesto total de la sesión en USD — pausa el pipeline al superarlo |
+| `FORGE_BUDGET_WARN_USD` | `0.50` | `claude-hooks/context-manager.js` | Umbral de advertencia de costo — emite warning sin bloquear |
+| `FORGE_BUDGET_BLOCK_USD` | `1.00` | `claude-hooks/context-manager.js` | Umbral de bloqueo para agentes opus — bloquea llamadas al superar |
+| `FORGE_TOOL_MAX_BYTES` | `50000` | `claude-hooks/context-manager.js` | Tamaño máximo en bytes del resultado de una herramienta |
+| `FORGE_LEDGER_MAX_BYTES` | `5000000` | `claude-hooks/context-manager.js` | Tamaño máximo del ledger de contexto antes de compresión |
+| `FORGE_UI_PORT` | `3001` | `ui/server.js` | Puerto del dashboard SSE |
+| `CLAUDE_AGENT_NAME` | — | `claude-hooks/agent-memory.js` | Nombre del agente activo (lo inyecta Claude Code automáticamente) |
+| `CLAUDE_SESSION_ID` | — | `cli/index.js` | ID de sesión para correlacionar logs (lo inyecta Claude Code) |
+
+**Ejemplo de uso en CI:**
+```bash
+FORGE_LLM_PROVIDER=stub FORGE_BUDGET_USD=0 node cli/index.js validate
+```

@@ -155,7 +155,14 @@ function copiarSettings(claudeDir) {
     return;
   }
   if (!existsSync(dest)) {
-    cpSync(src, dest);
+    // Reescribir rutas de hooks: la plantilla usa "claude-hooks/" (válida en el repo
+    // del plugin), pero los hooks se instalan en "<claudeDir>/hooks/".
+    // Claude Code ejecuta los hooks con CWD = proyecto del usuario, así que la ruta
+    // debe ser relativa a .claude/ o absoluta. Usamos ".claude/hooks/" (relativa a CWD
+    // del proyecto) que es el destino real donde el instalador los deja.
+    let settings = readFileSync(src, "utf8");
+    settings = settings.replaceAll("claude-hooks/", ".claude/hooks/");
+    writeFileSync(dest, settings, "utf8");
     info(`Settings de seguridad instalados (${dest})`);
   } else {
     aviso(`settings.json ya existe en ${claudeDir} — no se sobreescribe`);
@@ -308,7 +315,7 @@ FORGE está activo en este proyecto. Es tu equipo de ingeniería en Claude Code.
 Para modo avanzado: usa \`/sdd\` en lugar de \`/forge\`.
 `;
 
-const CLAUDE_MD_VERSION = "5.0.0";
+const CLAUDE_MD_VERSION = pluginVersion();
 const CLAUDE_MD_VERSION_TAG = `<!-- forge-version: ${CLAUDE_MD_VERSION} -->`;
 
 function integrarClaudeMd(cwd) {
@@ -617,7 +624,153 @@ function cmdUpdate(global) {
   console.log("");
 }
 
-function cmdDoctor() {
+async function cmdDoctorLlm(apiKey, { problemas }) {
+  // 0. Provider activo
+  const providerActivo = process.env.FORGE_LLM_PROVIDER ?? 'anthropic (default)';
+  info(`Provider LLM activo: ${providerActivo}`);
+  info("  Cambiar: FORGE_LLM_PROVIDER=ollama|openai|stub  o  llm.provider en sdd.config.yaml");
+
+  // 1. Detectar modo de ejecución: Claude Code (hooks) vs API directa
+  const enClaudeCode = !!(
+    process.env.CLAUDE_AGENT_NAME ||
+    process.env.CLAUDE_SESSION_ID ||
+    existsSync(join(process.cwd(), ".claude", "settings.json")) ||
+    existsSync(join(process.cwd(), ".claude-plugin", ".claude", "settings.json"))
+  );
+
+  if (enClaudeCode) {
+    info("Modo Claude Code detectado — el LLM lo gestiona Claude Code, no FORGE directamente ✓");
+    info("  El SDK @anthropic-ai/sdk no es necesario en este modo");
+  } else {
+    info("Modo API directa — FORGE llamará al LLM vía @anthropic-ai/sdk");
+  }
+
+  // 2. SDK disponible (solo necesario en modo API directa)
+  let sdk = null;
+  try {
+    sdk = await import('@anthropic-ai/sdk');
+    info("SDK @anthropic-ai/sdk disponible ✓");
+  } catch {
+    if (enClaudeCode) {
+      info("SDK @anthropic-ai/sdk no instalado — no es necesario en modo Claude Code ✓");
+    } else {
+      aviso("@anthropic-ai/sdk no instalado — necesario para modo API directa");
+      aviso("  Solución: npm install @anthropic-ai/sdk");
+      problemas(1);
+    }
+    // En modo Claude Code podemos hacer diagnóstico parcial sin SDK
+    if (!enClaudeCode) return;
+  }
+
+  // 3. API key presente (necesaria para el ping)
+  if (!apiKey) {
+    if (enClaudeCode) {
+      aviso("ANTHROPIC_API_KEY no definida — Claude Code la gestiona internamente");
+      aviso("  Si los agentes fallan, verifica que Claude Code tiene la key configurada");
+    } else {
+      aviso("Sin API key — se omite el ping al LLM");
+      problemas(1);
+    }
+    // Sin key no podemos hacer ping
+    if (!apiKey) return;
+  }
+
+  // 3. Ping real al LLM con mensaje mínimo
+  titulo("Ping al LLM (modelo: claude-haiku-4-5-20251001)...");
+  const PING_PROMPT = "Responde exactamente con el JSON: {\"ok\":true}";
+  const PING_TIMEOUT_MS = 10_000;
+  let respuestaRaw = "";
+  try {
+    const client = new sdk.default({ apiKey });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    const res = await client.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 32,
+        messages: [{ role: "user", content: PING_PROMPT }],
+      },
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    respuestaRaw = res.content?.[0]?.text ?? "";
+    info(`LLM responde ✓ (${res.usage?.output_tokens ?? "?"} tokens de salida)`);
+  } catch (e) {
+    if (e?.name === "AbortError" || e?.code === "UND_ERR_CONNECT_TIMEOUT") {
+      aviso(`LLM no respondió en ${PING_TIMEOUT_MS / 1000}s — posible problema de red o API key inválida`);
+    } else if (e?.status === 401) {
+      aviso("API key rechazada (401 Unauthorized) — verifica ANTHROPIC_API_KEY");
+    } else if (e?.status === 429) {
+      aviso("Rate limit alcanzado (429) — espera unos segundos y vuelve a intentarlo");
+    } else if (e?.status >= 500) {
+      aviso(`Error del servidor Anthropic (${e.status}) — reintenta más tarde`);
+    } else {
+      aviso(`Error inesperado al contactar el LLM: ${e?.message ?? e}`);
+    }
+    problemas(1);
+    return;
+  }
+
+  // 4. Validar que la respuesta es JSON parseable
+  try {
+    const parsed = JSON.parse(respuestaRaw.match(/\{[\s\S]*\}/)?.[0] ?? "");
+    if (parsed?.ok === true) {
+      info("LLM devuelve JSON válido ✓");
+    } else {
+      aviso(`LLM respondió JSON pero sin {ok:true}: ${respuestaRaw.slice(0, 80)}`);
+    }
+  } catch {
+    aviso(`LLM no devolvió JSON parseable — respuesta: ${respuestaRaw.slice(0, 120)}`);
+    aviso("  Esto puede causar fallos silenciosos en ir.json y spec.md");
+    problemas(1);
+  }
+
+  // 5. Latencia orientativa
+  const t0 = Date.now();
+  try {
+    const client = new sdk.default({ apiKey });
+    await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1,
+      messages: [{ role: "user", content: "di: ok" }],
+    });
+    const latencia = Date.now() - t0;
+    if (latencia < 3000) {
+      info(`Latencia de red: ~${latencia}ms ✓`);
+    } else {
+      aviso(`Latencia alta: ~${latencia}ms — el pipeline puede ser lento`);
+    }
+  } catch { /* no bloquear por latencia */ }
+
+  // 6. Modelo configurado en sdd.config.yaml
+  const configPath = join(process.cwd(), ".sdd", "sdd.config.yaml");
+  if (existsSync(configPath)) {
+    const yaml = readFileSync(configPath, "utf8");
+    const modeloMatch = yaml.match(/modelo:\s*(\S+)/);
+    const modeloConfig = modeloMatch?.[1] ?? "sonnet";
+    const modelosValidos = ["opus", "sonnet", "haiku",
+      "claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"];
+    if (modelosValidos.includes(modeloConfig)) {
+      info(`Modelo configurado: "${modeloConfig}" ✓`);
+    } else {
+      aviso(`Modelo desconocido en sdd.config.yaml: "${modeloConfig}"`);
+      aviso("  Válidos: opus | sonnet | haiku");
+      problemas(1);
+    }
+  }
+
+  // 7. Capacidad de SQLite para el decision store
+  const nodeMajor = Number(process.versions.node.split(".")[0]);
+  const nodeMinor = Number(process.versions.node.split(".")[1] ?? "0");
+  if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 5)) {
+    info("node:sqlite nativo disponible — decision store con búsqueda semántica ✓");
+  } else {
+    aviso(`Node ${process.versions.node} < 22.5 — decision store usa JSONL sin búsqueda semántica`);
+    aviso("  Actualiza a Node ≥22.5 para SQLite nativo");
+  }
+}
+
+async function cmdDoctor() {
   banner();
   console.log("  Diagnóstico de SDD-ES");
   console.log("");
@@ -631,6 +784,17 @@ function cmdDoctor() {
   } else {
     aviso(`Node ${process.versions.node} es < 18. Actualiza Node.`);
     problemas++;
+  }
+
+  // ANTHROPIC_API_KEY
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+  if (!apiKey) {
+    problemas++;
+    aviso("ANTHROPIC_API_KEY no está definida — los agentes LLM no funcionarán");
+    aviso("  Solución: export ANTHROPIC_API_KEY=sk-ant-... (o añádela a tu .env)");
+  } else {
+    const preview = apiKey.slice(0, 8) + "..." + apiKey.slice(-4);
+    info(`ANTHROPIC_API_KEY presente (${preview}) ✓`);
   }
 
   // Claude CLI
@@ -752,6 +916,26 @@ function cmdDoctor() {
         info(`agent-memory registrado en ${sp.replace(process.cwd(), ".")} ✓`);
       } else {
         aviso(`agent-memory NO encontrado en ${sp.replace(process.cwd(), ".")} — memoria de agentes inactiva`);
+      }
+
+      // Verificar que los archivos de hook existen físicamente y tienen sintaxis válida
+      const hooksDir = join(process.cwd(), ".claude", "hooks");
+      const hooksRequeridos = ["pre-tool-guard.js", "agent-memory.js", "post-write-conventions.js", "context-manager.js"];
+      for (const hookFile of hooksRequeridos) {
+        const hookPath = join(hooksDir, hookFile);
+        if (!existsSync(hookPath)) {
+          problemas++;
+          aviso(`Hook no encontrado en disco: .claude/hooks/${hookFile}`);
+          info(`  Ejecuta: npx forge init  para reinstalar los hooks`);
+        } else {
+          try {
+            execSync(`node --check "${hookPath}"`, { stdio: "pipe" });
+            info(`Hook válido: .claude/hooks/${hookFile} ✓`);
+          } catch {
+            problemas++;
+            aviso(`Hook con error de sintaxis: .claude/hooks/${hookFile}`);
+          }
+        }
       }
 
       // Validar estado.json si existe
@@ -881,6 +1065,10 @@ function cmdDoctor() {
   } else {
     aviso("Dashboard no disponible — instala con: forge init --ui");
   }
+
+  // ── Diagnóstico del LLM ──────────────────────────────────────────────────────
+  titulo("Diagnosticando conexión con el LLM...");
+  await cmdDoctorLlm(apiKey, { problemas: (n) => { problemas += n; } });
 
   console.log("");
   if (problemas === 0) {
@@ -1143,6 +1331,134 @@ async function cmdUi(args) {
   }
 }
 
+function cmdLogs(args) {
+  // Parsear --last N (default 20)
+  const lastIdx = args.findIndex(a => a === "--last" || a.startsWith("--last="));
+  let last = 20;
+  if (lastIdx !== -1) {
+    const raw = args[lastIdx].includes("=")
+      ? args[lastIdx].split("=")[1]
+      : args[lastIdx + 1];
+    const n = parseInt(raw, 10);
+    if (!isNaN(n) && n > 0) last = n;
+  }
+
+  const ledgerPath = join(process.cwd(), ".sdd", "observabilidad", "consumo.jsonl");
+
+  console.log("");
+  titulo("FORGE — Historial de consumo (.sdd/observabilidad/consumo.jsonl)");
+
+  if (!existsSync(ledgerPath)) {
+    aviso("El archivo consumo.jsonl no existe todavía.");
+    aviso("Se crea automáticamente cuando los agentes FORGE ejecutan tareas.");
+    console.log("");
+    return;
+  }
+
+  // Parsear JSONL
+  const lineas = readFileSync(ledgerPath, "utf8")
+    .split("\n")
+    .filter(l => l.trim().length > 0);
+
+  const entradas = [];
+  for (const linea of lineas) {
+    try {
+      entradas.push(JSON.parse(linea));
+    } catch {
+      // Ignora líneas malformadas
+    }
+  }
+
+  if (entradas.length === 0) {
+    aviso("El archivo consumo.jsonl existe pero no contiene entradas válidas.");
+    console.log("");
+    return;
+  }
+
+  // Tomar las últimas N
+  const muestra = entradas.slice(-last);
+
+  // Anchos de columna fijos
+  const COL = { hora: 8, agente: 20, inp: 7, out: 7, est: 7, usd: 8, archivo: 24 };
+
+  function pad(s, w) { return String(s ?? "").padEnd(w).slice(0, w); }
+  function padL(s, w) { return String(s ?? "").padStart(w).slice(-w); }
+
+  const sep = "─".repeat(
+    2 + COL.hora + 1 + COL.agente + 1 + COL.inp + 1 + COL.out + 1 + COL.est + 1 + COL.usd + 1 + COL.archivo
+  );
+
+  console.log(sep);
+  console.log(
+    "  " +
+    pad("Hora", COL.hora) + " " +
+    pad("Agente", COL.agente) + " " +
+    padL("In", COL.inp) + " " +
+    padL("Out", COL.out) + " " +
+    padL("Est", COL.est) + " " +
+    padL("USD", COL.usd) + " " +
+    pad("Archivo", COL.archivo)
+  );
+  console.log(sep);
+
+  let totalIn = 0, totalOut = 0, totalEst = 0, totalUsd = 0;
+
+  for (const e of muestra) {
+    // Timestamp abreviado: HH:MM:SS
+    let hora = "";
+    if (e.timestamp) {
+      try {
+        const d = new Date(e.timestamp);
+        hora = d.toTimeString().slice(0, 8);
+      } catch { hora = String(e.timestamp).slice(0, 8); }
+    }
+
+    const agente   = e.agente ?? e.agent ?? "";
+    const inp      = e.tokens_input  ?? e.input_tokens  ?? 0;
+    const out      = e.tokens_output ?? e.output_tokens ?? 0;
+    const est      = e.tokens_est    ?? e.estimated_tokens ?? 0;
+    const usd      = e.costo_usd     ?? e.cost_usd ?? null;
+    const archivo  = e.archivo ?? e.file ?? "";
+
+    totalIn  += Number(inp)  || 0;
+    totalOut += Number(out)  || 0;
+    totalEst += Number(est)  || 0;
+    totalUsd += Number(usd)  || 0;
+
+    const usdStr = usd != null ? `$${Number(usd).toFixed(3)}` : "";
+
+    console.log(
+      "  " +
+      pad(hora, COL.hora) + " " +
+      pad(agente, COL.agente) + " " +
+      padL(inp || "", COL.inp) + " " +
+      padL(out || "", COL.out) + " " +
+      padL(est || "", COL.est) + " " +
+      padL(usdStr, COL.usd) + " " +
+      pad(archivo, COL.archivo)
+    );
+  }
+
+  console.log(sep);
+
+  const totalUsdStr = totalUsd > 0 ? `$${totalUsd.toFixed(3)}` : "";
+  const label = `Total (${muestra.length} entrada${muestra.length !== 1 ? "s" : ""})`;
+  console.log(
+    "  " +
+    pad(label, COL.hora + 1 + COL.agente) + " " +
+    padL(totalIn  || "", COL.inp) + " " +
+    padL(totalOut || "", COL.out) + " " +
+    padL(totalEst || "", COL.est) + " " +
+    padL(totalUsdStr, COL.usd)
+  );
+  console.log(sep);
+
+  if (entradas.length > last) {
+    console.log(`  (mostrando últimas ${last} de ${entradas.length} entradas — usa --last N para ver más)`);
+  }
+  console.log("");
+}
+
 function uso() {
   console.log(`
 FORGE — CLI (v${pluginVersion()})
@@ -1158,6 +1474,17 @@ Uso:
   npx forge config get <clave>       Obtiene el valor de una clave
   npx forge config set <clave> <v>   Cambia un valor en sdd.config.yaml
   npx forge config validate          Valida la estructura del config
+  npx forge logs [--last N]          Historial de consumo de tokens (default: 20 entradas)
+  npx forge export [--format=speckit|openspec] [--out=dir]
+                                     Exporta .sdd/ a formato portable (Spec Kit / OpenSpec)
+  npx forge import --from=speckit --dir=<dir> [--merge]
+  npx forge import --from=openspec --file=<file.json> [--merge]
+                                     Importa artefactos portables de vuelta a .sdd/
+  npx forge status                   Estado del pipeline + transiciones disponibles
+  npx forge step <paso> [--force]    Avanzar el pipeline al paso indicado (sin LLM)
+  npx forge state                    Volcar estado.json formateado
+  npx forge validate                 Verificar precondiciones del paso actual
+  npx forge reset --force            Resetear pipeline a 'idea'
   npx forge --version                Muestra la versión
 
   (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
@@ -1169,7 +1496,38 @@ Tras instalar, abre Claude Code y escribe:
 
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
-function main() {
+function cmdAprobar(subArgs) {
+  const objetivo = subArgs[0];
+  if (objetivo !== "spec") {
+    aviso("Uso: forge aprobar spec");
+    aviso("  Aprueba la spec activa para permitir avanzar a la fase de planificación.");
+    return;
+  }
+  const estadoPath = join(process.cwd(), ".sdd", "estado.json");
+  if (!existsSync(estadoPath)) {
+    aviso("No existe .sdd/estado.json — ejecuta primero 'forge init' y luego /forge en Claude Code");
+    return;
+  }
+  let estado;
+  try { estado = JSON.parse(readFileSync(estadoPath, "utf8")); } catch {
+    aviso("estado.json malformado — borra o regenera con /sdd.estado"); return;
+  }
+  if (!estado.spec_activa && !estado.spec_draft_path) {
+    aviso("No hay spec activa ni draft para aprobar.");
+    aviso("  Ejecuta primero /sdd.diseñar en Claude Code para generar la spec.");
+    return;
+  }
+  if (estado.spec_aprobado) {
+    info("La spec ya está aprobada ✓ — puedes avanzar a la planificación.");
+    return;
+  }
+  const nuevo = { ...estado, spec_aprobado: true, ultima_actualizacion: new Date().toISOString() };
+  writeFileSync(estadoPath, JSON.stringify(nuevo, null, 2), "utf8");
+  info("✅ Spec aprobada. Ahora puedes avanzar a la fase de planificación.");
+  info("   Siguiente paso: /sdd.planificar en Claude Code");
+}
+
+async function main() {
   const args    = process.argv.slice(2);
   const comando = args[0];
   const global  = args.includes("--global") || args.includes("-g");
@@ -1192,7 +1550,7 @@ function main() {
       cmdUpdate(global);
       break;
     case "doctor":
-      cmdDoctor();
+      await cmdDoctor();
       break;
     case "config":
       cmdConfig(args.slice(1));
@@ -1200,6 +1558,41 @@ function main() {
     case "ui":
       cmdUi(args.slice(1)).catch(e => error(e.message));
       break;
+    case "logs":
+      cmdLogs(args.slice(1));
+      break;
+    case "export":
+      import("./export.js").then(({ cmdExport }) => cmdExport(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "import":
+      import("./import.js").then(({ cmdImport }) => cmdImport(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "status":
+    case "step":
+    case "state":
+    case "validate":
+    case "reset":
+      import("./runner.js").then(({ runForgeCommand }) => runForgeCommand(comando, args.slice(1))).catch(e => error(e.message));
+      break;
+    case "dispatch":
+      import("./dispatch.js").then(({ cmdDispatch }) => cmdDispatch(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "adapters":
+      import("./dispatch.js").then(({ cmdAdapters }) => cmdAdapters()).catch(e => error(e.message));
+      break;
+    case "decisions":
+      import("./decisions.js").then(({ cmdDecisions }) => cmdDecisions(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "aprobar":
+      cmdAprobar(args.slice(1));
+      break;
+    case "run":
+    case "resume": {
+      const { main: engineMain } = await import("../core/engine-cli.js");
+      process.argv = [process.argv[0], process.argv[1], comando, ...args.slice(1)];
+      await engineMain();
+      break;
+    }
     case "--version":
     case "-v":
       console.log(pluginVersion());

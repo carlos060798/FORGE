@@ -1,125 +1,150 @@
-# Empieza aquí — de tu idea a una app, sin programar
+# FORGE — Inicio en 5 minutos
 
-FORGE convierte una idea escrita en lenguaje normal en una aplicación real,
-probada y lista para usar. **No necesitas saber programar.** Tú describes qué
-quieres; FORGE decide lo técnico, lo construye y te explica cada paso sin jerga.
-
-> ¿Eres desarrollador y quieres control técnico fino? Salta a
-> [docs/INICIO-RAPIDO.md](docs/INICIO-RAPIDO.md) (modo avanzado).
+FORGE es un framework SDD (Spec-Driven Development) para Claude Code. Convierte una idea en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA.
 
 ---
 
-## En 3 pasos
+## Prerequisitos
 
-### 1. Instala FORGE
+- Node.js ≥18.0.0 (recomendado ≥22.5 para SQLite nativo)
+- Claude Code CLI instalado y configurado con API key
+- Git
 
-En tu terminal:
+---
+
+## Instalación
 
 ```bash
-npx sdd-es init
+git clone https://github.com/carlos060798/FORGE
+cd FORGE
+npm install
 ```
 
-Esto deja FORGE listo dentro de Claude Code. Solo se hace una vez.
+El binario `forge` quedará disponible como `node cli/index.js` o, si añades el directorio al PATH:
 
-### 2. Cuéntale tu idea
+```bash
+# Opción A — alias temporal
+alias forge="node /ruta/a/FORGE/cli/index.js"
 
-Abre Claude Code y escribe `/sdd` seguido de lo que quieres, con tus palabras:
-
+# Opción B — instalar globalmente desde el repo
+npm install -g .
+forge --version
 ```
-/sdd quiero una app para llevar los gastos de mi casa cada mes
-```
-
-No hace falta que uses términos técnicos. Frases como estas funcionan perfecto:
-
-- *"una página donde mis clientes reserven cita"*
-- *"una lista de tareas que pueda compartir con mi equipo"*
-- *"un catálogo de productos con buscador"*
-
-### 3. Di "sí" y mira cómo se construye
-
-FORGE te guía con **una pregunta a la vez** y te pide confirmación antes de
-cada paso importante. Tú solo respondes en lenguaje normal:
-
-```
-FORGE: Entendí: una app para registrar y ver tus gastos mensuales.
-       ¿Las quieres ver también en una gráfica? (sí / no)
-Tú:    sí
-
-FORGE: Voy a diseñar cómo se ve y luego la construyo entera. ¿Arranco? (sí)
-Tú:    sí
-```
-
-Cuando termina, te dice **qué puedes hacer ahora** con lo construido
-(usarla, publicarla en internet, cambiar algo o invitar a otros).
 
 ---
 
-## Qué pasa por dentro (no necesitas hacerlo tú)
+## Verificar instalación
 
-FORGE recorre solo este camino y te lo cuenta en lenguaje sencillo:
+```bash
+forge doctor
+```
 
-| FORGE dice… | Lo que ocurre por dentro |
-|-------------|--------------------------|
-| "Déjame entender tu idea" | Interpreta tu petición |
-| "Decido cómo se ve y funciona" | Diseña pantallas y elige la tecnología |
-| "Lo estoy construyendo" | Genera el código completo |
-| "Estoy probando que funcione" | Ejecuta pruebas automáticas |
-| "Lo publico en internet" | Lo despliega (solo si tú lo pides) |
-
-**La calidad no baja por ser modo guiado.** Aunque no lo veas, FORGE siempre:
-
-- escribe pruebas y no dice "listo" hasta que pasan,
-- revisa el código con un revisor independiente,
-- nunca deja contraseñas o claves a la vista,
-- te pide permiso antes de cualquier acción que no se pueda deshacer.
+Esto verifica: API key de Anthropic, hooks en disco, conexión al LLM y SQLite. Si todo está verde, continúa.
 
 ---
 
-## Si algo no se entiende
+## Primer pipeline
 
-En cualquier momento puedes escribir:
+**1. Abre Claude Code en tu proyecto:**
 
-- **"no entiendo"** → FORGE pausa y te lo explica con un ejemplo del día a día.
-- **"cámbialo"** → ajusta lo que no te gustó.
-- **"¿qué puedo hacer ahora?"** → te lista tus opciones.
+```bash
+cd mi-proyecto
+claude
+```
+
+**2. (Opcional) Usa un template de proyecto:**
+
+```bash
+forge init --template api-rest    # API REST + JWT
+forge init --template saas-mvp    # SaaS multi-tenant + Stripe
+forge init --template cli-tool    # Herramienta CLI
+```
+
+O `forge init` para partir de cero.
+
+**3. Inicia FORGE:**
+
+```
+/forge
+```
+
+FORGE te pedirá una idea. Escríbela en lenguaje natural — no hace falta terminología técnica.
+
+**3. Sigue el pipeline:**
+
+El pipeline avanza etapa a etapa. En cada punto crítico FORGE te pide confirmación:
+
+```
+idea → discovery → ir → design → spec
+                                   ↓
+                            forge aprobar spec    ← tú decides aquí
+                                   ↓
+                        plan → tasks → code → done
+```
+
+**4. Aprueba la especificación antes de planificar:**
+
+```bash
+# Cuando FORGE haya generado la spec y tú la hayas revisado:
+forge aprobar spec
+```
+
+Sin este comando, el pipeline no puede avanzar a plan. Es intencional.
+
+**5. Monitorea el progreso:**
+
+```bash
+forge ui        # abre dashboard en localhost:3001 (SSE tiempo real)
+forge status    # estado del pipeline + presupuesto USD
+```
 
 ---
 
-## Configura FORGE para tu proyecto (opcional)
+## Comandos más usados
 
-Crea un archivo `forge.config.json` en la raíz de tu proyecto para ajustar el comportamiento:
-
-```json
-{
-  "memoria": {
-    "umbral_compresion_bytes": 40000
-  },
-  "routing": {
-    "usar_complexity_ir": true
-  },
-  "guardrails": {
-    "verify_local_imports": false
-  }
-}
+```bash
+forge status              # estado actual del pipeline
+forge aprobar spec        # aprobar especificación antes de planificar
+forge run                 # ejecutar tareas pendientes
+forge resume              # reanudar ejecución interrumpida
+forge doctor              # diagnóstico de instalación y LLM
+forge ui                  # dashboard en localhost:3001
+forge logs                # historial de consumo de tokens
+forge decisions list      # listar decisiones arquitectónicas (ADRs)
+forge decisions search X  # buscar ADRs por texto
 ```
-
-Sin este archivo, FORGE usa valores predeterminados seguros. **No es obligatorio.**
-
-¿Qué protege FORGE aunque no configures nada?
-
-- Nunca ejecuta comandos que puedan borrar archivos importantes (`rm -rf`, `DROP DATABASE`).
-- Detecta contraseñas y claves secretas antes de que queden escritas en el código.
-- Los agentes que solo diseñan (arquitecto, revisor) no pueden modificar archivos de código.
-- Registra qué cambió cada agente para que puedas rastrear decisiones.
-
-**Más detalles:** [docs/guardrails.md](docs/guardrails.md)
 
 ---
 
-## ¿Listo?
+## Cambiar el LLM (opcional)
 
-```
-/sdd  [tu idea aquí]
+Por defecto FORGE usa Anthropic. Para usar otro proveedor:
+
+```bash
+# OpenAI
+FORGE_LLM_PROVIDER=openai OPENAI_API_KEY=sk-... forge run
+
+# Ollama (local)
+FORGE_LLM_PROVIDER=ollama forge run
+
+# O en sdd.config.yaml de tu proyecto:
+# llm:
+#   provider: ollama
+#   base_url: http://localhost:11434
 ```
 
-Eso es todo. Cuéntale qué quieres construir y deja que FORGE haga el resto.
+Proveedores soportados: `anthropic`, `openai`, `ollama`, `stub` (para CI/tests).
+
+---
+
+## Documentación completa
+
+| Tema | Documento |
+|---|---|
+| Qué es FORGE y por qué | [docs/introduction.md](docs/introduction.md) |
+| Recorrido detallado | [docs/getting-started.md](docs/getting-started.md) |
+| Arquitectura del sistema | [docs/architecture.md](docs/architecture.md) |
+| Los 14 agentes | [docs/agents.md](docs/agents.md) |
+| Configuración completa | [docs/configuration.md](docs/configuration.md) |
+| Qué funciona hoy | [docs/ESTADO-IMPLEMENTACION.md](docs/ESTADO-IMPLEMENTACION.md) |
+| Solución de problemas | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |

@@ -14,11 +14,11 @@
  */
 
 import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
-import { leerForgeConfig } from "./shared/config.js";
+import { leerForgeConfig, leerNivelEjecucion, dlqAppend } from "./shared/config.js";
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
 
@@ -26,6 +26,25 @@ const rl = createInterface({ input: process.stdin, terminal: false });
 let raw = "";
 rl.on("line", (l) => (raw += l + "\n"));
 rl.on("close", () => main(raw.trim()));
+
+// ── Helper: bloquear con DLQ ─────────────────────────────────────────────────
+
+/**
+ * Escribe el motivo en stderr, registra en DLQ y sale con código 2.
+ * @param {string} mensaje  — texto visible para el usuario
+ * @param {{ tool?: string, input?: unknown, hook?: string }} meta
+ */
+function bloquear(mensaje, meta = {}) {
+  process.stderr.write(mensaje + "\n");
+  dlqAppend(process.cwd(), {
+    hook: meta.hook ?? "pre-tool-guard",
+    tool: meta.tool ?? "unknown",
+    input: meta.input ?? null,
+    error: mensaje.slice(0, 300),
+    retryable: false,
+  });
+  process.exit(2);
+}
 
 // ── Comandos prohibidos — bloqueo duro, sin confirmación ───────────────────
 const PROHIBIDOS = [
@@ -62,12 +81,15 @@ const PROHIBIDOS = [
   /rm\s+.*C:\\Windows\\/i,
   /rm\s+.*C:\\Program Files\\/i,
 
-  // Exposición de archivos .env (cubre variantes de nombre y de comando de lectura)
+  // Escritura directa en .env — solo ESCRITURA está bloqueada; lectura (grep, cat, less…) está permitida
   // Permitidos: .env.example, .env.template, .env.sample
-  /\b(?:cat|less|more|head|tail|bat|nl|tac|view)\s+.*\.env(?!\.(?:example|template|sample)\b)/,
-  /\btype\s+.*\.env(?!\.(?:example|template|sample)\b)/i,           // Windows cmd
-  /\bGet-Content\s+.*\.env(?!\.(?:example|template|sample)\b)/i,    // PowerShell
-  /\bgrep\b.*\.env(?!\.(?:example|template|sample)\b)/,             // grep sobre .env
+  /\b(?:echo|printf|tee)\b.*\.env(?!\.(?:example|template|sample)\b)/,           // echo/printf/tee > .env
+  /\bcat\s*>+\s*.*\.env(?!\.(?:example|template|sample)\b)/,                     // cat > .env  o  cat >> .env
+  /\bcp\s+\S+\s+\.env(?!\.(?:example|template|sample)\b)/,                       // cp archivo .env
+  /\bmv\s+\S+\s+\.env(?!\.(?:example|template|sample)\b)/,                       // mv archivo .env
+  /\b(?:nano|vim?|vi|emacs|code)\s+.*\.env(?!\.(?:example|template|sample)\b)/i, // editores sobre .env
+  /\bSet-Content\s+.*\.env(?!\.(?:example|template|sample)\b)/i,                 // PowerShell Set-Content
+  /\bOut-File\s+.*\.env(?!\.(?:example|template|sample)\b)/i,                    // PowerShell Out-File
 
   // Permisos inseguros
   /chmod\s+777\b/,                             // chmod 777 (todos los permisos)
@@ -110,6 +132,40 @@ const READ_ONLY_AGENTS = new Set([
   'investigador', 'revisor', 'disenador-api'
 ]);
 
+// ── ADR activo: verificar decisiones arquitectónicas registradas ──────────────
+function cargarADRs(cwd) {
+  try {
+    const adrDir = join(cwd, '.sdd', 'adrs');
+    if (!existsSync(adrDir)) return [];
+    return readdirSync(adrDir)
+      .filter(f => f.endsWith('.md') || f.endsWith('.json'))
+      .map(f => {
+        try { return readFileSync(join(adrDir, f), 'utf8'); } catch { return ''; }
+      })
+      .filter(Boolean);
+  } catch { return []; }
+}
+
+function extraerPatronesProhibidos(adrs) {
+  const patrones = [];
+  for (const adr of adrs) {
+    // Buscar líneas con "NO usar X", "prohibido X", "evitar X", "banned: X"
+    const matches = adr.matchAll(/(?:NO usar|prohibido|evitar|banned?|no\s+use?)\s*[:\-]?\s*`?([^`\n,]+)`?/gi);
+    for (const m of matches) {
+      const término = m[1].trim();
+      if (término.length > 2 && término.length < 50) {
+        patrones.push(término.toLowerCase());
+      }
+    }
+  }
+  return [...new Set(patrones)];
+}
+
+function verificarViolacionADR(contenido, patrones) {
+  const contenidoLower = contenido.toLowerCase();
+  return patrones.find(p => contenidoLower.includes(p)) ?? null;
+}
+
 function main(raw) {
   let event;
   try {
@@ -123,6 +179,9 @@ function main(raw) {
   const toolInput = event?.tool_input ?? {};
   const agentName = process.env.CLAUDE_AGENT_NAME ?? "";
 
+  // ── CircuitBreaker: leer nivel de ejecución actual ─────────────────────
+  const nivel = leerNivelEjecucion(process.cwd());
+
   // AG-01: Advertir si la variable de identidad del agente no está disponible.
   // Cuando está vacía, los guardias de agentes read-only quedan desactivados.
   if (!agentName && (toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit")) {
@@ -135,6 +194,21 @@ function main(raw) {
   // ── 0. Write/Edit/MultiEdit: permisos por agente + secrets en contenido ─
   const isWriteTool = toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit";
   if (isWriteTool) {
+    // 0aa. Verificación ADR activo
+    const adrs = cargarADRs(process.cwd());
+    if (adrs.length > 0) {
+      const patrones = extraerPatronesProhibidos(adrs);
+      const contenidoPropuesto = String(toolInput?.content ?? toolInput?.new_string ?? '');
+      const violacion = verificarViolacionADR(contenidoPropuesto, patrones);
+      if (violacion) {
+        process.stderr.write(JSON.stringify({
+          action: 'block',
+          message: `Violación de ADR: el contenido contiene "${violacion}" que está marcado como prohibido en un ADR registrado. Revisa .sdd/adrs/ antes de continuar.`
+        }) + '\n');
+        process.exit(2);
+      }
+    }
+
     // 0a. Agentes read-only no pueden modificar archivos
     if (agentName && READ_ONLY_AGENTS.has(agentName)) {
       process.stderr.write(
@@ -235,6 +309,22 @@ function main(raw) {
   }
 
   // ── 1. Verificar prohibidos ─────────────────────────────────────────────
+  // Patrones de escritura en .env — mensaje de error específico
+  const ENV_WRITE_PATTERNS = PROHIBIDOS.slice(
+    PROHIBIDOS.findIndex((r) => r.toString().includes("echo|printf|tee")),
+    PROHIBIDOS.findIndex((r) => r.toString().includes("Out-File")) + 1
+  );
+  for (const re of ENV_WRITE_PATTERNS) {
+    if (re.test(cmd)) {
+      process.stderr.write(
+        `Escritura directa en .env bloqueada — usa variables de entorno o un gestor de secretos.\n` +
+        `Ejemplo: exporta la variable en tu shell o usa un servicio como Doppler, 1Password CLI o Vault.\n` +
+        `Comando bloqueado: ${cmd.slice(0, 120)}\n`
+      );
+      process.exit(2);
+    }
+  }
+
   for (const re of PROHIBIDOS) {
     if (re.test(cmd)) {
       process.stderr.write(
@@ -268,6 +358,32 @@ function main(raw) {
       );
       // Exit 0 — dejamos que el flujo normal de permisos de Claude Code actúe
       process.exit(0);
+    }
+  }
+
+  // ── 4. Restricciones dinámicas según nivel del CircuitBreaker ──────────
+  if (nivel === 'sandbox') {
+    if (toolName === 'Bash') {
+      bloquear(
+        'CircuitBreaker activo: nivel sandbox — Bash bloqueado tras fallos consecutivos. Resuelve los errores antes de continuar.',
+        { tool: toolName, input: toolInput }
+      );
+    }
+    // Bloquear Write/Edit fuera del cwd
+    if (toolName === 'Write' || toolName === 'Edit') {
+      const filePath = toolInput?.file_path || toolInput?.path || '';
+      const cwd = process.cwd();
+      if (filePath && !filePath.startsWith(cwd)) {
+        bloquear(
+          `CircuitBreaker nivel sandbox — escritura fuera del proyecto bloqueada: ${filePath}`,
+          { tool: toolName, input: { file_path: filePath } }
+        );
+      }
+    }
+  } else if (nivel === 'confirmado') {
+    // En nivel confirmado, solo advertir (no bloquear)
+    if (toolName === 'Bash') {
+      process.stderr.write(`[forge] Nivel confirmado — Bash irrestricto activo\n`);
     }
   }
 

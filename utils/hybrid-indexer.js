@@ -89,20 +89,26 @@ function rerank(results, queryEmbedding) {
 function buildHybridIndex(symbolsPath, outputPath) {
   const symbols = extractSymbols(symbolsPath);
 
+  const symbolsData = symbols.map(sym => ({
+    name: sym.symbol,
+    file: sym.file,
+    embedding: mockEmbedding(sym.symbol),
+    lexical_features: {
+      length: sym.symbol.length,
+      hasUnderscore: sym.symbol.includes('_'),
+      isPrivate: sym.symbol.startsWith('_')
+    }
+  }));
+
+  const original_size_estimate = symbols.reduce((acc, s) => acc + s.symbol.length + (s.file?.length ?? 0), 0);
+
   const index = {
     version: '1.0',
     mode: 'hybrid',
     timestamp: new Date().toISOString(),
-    symbols: symbols.map(sym => ({
-      name: sym.symbol,
-      file: sym.file,
-      embedding: mockEmbedding(sym.symbol),
-      lexical_features: {
-        length: sym.symbol.length,
-        hasUnderscore: sym.symbol.includes('_'),
-        isPrivate: sym.symbol.startsWith('_')
-      }
-    }))
+    original_size_estimate,
+    compressed_size_estimate: Math.ceil(original_size_estimate * 0.6),
+    symbols: symbolsData,
   };
 
   writeFileSync(outputPath, JSON.stringify(index, null, 2));

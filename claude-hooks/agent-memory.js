@@ -98,7 +98,7 @@ function registrarADRs(cwd, agente, archivo, adrs) {
   try {
     if (!existsSync(adrDir)) mkdirSync(adrDir, { recursive: true });
     for (const adr of adrs) {
-      const linea = JSON.stringify({
+      const entrada = {
         ts: new Date().toISOString(),
         decision: adr.decision,
         context: adr.context ?? "",
@@ -106,8 +106,31 @@ function registrarADRs(cwd, agente, archivo, adrs) {
         status: adr.status ?? "accepted",
         archivo,
         agente: agente || "main",
-      });
-      appendFileSync(ledgerFile, linea + "\n", "utf8");
+      };
+      // JSONL — siempre (compatibilidad + respaldo)
+      appendFileSync(ledgerFile, JSON.stringify(entrada) + "\n", "utf8");
+
+      // Memoria compartida — cualquier agente puede leer las decisiones de otros
+      try {
+        const compartidaDir = join(cwd, ".sdd", "memoria", "compartida");
+        if (!existsSync(compartidaDir)) mkdirSync(compartidaDir, { recursive: true });
+        const compartidaFile = join(compartidaDir, "decisiones-clave.md");
+        const ts = entrada.ts.slice(0, 10);
+        const linea = `\n## [${ts}] ${agente}: ${entrada.decision}\n` +
+          (entrada.context ? `> ${entrada.context}\n` : '') +
+          `> Estado: ${entrada.status}\n`;
+        appendFileSync(compartidaFile, linea, "utf8");
+      } catch { /* Silencioso */ }
+    }
+    // SQLite — dual-write asíncrono y defensivo (no bloquea ni falla si el store no carga)
+    const storePath = join(dirname(fileURLToPath(import.meta.url)), "..", "core", "decisions", "decision-store.js");
+    if (existsSync(storePath)) {
+      import(`file:///${storePath.replace(/\\/g, "/")}`).then(({ DecisionStore }) => {
+        const store = new DecisionStore(adrDir);
+        for (const adr of adrs) {
+          store.registrar({ ...adr, agente: agente || "main" });
+        }
+      }).catch(() => { /* degradación silenciosa */ });
     }
     process.stderr.write(`📋 [adr-indexer] ${agente}: ${adrs.length} ADR(s) capturado(s) en ${archivo}\n`);
   } catch { /* Silencioso */ }
@@ -145,6 +168,7 @@ async function registrarLedger(cwd, agente, toolName, archivoModificado, conteni
       tool: toolName,
       archivo: archivoModificado,
       bytes: Buffer.byteLength(contenido ?? "", "utf8"),
+      tokens_est: Math.ceil(Buffer.byteLength(contenido ?? "", "utf8") / 3.5),
       provider,
       effort_level: tier ?? null,
     });
@@ -376,6 +400,36 @@ function alertarMemoryMdGlobal(cwd) {
   } catch { /* Silencioso */ }
 }
 
+// ── Propagación a memoria global de Claude Code ──────────────────────────────
+
+async function propagarAMemoriaGlobal(agente, resumen, archivo) {
+  try {
+    const slug = basename(process.cwd()).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const memoriaDir = join(homedir(), '.claude', 'projects', slug, 'memory');
+    mkdirSync(memoriaDir, { recursive: true });
+
+    const memoriaFile = join(memoriaDir, `agente-${agente}.md`);
+    const fecha = new Date().toISOString().slice(0, 10);
+    const entrada = `\n- [${fecha}] ${basename(archivo)}: ${resumen.slice(0, 120)}`;
+
+    let contenido = existsSync(memoriaFile)
+      ? readFileSync(memoriaFile, 'utf8')
+      : `# Memoria FORGE: ${agente}\n`;
+
+    const lineas = contenido.split('\n').filter(l => l.startsWith('- ['));
+    if (lineas.length >= 10) {
+      // Comprimir las más antiguas — conserva solo las últimas 9 + resumen
+      const antiguas = lineas.slice(0, lineas.length - 9);
+      const resumenAntiguas = `- [comprimido] ${antiguas.length} entradas anteriores resumidas al ${fecha}`;
+      contenido = contenido.replace(antiguas.join('\n'), resumenAntiguas);
+    }
+
+    writeFileSync(memoriaFile, contenido + entrada, 'utf8');
+  } catch {
+    // No debe fallar el hook si la escritura global falla
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(raw) {
@@ -425,6 +479,13 @@ async function main(raw) {
   // Índice invertido JSONL (siempre — habilita query-memory.js independientemente del backend)
   actualizarIndice(cwd, agente, archivoModificado, resumen, bytes);
 
+  // TODO: integrar EpisodicMemory.addEpisode()
+  // core/episodic-memory.js aún no existe. Cuando se cree, llamar aquí:
+  //   import { EpisodicMemory } from '../core/episodic-memory.js';
+  //   const episodic = new EpisodicMemory(join(cwd, '.sdd', 'memoria'));
+  //   episodic.addEpisode({ ts: new Date().toISOString(), agente, archivo: archivoModificado, resumen, bytes });
+  // El módulo debe exponer addEpisode(entry) y búsqueda por similitud semántica.
+
   // Escritura de memoria según backend configurado
   const memoriaDir = join(cwd, ".sdd", "memoria");
   if (CONFIG.backend === "sqlite") {
@@ -446,6 +507,8 @@ async function main(raw) {
       process.stderr.write(`❌ [agent-memory] Error crítico: no se pudo persistir memoria de ${agente}. Verifica permisos de escritura en .sdd/memoria/\n`);
     }
   }
+
+  await propagarAMemoriaGlobal(agente, resumen, archivoModificado);
 
   process.stderr.write(`🧠 [agent-memory] ${agente} → ${archivoModificado}\n`);
 

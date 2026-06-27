@@ -1,264 +1,76 @@
 ---
-description: Define reglas de compresión tipo caveman adaptadas al español. Genera diccionario de reemplazos y valida que no toque código. Se invoca por /sdd.comprimir.
+description: DEPRECADO — La compresión gramatical del español fue reemplazada por el context manager real (claude-hooks/context-manager.js). Redirige a las herramientas correctas.
 ---
 
-# Skill: Compresión de Tokens
+# Skill: Compresión de Tokens — DEPRECADO
 
-Aplica transformaciones seguras al español para reducir input tokens sin perder sustancia técnica.
+> ⚠️ **Este skill está deprecado desde FORGE v4.1.0.**
+>
+> La compresión caveman (quitar artículos con `sed`, abreviar términos) atacaba el lugar equivocado:
+> los artículos y conectores del español representan menos del 2% del costo real de contexto.
+> La raíz del problema son el historial de conversación, los archivos cargados en contexto y los
+> tool-results acumulados, no la gramática de los prompts.
+>
+> Además, este enfoque degradaba la calidad del razonamiento del LLM al recibir texto mutilado.
 
-## Diccionario de reemplazos (80+ pares)
+## ¿Qué usar en su lugar?
 
-### Artículos (quitar)
-```
-el → [quitar]
-la → [quitar]
-los → [quitar]
-las → [quitar]
-un → [quitar]
-una → [quitar]
-unos → [quitar]
-unas → [quitar]
-```
+### Para gestión de contexto y presupuesto → `claude-hooks/context-manager.js`
 
-### Conectores (simplificar)
-```
-sin embargo → pero
-por lo tanto → por eso
-además → y
-en conclusión → conclusión:
-es importante notar que → nota:
-cabe mencionar que → nota:
-```
+El context manager real aplica estas estrategias en orden de impacto real:
 
-### Hedging (quitar si no es crítico)
-```
-creo que → [quitar]
-podría ser que → [quitar]
-tal vez → [quitar]
-probablemente → [quitar]
-parece que → [quitar]
-podría → [quitar si es sugerencia débil]
-```
+| Estrategia | Ahorro real | Cómo activar |
+|---|---|---|
+| Índice invertido JSONL en vez de cargar memoria completa | 70–90% en memoria | Automático vía `agent-memory.js` |
+| Presupuesto por fase con umbral enforced | Bloqueo proactivo | Automático, configurable con `FORGE_BUDGET_USD` |
+| Resumen progresivo de historial largo | 50–80% en historial | Automático cuando historial > umbral |
+| Truncamiento inteligente de tool-results | 30–60% en herramientas | Automático vía context-manager |
+| Degradación de modelo por tier | 60–80% en costo API | `FORGE_TIER=low` o configuración por agente |
 
-### Frases de cortesía (quitar)
-```
-por favor → [quitar]
-feliz de ayudar → [quitar]
-claro que sí → [quitar]
-sin problema → [quitar]
-```
-
-### Compresión de frases comunes
-```
-para que → para
-es necesario que → debe
-es importante que → debe
-de acuerdo con → según
-a partir de → desde
-con el fin de → para
-en el caso de que → si
-a fin de cuentas → total
-```
-
-### Términos técnicos (abreviatura segura)
-```
-base de datos → BD
-autenticación → auth
-autorización → authz
-usuario → user
-contraseña → pwd
-token → token (ya corto)
-función → fn
-variable → var
-objeto → obj
-arreglo → arr
-lista → list
-diccionario → dict
-base de datos relacional → RDBMS
-programación orientada a objetos → POO
-interfaz de programación → API
-máquina virtual → VM
-computadora → PC
-servidor → srv
-cliente → cli
-solicitud → req
-respuesta → res
-error → err
-identificador → ID
-```
-
-## Patrones que NUNCA se comprimen
-
-Estos patrones se detienen completamente:
-
-```regex
-# Seguridad
-PELIGRO|DANGER|NO USAR EN PRODUCCIÓN
-NO hacer|NUNCA hacer|CUIDADO
-Security warning|Advertencia de seguridad
-
-# Acciones irreversibles
-ELIMINAR|BORRAR|DELETE|DROP|RESET|borrar permanently
-Esto no se puede deshacer|This cannot be undone
-
-# Código
-```[a-z]+ (dentro de bloques de código)
-^---$ (frontmatter YAML)
-^\| .* \|$ (tablas)
-^  [0-9]+\. (listas numeradas)
-^https?:// (URLs)
-^/[a-z] (comandos/paths)
-```
-
-## Lógica de compresión
-
-### Paso 1: Validar archivo
+### Para reducir tokens de archivos grandes → usar índice
 
 ```bash
-# ¿Es código?
-file archivo.ts | grep -q "ASCII text"  # si no, SKIP
+# En vez de cargar el archivo completo:
+# ❌ cat .sdd/memoria-completa.md
 
-# ¿Tiene extensión prohibida?
-[[ "archivo" =~ \.(py|js|ts|go|rs|java|cs|rb|php|json|yaml|yml|toml|env|lock)$ ]]
-  → NUNCA comprimir código
-
-# ¿Tiene bloques de código?
-grep -q '^```' archivo.md
-  → Comprime SOLO fuera de bloques ```...```
+# ✅ Consultar por relevancia:
+node claude-hooks/query-memory.js "término de búsqueda" --top=5
 ```
 
-### Paso 2: Protección de patrones críticos
+### Para sesiones con presupuesto ajustado → usar effort-router
+
+Configura en `sdd.config.yaml`:
+```yaml
+agentes:
+  tier_override: low      # fuerza Haiku en todos los agentes
+  # o por agente:
+  arquitecto:
+    tier: medium          # Sonnet en vez de Opus
+```
+
+### Para ver el consumo real de la sesión
 
 ```bash
-# Líneas que mencionan peligro
-grep -n "PELIGRO\|CUIDADO\|NO USAR" archivo.md
-  → Marca esas líneas como "NO TOCAR"
-
-# Bloques de código
-sed -n '/^```/,/^```/p' archivo.md
-  → Excluye de compresión
+node cli/index.js logs --last=20
 ```
 
-### Paso 3: Aplicar reemplazos seguros
+---
 
-Para cada pareja (antes → después):
+## Por qué se deprecó — análisis técnico
 
-```bash
-# Buscar palabra completa, no parcial
-sed -i 's/\bpara que\b/para/g' archivo.md
-sed -i 's/\bsin embargo\b/pero/g' archivo.md
-# ... (80+ reemplazos)
-```
+El problema de la compresión gramatical:
 
-### Paso 4: Backup
+1. **Impacto mínimo en tokens reales.** Los artículos y conectores son tokens cortos (1 token cada uno).
+   Un documento de 1000 palabras en español tiene ~120 artículos = ~120 tokens = ~2% del total típico.
 
-```bash
-cp archivo.md archivo.md.original
-# Edita archivo.md comprimido
-```
+2. **Degrada la calidad del LLM.** Los modelos de lenguaje entrenados en español esperan gramática
+   completa. Texto mutilado tipo "Auth: validar usuario BD → generar JWT" reduce la precisión de
+   razonamiento multi-paso.
 
-## Niveles de compresión
+3. **No escala.** El historial de conversación puede llegar a 50K–200K tokens en sesiones largas.
+   Ninguna compresión superficial del prompt soluciona eso.
 
-### Lite (baja agresividad)
-- Quita solo: artículos + conectores obvios + cortesía
-- Mantiene: hedging, estructura, conectores complejos
-- Tokens ahorrados: ~20-30%
+4. **El costo real está en:** historial acumulado (40–60%), archivos leídos (20–30%),
+   tool-results (10–20%), prompts del sistema (5–10%).
 
-### Full (media, default)
-- Quita: artículos + conectores + hedging simple + cortesía
-- Mantiene: explicaciones técnicas, estructura
-- Tokens ahorrados: ~40-50%
-
-### Ultra (alta agresividad)
-- Quita: TODO lo anterior + TAMBIÉN comprime términos técnicos
-- Fragmentos OK
-- Abreviaciones agresivas
-- Tokens ahorrados: ~60-75%
-- ⚠️ Riesgo: puede quedar ilegible para humanos que lean el `.original.md`
-
-## Validación pre-guardar
-
-Antes de sobrescribir archivo:
-
-```bash
-# Cuenta tokens aproximados
-wc -w archivo.md.original  # palabras
-wc -w archivo.md.comprimido
-# Ratio: palabras_nuevas / palabras_viejas
-
-if (( ratio > 0.80 )); then
-  echo "⚠️ Compresión baja (solo 20% ahorro). ¿Continuar?"
-fi
-
-if (( ratio < 0.30 )); then
-  echo "⚠️ Compresión agresiva (70% ahorro). Revisar legibilidad antes de comitear."
-fi
-```
-
-## Ejemplo paso a paso
-
-**Archivo original** (358 palabras):
-
-```markdown
-# Tareas pendientes para el proyecto
-
-Estas son las tareas que debemos completar en el proyecto actual.
-Es absolutamente necesario que se realicen en el orden de prioridad 
-que se especifica a continuación.
-
-Además, es importante que tengas en cuenta lo siguiente:
-
-- La tarea de autenticación requiere que el usuario sea validado 
-  en la base de datos antes de que se genere un token JWT. 
-  Sin embargo, esto puede hacerse de forma asincrónica.
-```
-
-**Con compresión Full** (148 palabras, 59% ahorro):
-
-```markdown
-# Tareas pendientes
-
-Tareas a completar. Orden por prioridad.
-
-Importante:
-
-- Auth: validar usuario BD → generar JWT. (Puede ser asincrónico)
-```
-
-## Seguridad: auto-claridad
-
-Si el archivo tiene:
-- `PELIGRO` o `CUIDADO` → NO comprimir esa línea
-- `DELETE` o `BORRAR` → NO comprimir ese párrafo
-- Instrucciones multi-paso ambiguas → NO comprimir
-
-Ejemplo:
-
-```markdown
-# ⚠️ PELIGRO: Esta operación no se puede deshacer
-# [Esta línea NO se comprime]
-
-Para eliminar la base de datos:
-1. Ejecuta el comando X
-2. Confirma escribiendo "SÍ" en mayúscula
-3. La BD se borrará PERMANENTEMENTE
-
-# [Estas líneas NO se comprimen — son pasos críticos]
-```
-
-## Limitaciones
-
-- ❌ No entiende contexto profundo (un "talvez" crítico podría comprimirse erróneamente)
-- ⚠️ Manual review recomendado para documentos importantes
-- ⚠️ Algunos reemplazos pueden alterar tono (formal → casual)
-
-## Output
-
-```bash
-/sdd.comprimir aplicar archivo.md full
-
-# Resultado:
-archivo.md             ← comprimido
-archivo.md.original    ← backup automático
-.sdd/.comprimir.log    ← registro: antes/después, ratio, patrones preservados
-```
+El context manager real ataca estas fuentes directamente.

@@ -42,19 +42,21 @@ graph TD
 | Agente | Modelo | Activo | Etapas principales |
 |--------|--------|--------|-------------------|
 | `arquitecto` | Opus | ✅ | planificar, analizar, implementar |
-| `critico` | Opus | ✅ | planificar, analizar |
-| `revisor` | Opus | ✅ | verificar, analizar |
-| `seguridad` | Opus | ✅ | planificar, verificar, desplegar |
-| `product-designer` | Opus | ✅ | diseñar |
+| `critico` | Opus | ❌ | planificar, analizar |
+| `revisor` | Opus | ❌ | verificar, analizar |
+| `seguridad` | Opus | ❌ | planificar, verificar, desplegar |
+| `product-designer` | Opus | ❌ | diseñar |
 | `asesor-datos` | Opus | ✅ | especificar, planificar, implementar |
 | `desarrollador-backend` | Sonnet | ✅ | implementar |
 | `desarrollador-frontend` | Sonnet | ✅ | implementar |
 | `tester` | Sonnet | ✅ | implementar, verificar |
-| `operaciones` | Sonnet | ✅ | desplegar, canary |
+| `operaciones` | Sonnet | ❌ | desplegar, canary |
 | `disenador-api` | Sonnet | ✅ | especificar, planificar |
-| `architecture-designer` | Sonnet | ✅ | diseñar, planificar |
-| `investigador` | Sonnet | ✅ | descubrir, analizar |
+| `architecture-designer` | Sonnet | ❌ | diseñar, planificar |
+| `investigador` | Sonnet | ❌ | descubrir, analizar |
 | `documentador` | Sonnet | ❌ | snapshot, release |
+
+> **Preset lean** (por defecto): activos = arquitecto, asesor-datos, disenador-api, desarrollador-backend, desarrollador-frontend, tester — todos con modelo sonnet. El resto se activan individualmente en `sdd.config.yaml`.
 
 ---
 
@@ -74,9 +76,9 @@ graph TD
 - Revisar el plan técnico producido por otros agentes
 
 **Modelo:** Claude Opus
-- **Proveedor:** Fijo en Anthropic (no intercambiable con OpenAI o Google)
+- **Proveedor:** Fijo en Anthropic (no intercambiable con OpenAI u Ollama)
 - **Versión:** Configurable via `sdd.config.yaml`, pero siempre Opus
-- **Fallback:** Si Anthropic indisponible, FORGE falla con error claro
+- **Fallback:** Si Anthropic indisponible, FORGE falla con error claro (verificar con `forge doctor`)
 
 **Herramientas:** Read, Write (documentos de arquitectura únicamente)
 
@@ -401,9 +403,9 @@ agentes:
 ```
 
 **Restricciones de configuración:**
-- Los agentes `arquitecto`, `critico`, `revisor`, `seguridad`, `asesor-datos` y `product-designer` siempre usan Anthropic como proveedor, independientemente del `modelo` configurado.
-- El campo `modelo` para estos agentes solo controla el nivel de calidad dentro de Anthropic (opus/sonnet/haiku).
-- Desactivar `critico` o `seguridad` en modo normal no está recomendado — usar el modo `rapido` o `prototipo` como alternativa temporal.
+- Los agentes `arquitecto`, `critico`, `revisor`, `seguridad`, `asesor-datos` y `product-designer` están fijados a Anthropic como proveedor. El campo `modelo` solo controla el nivel (opus/sonnet/haiku) dentro de Anthropic.
+- Los agentes de implementación (`desarrollador-backend`, `desarrollador-frontend`, `tester`, `operaciones`) pueden usar cualquier proveedor configurado: Anthropic, OpenAI, Ollama o Stub.
+- Desactivar `critico` o `seguridad` reduce las garantías de calidad. Úsalos si la velocidad es prioritaria, con plena conciencia del tradeoff.
 
 ---
 

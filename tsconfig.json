@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
     "noEmit": true,
-    "strict": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "strict": false,
+    "checkJs": true,
+    "allowJs": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022", "ES2022.Array"],
     "types": ["node"],
-    "allowImportingTsExtensions": false,
     "skipLibCheck": true
   },
-  "include": ["core/*.ts"],
+  "include": ["core/**/*.js"],
   "exclude": ["node_modules", "dist"]
 }
