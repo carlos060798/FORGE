@@ -55,7 +55,8 @@ const PAGES = {
       <p class="lead">FORGE es un framework de <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> para Claude Code. Convierte ideas en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA — y produce artefactos portables que cualquier otro agente puede consumir.</p>
 
       <div class="callout tip">
-        <p><strong>Instalación:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code> — no publicado en npm todavía.</p>
+        <p><strong>Instalación rápida (npm):</strong> <code>npm install -g forge-sdd</code> · <code>forge doctor</code></p>
+        <p><strong>Desde el repositorio:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; cd FORGE &amp;&amp; npm install</code></p>
       </div>
 
       <h2>Qué es FORGE (v4.2.0)</h2>
@@ -74,7 +75,7 @@ const PAGES = {
           <tr><td><strong>Categoría</strong></td><td>Framework SDD+TDD con runner CLI portable</td></tr>
           <tr><td><strong>Host principal</strong></td><td>Claude Code CLI (Anthropic)</td></tr>
           <tr><td><strong>Runner standalone</strong></td><td><code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code> — sin Claude Code</td></tr>
-          <tr><td><strong>Distribución</strong></td><td>git clone + npm install (paquete: <code>forge-sdd</code>, no publicado aún)</td></tr>
+          <tr><td><strong>Distribución</strong></td><td><code>npm install -g forge-sdd</code> · o git clone desde el repo</td></tr>
           <tr><td><strong>Dependencias runtime</strong></td><td>2 (<code>acorn</code> + <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
           <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
           <tr><td><strong>Tests</strong></td><td>998/998 pasando (Node test runner nativo)</td></tr>
@@ -107,7 +108,7 @@ PORTABLE:       —               ✅          —          —</code></pre>
       <p class="lead">FORGE is a <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> framework for Claude Code. It turns natural-language ideas into specified, planned, and implemented software — and produces portable artifacts any agent can consume.</p>
 
       <div class="callout tip">
-        <p><strong>Install:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code> — not on npm yet.</p>
+        <p><strong>Quick install:</strong> <code>npm install -g forge-sdd</code> · or <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code></p>
       </div>
 
       <h2>Two modes of use</h2>
@@ -881,17 +882,17 @@ speckit-handoff/           ← Generado por forge dispatch
       </div>
 
       <h2>Instalación</h2>
-      <pre><code class="bash"># Clonar e instalar
-git clone https://github.com/carlos060798/FORGE
+
+      <h3>Opción A — npm (recomendada)</h3>
+      <pre><code class="bash">npm install -g forge-sdd
+forge doctor   # verifica instalación</code></pre>
+
+      <h3>Opción B — desde el repositorio</h3>
+      <pre><code class="bash">git clone https://github.com/carlos060798/FORGE
 cd FORGE
 npm install
-
-# Verificar instalación (usa haiku para el ping)
+npm install -g .   # instala el comando forge globalmente
 forge doctor</code></pre>
-
-      <div class="callout warning">
-        <p><strong>No publicado en npm.</strong> El paquete se llama <code>forge-sdd</code> internamente pero aún no está en el registro npm. Instalar desde el repositorio git.</p>
-      </div>
 
       <h2>Con template (recomendado para empezar rápido)</h2>
       <pre><code class="bash"># API REST con autenticación JWT
@@ -960,9 +961,15 @@ forge dispatch --agente=arquitecto --tarea="Diseña la arquitectura" --adapter=s
       </div>
 
       <h2>Installation</h2>
+
+      <h3>Option A — npm (recommended)</h3>
+      <pre><code class="bash">npm install -g forge-sdd
+forge doctor</code></pre>
+
+      <h3>Option B — from repository</h3>
       <pre><code class="bash">git clone https://github.com/carlos060798/FORGE
 cd FORGE
-npm install
+npm install && npm install -g .
 forge doctor</code></pre>
 
       <h2>With template</h2>

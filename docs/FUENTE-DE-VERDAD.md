@@ -9,9 +9,9 @@
 |---|---|
 | Versión | 4.2.0 |
 | Nombre paquete (`package.json`) | `forge-sdd` |
-| Publicado en npm | No — instalación via `git clone` |
+| Publicado en npm | Sí — `npm install -g forge-sdd` |
 | Binario CLI | `forge` (alias: `sdd-es`) |
-| Instalación | `git clone` + `npm install` |
+| Instalación | `npm install -g forge-sdd` o `git clone` + `npm install -g .` |
 | Licencia | MIT |
 
 ## Capacidades verificadas

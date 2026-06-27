@@ -19,20 +19,22 @@ Si usas Node ≥22.5, FORGE usa `node:sqlite` nativo para la memoria y el decisi
 
 ## Paso 1 — Instalar FORGE
 
+**Opción A — npm (recomendada):**
+
+```bash
+npm install -g forge-sdd
+forge --version   # debe imprimir 4.2.0
+```
+
+**Opción B — desde el repositorio:**
+
 ```bash
 git clone https://github.com/carlos060798/FORGE
 cd FORGE
 npm install
-```
-
-Para tener el comando `forge` disponible globalmente:
-
-```bash
 npm install -g .
 forge --version   # debe imprimir 4.2.0
 ```
-
-O sin instalación global, usa `node /ruta/a/FORGE/cli/index.js` en lugar de `forge` en todos los comandos siguientes.
 
 ---
 
