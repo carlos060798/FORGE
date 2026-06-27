@@ -93,10 +93,47 @@ function parseMemoryFile(filepath) {
   return episodes;
 }
 
+// ── TF-IDF para similitud léxica ─────────────────────────────────────────────
+
+const STOPWORDS_EP = new Set([
+  'que', 'con', 'para', 'por', 'como', 'pero', 'sin', 'una', 'uno',
+  'los', 'las', 'del', 'the', 'and', 'for', 'not', 'this', 'with',
+]);
+
+function tokenizarEp(texto) {
+  return (texto ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !STOPWORDS_EP.has(t));
+}
+
+function frecuenciasEp(tokens) {
+  const freq = {};
+  for (const t of tokens) freq[t] = (freq[t] ?? 0) + 1;
+  return freq;
+}
+
+function similitudCosenoEp(tokensA, tokensB) {
+  if (!tokensA.length || !tokensB.length) return 0;
+  const tfA = frecuenciasEp(tokensA);
+  const tfB = frecuenciasEp(tokensB);
+  const vocab = new Set([...Object.keys(tfA), ...Object.keys(tfB)]);
+  let dot = 0, normA = 0, normB = 0;
+  for (const term of vocab) {
+    const a = tfA[term] ?? 0;
+    const b = tfB[term] ?? 0;
+    dot += a * b; normA += a * a; normB += b * b;
+  }
+  return normA && normB ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+}
+
 /**
- * Busca episodios por tipo y tags
+ * Busca episodios por tipo y similitud semántica con la consulta.
+ * Combina filtro por tipo + similitud TF-IDF + recencia.
  */
-function queryEpisodes(episodes, type, tags = []) {
+function queryEpisodes(episodes, type, tags = [], consulta = '') {
   let results = episodes;
 
   // Filtra por tipo
@@ -104,15 +141,24 @@ function queryEpisodes(episodes, type, tags = []) {
     results = results.filter(ep => ep.type === type);
   }
 
-  // Filtra por tags
+  // Filtra por tags exactos (compatibilidad)
   if (tags.length > 0) {
     results = results.filter(ep =>
       tags.some(tag => ep.tags.includes(tag.toLowerCase()))
     );
   }
 
-  // Ordena por relevancia (los más recientes primero)
-  results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  // Ordena por similitud semántica si hay consulta; si no, por recencia
+  if (consulta && consulta !== '*') {
+    const tokensConsulta = tokenizarEp(consulta);
+    results = results.map(ep => {
+      const texto = `${ep.context ?? ''} ${ep.action ?? ''} ${ep.result ?? ''} ${ep.tags?.join(' ') ?? ''}`;
+      const score = similitudCosenoEp(tokensConsulta, tokenizarEp(texto));
+      return { ...ep, relevance: score };
+    }).sort((a, b) => b.relevance - a.relevance || new Date(b.timestamp) - new Date(a.timestamp));
+  } else {
+    results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
 
   return results.slice(0, 10); // Top 10
 }

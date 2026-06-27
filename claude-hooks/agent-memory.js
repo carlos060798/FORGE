@@ -98,7 +98,7 @@ function registrarADRs(cwd, agente, archivo, adrs) {
   try {
     if (!existsSync(adrDir)) mkdirSync(adrDir, { recursive: true });
     for (const adr of adrs) {
-      const linea = JSON.stringify({
+      const entrada = {
         ts: new Date().toISOString(),
         decision: adr.decision,
         context: adr.context ?? "",
@@ -106,8 +106,19 @@ function registrarADRs(cwd, agente, archivo, adrs) {
         status: adr.status ?? "accepted",
         archivo,
         agente: agente || "main",
-      });
-      appendFileSync(ledgerFile, linea + "\n", "utf8");
+      };
+      // JSONL — siempre (compatibilidad + respaldo)
+      appendFileSync(ledgerFile, JSON.stringify(entrada) + "\n", "utf8");
+    }
+    // SQLite — dual-write asíncrono y defensivo (no bloquea ni falla si el store no carga)
+    const storePath = join(dirname(fileURLToPath(import.meta.url)), "..", "core", "decisions", "decision-store.js");
+    if (existsSync(storePath)) {
+      import(`file:///${storePath.replace(/\\/g, "/")}`).then(({ DecisionStore }) => {
+        const store = new DecisionStore(adrDir);
+        for (const adr of adrs) {
+          store.registrar({ ...adr, agente: agente || "main" });
+        }
+      }).catch(() => { /* degradación silenciosa */ });
     }
     process.stderr.write(`📋 [adr-indexer] ${agente}: ${adrs.length} ADR(s) capturado(s) en ${archivo}\n`);
   } catch { /* Silencioso */ }

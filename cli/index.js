@@ -1399,6 +1399,9 @@ function main() {
     case "adapters":
       import("./dispatch.js").then(({ cmdAdapters }) => cmdAdapters()).catch(e => error(e.message));
       break;
+    case "decisions":
+      import("./decisions.js").then(({ cmdDecisions }) => cmdDecisions(args.slice(1))).catch(e => error(e.message));
+      break;
     case "--version":
     case "-v":
       console.log(pluginVersion());
