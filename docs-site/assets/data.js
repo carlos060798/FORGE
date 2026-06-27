@@ -55,7 +55,7 @@ const PAGES = {
       <p class="lead">FORGE es un framework de <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> para Claude Code. Convierte ideas en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA — y produce artefactos portables que cualquier otro agente puede consumir.</p>
 
       <div class="callout tip">
-        <p><strong>Instalación:</strong> <code>npx forge init</code> — zero dependencias en runtime.</p>
+        <p><strong>Instalación:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code> — no publicado en npm todavía.</p>
       </div>
 
       <h2>Qué es FORGE (v4.2.0)</h2>
@@ -64,7 +64,7 @@ const PAGES = {
         <thead><tr><th>Modo</th><th>Cómo se usa</th><th>Requiere Claude Code</th></tr></thead>
         <tbody>
           <tr><td><strong>Plugin Claude Code</strong></td><td>Slash commands <code>/forge</code>, <code>/sdd.*</code> dentro de Claude Code</td><td>Sí</td></tr>
-          <tr><td><strong>Runner portable</strong></td><td>CLI de terminal: <code>forge status</code>, <code>forge step</code>, <code>forge dispatch</code></td><td>No</td></tr>
+          <tr><td><strong>Runner portable</strong></td><td>CLI de terminal: <code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code></td><td>No</td></tr>
         </tbody>
       </table>
 
@@ -73,9 +73,9 @@ const PAGES = {
         <tbody>
           <tr><td><strong>Categoría</strong></td><td>Framework SDD+TDD con runner CLI portable</td></tr>
           <tr><td><strong>Host principal</strong></td><td>Claude Code CLI (Anthropic)</td></tr>
-          <tr><td><strong>Runner standalone</strong></td><td><code>forge step</code>, <code>forge dispatch</code> — sin LLM ni Claude Code</td></tr>
-          <tr><td><strong>Distribución</strong></td><td>npm — <code>npx forge init</code></td></tr>
-          <tr><td><strong>Dependencias runtime</strong></td><td>Zero</td></tr>
+          <tr><td><strong>Runner standalone</strong></td><td><code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code> — sin Claude Code</td></tr>
+          <tr><td><strong>Distribución</strong></td><td>git clone + npm install (paquete: <code>forge-sdd</code>, no publicado aún)</td></tr>
+          <tr><td><strong>Dependencias runtime</strong></td><td>2 (<code>acorn</code> + <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
           <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
           <tr><td><strong>Tests</strong></td><td>998/998 pasando (Node test runner nativo)</td></tr>
         </tbody>
@@ -107,7 +107,7 @@ PORTABLE:       —               ✅          —          —</code></pre>
       <p class="lead">FORGE is a <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> framework for Claude Code. It turns natural-language ideas into specified, planned, and implemented software — and produces portable artifacts any agent can consume.</p>
 
       <div class="callout tip">
-        <p><strong>Install:</strong> <code>npx forge init</code> — zero runtime dependencies.</p>
+        <p><strong>Install:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code> — not on npm yet.</p>
       </div>
 
       <h2>Two modes of use</h2>
@@ -115,7 +115,7 @@ PORTABLE:       —               ✅          —          —</code></pre>
         <thead><tr><th>Mode</th><th>How to use</th><th>Requires Claude Code</th></tr></thead>
         <tbody>
           <tr><td><strong>Claude Code plugin</strong></td><td>Slash commands <code>/forge</code>, <code>/sdd.*</code> inside Claude Code</td><td>Yes</td></tr>
-          <tr><td><strong>Portable runner</strong></td><td>Terminal CLI: <code>forge status</code>, <code>forge step</code>, <code>forge dispatch</code></td><td>No</td></tr>
+          <tr><td><strong>Portable runner</strong></td><td>Terminal CLI: <code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code></td><td>No</td></tr>
         </tbody>
       </table>
 
@@ -399,7 +399,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
       <pre><code class="text">╔══════════════════════════════════════════════════════════════════╗
 ║  CAPA 1 — NÚCLEO PORTABLE (sin LLM)                              ║
 ║                                                                  ║
-║  Artefactos .sdd/ (contrato) · State machine compilada (TS→JS)   ║
+║  Artefactos .sdd/ (contrato) · State machine compilada (JS puro)   ║
 ║  CLI runner  · Esquemas JSON · Exportador/importador portable     ║
 ║  Context manager · Decision store SQLite · Memoria episódica     ║
 ╚══════════════════════╤═══════════════════════════════════════════╝
@@ -473,7 +473,7 @@ utils/
           <tr><td><code>cli/runner.js</code></td><td>CLI portable</td><td>forge status/step/validate/reset sin LLM</td><td>✅ Core</td></tr>
           <tr><td><code>cli/dispatch.js</code></td><td>CLI portable</td><td>forge dispatch — sistema de adaptadores</td><td>✅ Core</td></tr>
           <tr><td><code>cli/decisions.js</code></td><td>CLI portable</td><td>forge decisions — store SQLite + búsqueda</td><td>✅ Core</td></tr>
-          <tr><td><code>core/state-machine.ts</code></td><td>Core TS→JS</td><td>PipelineStateMachine, guards por transición</td><td>✅ Core</td></tr>
+          <tr><td><code>core/state-machine.js</code></td><td>Core JS puro</td><td>PipelineStateMachine, guards por transición</td><td>✅ Core</td></tr>
           <tr><td><code>core/adapters/</code></td><td>Core JS</td><td>ForgeAdapter, AdapterRegistry, ClaudeCode, SpecKit</td><td>✅ Core</td></tr>
           <tr><td><code>core/decisions/</code></td><td>Core JS</td><td>DecisionStore SQLite, TF-IDF, superseder</td><td>✅ Core</td></tr>
           <tr><td><code>claude-hooks/pre-tool-guard.js</code></td><td>PreToolUse</td><td>Bloqueos, agentes read-only, secrets, ADRs</td><td>✅ Core</td></tr>
@@ -546,7 +546,7 @@ utils/
       <h1>Componentes del Sistema</h1>
       <p class="lead">Descripción detallada de cada módulo: propósito, entradas, salidas, y dependencias.</p>
 
-      <h2>State machine — <code>core/state-machine.ts</code> (compilado a JS)</h2>
+      <h2>State machine — <code>core/state-machine.js</code> (compilado a JS)</h2>
       <p>La fuente de verdad del pipeline. Controla qué transiciones son válidas y bloquea saltos ilegales.</p>
       <pre><code class="text">Pasos del pipeline:
 idea → discovery → ir → design → spec → plan → tasks → code → done
@@ -668,7 +668,7 @@ forge --version               # Versión instalada</code></pre>
       <h1>System Components</h1>
       <p class="lead">Detailed description of each module: purpose, inputs, outputs, and dependencies.</p>
 
-      <h2>State machine — <code>core/state-machine.ts</code></h2>
+      <h2>State machine — <code>core/state-machine.js</code></h2>
       <p>The pipeline source of truth. Controls which transitions are valid and blocks illegal jumps.</p>
       <table>
         <thead><tr><th>Method</th><th>Description</th></tr></thead>
@@ -717,7 +717,7 @@ forge doctor</code></pre>
       <p class="lead">Esquemas JSON que cada fase del pipeline produce y consume. Son los contratos estables entre componentes — validados por <code>core/schemas/</code>.</p>
 
       <h2><code>ir.json</code> — Intermediate Representation</h2>
-      <p>Esquema validado. <code>confidence ≥ 0.7</code> para continuar. Si es menor, FORGE pide aclaración.</p>
+      <p>Esquema validado. El campo <code>confidence</code> (0–1) es orientativo — generado por el agente para indicar cuánta información hay disponible. No es un guard automático de la state machine. Si es &lt; 0.7, se recomienda ejecutar <code>/sdd.aclarar</code> antes de continuar.</p>
       <pre><code class="json">{
   "schemaVersion": "1.0",
   "id": "string",
@@ -860,33 +860,39 @@ speckit-handoff/           ← Generado por forge dispatch
         <p><strong>Requisitos previos:</strong> Node.js ≥18 (≥22.5 recomendado para SQLite). Claude Code solo es necesario para el modo plugin.</p>
       </div>
 
-      <h2>Instalación básica</h2>
-      <pre><code class="bash"># En el directorio de tu proyecto
-npx forge init
+      <h2>Instalación</h2>
+      <pre><code class="bash"># Clonar e instalar
+git clone https://github.com/carlos060798/FORGE
+cd FORGE
+npm install
 
-# Verificar instalación
-npx forge doctor</code></pre>
+# Verificar instalación (usa haiku para el ping)
+forge doctor</code></pre>
+
+      <div class="callout warning">
+        <p><strong>No publicado en npm.</strong> El paquete se llama <code>forge-sdd</code> internamente pero aún no está en el registro npm. Instalar desde el repositorio git.</p>
+      </div>
 
       <h2>Con template (recomendado para empezar rápido)</h2>
       <pre><code class="bash"># API REST con autenticación JWT
-npx forge init --template api-rest
+forge init --template api-rest
 
 # CLI con subcomandos y output coloreado
-npx forge init --template cli-tool
+forge init --template cli-tool
 
 # SaaS MVP con auth y dashboard
-npx forge init --template saas-mvp</code></pre>
+forge init --template saas-mvp</code></pre>
 
       <h2>Con preset de configuración</h2>
-      <pre><code class="bash">npx forge init --preset lean        # Proyectos personales (6 agentes, Haiku/Sonnet)
-npx forge init --preset startup     # MVPs ágiles (Sonnet default, Opus para arch)
-npx forge init --preset enterprise  # Corporativo (Opus extensivo, ADR obligatorio)</code></pre>
+      <pre><code class="bash">forge init --preset lean        # 6 agentes activos (arquitecto, asesor-datos, disenador-api, backend, frontend, tester)
+forge init --preset startup     # MVPs ágiles (Sonnet default, Opus para arquitecto y crítico)
+forge init --preset enterprise  # Corporativo (todos los agentes, ADR obligatorio)</code></pre>
 
       <h2>Qué instala <code>forge init</code></h2>
       <pre><code class="text">.claude/
   ├── commands/       (39 archivos .md — slash commands)
   ├── agents/         (14 archivos .md — definición de agentes)
-  ├── skills/         (30 directorios — capacidades adicionales)
+  ├── skills/         (31 directorios — capacidades adicionales)
   └── hooks/          (enlace a claude-hooks/)
 
 .sdd/
@@ -933,14 +939,16 @@ forge dispatch --agente=arquitecto --tarea="Diseña la arquitectura" --adapter=s
         <p><strong>Prerequisites:</strong> Node.js ≥18 (≥22.5 recommended for SQLite). Claude Code only required for plugin mode.</p>
       </div>
 
-      <h2>Basic installation</h2>
-      <pre><code class="bash">npx forge init
-npx forge doctor</code></pre>
+      <h2>Installation</h2>
+      <pre><code class="bash">git clone https://github.com/carlos060798/FORGE
+cd FORGE
+npm install
+forge doctor</code></pre>
 
       <h2>With template</h2>
-      <pre><code class="bash">npx forge init --template api-rest
-npx forge init --template cli-tool
-npx forge init --template saas-mvp</code></pre>
+      <pre><code class="bash">forge init --template api-rest
+forge init --template cli-tool
+forge init --template saas-mvp</code></pre>
 
       <h2>Plugin mode (Claude Code)</h2>
       <pre><code class="text">/forge "describe your idea here"</code></pre>
@@ -994,11 +1002,14 @@ forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
       <table>
         <thead><tr><th>Variable</th><th>Propósito</th><th>Default</th></tr></thead>
         <tbody>
+          <tr><td><code>FORGE_LLM_PROVIDER</code></td><td>Proveedor LLM: <code>anthropic</code>, <code>openai</code>, <code>ollama</code>, <code>stub</code></td><td>anthropic</td></tr>
+          <tr><td><code>FORGE_BUDGET_USD</code></td><td>Presupuesto total de la sesión en USD</td><td>1.00</td></tr>
           <tr><td><code>FORGE_BUDGET_WARN_USD</code></td><td>Umbral de alerta de presupuesto</td><td>0.50</td></tr>
-          <tr><td><code>FORGE_BUDGET_BLOCK_USD</code></td><td>Umbral de bloqueo de agentes</td><td>1.00</td></tr>
+          <tr><td><code>FORGE_BUDGET_BLOCK_USD</code></td><td>Umbral de bloqueo de agentes opus</td><td>1.00</td></tr>
           <tr><td><code>FORGE_TOOL_MAX_BYTES</code></td><td>Bytes máximos de tool-result antes de advertir</td><td>50000</td></tr>
-          <tr><td><code>FORGE_UI_PORT</code></td><td>Puerto del dashboard</td><td>3001</td></tr>
-          <tr><td><code>CLAUDE_AGENT_NAME</code></td><td>Identidad del agente (inyectada por Claude Code)</td><td>"main"</td></tr>
+          <tr><td><code>FORGE_LEDGER_MAX_BYTES</code></td><td>Tamaño máximo del ledger antes de compresión</td><td>5000000</td></tr>
+          <tr><td><code>FORGE_UI_PORT</code></td><td>Puerto del dashboard SSE</td><td>3001</td></tr>
+          <tr><td><code>CLAUDE_AGENT_NAME</code></td><td>Identidad del agente (inyectada por Claude Code)</td><td>—</td></tr>
         </tbody>
       </table>
 
@@ -1025,10 +1036,13 @@ forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
       <table>
         <thead><tr><th>Variable</th><th>Purpose</th><th>Default</th></tr></thead>
         <tbody>
+          <tr><td><code>FORGE_LLM_PROVIDER</code></td><td>LLM provider: <code>anthropic</code>, <code>openai</code>, <code>ollama</code>, <code>stub</code></td><td>anthropic</td></tr>
+          <tr><td><code>FORGE_BUDGET_USD</code></td><td>Total session budget in USD</td><td>1.00</td></tr>
           <tr><td><code>FORGE_BUDGET_WARN_USD</code></td><td>Budget warning threshold</td><td>0.50</td></tr>
-          <tr><td><code>FORGE_BUDGET_BLOCK_USD</code></td><td>Budget block threshold</td><td>1.00</td></tr>
+          <tr><td><code>FORGE_BUDGET_BLOCK_USD</code></td><td>Budget block threshold for opus agents</td><td>1.00</td></tr>
           <tr><td><code>FORGE_TOOL_MAX_BYTES</code></td><td>Max tool-result bytes before warning</td><td>50000</td></tr>
-          <tr><td><code>FORGE_UI_PORT</code></td><td>Dashboard port</td><td>3001</td></tr>
+          <tr><td><code>FORGE_LEDGER_MAX_BYTES</code></td><td>Max ledger size before compression</td><td>5000000</td></tr>
+          <tr><td><code>FORGE_UI_PORT</code></td><td>Dashboard SSE port</td><td>3001</td></tr>
         </tbody>
       </table>
 
@@ -1211,11 +1225,14 @@ forge init --global                   # Instala para todos los proyectos
 forge init --template api-rest|cli-tool|saas-mvp
 forge init --preset lean|startup|enterprise
 forge update                          # Actualiza núcleo sin tocar .sdd/
-forge doctor                          # Diagnóstico: hooks, API key, sintaxis
+forge doctor                          # Diagnóstico: hooks, API key, LLM (ping con haiku), SQLite
 forge --version                       # Versión instalada
 
-# Pipeline (sin LLM)
+# Pipeline
 forge status                          # Visual del pipeline con ANSI
+forge run                             # Ejecuta tareas pendientes del pipeline
+forge resume                          # Reanuda ejecución interrumpida
+forge aprobar spec                    # Aprueba la spec (desbloquea spec→plan)
 forge step &lt;paso&gt;                     # Avanza en el pipeline con guards
 forge step &lt;paso&gt; --force             # Fuerza sin guards (recuperación)
 forge validate                        # Verifica precondiciones del paso actual
@@ -1268,8 +1285,11 @@ forge init --template api-rest|cli-tool|saas-mvp
 forge init --preset lean|startup|enterprise
 forge doctor
 
-# Pipeline (no LLM)
+# Pipeline
 forge status
+forge run                     # execute pending tasks
+forge resume                  # resume interrupted execution
+forge aprobar spec            # approve spec (unlocks spec→plan)
 forge step &lt;step&gt; [--force]
 forge validate
 forge reset --force
