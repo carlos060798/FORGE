@@ -34,7 +34,7 @@ Concretamente, FORGE instala:
 
 - **39 [comandos](GLOSARIO.md#comando) slash** (archivos `.md` en `.claude/commands/`) — las etapas del pipeline y operaciones de utilidad
 - **14 definiciones de [agentes](GLOSARIO.md#agente)** (archivos `.md` en `.claude/agents/`) — prompts de sistema específicos por rol con restricciones de herramientas
-- **30 [skills](GLOSARIO.md#skill)** (archivos `.md` en `.claude/skills/`) — capacidades reutilizables invocadas por los comandos
+- **31 [skills](GLOSARIO.md#skill)** (archivos `.md` en `.claude/skills/`) — capacidades reutilizables invocadas por los comandos
 - **6 [hooks](GLOSARIO.md#hook) de runtime** (archivos `.js` + `.sh` en `.claude/hooks/`) — guardia PreToolUse, memoria PostToolUse, convenciones PostToolUse; cada hook tiene una versión `.sh` que funciona sin Node
 - **Un directorio de estado del proyecto** (`.sdd/`) — almacenamiento duradero para todos los artefactos del pipeline
 

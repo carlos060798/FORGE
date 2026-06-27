@@ -1,7 +1,7 @@
 {
   "name": "forge-sdd",
-  "version": "4.0.0",
-  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 30 skills, pipeline SDD+TDD.",
+  "version": "4.2.0",
+  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 31 skills, pipeline SDD+TDD.",
   "type": "module",
   "bin": {
     "forge": "cli/index.js",

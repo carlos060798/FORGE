@@ -52,7 +52,17 @@ cd mi-proyecto
 claude
 ```
 
-**2. Inicia FORGE:**
+**2. (Opcional) Usa un template de proyecto:**
+
+```bash
+forge init --template api-rest    # API REST + JWT
+forge init --template saas-mvp    # SaaS multi-tenant + Stripe
+forge init --template cli-tool    # Herramienta CLI
+```
+
+O `forge init` para partir de cero.
+
+**3. Inicia FORGE:**
 
 ```
 /forge

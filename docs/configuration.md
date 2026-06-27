@@ -583,3 +583,28 @@ session_budget:
 | `maximo_usd` | float | Límite máximo — el pipeline se pausa hasta confirmación explícita |
 
 El costo acumulado se puede ver en cualquier momento con `forge status` o consultando `forge logs`.
+
+---
+
+## Variables de entorno
+
+Complementan o sobreescriben la configuración de `sdd.config.yaml`. Útiles para CI/CD o entornos donde no se puede escribir el archivo de configuración.
+
+| Variable | Default | Fuente | Descripción |
+|---|---|---|---|
+| `FORGE_LLM_PROVIDER` | `anthropic` | `core/llm-providers/index.js` | Proveedor LLM activo: `anthropic`, `openai`, `ollama`, `stub` |
+| `ANTHROPIC_API_KEY` | — | `core/llm-providers/anthropic.js` | API key de Anthropic (obligatoria si provider=anthropic) |
+| `OPENAI_API_KEY` | — | `core/llm-providers/openai.js` | API key de OpenAI (obligatoria si provider=openai) |
+| `FORGE_BUDGET_USD` | `1.0` | `core/session-budget.js` | Presupuesto total de la sesión en USD — pausa el pipeline al superarlo |
+| `FORGE_BUDGET_WARN_USD` | `0.50` | `claude-hooks/context-manager.js` | Umbral de advertencia de costo — emite warning sin bloquear |
+| `FORGE_BUDGET_BLOCK_USD` | `1.00` | `claude-hooks/context-manager.js` | Umbral de bloqueo para agentes opus — bloquea llamadas al superar |
+| `FORGE_TOOL_MAX_BYTES` | `50000` | `claude-hooks/context-manager.js` | Tamaño máximo en bytes del resultado de una herramienta |
+| `FORGE_LEDGER_MAX_BYTES` | `5000000` | `claude-hooks/context-manager.js` | Tamaño máximo del ledger de contexto antes de compresión |
+| `FORGE_UI_PORT` | `3001` | `ui/server.js` | Puerto del dashboard SSE |
+| `CLAUDE_AGENT_NAME` | — | `claude-hooks/agent-memory.js` | Nombre del agente activo (lo inyecta Claude Code automáticamente) |
+| `CLAUDE_SESSION_ID` | — | `cli/index.js` | ID de sesión para correlacionar logs (lo inyecta Claude Code) |
+
+**Ejemplo de uso en CI:**
+```bash
+FORGE_LLM_PROVIDER=stub FORGE_BUDGET_USD=0 node cli/index.js validate
+```

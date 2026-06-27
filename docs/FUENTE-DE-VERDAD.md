@@ -8,8 +8,8 @@
 | Campo | Valor |
 |---|---|
 | Versión | 4.2.0 |
-| Nombre paquete (`package.json`) | `forja-mvp` |
-| Publicado en npm | No |
+| Nombre paquete (`package.json`) | `forge-sdd` |
+| Publicado en npm | No — instalación via `git clone` |
 | Binario CLI | `forge` (alias: `sdd-es`) |
 | Instalación | `git clone` + `npm install` |
 | Licencia | MIT |
@@ -20,8 +20,8 @@
 |---|---|---|
 | Tests | 998 pasando / 0 fallos | `node --test` esta sesión |
 | Agentes | 14 | `ls agents/*.md` |
-| Agentes opus | 7: arquitecto, asesor-datos, critico, product-designer, revisor, seguridad, architecture-designer | frontmatter de cada .md |
-| Agentes sonnet | 7: desarrollador-backend, desarrollador-frontend, disenador-api, documentador, investigador, operaciones, tester | frontmatter de cada .md |
+| Agentes opus | 6: arquitecto, asesor-datos, critico, product-designer, revisor, seguridad | frontmatter de cada .md |
+| Agentes sonnet | 8: architecture-designer, desarrollador-backend, desarrollador-frontend, disenador-api, documentador, investigador, operaciones, tester | frontmatter de cada .md |
 | Comandos | 39 | `ls commands/*.md` |
 | Skills | 31 | `ls skills/` |
 | Hooks principales | 6 (3 × js+sh): pre-tool-guard, agent-memory, post-write-conventions | `ls claude-hooks/` |

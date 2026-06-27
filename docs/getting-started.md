@@ -45,7 +45,8 @@ forge doctor
 `forge doctor` verifica:
 - `ANTHROPIC_API_KEY` configurada en el entorno
 - Hooks en disco (`pre-tool-guard.js`, `agent-memory.js`, `post-write-conventions.js`)
-- Conexión real al LLM (ping + latencia + validación de respuesta JSON)
+- Conexión real al LLM usando `claude-haiku-4-5-20251001` (el más rápido y económico para el ping)
+- Latencia de respuesta y validación del formato JSON
 - SQLite disponible (Node ≥22.5)
 
 Si aparece algún error rojo, resuélvelo antes de continuar. Los errores amarillos son advertencias — el pipeline funciona pero con capacidad reducida.
@@ -60,6 +61,16 @@ forge init
 ```
 
 Esto crea el directorio `.sdd/` con el estado inicial del pipeline, la configuración y el espacio para los artefactos.
+
+Para inicializar con un template de proyecto predefinido:
+
+```bash
+forge init --template api-rest    # API REST con autenticación
+forge init --template saas-mvp    # SaaS multi-tenant con Stripe
+forge init --template cli-tool    # Herramienta de línea de comandos
+```
+
+Los templates pre-rellenan el IR inicial y la configuración del stack tecnológico recomendado.
 
 ---
 
