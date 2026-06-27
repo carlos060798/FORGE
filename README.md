@@ -50,14 +50,14 @@ FORGE:
 ## Inicio rápido
 
 ```bash
-# Instalar en tu proyecto
-npx forge init
+# Clonar e instalar
+git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
 
-# Comenzar desde una idea en lenguaje natural
+# Verificar instalación
+forge doctor
+
+# En Claude Code, dentro de tu proyecto:
 /forge
-
-# O saltar directamente al pipeline
-/sdd.descubrir construir un SaaS multi-tenant con Stripe
 ```
 
 → Ver la [Guía de inicio](docs/getting-started.md) para un recorrido completo.
@@ -104,7 +104,7 @@ FORGE despacha trabajo a **14 agentes especializados**. Cada agente tiene un rol
 
 **Niveles:** Estratégico (Opus), Diseño (Opus), Implementación (Sonnet), Soporte (Sonnet)
 
-**Preset lean** (por defecto): activa **6 agentes** (arquitecto, backend, tester, revisor, seguridad, documentador). Los 8 restantes están disponibles como opcionales.
+**Preset lean** (por defecto): activa **6 agentes** — arquitecto, asesor-datos, disenador-api, desarrollador-backend, desarrollador-frontend, tester — todos con modelo sonnet. Los 8 restantes se activan individualmente.
 
 → [Ver tabla completa en Agentes](docs/agents.md)
 

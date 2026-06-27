@@ -257,17 +257,19 @@ Al iniciarse, `model-registry.js` comprueba las variables de entorno:
 const providers = {
   anthropic: true,  // siempre disponible como fallback
   openai: !!process.env.OPENAI_API_KEY,
-  google: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY),
+  ollama: /* detecta si FORGE_LLM_PROVIDER=ollama */,
 };
 ```
 
 ### Tabla de resolución de modelos
 
-| Nivel | Anthropic | OpenAI | Google |
+| Nivel | Anthropic | OpenAI | Ollama |
 |-------|-----------|--------|--------|
-| `high` | `claude-opus-4-8` | `gpt-4o` | `gemini-2.0-flash` |
-| `medium` | `claude-sonnet-4-6` | `gpt-4o-mini` | `gemini-2.0-flash` |
-| `low` | `claude-haiku-4-5-20251001` | `gpt-4o-mini` | `gemini-2.0-flash-lite` |
+| `high` | `claude-opus-4-8` | `gpt-4o` | `qwen2.5-coder:7b` |
+| `medium` | `claude-sonnet-4-6` | `gpt-4o-mini` | `llama3` |
+| `low` | `claude-haiku-4-5-20251001` | `gpt-4o-mini` | `mistral` |
+
+**Nota:** Google/Gemini no está soportado en v4.2.0. No existe implementación en `core/llm-providers/`.
 
 ### Agentes que siempre usan Anthropic
 
@@ -394,8 +396,7 @@ forge ui --no-open          # sin abrir navegador automáticamente
 |----------|-----------|-------------|
 | `CLAUDE_AGENT_NAME` | agent-memory | Nombre del agente activo |
 | `OPENAI_API_KEY` | model-registry | Habilita proveedor OpenAI |
-| `GOOGLE_API_KEY` | model-registry | Habilita proveedor Google |
-| `GEMINI_API_KEY` | model-registry | Alternativa a `GOOGLE_API_KEY` |
+| `FORGE_LLM_PROVIDER` | llm-providers | Fuerza proveedor: anthropic, openai, ollama, stub |
 | `FORGE_UI_PORT` | ui/server.js | Puerto del dashboard |
 | `SDD_AUTO` | cli/index.js | `=1` para bypass de confirmaciones |
 | `FIGMA_PAT` | sdd.config.yaml | Token de acceso personal de Figma |
