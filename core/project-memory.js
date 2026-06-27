@@ -1,16 +1,14 @@
 /**
- * Extends .sdd/estado.json with FORGE fields.
- * Manages persistence of IR, ProductDesign, and pipeline state.
+ * project-memory.js — Gestión de persistencia del estado FORGE (.sdd/estado.json)
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
-export const SCHEMA_VERSION = "1.0" as const;
+export const SCHEMA_VERSION = '1.0';
 
-// Transiciones válidas del pipeline — previene saltos de etapa que omitan pasos obligatorios
-const PIPELINE_TRANSITIONS: Record<NonNullable<ForgeEstado['pipeline_step']>, NonNullable<ForgeEstado['pipeline_step']>[]> = {
+/** Transiciones válidas del pipeline */
+const PIPELINE_TRANSITIONS = {
   idea:        ['discovery'],
   discovery:   ['ir'],
   ir:          ['design'],
@@ -22,55 +20,36 @@ const PIPELINE_TRANSITIONS: Record<NonNullable<ForgeEstado['pipeline_step']>, No
   done:        [],
 };
 
-export interface ForgeEstado {
-  // Schema contract — required in all new states
-  schemaVersion?: typeof SCHEMA_VERSION;
-
-  // Existing sdd-lite fields (preserved as-is)
-  spec_activa?: string;
-  plan_activo?: string;
-  [key: string]: unknown;
-
-  // FORGE extensions
-  ir_generado?: boolean;
-  ir_path?: string;
-  product_design_generado?: boolean;
-  product_design_aprobado?: boolean;
-  product_design_path?: string;
-  design_direction?: string;
-  design_system_path?: string;
-  spec_draft_path?: string;
-  pipeline_step?: 'idea' | 'discovery' | 'ir' | 'design' | 'spec' | 'plan' | 'tasks' | 'code' | 'done';
-  ultima_actualizacion?: string;
-
-  // Inter-agent state (A6)
-  artefactos_sesion?: {
-    ir_confidence?: number | null;
-    stack_decidido?: string | null;
-    complejidad_estimada?: string | null;
-    agentes_activos_ultimo_plan?: string[];
-  };
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
+/**
+ * @typedef {Object} ForgeEstado
+ * @property {string} [schemaVersion]
+ * @property {string} [spec_activa]
+ * @property {string} [plan_activo]
+ * @property {boolean} [ir_generado]
+ * @property {string} [ir_path]
+ * @property {boolean} [product_design_generado]
+ * @property {boolean} [product_design_aprobado]
+ * @property {string} [product_design_path]
+ * @property {string} [design_direction]
+ * @property {string} [design_system_path]
+ * @property {string} [spec_draft_path]
+ * @property {'idea'|'discovery'|'ir'|'design'|'spec'|'plan'|'tasks'|'code'|'done'} [pipeline_step]
+ * @property {string} [ultima_actualizacion]
+ */
 
 export class ProjectMemory {
-  private estadoPath: string;
-  private sddDir: string;
-  private _cache: ForgeEstado | null = null;
-  private _cacheMtime: number = 0;
-  private _cacheSize: number = 0;
-
-  constructor(cwd: string = process.cwd()) {
+  /** @param {string} [cwd] */
+  constructor(cwd = process.cwd()) {
     this.sddDir = path.join(cwd, '.sdd');
     this.estadoPath = path.join(this.sddDir, 'estado.json');
+    this._cache = null;
+    this._cacheMtime = 0;
+    this._cacheSize = 0;
   }
 
-  read(): ForgeEstado {
-    this.ensureSddDir();
+  /** @returns {ForgeEstado} */
+  read() {
+    this._ensureSddDir();
     if (!fs.existsSync(this.estadoPath)) {
       this._cache = null;
       return {};
@@ -84,22 +63,25 @@ export class ProjectMemory {
       this._cache = parsed;
       this._cacheMtime = stat.mtimeMs;
       this._cacheSize = stat.size;
-      return this._cache!;
+      return this._cache;
     } catch {
       return {};
     }
   }
 
-  update(fields: Partial<ForgeEstado>): ForgeEstado {
+  /**
+   * @param {Partial<ForgeEstado>} fields
+   * @returns {ForgeEstado}
+   */
+  update(fields) {
     const current = this.read();
-    const updated: ForgeEstado = {
+    const updated = {
       schemaVersion: SCHEMA_VERSION,
       ...current,
       ...fields,
       ultima_actualizacion: new Date().toISOString(),
     };
-    this.ensureSddDir();
-    // Escritura atómica: tmp → rename para evitar corrupción si el proceso muere en medio
+    this._ensureSddDir();
     const tmpPath = this.estadoPath + '.tmp';
     fs.writeFileSync(tmpPath, JSON.stringify(updated, null, 2));
     fs.renameSync(tmpPath, this.estadoPath);
@@ -107,12 +89,10 @@ export class ProjectMemory {
     return updated;
   }
 
-  validate(): ValidationResult {
-    const errors: string[] = [];
-    if (!fs.existsSync(this.estadoPath)) {
-      return { valid: true, errors: [] }; // Sin estado aún es válido (proyecto nuevo)
-    }
-    let estado: unknown;
+  /** @returns {{ valid: boolean, errors: string[] }} */
+  validate() {
+    if (!fs.existsSync(this.estadoPath)) return { valid: true, errors: [] };
+    let estado;
     try {
       estado = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
     } catch {
@@ -121,35 +101,31 @@ export class ProjectMemory {
     if (typeof estado !== 'object' || estado === null) {
       return { valid: false, errors: ['estado.json debe ser un objeto JSON'] };
     }
-    const e = estado as Record<string, unknown>;
-    if (!e['schemaVersion']) {
+    const errors = [];
+    if (!estado['schemaVersion']) {
       errors.push('schemaVersion ausente — ejecuta `forge doctor` para migrar');
-    } else if (e['schemaVersion'] !== SCHEMA_VERSION) {
-      errors.push(`schemaVersion "${e['schemaVersion']}" desconocida (esperada: "${SCHEMA_VERSION}")`);
+    } else if (estado['schemaVersion'] !== SCHEMA_VERSION) {
+      errors.push(`schemaVersion "${estado['schemaVersion']}" desconocida (esperada: "${SCHEMA_VERSION}")`);
     }
     return { valid: errors.length === 0, errors };
   }
 
-  migrate(): ForgeEstado {
-    if (!fs.existsSync(this.estadoPath)) {
-      return {};
-    }
-    let estado: ForgeEstado;
+  /** @returns {ForgeEstado} */
+  migrate() {
+    if (!fs.existsSync(this.estadoPath)) return {};
+    let estado;
     try {
       estado = JSON.parse(fs.readFileSync(this.estadoPath, 'utf8'));
     } catch {
       return {};
     }
-    if (estado.schemaVersion === SCHEMA_VERSION) {
-      return estado; // Ya está en la versión actual
-    }
-    // Migración: legado (sin schemaVersion) → 1.0
-    const migrado: ForgeEstado = {
+    if (estado.schemaVersion === SCHEMA_VERSION) return estado;
+    const migrado = {
       schemaVersion: SCHEMA_VERSION,
       ...estado,
       ultima_actualizacion: new Date().toISOString(),
     };
-    this.ensureSddDir();
+    this._ensureSddDir();
     const tmpPath = this.estadoPath + '.tmp';
     fs.writeFileSync(tmpPath, JSON.stringify(migrado, null, 2));
     fs.renameSync(tmpPath, this.estadoPath);
@@ -157,26 +133,26 @@ export class ProjectMemory {
     return migrado;
   }
 
-  saveIR(ir: object): string {
-    this.ensureSddDir();
+  /** @param {object} ir @returns {string} */
+  saveIR(ir) {
+    this._ensureSddDir();
     const irPath = path.join(this.sddDir, 'ir.json');
-    this.writeAtomic(irPath, JSON.stringify(ir, null, 2));
+    this._writeAtomic(irPath, JSON.stringify(ir, null, 2));
     this.update({ ir_generado: true, ir_path: '.sdd/ir.json' });
     return irPath;
   }
 
-  saveProductDesign(pd: object): string {
-    this.ensureSddDir();
+  /** @param {object} pd @returns {string} */
+  saveProductDesign(pd) {
+    this._ensureSddDir();
     const pdPath = path.join(this.sddDir, 'product-design.json');
-    this.writeAtomic(pdPath, JSON.stringify(pd, null, 2));
-    this.update({
-      product_design_generado: true,
-      product_design_path: '.sdd/product-design.json',
-    });
+    this._writeAtomic(pdPath, JSON.stringify(pd, null, 2));
+    this.update({ product_design_generado: true, product_design_path: '.sdd/product-design.json' });
     return pdPath;
   }
 
-  loadIR(): object | null {
+  /** @returns {object|null} */
+  loadIR() {
     const estado = this.read();
     if (!estado.ir_generado) return null;
     const irPath = path.join(this.sddDir, 'ir.json');
@@ -184,7 +160,8 @@ export class ProjectMemory {
     return JSON.parse(fs.readFileSync(irPath, 'utf8'));
   }
 
-  loadProductDesign(): object | null {
+  /** @returns {object|null} */
+  loadProductDesign() {
     const estado = this.read();
     if (!estado.product_design_generado) return null;
     const pdPath = path.join(this.sddDir, 'product-design.json');
@@ -192,7 +169,11 @@ export class ProjectMemory {
     return JSON.parse(fs.readFileSync(pdPath, 'utf8'));
   }
 
-  setPipelineStep(step: ForgeEstado['pipeline_step'], force = false): void {
+  /**
+   * @param {ForgeEstado['pipeline_step']} step
+   * @param {boolean} [force]
+   */
+  setPipelineStep(step, force = false) {
     if (!force && step) {
       const current = this.read().pipeline_step;
       if (current && current !== step) {
@@ -209,37 +190,32 @@ export class ProjectMemory {
     this.update({ pipeline_step: step });
   }
 
-  getActiveDesignSystem(): string {
+  /** @returns {string} */
+  getActiveDesignSystem() {
     const estado = this.read();
     return estado.design_system_path || 'design-systems/neutral-modern/DESIGN.md';
   }
 
-  summary(): string {
+  /** @returns {string} */
+  summary() {
     const e = this.read();
     const lines = ['Estado del proyecto FORGE:'];
-
     if (e.ir_generado) lines.push('  ✅ IR generado');
     else lines.push('  ⭕ Sin IR — ejecuta /sdd.interpretar');
-
     if (e.product_design_aprobado) lines.push('  ✅ Diseño aprobado');
     else if (e.product_design_generado) lines.push('  🔄 Diseño generado (pendiente aprobación)');
     else lines.push('  ⭕ Sin diseño — ejecuta /sdd.diseñar');
-
     if (e.design_direction) lines.push(`  🎨 Dirección visual: ${e.design_direction}`);
     if (e.pipeline_step) lines.push(`  📍 Paso actual: ${e.pipeline_step}`);
     if (e.spec_activa) lines.push(`  📋 Spec activa: ${e.spec_activa}`);
-
     return lines.join('\n');
   }
 
-  private ensureSddDir(): void {
-    if (!fs.existsSync(this.sddDir)) {
-      fs.mkdirSync(this.sddDir, { recursive: true });
-    }
+  _ensureSddDir() {
+    if (!fs.existsSync(this.sddDir)) fs.mkdirSync(this.sddDir, { recursive: true });
   }
 
-  // Escritura atómica: escribe a .tmp y luego rename para evitar corrupción parcial
-  private writeAtomic(filePath: string, content: string): void {
+  _writeAtomic(filePath, content) {
     const tmp = filePath + '.tmp';
     fs.writeFileSync(tmp, content);
     fs.renameSync(tmp, filePath);

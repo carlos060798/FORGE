@@ -1,49 +1,29 @@
 /**
- * state-machine.ts — Máquina de estados formal del pipeline FORGE
- *
- * Reemplaza la tabla lineal PIPELINE_TRANSITIONS de project-memory.ts con
- * una FSM real: estados, eventos con guards, acciones y side-effects.
- *
- * La FSM no escribe estado directamente — recibe un StateStore y un EventLog
- * como dependencias (inversión de control).
+ * state-machine.js — Máquina de estados formal del pipeline FORGE
  */
 
-import type { StateStore } from './state-store.js';
-import type { EventLog } from './event-log.js';
-import type { ForgeEstado } from './project-memory.js';
+/**
+ * @typedef {'idea'|'discovery'|'ir'|'design'|'spec'|'plan'|'tasks'|'code'|'done'} PipelineStep
+ */
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+/**
+ * @typedef {Object} Transition
+ * @property {PipelineStep} from
+ * @property {PipelineStep} to
+ * @property {(estado: object) => string|null} [guard]
+ * @property {(estado: object) => object} [action]
+ */
 
-export type PipelineStep =
-  | 'idea'
-  | 'discovery'
-  | 'ir'
-  | 'design'
-  | 'spec'
-  | 'plan'
-  | 'tasks'
-  | 'code'
-  | 'done';
+/**
+ * @typedef {Object} TransitionResult
+ * @property {boolean} ok
+ * @property {PipelineStep} from
+ * @property {PipelineStep} to
+ * @property {string} [error]
+ */
 
-export interface Transition {
-  from: PipelineStep;
-  to: PipelineStep;
-  /** Guard: devuelve null si OK, o string de error si la transición está bloqueada */
-  guard?: (estado: ForgeEstado) => string | null;
-  /** Acción ejecutada en la transición (modifica el estado antes de persistirlo) */
-  action?: (estado: ForgeEstado) => ForgeEstado;
-}
-
-export interface TransitionResult {
-  ok: boolean;
-  from: PipelineStep;
-  to: PipelineStep;
-  error?: string;
-}
-
-// ── Tabla de transiciones con guards ─────────────────────────────────────────
-
-const TRANSITIONS: Transition[] = [
+/** @type {Transition[]} */
+const TRANSITIONS = [
   {
     from: 'idea',
     to: 'discovery',
@@ -106,36 +86,33 @@ const TRANSITIONS: Transition[] = [
   },
 ];
 
-// ── PipelineStateMachine ──────────────────────────────────────────────────────
-
 export class PipelineStateMachine {
-  private readonly store: StateStore;
-  private readonly log: EventLog;
-
-  constructor(store: StateStore, log: EventLog) {
+  /**
+   * @param {import('./state-store.js').FileSystemStateStore} store
+   * @param {import('./event-log.js').EventLog} log
+   */
+  constructor(store, log) {
     this.store = store;
     this.log = log;
   }
 
-  /** Paso actual del pipeline según el store. */
-  currentStep(): PipelineStep {
+  /** @returns {PipelineStep} */
+  currentStep() {
     const estado = this.store.read();
-    return (estado.pipeline_step as PipelineStep) ?? 'idea';
+    return estado.pipeline_step ?? 'idea';
   }
 
   /**
-   * Intenta avanzar al siguiente paso del pipeline.
-   * Si hay un guard activo que no se cumple, devuelve error sin mutar el estado.
-   * Si `force=true`, omite los guards (solo para recuperación manual).
+   * @param {PipelineStep} to
+   * @param {boolean} [force]
+   * @returns {TransitionResult}
    */
-  advance(to: PipelineStep, force: boolean = false): TransitionResult {
+  advance(to, force = false) {
     const from = this.currentStep();
     const transition = TRANSITIONS.find(t => t.from === from && t.to === to);
 
     if (!transition) {
-      const validNextSteps = TRANSITIONS
-        .filter(t => t.from === from)
-        .map(t => t.to);
+      const validNextSteps = TRANSITIONS.filter(t => t.from === from).map(t => t.to);
       return {
         ok: false,
         from,
@@ -155,39 +132,29 @@ export class PipelineStateMachine {
 
     const nuevoEstado = transition.action ? transition.action(estado) : { ...estado, pipeline_step: to };
     this.store.write(nuevoEstado);
-
     this.log.append('pipeline_step_changed', { step: to, from, force }, { pipelineStep: to });
 
     return { ok: true, from, to };
   }
 
-  /**
-   * Fuerza un paso específico sin validar transiciones ni guards.
-   * Solo para recuperación desde `forge resume` o tests.
-   */
-  forceStep(step: PipelineStep): void {
+  /** @param {PipelineStep} step */
+  forceStep(step) {
     const estado = this.store.read();
-    this.store.write({
-      ...estado,
-      pipeline_step: step,
-      ultima_actualizacion: new Date().toISOString(),
-    });
+    this.store.write({ ...estado, pipeline_step: step, ultima_actualizacion: new Date().toISOString() });
     this.log.append('pipeline_step_changed', { step, forced: true }, { pipelineStep: step });
   }
 
-  /** Devuelve qué pasos siguen disponibles desde el estado actual. */
-  availableTransitions(): PipelineStep[] {
+  /** @returns {PipelineStep[]} */
+  availableTransitions() {
     const from = this.currentStep();
     return TRANSITIONS.filter(t => t.from === from).map(t => t.to);
   }
 
-  /** Valida que el estado tenga los campos requeridos para el paso actual. */
-  validateCurrentStep(): string[] {
+  /** @returns {string[]} */
+  validateCurrentStep() {
     const step = this.currentStep();
     const estado = this.store.read();
-    const errors: string[] = [];
-
-    // Aplicar el guard de la PRÓXIMA transición como validación del paso actual
+    const errors = [];
     const nextTransitions = TRANSITIONS.filter(t => t.from === step);
     for (const t of nextTransitions) {
       if (t.guard) {

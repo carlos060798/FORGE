@@ -1,24 +1,23 @@
 /**
- * runners/index.ts — Factory: StackInfo → Runner
- *
- * Punto de entrada único. El Orchestrator importa solo esto;
- * no necesita saber qué runner existe para cada lenguaje.
+ * runners/index.js — Factory: StackInfo → Runner
  */
 
-export type { Runner, RunnerResult } from './runner.js';
 export { NodeRunner, createNodeRunner } from './node-runner.js';
 export { PythonRunner, createPythonRunner } from './python-runner.js';
 export { GoRunner } from './go-runner.js';
 export { RustRunner } from './rust-runner.js';
 
-import type { StackInfo } from '../stack-detector.js';
-import type { Runner } from './runner.js';
 import { createNodeRunner } from './node-runner.js';
 import { createPythonRunner } from './python-runner.js';
 import { GoRunner } from './go-runner.js';
 import { RustRunner } from './rust-runner.js';
 
-export function runnerForStack(stack: StackInfo, cwd: string): Runner {
+/**
+ * @param {import('../stack-detector.js').StackInfo} stack
+ * @param {string} cwd
+ * @returns {import('./runner.js').Runner}
+ */
+export function runnerForStack(stack, cwd) {
   switch (stack.lenguaje) {
     case 'typescript':
     case 'javascript':
@@ -30,7 +29,6 @@ export function runnerForStack(stack: StackInfo, cwd: string): Runner {
     case 'rust':
       return new RustRunner();
     default:
-      // Fallback: intenta npm test, falla silenciosamente
       return createNodeRunner(cwd);
   }
 }
