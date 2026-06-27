@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, decision store con búsqueda semántica, y observabilidad completa. Hay tres áreas genuinamente incompletas: E2E tests del pipeline sin LLM, routing real de modelo en runtime, y memoria compartida entre agentes. El resto funciona y está testeado.
+FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD completo, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, motor de agentes agnóstico de LLM, decision store con búsqueda semántica, dashboard SSE en tiempo real, y aprobación humana obligatoria antes de planificar. **998 tests pasando, 0 fallos.**
 
 ---
 
@@ -14,29 +14,35 @@ FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD, 14 agentes con en
 
 | Componente | Tests | Estado | Nota |
 |---|---|---|---|
-| Agent enforcement (agentes read-only) | 10/10 ✅ | Producción | `pre-tool-guard.js` bloquea Write/Edit a nivel hook — no configurable |
-| Decision store SQLite + TF-IDF | 8/8 ✅ (1 skip) | Producción | Skip: superseder cuando Node < 22.5 sin SQLite |
-| State machine + transiciones guardadas | ✅ | Producción | `core/state-machine.ts` compilado; guards: `ir_generado`, `product_design_aprobado`, `spec_activa`, `plan_activo` |
-| CLI runner portable | ✅ | Producción | `forge status/step/validate/reset/state` — sin LLM |
-| Guardrails (pre-tool-guard) | 10/10 ✅ | Producción | 9 categorías de bloqueo, detección de secrets, ADR violations |
+| Agent enforcement (agentes read-only) | ✅ | Producción | `pre-tool-guard.js` + `.sh` bloquea Write/Edit a nivel hook |
+| Decision store SQLite + TF-IDF | ✅ (1 skip) | Producción | Skip: superseder cuando Node < 22.5 sin SQLite |
+| State machine + guards | ✅ | Producción | Guards: `ir_generado`, `product_design_aprobado`, `spec_activa + spec_aprobado`, `plan_activo` |
+| CLI runner portable | ✅ | Producción | `forge status/step/validate/reset/run/resume/aprobar` — sin LLM |
+| Guard `spec → plan` con aprobación humana | ✅ | Producción | `forge aprobar spec` escribe `spec_aprobado: true` en estado |
+| Motor LLM agnóstico | ✅ | Producción | Anthropic / OpenAI / Ollama / Stub — auto-detectado por env o config |
+| forge doctor con diagnóstico LLM real | ✅ | Producción | Ping, latencia, JSON validation, modelo, SQLite |
+| Guardrails (pre-tool-guard) | ✅ | Producción | 9 categorías de bloqueo, secrets, ADR violations |
+| Hooks multi-lenguaje (.sh + .js) | ✅ | Producción | Funciona en proyectos Python/Go/Rust/PHP sin `"type":"module"` |
 | Sistema de adaptadores | ✅ | Producción | `ForgeAdapter`, `AdapterRegistry`, `ClaudeCodeAdapter`, `SpecKitAdapter` |
-| Spec Kit handoff portable | ✅ | Producción | Genera `TASK.md + spec.md + pipeline-state.json + README.md` en `speckit-handoff/` |
 | Memoria persistente Markdown | ✅ | Producción | Auto-compresión, índice invertido JSONL, deduplicación |
 | Memoria persistente SQLite | ✅ | Producción | Auto-detectada en Node ≥22.5; fallback a Markdown |
+| Memoria compartida entre agentes | ✅ | Producción | `.sdd/memoria/compartida/decisiones-clave.md` — todos los agentes leen y escriben |
 | Memoria episódica TF-IDF | ✅ | Producción | Similitud coseno reemplaza grep exacto en `queryEpisodes` |
 | Context manager (presupuesto USD) | ✅ | Producción | `FORGE_BUDGET_WARN_USD` / `FORGE_BUDGET_BLOCK_USD`; resumen progresivo |
-| Observabilidad | ✅ | Producción | `consumo.jsonl` (5KB real), `mutaciones.jsonl` (33KB real), `agent-tool-audit.jsonl` (10.5KB real) |
+| Observabilidad | ✅ | Producción | `consumo.jsonl`, `mutaciones.jsonl`, `events.jsonl`, `agent-tool-audit.jsonl` |
 | Export/import artefactos | ✅ | Producción | `forge export --format=speckit\|openspec` + import con `--merge` |
-| Circuit breaker (3 niveles) | ✅ | Producción | sandbox / local / confirmado |
+| Circuit breaker (3 niveles) | ✅ | Producción | sandbox / local / confirmado — enforced en `pre-tool-guard.js` |
 | Pipeline SDD (39 comandos) | ✅ | Producción | idea → discovery → ir → design → spec → plan → tasks → code → done |
 | 14 agentes especializados | ✅ | Producción | 7 read-only enforced en hook, 7 con permisos de escritura |
 | forge decisions list/search/add/migrate | ✅ | Producción | `cli/decisions.js` — búsqueda semántica con score % |
 | forge dispatch + forge adapters | ✅ | Producción | `cli/dispatch.js` — resuelve adaptador disponible y ejecuta |
+| E2E tests pipeline completo sin LLM | 24/24 ✅ | Producción | `tests/e2e/pipeline-flow.test.js` — idea→spec con fixtures estáticas |
+| Dashboard UI con SSE | ✅ | Beta | SSE tiempo real (estado, consumo, eventlog) + fallback polling |
+| AST Indexer con limpiarTypeScript() | 18/18 ✅ | Beta | Decoradores, genéricos, JSX, satisfies, union types |
 | Templates de inicio | ✅ (3) | Beta | `api-rest`, `cli-tool`, `saas-mvp` — flujo verificado |
-| Dashboard UI | ✅ | Beta | HTTP loopback, 6 endpoints, polling 5s |
 | Integraciones MCP (Vercel/GitHub) | Parcial | Beta | Flujo básico probado, sin E2E automatizado |
 
-**Total tests:** 963 pasando, 1 fallo (ver sección 4).
+**Total tests: 998 pasando, 0 fallos.**
 
 ---
 
@@ -44,104 +50,63 @@ FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD, 14 agentes con en
 
 ### AST Indexer (`claude-hooks/ast-indexer.js`)
 
-**Qué sí hace:** parsea JS/TS básico con `acorn`, genera índice de símbolos para recuperación rápida.
+**Qué sí hace:** parsea JS/TS con `acorn` + limpieza de 10 patrones TypeScript. Genera índice de símbolos. 18 tests cubriendo decoradores, genéricos, JSX, `satisfies`, union types.
 
-**Qué no hace:** TypeScript avanzado (genéricos, decoradores, namespaces) puede producir errores silenciosos — `acorn` no es un parser TypeScript nativo. JSX también puede fallar.
+**Limitación:** TypeScript muy avanzado (namespaces, template literal types, conditional types) puede producir errores silenciosos. `acorn` no es un parser TypeScript nativo.
 
-**Impacto real:** el índice AST es opcional en el pipeline. Si falla, el agente cae de vuelta a lectura directa de archivos. Sin bloqueo de pipeline.
+**Impacto real:** el índice AST es opcional. Si falla, el agente cae a lectura directa. Sin bloqueo de pipeline.
 
 ---
 
 ### Model Routing (`claude-hooks/model-registry.js`)
 
-**Qué sí hace:** resuelve qué modelo debería usar cada agente según `sdd.config.yaml` y el frontmatter del agente. Registra en observabilidad.
+**Qué sí hace:** resuelve qué modelo debería usar cada agente según `sdd.config.yaml`. Registra en observabilidad.
 
-**Qué no hace:** cambiar el modelo que Claude Code usa en tiempo de ejecución. El modelo efectivo está determinado por el frontmatter YAML del agente (`model: claude-opus-4-8`). `model-registry.js` es observabilidad, no routing real.
+**Qué no hace:** cambiar el modelo que Claude Code usa en tiempo de ejecución. El modelo efectivo está determinado por el frontmatter YAML del agente. `model-registry.js` es observabilidad, no routing dinámico.
 
-**Por qué:** la API de Claude Code no expone todavía un mecanismo de override de modelo por tool call. Cuando lo exponga, `model-registry.js` ya tiene la lógica lista.
+**Por qué:** la API de Claude Code no expone override de modelo por tool call. Cuando lo exponga, `model-registry.js` ya tiene la lógica preparada. El motor LLM agnóstico (`core/llm-providers/`) sí hace routing real para el runner headless.
 
 ---
 
 ### Dashboard UI (`ui/server.js`)
 
-**Qué sí hace:** servidor HTTP loopback en `localhost:3001`, 6 endpoints read-only, visualización del estado del pipeline.
+**Qué sí hace:** servidor HTTP loopback en `localhost:3001`, SSE en tiempo real (estado, consumo, eventlog), endpoint `/eventlog` para últimas 50 entradas.
 
-**Qué no hace:** WebSockets (polling cada 5s), autenticación, escritura de estado desde la UI.
+**Qué no hace:** autenticación, escritura de estado desde la UI, WebSockets (usa SSE + fallback polling).
 
-**Impacto real:** funcional para monitoreo local. No apto para exponer en red.
+**Impacto real:** funcional para monitoreo local. No apto para exponer en red pública.
 
 ---
 
 ### TF-IDF en Decision Store (`core/decisions/decision-store.js`)
 
-**Implementación real:** TF (frecuencia de términos) + similitud coseno. Sin IDF global (frecuencia inversa de documentos). Sin embeddings de LLM.
+**Implementación real:** TF (frecuencia de términos) + similitud coseno. Sin IDF global.
 
-**Consecuencia:** funciona muy bien con docenas o cientos de decisiones. Con miles de ADRs, términos comunes ganarían peso artificialmente (no hay IDF para penalizarlos). Para el caso de uso típico (proyecto individual o equipo pequeño), es correcto y suficiente.
+**Consecuencia:** funciona muy bien con docenas o cientos de decisiones. Con miles de ADRs, términos comunes ganarían peso artificialmente. Para el caso de uso típico (proyecto individual o equipo pequeño), es correcto y suficiente.
 
 ---
 
 ## 3. No existe todavía
 
-### E2E pipeline tests sin LLM
-
-Los 963 tests actuales cubren infraestructura (hooks, memory, state machine, adapters) pero **no el flujo completo de usuario**: idea → ir → spec → plan → code.
-
-Una regresión en `sdd.interpretar` que cambie el formato de `ir.json` puede pasar desapercibida hasta que un usuario real lo encuentre.
-
-**Impacto:** prioridad P1 de mejoras. Sin este test, la suite de CI no valida el pipeline end-to-end.
-
-**Qué se necesita:** `tests/e2e/pipeline-flow.test.js` que use fixtures estáticas de `ir.json`/`spec.md`/`estado.json` y el CLI runner — sin llamar a ningún LLM.
-
----
-
 ### Routing condicional automático por `confidence` del IR
 
-`ir.json` tiene el campo `confidence` (float 0-1). Si es < 0.7, la especificación dice que FORGE debe pedir aclaración antes de diseñar.
+`ir.json` tiene el campo `confidence` (float 0-1). Si es < 0.7, FORGE debería pedir aclaración antes de diseñar. Los comandos `sdd.diseñar.md` y `sdd.especificar.md` tienen el bloque Bash documentado, pero no hay lógica ejecutable en el runner que lo evalúe automáticamente.
 
-**Estado actual:** la condición existe documentada pero no hay código que la evalúe automáticamente. El agente `arquitecto` lo hace por contexto del prompt, no por lógica ejecutable.
-
-**Qué se necesita:** en `commands/sdd.diseñar.md`, añadir bloque bash que lea `confidence` del IR y haga branch antes de continuar. Esfuerzo: horas.
+**Impacto:** el agente `arquitecto` lo gestiona por contexto del prompt. Sin bloqueo de pipeline.
 
 ---
 
-### Memoria compartida entre agentes
+### Driver HTTP de inferencia headless (v2)
 
-Cada agente tiene su propia `agente-{nombre}.md` o registro en SQLite. Si `seguridad` quiere ver las decisiones de `arquitecto`, debe releer los archivos — no hay canal directo.
+El motor LLM (`core/llm-providers/`) soporta Anthropic/OpenAI/Ollama/Stub. Falta un modo donde el runner ejecute tareas completas sin necesitar Claude Code instalado, solo con la API key.
 
-**Estado actual:** convención no implementada. El análisis comparativo con CrewAI identifica esto como gap.
-
-**Qué se necesita:** convención de archivo `.sdd/memoria/compartida/decisiones-clave.md` + entrada en `agent-memory.js` que escriba ahí cuando el agente registra un ADR. Esfuerzo: horas.
+**Estado:** fuera del camino crítico v1. Los artefactos portables (SpecKit) cubren el caso sin HTTP propio.
 
 ---
 
-### Driver HTTP de inferencia (v2)
+## 4. Deuda técnica
 
-El adaptador `SpecKitAdapter` genera artefactos que cualquier agente externo puede consumir. Pero no existe un adaptador que haga la llamada HTTP directamente a Anthropic/OpenAI/Gemini desde el runner portable.
-
-**Estado actual:** fuera del camino crítico v1. La solución actual (artefactos portables) cubre el caso de uso sin necesitar HTTP propio.
-
----
-
-## 4. Deuda técnica identificada
-
-### Test fallando — `performance.test.js:120`
-
-```
-Test: "leer SKILL.md de las 30 skills < 80ms"  [Etiqueta real del test]
-Actual: 386.53ms
-Umbral: 250ms
-Razón: lectura secuencial de 31 skills en disco Windows con Node fs.readFileSync
-```
-
-**Impacto:** bajo en producción (la lectura de skills solo ocurre en `forge init` y `forge doctor`). El umbral puede estar calibrado para Linux SSD y ser demasiado estricto en Windows HDD. Sin embargo, el test da señal real de que la lectura secuencial de 31 archivos es lenta.
-
-**Solución posible:** lectura lazy (solo leer el skill cuando se necesita) o leer en paralelo con `Promise.all`. Esfuerzo: horas.
-
----
-
-### Dependencias runtime — NO son cero
-
-El README menciona "zero dependencias en runtime". No es exactamente correcto:
+### Dependencias runtime — no son estrictamente cero
 
 ```json
 "dependencies": {
@@ -150,20 +115,16 @@ El README menciona "zero dependencias en runtime". No es exactamente correcto:
 }
 ```
 
-- `@sqlite.org/sqlite-wasm` — fallback de SQLite WebAssembly (cuando `node:sqlite` no está disponible)
+- `@sqlite.org/sqlite-wasm` — fallback SQLite WebAssembly cuando `node:sqlite` no disponible
 - `acorn` — parser JS para el AST indexer
 
-**Impacto:** el `npm install` añade ~8MB. No es zero-deps estricto. Para el caso de uso típico (Node ≥22.5), `node:sqlite` nativo se usa y `@sqlite.org/sqlite-wasm` no entra en juego.
+**Impacto:** `npm install` añade ~8MB. No es zero-deps estricto. En Node ≥22.5, `node:sqlite` nativo se usa y el wasm no entra en juego.
 
 ---
 
-### Compilación TypeScript necesaria para el runner portable
+### core/ es JS puro — no necesita compilación TypeScript
 
-`core/state-machine.ts` es TypeScript. Para que `forge step` funcione, necesita existir `dist/core/` compilado.
-
-**Estado actual:** `tsconfig.json` tiene `"noEmit": false` y `package.json` tiene `"prepublishOnly": "npm run build && npm test"`. La compilación ocurre antes de publicar en npm.
-
-**Para contribuidores locales:** ejecutar `npm run build` antes de probar `forge step`. Sin este paso, el runner falla al no encontrar `dist/core/`.
+`core/` fue migrado de TypeScript a JS puro con JSDoc en commit `b117455`. No existe `dist/` ni se necesita `npm run build` para usar el runner. La referencia en `package.json` a `typecheck` apunta a `tsc` por compatibilidad, pero el runner funciona directamente con `node core/engine-cli.js`.
 
 ---
 
@@ -181,46 +142,47 @@ El README menciona "zero dependencias en runtime". No es exactamente correcto:
 - [ ] Node.js ≥22.5.0 (módulo `node:sqlite` experimental activado)
 - [ ] Si Node < 22.5: la memoria cae a Markdown y las decisiones a JSONL — funciona, pero sin búsqueda semántica
 
-### Para usar el runner CLI portable (sin Claude Code)
+### Para usar FORGE con otro LLM (OpenAI, Ollama)
 
-- [ ] `npm run build` ejecutado una vez (compila `core/` a `dist/core/`)
-- [ ] `forge status` funciona sin Claude Code instalado
-- [ ] `forge dispatch --adapter=speckit` genera artefactos sin LLM
+- [ ] Configurar `FORGE_LLM_PROVIDER=openai` o `ollama` en variables de entorno
+- [ ] O añadir `llm.provider` en `sdd.config.yaml`
+- [ ] `forge doctor` valida la conexión y latencia automáticamente
 
 ### Para contribuir / desarrollar FORGE
 
 - [ ] Node.js ≥22.5.0
-- [ ] `npm run build` antes de probar cambios en `core/`
-- [ ] `npm test` — 963 tests deben pasar (1 fallo conocido de performance es aceptable)
-- [ ] `npx tsc --noEmit` sin errores de tipo
+- [ ] `npm test` — 998 tests deben pasar, 0 fallos
+- [ ] No se necesita `npm run build` — `core/` es JS puro
 
 ---
 
 ## 6. Arquitectura de confianza por componente
 
 ```
-CONFIABLE EN PRODUCCIÓN (no necesita cambio para usarlo)
-├── Pipeline SDD 39 comandos          ✅
-├── 14 agentes + enforcement hooks    ✅
-├── State machine + CLI runner        ✅
-├── Memoria SQLite / Markdown         ✅
-├── Decision store TF-IDF             ✅
-├── Context manager presupuesto       ✅
-├── Observabilidad (3 JSONL)          ✅
-└── Adaptadores (ClaudeCode + SpecKit)✅
+CONFIABLE EN PRODUCCIÓN
+├── Pipeline SDD 39 comandos              ✅
+├── 14 agentes + enforcement hooks        ✅
+├── Hooks multi-lenguaje (.js + .sh)      ✅
+├── State machine + guards + aprobación   ✅
+├── CLI runner (run/resume/aprobar)       ✅
+├── Motor LLM agnóstico (4 providers)     ✅
+├── Memoria SQLite / Markdown             ✅
+├── Memoria compartida entre agentes      ✅
+├── Decision store TF-IDF                 ✅
+├── Circuit breaker (3 niveles)           ✅
+├── Context manager presupuesto           ✅
+├── Observabilidad (4 JSONL)              ✅
+├── E2E tests pipeline sin LLM (24)       ✅
+└── Adaptadores (ClaudeCode + SpecKit)    ✅
 
-FUNCIONAL PERO CON LIMITACIONES CONOCIDAS
-├── AST indexer (solo JS básico)      🟡
-├── Dashboard (polling, sin auth)     🟡
-├── MCP integrations (beta)           🟡
-└── TF-IDF a escala grande            🟡
+FUNCIONAL CON LIMITACIONES CONOCIDAS
+├── AST indexer (TS básico-medio)         🟡
+├── Dashboard SSE (sin auth)              🟡
+├── MCP integrations (beta)               🟡
+├── TF-IDF a escala grande (>1000 ADRs)   🟡
+└── model-registry.js (observabilidad)    🟡
 
-PENDIENTE DE IMPLEMENTACIÓN
-├── E2E pipeline tests                🔴
-├── Routing condicional por confidence🔴
-├── Memoria compartida entre agentes  🔴
-└── Driver HTTP inferencia (v2)       🔴
-
-OBSERVABILIDAD SOLAMENTE (no es routing real)
-└── model-registry.js                 ℹ️
+PENDIENTE
+├── Routing condicional por confidence    🔴
+└── Driver HTTP headless v2               🔴
 ```

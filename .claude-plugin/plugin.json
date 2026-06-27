@@ -1,8 +1,8 @@
 {
   "$schema": "https://claude.ai/schemas/plugin/v1.json",
   "name": "forge",
-  "version": "4.0.0",
-  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 30 skills, pipeline SDD+TDD completo.",
+  "version": "4.2.0",
+  "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. 14 agentes especializados, 39 comandos, 30 skills, pipeline SDD+TDD, motor LLM agnóstico (Anthropic/OpenAI/Ollama), dashboard SSE, hooks multi-lenguaje (JS+Bash).",
   "homepage": "https://github.com/carlos060798/FORGE",
   "repository": "https://github.com/carlos060798/FORGE",
   "license": "MIT",
