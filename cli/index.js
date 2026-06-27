@@ -1393,6 +1393,12 @@ function main() {
     case "reset":
       import("./runner.js").then(({ runForgeCommand }) => runForgeCommand(comando, args.slice(1))).catch(e => error(e.message));
       break;
+    case "dispatch":
+      import("./dispatch.js").then(({ cmdDispatch }) => cmdDispatch(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "adapters":
+      import("./dispatch.js").then(({ cmdAdapters }) => cmdAdapters()).catch(e => error(e.message));
+      break;
     case "--version":
     case "-v":
       console.log(pluginVersion());
