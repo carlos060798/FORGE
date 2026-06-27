@@ -1,5 +1,5 @@
 {
-  "name": "forge-sdd",
+  "name": "forja-mvp",
   "version": "4.2.0",
   "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 31 skills, pipeline SDD+TDD.",
   "type": "module",

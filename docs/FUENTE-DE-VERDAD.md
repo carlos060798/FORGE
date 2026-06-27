@@ -8,10 +8,10 @@
 | Campo | Valor |
 |---|---|
 | Versión | 4.2.0 |
-| Nombre paquete (`package.json`) | `forge-sdd` |
-| Publicado en npm | Sí — `npm install -g forge-sdd` |
+| Nombre paquete (`package.json`) | `forja-mvp` |
+| Publicado en npm | Sí — `npm install -g forja-mvp` |
 | Binario CLI | `forge` (alias: `sdd-es`) |
-| Instalación | `npm install -g forge-sdd` o `git clone` + `npm install -g .` |
+| Instalación | `npm install -g forja-mvp` o `git clone` + `npm install -g .` |
 | Licencia | MIT |
 
 ## Capacidades verificadas

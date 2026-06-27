@@ -171,8 +171,8 @@ describe("presets/ — configuraciones", () => {
 describe("package.json — manifiesto del paquete", () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 
-  test("name es forge-sdd", () => {
-    assert.equal(pkg.name, "forge-sdd");
+  test("name es forja-mvp", () => {
+    assert.equal(pkg.name, "forja-mvp");
   });
 
   test("version es 4.2.0", () => {

@@ -22,7 +22,7 @@ Si usas Node ≥22.5, FORGE usa `node:sqlite` nativo para la memoria y el decisi
 **Opción A — npm (recomendada):**
 
 ```bash
-npm install -g forge-sdd
+npm install -g forja-mvp
 forge --version   # debe imprimir 4.2.0
 ```
 
