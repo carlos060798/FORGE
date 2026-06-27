@@ -1330,6 +1330,11 @@ Uso:
   npx forge import --from=speckit --dir=<dir> [--merge]
   npx forge import --from=openspec --file=<file.json> [--merge]
                                      Importa artefactos portables de vuelta a .sdd/
+  npx forge status                   Estado del pipeline + transiciones disponibles
+  npx forge step <paso> [--force]    Avanzar el pipeline al paso indicado (sin LLM)
+  npx forge state                    Volcar estado.json formateado
+  npx forge validate                 Verificar precondiciones del paso actual
+  npx forge reset --force            Resetear pipeline a 'idea'
   npx forge --version                Muestra la versión
 
   (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
@@ -1380,6 +1385,13 @@ function main() {
       break;
     case "import":
       import("./import.js").then(({ cmdImport }) => cmdImport(args.slice(1))).catch(e => error(e.message));
+      break;
+    case "status":
+    case "step":
+    case "state":
+    case "validate":
+    case "reset":
+      import("./runner.js").then(({ runForgeCommand }) => runForgeCommand(comando, args.slice(1))).catch(e => error(e.message));
       break;
     case "--version":
     case "-v":
