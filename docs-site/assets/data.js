@@ -76,8 +76,8 @@ const PAGES = {
           <tr><td><strong>Runner standalone</strong></td><td><code>forge step</code>, <code>forge dispatch</code> — sin LLM ni Claude Code</td></tr>
           <tr><td><strong>Distribución</strong></td><td>npm — <code>npx forge init</code></td></tr>
           <tr><td><strong>Dependencias runtime</strong></td><td>Zero</td></tr>
-          <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + TypeScript (compilado a JS)</td></tr>
-          <tr><td><strong>Tests</strong></td><td>626/626 pasando (Node test runner nativo)</td></tr>
+          <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
+          <tr><td><strong>Tests</strong></td><td>998/998 pasando (Node test runner nativo)</td></tr>
         </tbody>
       </table>
 
@@ -319,7 +319,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Análisis de Madurez",
     html: `
       <h1>Análisis de Madurez</h1>
-      <p class="lead">Estado real de cada área de FORGE v4.2.0. Basado en análisis estático del repositorio y la suite de tests (626/626 pasando).</p>
+      <p class="lead">Estado real de cada área de FORGE v4.2.0. Basado en análisis estático del repositorio y la suite de tests (998/998 pasando).</p>
 
       <table>
         <thead><tr><th>Área</th><th>Estado</th><th>Justificación</th></tr></thead>
@@ -359,7 +359,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Maturity Analysis",
     html: `
       <h1>Maturity Analysis</h1>
-      <p class="lead">Real status of each FORGE v4.2.0 area. Based on static repository analysis and test suite (626/626 passing).</p>
+      <p class="lead">Real status of each FORGE v4.2.0 area. Based on static repository analysis and test suite (998/998 passing).</p>
 
       <table>
         <thead><tr><th>Area</th><th>Status</th><th>Justification</th></tr></thead>
@@ -1514,46 +1514,54 @@ tools: ["Read", "Glob", "Grep"]
       <h1>Recomendaciones</h1>
       <p class="lead">Qué cambios tendrían mayor impacto en FORGE v4.2.0, ordenados por prioridad.</p>
 
+      <h2>Completado en v4.2.0</h2>
+      <ul>
+        <li>✅ <strong>Tests E2E del pipeline</strong> — <code>tests/e2e/pipeline-flow.test.js</code>, 24 tests, idea→spec sin LLM</li>
+        <li>✅ <strong>SSE en dashboard</strong> — estado, consumo y eventlog en tiempo real; fallback polling</li>
+        <li>✅ <strong>Motor LLM agnóstico</strong> — Anthropic, OpenAI, Ollama, Stub via <code>core/llm-providers/</code></li>
+        <li>✅ <strong>Hooks multi-lenguaje</strong> — <code>.js</code> + <code>.sh</code>; funciona sin Node en el proyecto destino</li>
+        <li>✅ <strong>Aprobación humana obligatoria</strong> — guard <code>spec → plan</code> requiere <code>forge aprobar spec</code></li>
+        <li>✅ <strong>Memoria compartida entre agentes</strong> — <code>.sdd/memoria/compartida/decisiones-clave.md</code></li>
+      </ul>
+
       <h2>Alta prioridad</h2>
 
       <div class="callout warning">
-        <p><strong>Tests E2E del pipeline</strong></p>
-        <p>Los 626/626 tests actuales cubren infraestructura pero no el flujo de usuario completo. Una regresión en <code>sdd.interpretar</code> que cambia el formato de <code>ir.json</code> puede pasar desapercibida.</p>
-        <p><strong>Acción:</strong> Crear <code>tests/e2e/pipeline-flow.test.js</code> que simule un ciclo completo idea → ir → spec usando fixtures y el CLI runner, sin llamar al LLM.</p>
+        <p><strong>Routing condicional por confidence del IR</strong></p>
+        <p><code>ir.json</code> tiene un campo <code>confidence</code> (0-1). Si es &lt; 0.7, FORGE debería pedir aclaración antes de diseñar. La lógica está documentada en <code>commands/sdd.diseñar.md</code> pero no hay guard ejecutable en el runner.</p>
+        <p><strong>Acción:</strong> Añadir guard en la transición <code>ir → design</code> de la state machine que evalúe <code>ir_confidence</code> del estado.</p>
       </div>
 
       <div class="callout warning">
-        <p><strong>Routing real de modelo LLM</strong></p>
-        <p><code>model-registry.js</code> registra qué modelo usaría, pero no lo cambia en tiempo de ejecución. El modelo efectivo está en el frontmatter del agente.</p>
-        <p><strong>Acción:</strong> Monitorear la API de Claude Code. Cuando exponga el mecanismo de override, <code>model-registry.js</code> ya tiene la lógica — solo falta el punto de inyección.</p>
+        <p><strong>Routing real de modelo por agente</strong></p>
+        <p><code>model-registry.js</code> registra qué modelo usaría cada agente, pero no puede cambiarlo en tiempo de ejecución. El modelo efectivo está fijo en el frontmatter YAML del agente.</p>
+        <p><strong>Acción:</strong> Monitorear la API de Claude Code. Cuando exponga override de modelo por tool call, <code>model-registry.js</code> ya tiene la lógica lista.</p>
       </div>
 
       <h2>Media prioridad</h2>
 
       <div class="callout tip">
-        <p><strong>Indexación de TypeScript y JSX</strong></p>
-        <p><code>acorn</code> no parsea TypeScript nativo ni JSX. En proyectos TS el índice AST puede quedar incompleto.</p>
-        <p><strong>Acción:</strong> Añadir <code>@babel/parser</code> o <code>@typescript-eslint/typescript-estree</code> como parsers alternativos según extensión.</p>
+        <p><strong>Indexación de TypeScript avanzado</strong></p>
+        <p><code>acorn</code> cubre JS y TS básico-medio (decoradores, genéricos, JSX — 18 tests). TypeScript avanzado (namespaces, conditional types, template literal types) puede fallar silenciosamente.</p>
+        <p><strong>Acción:</strong> Añadir <code>@typescript-eslint/typescript-estree</code> como parser alternativo para archivos <code>.ts</code>.</p>
       </div>
 
       <div class="callout tip">
         <p><strong>Segundo adaptador de host (Cursor / Copilot)</strong></p>
-        <p>El adaptador Spec Kit ya genera el handoff portable. El siguiente paso es un adaptador específico que inyecte el contexto vía las APIs de extensión de Cursor o VS Code.</p>
+        <p>El adaptador Spec Kit ya genera handoff portable. El siguiente paso es un adaptador específico para Cursor o VS Code.</p>
         <p><strong>Acción:</strong> Extender <code>ForgeAdapter</code> con un <code>CursorAdapter</code> que use el protocolo de extensión de Cursor.</p>
       </div>
 
       <h2>Baja prioridad</h2>
       <ul>
-        <li><strong>WebSockets en dashboard</strong> — Evaluar Server-Sent Events (SSE) como alternativa zero-dep al polling actual</li>
         <li><strong>Marketplace de templates</strong> — El formato es estable; crear repositorio de templates de la comunidad</li>
-        <li><strong>Embeddings semánticos reales</strong> — El TF-IDF en <code>decision-store.js</code> y <code>episodic-memory.js</code> funciona bien sin deps externas; embeddings locales mejorarían la recall</li>
-        <li><strong>Provider HTTP real (v2 opcional)</strong> — Conectar <code>model-registry.js</code> a drivers HTTP de Anthropic/OpenAI/Gemini para el adaptador portable</li>
+        <li><strong>Embeddings semánticos reales</strong> — El TF-IDF funciona bien sin deps externas; embeddings locales mejorarían la recall en colecciones grandes</li>
+        <li><strong>Driver HTTP headless v2</strong> — Runner completo sin Claude Code instalado, solo con API key</li>
       </ul>
 
       <h2>Para contribuir</h2>
       <pre><code class="bash">git checkout -b feature/mi-contribucion
-npm test           # 626/626 en verde antes de PR
-npx tsc --noEmit   # Type-check sin errores</code></pre>
+npm test           # 998/998 en verde antes de PR</code></pre>
     `
   },
   en: {
@@ -1562,31 +1570,41 @@ npx tsc --noEmit   # Type-check sin errores</code></pre>
       <h1>Recommendations</h1>
       <p class="lead">What changes would have the greatest impact on FORGE v4.2.0, ordered by priority.</p>
 
+      <h2>Completed in v4.2.0</h2>
+      <ul>
+        <li>✅ <strong>E2E pipeline tests</strong> — <code>tests/e2e/pipeline-flow.test.js</code>, 24 tests, idea→spec without LLM</li>
+        <li>✅ <strong>SSE dashboard</strong> — real-time state, consumption and eventlog; polling fallback</li>
+        <li>✅ <strong>LLM-agnostic engine</strong> — Anthropic, OpenAI, Ollama, Stub via <code>core/llm-providers/</code></li>
+        <li>✅ <strong>Multi-language hooks</strong> — <code>.js</code> + <code>.sh</code>; works without Node in target project</li>
+        <li>✅ <strong>Mandatory human approval</strong> — <code>spec → plan</code> guard requires <code>forge aprobar spec</code></li>
+        <li>✅ <strong>Shared agent memory</strong> — <code>.sdd/memoria/compartida/decisiones-clave.md</code></li>
+      </ul>
+
       <h2>High priority</h2>
 
       <div class="callout warning">
-        <p><strong>E2E pipeline tests</strong></p>
-        <p>626/626 tests cover infrastructure but not the full user flow. A regression in <code>sdd.interpretar</code> changing <code>ir.json</code> format might go unnoticed.</p>
-        <p><strong>Action:</strong> Create <code>tests/e2e/pipeline-flow.test.js</code> simulating a full cycle using fixtures and the CLI runner — no LLM calls.</p>
+        <p><strong>Conditional routing by IR confidence</strong></p>
+        <p><code>ir.json</code> has a <code>confidence</code> field (0-1). If &lt; 0.7, FORGE should request clarification before designing. Logic is documented in <code>commands/sdd.diseñar.md</code> but there's no executable guard in the runner.</p>
+        <p><strong>Action:</strong> Add a guard on the <code>ir → design</code> transition that checks <code>ir_confidence</code> from state.</p>
       </div>
 
       <div class="callout warning">
-        <p><strong>Real LLM model routing</strong></p>
-        <p><code>model-registry.js</code> records but does not route. Effective model is set in agent frontmatter.</p>
-        <p><strong>Action:</strong> Monitor Claude Code API. When it exposes override mechanism, <code>model-registry.js</code> already has the logic ready.</p>
+        <p><strong>Real per-agent model routing</strong></p>
+        <p><code>model-registry.js</code> records the intended model but cannot override it at runtime. Effective model is set in agent YAML frontmatter.</p>
+        <p><strong>Action:</strong> Monitor Claude Code API for per-tool-call model override. <code>model-registry.js</code> already has the logic ready.</p>
       </div>
 
       <h2>Medium priority</h2>
       <ul>
-        <li><strong>TypeScript/JSX AST indexing</strong> — Add <code>@babel/parser</code> as alternative parser</li>
+        <li><strong>Advanced TypeScript AST indexing</strong> — Add <code>@typescript-eslint/typescript-estree</code> as alternative parser for <code>.ts</code> files</li>
         <li><strong>Second host adapter</strong> — <code>CursorAdapter</code> extending <code>ForgeAdapter</code></li>
       </ul>
 
       <h2>Low priority</h2>
       <ul>
-        <li><strong>SSE in dashboard</strong> — Replace polling with Server-Sent Events</li>
-        <li><strong>Real embeddings</strong> — TF-IDF works well; local embeddings would improve recall</li>
-        <li><strong>HTTP provider driver (v2)</strong> — Connect model-registry to Anthropic/OpenAI/Gemini HTTP for portable adapter</li>
+        <li><strong>Template marketplace</strong> — Format is stable; create community template repository</li>
+        <li><strong>Real semantic embeddings</strong> — TF-IDF works well; local embeddings would improve recall at scale</li>
+        <li><strong>Headless HTTP driver v2</strong> — Full runner without Claude Code, API key only</li>
       </ul>
     `
   }
