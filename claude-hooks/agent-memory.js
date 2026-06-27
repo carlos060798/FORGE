@@ -479,6 +479,13 @@ async function main(raw) {
   // Índice invertido JSONL (siempre — habilita query-memory.js independientemente del backend)
   actualizarIndice(cwd, agente, archivoModificado, resumen, bytes);
 
+  // TODO: integrar EpisodicMemory.addEpisode()
+  // core/episodic-memory.js aún no existe. Cuando se cree, llamar aquí:
+  //   import { EpisodicMemory } from '../core/episodic-memory.js';
+  //   const episodic = new EpisodicMemory(join(cwd, '.sdd', 'memoria'));
+  //   episodic.addEpisode({ ts: new Date().toISOString(), agente, archivo: archivoModificado, resumen, bytes });
+  // El módulo debe exponer addEpisode(entry) y búsqueda por similitud semántica.
+
   // Escritura de memoria según backend configurado
   const memoriaDir = join(cwd, ".sdd", "memoria");
   if (CONFIG.backend === "sqlite") {

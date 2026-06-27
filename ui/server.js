@@ -8,6 +8,7 @@
  *   GET /tareas       → .sdd/estado-tareas.json (o vacío si no existe)
  *   GET /verificar    → .sdd/verificacion.json  (o vacío si no existe)
  *   GET /consumo      → últimas 50 líneas de .sdd/observabilidad/consumo.jsonl
+ *   GET /eventlog     → últimas 50 entradas de .sdd/events.jsonl (EventLog del engine)
  *   GET /actividad    → últimas 50 entradas de consumo.jsonl en formato legible
  *   GET /agentes      → agentes activos en los últimos 60s (de consumo.jsonl)
  *   GET /agente/:n    → frontmatter + memoria + actividad reciente del agente n
@@ -150,6 +151,11 @@ function handleRequest(req, res) {
   }
   if (path === "/consumo") {
     const lines = readLastJsonlLines(join(SDD_DIR, "observabilidad", "consumo.jsonl"));
+    json(res, lines);
+    return;
+  }
+  if (path === "/eventlog") {
+    const lines = readLastJsonlLines(join(SDD_DIR, "events.jsonl"), 50);
     json(res, lines);
     return;
   }

@@ -283,6 +283,13 @@ function main() {
     }
   }
 
+  // TODO: integrar deltaEncode de core/ cuando el módulo exista
+  // Si core/ast-delta.js (o similar) expone deltaEncode(oldIndex, newIndex), llamar:
+  //   const oldIndex = existsSync(indiceFile) ? readFileSync(indiceFile, 'utf8') : '';
+  //   const delta = deltaEncode(oldIndex, simbolosTotales);
+  //   writeFileSync(indiceFile, delta, 'utf8');
+  // Hasta entonces, se hace full-rebuild (comportamiento actual).
+
   // Escribir índice (sobrescribe — el índice es regenerable)
   const lineas = simbolosTotales.map((s) => JSON.stringify(s)).join("\n");
   writeFileSync(indiceFile, lineas + (lineas ? "\n" : ""), "utf8");
