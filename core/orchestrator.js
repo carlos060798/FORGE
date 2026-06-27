@@ -218,7 +218,7 @@ export class Orchestrator {
 
   async _runTests() {
     try {
-      const result = this.options.runner.test(this.options.cwd);
+      const result = await this.options.runner.test(this.options.cwd);
       this.log.append('runner_started', { command: 'test', cwd: this.options.cwd });
       return result;
     } catch (err) {

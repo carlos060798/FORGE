@@ -11,6 +11,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
+import { resolve } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -274,4 +275,8 @@ async function main() {
   }
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+export { main };
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main().catch(e => { console.error(e); process.exit(1); });
+}

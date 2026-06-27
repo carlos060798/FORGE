@@ -351,15 +351,14 @@ describe('E2E validate — detecta falta de spec_activa en el estado', { skip: S
     assert.equal(estado.pipeline_step, 'spec', 'el paso no debe cambiar cuando el guard falla');
   });
 
-  test('spec_draft_path como alternativa a spec_activa desbloquea el pipeline', () => {
-    // Actualizar estado con spec_draft_path en lugar de spec_activa
+  test('spec_draft_path + spec_aprobado desbloquea spec→plan', () => {
     const e = leerEstado(dir);
     writeFileSync(join(dir, '.sdd', 'estado.json'), JSON.stringify(
-      { ...e, spec_draft_path: '.sdd/especificaciones/draft/spec.md' }, null, 2
+      { ...e, spec_draft_path: '.sdd/especificaciones/draft/spec.md', spec_aprobado: true }, null, 2
     ));
     const { fsm } = buildFSM(core, dir);
     const r = fsm.advance('plan');
-    assert.ok(r.ok, `spec_draft_path también debe desbloquear spec→plan: ${r.error}`);
+    assert.ok(r.ok, `spec_draft_path + spec_aprobado debe desbloquear spec→plan: ${r.error}`);
   });
 });
 

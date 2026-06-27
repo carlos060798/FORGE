@@ -1496,6 +1496,37 @@ Tras instalar, abre Claude Code y escribe:
 
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
+function cmdAprobar(subArgs) {
+  const objetivo = subArgs[0];
+  if (objetivo !== "spec") {
+    aviso("Uso: forge aprobar spec");
+    aviso("  Aprueba la spec activa para permitir avanzar a la fase de planificación.");
+    return;
+  }
+  const estadoPath = join(process.cwd(), ".sdd", "estado.json");
+  if (!existsSync(estadoPath)) {
+    aviso("No existe .sdd/estado.json — ejecuta primero 'forge init' y luego /forge en Claude Code");
+    return;
+  }
+  let estado;
+  try { estado = JSON.parse(readFileSync(estadoPath, "utf8")); } catch {
+    aviso("estado.json malformado — borra o regenera con /sdd.estado"); return;
+  }
+  if (!estado.spec_activa && !estado.spec_draft_path) {
+    aviso("No hay spec activa ni draft para aprobar.");
+    aviso("  Ejecuta primero /sdd.diseñar en Claude Code para generar la spec.");
+    return;
+  }
+  if (estado.spec_aprobado) {
+    info("La spec ya está aprobada ✓ — puedes avanzar a la planificación.");
+    return;
+  }
+  const nuevo = { ...estado, spec_aprobado: true, ultima_actualizacion: new Date().toISOString() };
+  writeFileSync(estadoPath, JSON.stringify(nuevo, null, 2), "utf8");
+  info("✅ Spec aprobada. Ahora puedes avanzar a la fase de planificación.");
+  info("   Siguiente paso: /sdd.planificar en Claude Code");
+}
+
 async function main() {
   const args    = process.argv.slice(2);
   const comando = args[0];
@@ -1552,6 +1583,16 @@ async function main() {
     case "decisions":
       import("./decisions.js").then(({ cmdDecisions }) => cmdDecisions(args.slice(1))).catch(e => error(e.message));
       break;
+    case "aprobar":
+      cmdAprobar(args.slice(1));
+      break;
+    case "run":
+    case "resume": {
+      const { main: engineMain } = await import("../core/engine-cli.js");
+      process.argv = [process.argv[0], process.argv[1], comando, ...args.slice(1)];
+      await engineMain();
+      break;
+    }
     case "--version":
     case "-v":
       console.log(pluginVersion());

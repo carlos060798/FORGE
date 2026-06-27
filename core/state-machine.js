@@ -61,6 +61,7 @@ const TRANSITIONS = [
     to: 'plan',
     guard: (e) => {
       if (!e.spec_activa && !e.spec_draft_path) return 'No hay spec activa ni draft registrado';
+      if (!e.spec_aprobado) return 'La spec debe aprobarse antes de planificar — ejecuta: forge aprobar spec';
       return null;
     },
     action: (e) => ({ ...e, pipeline_step: 'plan', ultima_actualizacion: new Date().toISOString() }),

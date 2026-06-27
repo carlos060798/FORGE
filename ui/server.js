@@ -45,16 +45,16 @@ function sseEmit(event, data) {
 
 function iniciarWatchers() {
   const archivosVigilados = [
-    join(SDD_DIR, "estado.json"),
-    join(SDD_DIR, "observabilidad", "consumo.jsonl"),
+    { ruta: join(SDD_DIR, "estado.json"),                      tipo: "estado"   },
+    { ruta: join(SDD_DIR, "observabilidad", "consumo.jsonl"),  tipo: "consumo"  },
+    { ruta: join(SDD_DIR, "events.jsonl"),                     tipo: "eventlog" },
   ];
-  for (const ruta of archivosVigilados) {
+  for (const { ruta, tipo } of archivosVigilados) {
     try {
       watch(ruta, { persistent: false }, (_evt) => {
-        const tipo = ruta.endsWith("estado.json") ? "estado" : "consumo";
         const datos = tipo === "estado"
           ? (readJson(ruta) ?? {})
-          : readLastJsonlLines(ruta, 1);
+          : readLastJsonlLines(ruta, tipo === "eventlog" ? 20 : 1);
         sseEmit(tipo, datos);
       });
     } catch { /* archivo no existe aún — se ignora */ }
@@ -238,6 +238,11 @@ function handleRequest(req, res) {
     const estadoActual = readJson(join(SDD_DIR, "estado.json"));
     if (estadoActual) {
       res.write(`event: estado\ndata: ${JSON.stringify(estadoActual)}\n\n`);
+    }
+    // Enviar últimas 20 entradas del event log al conectar
+    const eventLogEntries = readLastJsonlLines(join(SDD_DIR, "events.jsonl"), 20);
+    if (eventLogEntries.length) {
+      res.write(`event: eventlog\ndata: ${JSON.stringify(eventLogEntries)}\n\n`);
     }
     res.write(`: conectado\n\n`); // comentario SSE para keep-alive inicial
 
