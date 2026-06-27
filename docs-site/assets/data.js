@@ -426,9 +426,17 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
   import.js       ← forge import --from=speckit|openspec
 
 core/
-  state-machine.ts  ← PipelineStateMachine con PIPELINE_TRANSITIONS
-  state-store.ts    ← FileSystemStateStore (escritura atómica .tmp→rename)
-  event-log.ts      ← EventLog (append structured events)
+  state-machine.js  ← PipelineStateMachine con PIPELINE_TRANSITIONS
+  state-store.js    ← FileSystemStateStore (escritura atómica .tmp→rename)
+  event-log.js      ← EventLog (append structured events)
+  event-bus.js      ← EventBus pub/sub interno
+  orchestrator.js   ← Orchestrator — coordina agentes por paso
+  execution-context.js ← contexto compartido entre módulos del core
+  session-budget.js ← presupuesto USD ($FORGE_BUDGET_USD)
+  stack-detector.js ← detección automática del stack tecnológico
+  quality-gate.js   ← validaciones de calidad antes de avanzar
+  ir-to-spec-mapper.js ← mapea ir.json → spec.md estructurada
+  project-memory.js ← memoria de proyecto persistente
   adapters/
     adapter-interface.js  ← ForgeAdapter + AdapterRegistry
     claude-code-adapter.js
@@ -480,9 +488,21 @@ utils/
           <tr><td><code>claude-hooks/agent-memory.js</code></td><td>PostToolUse</td><td>Memoria persistente + ledger + ADR dual-write</td><td>✅ Core</td></tr>
           <tr><td><code>claude-hooks/context-manager.js</code></td><td>PostToolUse</td><td>Presupuesto USD enforced, resumen progresivo</td><td>✅ Core</td></tr>
           <tr><td><code>utils/episodic-memory.js</code></td><td>Librería</td><td>Indexación episódica, similitud coseno TF-IDF</td><td>✅ Core</td></tr>
+          <tr><td><code>core/orchestrator.js</code></td><td>Core JS</td><td>Coordina agentes por paso del pipeline, gestiona handoffs</td><td>✅ Core</td></tr>
+          <tr><td><code>core/event-bus.js</code></td><td>Core JS</td><td>Pub/sub interno entre módulos del core (desacoplado)</td><td>✅ Core</td></tr>
+          <tr><td><code>core/event-log.js</code></td><td>Core JS</td><td>Append estructurado de eventos — fuente del SSE dashboard</td><td>✅ Core</td></tr>
+          <tr><td><code>core/session-budget.js</code></td><td>Core JS</td><td>Presupuesto USD por sesión ($FORGE_BUDGET_USD, default 1.00)</td><td>✅ Core</td></tr>
+          <tr><td><code>core/execution-context.js</code></td><td>Core JS</td><td>Contexto compartido entre módulos durante ejecución</td><td>✅ Core</td></tr>
+          <tr><td><code>core/stack-detector.js</code></td><td>Core JS</td><td>Detección automática de stack tecnológico del proyecto</td><td>✅ Core</td></tr>
+          <tr><td><code>core/quality-gate.js</code></td><td>Core JS</td><td>Validaciones de calidad antes de transiciones de paso</td><td>✅ Core</td></tr>
+          <tr><td><code>core/ir-to-spec-mapper.js</code></td><td>Core JS</td><td>Convierte ir.json a estructura spec.md (HUs, CAs, RF, NFR)</td><td>✅ Core</td></tr>
+          <tr><td><code>core/project-memory.js</code></td><td>Core JS</td><td>Memoria de proyecto compartida entre agentes</td><td>✅ Core</td></tr>
+          <tr><td><code>core/checkpoint.js</code></td><td>Core JS</td><td>Snapshots atómicos del estado — permite forge resume</td><td>✅ Core</td></tr>
+          <tr><td><code>core/agent-registry.js</code></td><td>Core JS</td><td>Registro de agentes disponibles, sus modelos y permisos</td><td>✅ Core</td></tr>
+          <tr><td><code>core/evaluator-optimizer.js</code></td><td>Core JS</td><td>Evalúa calidad del output de agentes y propone optimizaciones</td><td>🔵 Beta</td></tr>
           <tr><td><code>model-registry.js</code></td><td>Librería hook</td><td>Resolución de provider/modelo (observabilidad, no routing)</td><td>🧪 Experimental</td></tr>
           <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init/update/doctor/logs/ui/config</td><td>✅ Core</td></tr>
-          <tr><td><code>ui/server.js</code></td><td>Dashboard</td><td>HTTP loopback, 6 endpoints read-only</td><td>🔵 Beta</td></tr>
+          <tr><td><code>ui/server.js</code></td><td>Dashboard</td><td>HTTP loopback, SSE /events, 6 endpoints read-only</td><td>🔵 Beta</td></tr>
         </tbody>
       </table>
 
@@ -546,7 +566,7 @@ utils/
       <h1>Componentes del Sistema</h1>
       <p class="lead">Descripción detallada de cada módulo: propósito, entradas, salidas, y dependencias.</p>
 
-      <h2>State machine — <code>core/state-machine.js</code> (compilado a JS)</h2>
+      <h2>State machine — <code>core/state-machine.js</code> (JS puro, sin compilación)</h2>
       <p>La fuente de verdad del pipeline. Controla qué transiciones son válidas y bloquea saltos ilegales.</p>
       <pre><code class="text">Pasos del pipeline:
 idea → discovery → ir → design → spec → plan → tasks → code → done
@@ -1059,6 +1079,192 @@ forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
   }
 },
 
+"planes-uso": {
+  seccion: "operate",
+  es: {
+    titulo: "Planes de Uso",
+    html: `
+      <h1>Planes de Uso</h1>
+      <p class="lead">Guía de decisión: qué preset, template, proveedor LLM y modo de sesión usar según tu proyecto. Una tabla por decisión, con criterios concretos.</p>
+
+      <h2>¿Qué preset usar?</h2>
+      <table>
+        <thead><tr><th>Preset</th><th>Agentes activos</th><th>Cuándo usarlo</th><th>Costo estimado</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>lean</code></td>
+            <td>6: arquitecto, asesor-datos, disenador-api, backend, frontend, tester</td>
+            <td>MVP personal, hackathon, PoC rápido. Quieres velocidad sobre exhaustividad.</td>
+            <td>$3–8 / proyecto mediano</td>
+          </tr>
+          <tr>
+            <td><code>startup</code></td>
+            <td>8: lean + critico + product-designer</td>
+            <td>Producto con usuarios reales, equipo pequeño. Necesitas validación UX y revisión de riesgos.</td>
+            <td>$8–15 / proyecto mediano</td>
+          </tr>
+          <tr>
+            <td><code>enterprise</code></td>
+            <td>14: todos los agentes</td>
+            <td>Producto con compliance, auditoría o multi-equipo. ADR obligatorio, security audit en cada paso.</td>
+            <td>$15–30 / proyecto mediano</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>¿Qué template usar?</h2>
+      <table>
+        <thead><tr><th>Template</th><th>Stack pre-configurado</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>api-rest</code></td>
+            <td>Node.js + Express/Fastify + JWT + tests unitarios</td>
+            <td>Backend de servicio, microservicio, integración con frontend externo. El IR ya viene con autenticación y CRUD pre-definidos.</td>
+          </tr>
+          <tr>
+            <td><code>cli-tool</code></td>
+            <td>Node.js ESM + commander.js + output coloreado + tests</td>
+            <td>Herramienta de línea de comandos para uso propio o npm publish. Incluye subcomandos, flags y manejo de errores.</td>
+          </tr>
+          <tr>
+            <td><code>saas-mvp</code></td>
+            <td>Next.js + Auth.js + Stripe + PostgreSQL + dashboard</td>
+            <td>Producto SaaS con autenticación, pagos y panel de admin. El IR incluye pricing tiers, onboarding y métricas.</td>
+          </tr>
+          <tr>
+            <td>(ninguno)</td>
+            <td>Libre — el arquitecto define el stack según el IR</td>
+            <td>Proyecto no convencional, stack propio o migración de sistema existente.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>¿Qué proveedor LLM usar?</h2>
+      <table>
+        <thead><tr><th>Proveedor</th><th>Variable</th><th>Fortaleza</th><th>Limitación</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>anthropic</strong> (default)</td>
+            <td><code>ANTHROPIC_API_KEY</code></td>
+            <td>Máxima calidad en razonamiento y código. Soporte nativo de Claude Code hooks.</td>
+            <td>Costo por token más alto. Requiere cuenta.</td>
+            <td>Pipeline de producción. Primera elección siempre.</td>
+          </tr>
+          <tr>
+            <td><strong>openai</strong></td>
+            <td><code>OPENAI_API_KEY</code></td>
+            <td>GPT-4o para tareas de código. Buena relación calidad/precio.</td>
+            <td>Sin integración nativa con Claude Code — usa Spec Kit adapter.</td>
+            <td>Cuando tienes créditos OpenAI y quieres comparar resultados o probar con otro modelo.</td>
+          </tr>
+          <tr>
+            <td><strong>ollama</strong></td>
+            <td>—</td>
+            <td>100% local, sin costo de API, privacidad total.</td>
+            <td>Calidad inferior en razonamiento complejo. Requiere GPU o CPU potente.</td>
+            <td>Proyectos con datos sensibles (no pueden salir de tu máquina). Desarrollo offline.</td>
+          </tr>
+          <tr>
+            <td><strong>stub</strong></td>
+            <td>—</td>
+            <td>Sin llamadas LLM reales — respuestas mock instantáneas.</td>
+            <td>No genera contenido real. Solo para pruebas.</td>
+            <td>Tests automatizados de CI, verificar que el pipeline avanza sin gastar tokens.</td>
+          </tr>
+        </tbody>
+      </table>
+      <pre><code class="bash"># Cambiar proveedor en una sesión
+FORGE_LLM_PROVIDER=openai forge run
+
+# O en sdd.config.yaml:
+# llm:
+#   provider: ollama</code></pre>
+
+      <h2>¿Qué modo de sesión usar?</h2>
+      <table>
+        <thead><tr><th>Modo</th><th>Agentes omitidos</th><th>Ahorro tokens</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>normal</code></td><td>Ninguno</td><td>—</td><td>Proyectos donde la calidad es crítica. Pipeline completo con critico, seguridad, revisor y ADRs.</td></tr>
+          <tr><td><code>rapido</code></td><td><code>critico</code></td><td>~30%</td><td>Iteraciones ágiles en proyecto ya validado. Reduce costo sin sacrificar demasiado calidad.</td></tr>
+          <tr><td><code>prototipo</code></td><td>critico, seguridad, revisor, operaciones</td><td>~50%</td><td>Demos, PoCs, exploración de ideas. Sin garantías de calidad ni seguridad — no usar en producción.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>¿SQLite o Markdown para la memoria?</h2>
+      <table>
+        <thead><tr><th>Backend</th><th>Cuándo se activa</th><th>Ventaja</th><th>Limitación</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SQLite</strong> (auto)</td><td>Node ≥22.5</td><td>Búsqueda semántica TF-IDF, O(log n), millones de entradas</td><td>Requiere Node ≥22.5</td></tr>
+          <tr><td><strong>Markdown</strong> (fallback)</td><td>Node &lt;22.5</td><td>Sin dependencias extra, legible directamente</td><td>Búsqueda O(n), sin scoring semántico</td></tr>
+        </tbody>
+      </table>
+      <p>Para proyectos grandes (+200 archivos, +50 decisiones), actualiza a Node ≥22.5 para activar SQLite.</p>
+
+      <h2>¿Qué elijo si...?</h2>
+      <table>
+        <thead><tr><th>Situación</th><th>Recomendación</th></tr></thead>
+        <tbody>
+          <tr><td>Quiero hacer un MVP en un fin de semana</td><td><code>lean</code> + <code>api-rest</code> o <code>cli-tool</code> + modo <code>rapido</code></td></tr>
+          <tr><td>Voy a lanzar un SaaS con usuarios reales</td><td><code>startup</code> + <code>saas-mvp</code> + modo <code>normal</code> + Anthropic</td></tr>
+          <tr><td>Trabajo con datos confidenciales que no pueden salir de mi máquina</td><td><code>lean</code> + <code>ollama</code> + modo <code>prototipo</code></td></tr>
+          <tr><td>Quiero usar FORGE en CI para verificar el pipeline</td><td><code>stub</code> como proveedor + <code>lean</code> — sin costo de API</td></tr>
+          <tr><td>Tengo un proyecto existente y quiero incorporar FORGE</td><td><code>forge init</code> (sin template) + <code>forge import --from=speckit --merge</code></td></tr>
+        </tbody>
+      </table>
+    `
+  },
+  en: {
+    titulo: "Usage Plans",
+    html: `
+      <h1>Usage Plans</h1>
+      <p class="lead">Decision guide: which preset, template, LLM provider and session mode to use for your project.</p>
+
+      <h2>Which preset?</h2>
+      <table>
+        <thead><tr><th>Preset</th><th>Active agents</th><th>When to use</th><th>Est. cost</th></tr></thead>
+        <tbody>
+          <tr><td><code>lean</code></td><td>6: arquitecto, asesor-datos, disenador-api, backend, frontend, tester</td><td>MVP, hackathon, PoC. Speed over exhaustiveness.</td><td>$3–8 / med. project</td></tr>
+          <tr><td><code>startup</code></td><td>8: lean + critico + product-designer</td><td>Product with real users. Needs UX validation and risk review.</td><td>$8–15 / med. project</td></tr>
+          <tr><td><code>enterprise</code></td><td>14: all agents</td><td>Compliance, audit, multi-team. Mandatory ADR, security audit at each step.</td><td>$15–30 / med. project</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Which template?</h2>
+      <table>
+        <thead><tr><th>Template</th><th>Pre-configured stack</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><code>api-rest</code></td><td>Node.js + Express/Fastify + JWT + unit tests</td><td>Backend service, microservice, external frontend integration.</td></tr>
+          <tr><td><code>cli-tool</code></td><td>Node.js ESM + commander.js + colored output + tests</td><td>Command-line tool for personal use or npm publish.</td></tr>
+          <tr><td><code>saas-mvp</code></td><td>Next.js + Auth.js + Stripe + PostgreSQL + dashboard</td><td>SaaS product with auth, payments and admin panel.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Which LLM provider?</h2>
+      <table>
+        <thead><tr><th>Provider</th><th>Strength</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><strong>anthropic</strong></td><td>Best reasoning and code quality. Native Claude Code hooks.</td><td>Production pipeline. Always first choice.</td></tr>
+          <tr><td><strong>openai</strong></td><td>GPT-4o for code tasks. Good cost/quality ratio.</td><td>When you have OpenAI credits or want to compare models.</td></tr>
+          <tr><td><strong>ollama</strong></td><td>100% local, no API cost, total privacy.</td><td>Sensitive data projects (can't leave your machine). Offline development.</td></tr>
+          <tr><td><strong>stub</strong></td><td>No real LLM calls — instant mock responses.</td><td>CI automated tests, verify pipeline advances without spending tokens.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Quick guide: what do I choose if...?</h2>
+      <table>
+        <thead><tr><th>Situation</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr><td>I want an MVP over a weekend</td><td><code>lean</code> + <code>api-rest</code> or <code>cli-tool</code> + <code>rapido</code> mode</td></tr>
+          <tr><td>I'm launching a SaaS with real users</td><td><code>startup</code> + <code>saas-mvp</code> + <code>normal</code> mode + Anthropic</td></tr>
+          <tr><td>Confidential data that can't leave my machine</td><td><code>lean</code> + <code>ollama</code> + <code>prototipo</code> mode</td></tr>
+          <tr><td>I want to use FORGE in CI without API cost</td><td><code>stub</code> provider + <code>lean</code></td></tr>
+          <tr><td>I have an existing project and want to add FORGE</td><td><code>forge init</code> (no template) + <code>forge import --from=speckit --merge</code></td></tr>
+        </tbody>
+      </table>
+    `
+  }
+},
+
 "flujos-operativos": {
   seccion: "operate",
   es: {
@@ -1183,6 +1389,182 @@ forge validate                       # Check preconditions before advancing</cod
           <tr><td>Budget exceeded</td><td><code>export FORGE_BUDGET_BLOCK_USD=2.0</code> or start a new session</td></tr>
         </tbody>
       </table>
+    `
+  }
+},
+
+"ejemplos": {
+  seccion: "operate",
+  es: {
+    titulo: "Ejemplos de Uso",
+    html: `
+      <h1>Ejemplos de Uso</h1>
+      <p class="lead">Casos concretos con comandos reales y artefactos esperados. Cada ejemplo muestra un camino distinto a través de FORGE.</p>
+
+      <h2>Ejemplo 1 — API REST con JWT (modo plugin, Claude Code)</h2>
+      <p><strong>Contexto:</strong> Quieres una API para gestionar tareas de equipo con autenticación. Usas el template <code>api-rest</code> y el preset <code>lean</code>.</p>
+      <pre><code class="bash"># 1. Instalar y preparar
+git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
+cd ~/mi-proyecto
+forge init --template api-rest --preset lean
+forge doctor         # ✅ API key OK · ✅ hooks OK · ✅ LLM ping OK</code></pre>
+      <pre><code class="text"># 2. Iniciar en Claude Code
+/forge "quiero una API para que mi equipo registre horas de trabajo con autenticación JWT"
+
+# FORGE responde con el IR generado:
+</code></pre>
+      <pre><code class="json">// .sdd/ir.json (extracto)
+{
+  "confidence": 0.87,
+  "product": {
+    "name": "TimeTrack API",
+    "type": "api",
+    "description": "API REST para registro de horas con JWT y roles"
+  },
+  "features": {
+    "core": [
+      { "nombre": "Autenticación JWT", "descripcion": "Login, refresh token, logout" },
+      { "nombre": "Registro de horas", "descripcion": "CRUD de entradas por usuario" },
+      { "nombre": "Roles", "descripcion": "admin vs employee — vistas distintas" }
+    ]
+  }
+}</code></pre>
+      <pre><code class="text"># 3. Gate de aprobación de spec
+forge aprobar spec
+
+# 4. Pipeline continúa automáticamente: plan → tasks → code
+# El tester genera tests TDD antes que el backend los implementa
+
+# 5. Ver progreso
+forge status
+# ✅ idea → ✅ discovery → ✅ ir → ✅ design → ✅ spec → ✅ plan → ▶ tasks → … code → done
+
+forge ui   # dashboard en localhost:3001 con SSE tiempo real</code></pre>
+
+      <h2>Ejemplo 2 — CLI tool (preset lean + modo rapido)</h2>
+      <p><strong>Contexto:</strong> Herramienta para convertir CSV a JSON con validación de esquema. Quieres ir rápido.</p>
+      <pre><code class="bash">forge init --template cli-tool --preset lean
+
+# En sdd.config.yaml, activar modo rápido:
+# sesion:
+#   modo: rapido
+
+/forge "una CLI que lea un CSV, valide su estructura contra un esquema JSON y exporte a JSON con errores marcados"
+
+# Sin agente 'critico', el pipeline es ~30% más rápido
+# Output esperado:
+#   .sdd/ir.json              ← idea interpretada
+#   .sdd/especificaciones/    ← spec con 3 HUs y 8 CAs
+#   src/index.js              ← CLI con commander.js
+#   src/validator.js          ← lógica de validación
+#   tests/validator.test.js   ← tests TDD (pasan en verde)</code></pre>
+
+      <h2>Ejemplo 3 — Runner portable sin Claude Code</h2>
+      <p><strong>Contexto:</strong> Tu empresa no tiene Claude Code. Tienes Cursor. Quieres que FORGE gestione el pipeline y pase tareas a Cursor.</p>
+      <pre><code class="bash"># 1. Inicializar y avanzar sin LLM
+forge init
+forge status
+# ⬜ idea (actual)
+
+forge step discovery   # avanza con guards de la state machine
+
+# 2. Despachar tarea al adaptador Spec Kit (portable)
+forge dispatch \
+  --agente=investigador \
+  --tarea="Analiza el proyecto existente y extrae el contexto técnico" \
+  --adapter=speckit
+
+# FORGE genera speckit-handoff/ con:
+ls speckit-handoff/
+# TASK.md            ← instrucción para Cursor/Copilot/Gemini
+# spec.md            ← especificación del producto
+# pipeline-state.json← paso actual y artefactos disponibles
+# README.md          ← cómo consumir este handoff</code></pre>
+      <pre><code class="text"># 3. Abrir TASK.md en Cursor y dejar que lo ejecute
+# Cursor genera el IR y lo escribe en speckit-handoff/output/
+
+# 4. Importar el resultado de vuelta a FORGE
+forge import --from=speckit --dir=speckit-handoff/output --merge
+
+# 5. Continuar el pipeline
+forge step ir
+forge validate   # verifica precondiciones
+forge decisions search "arquitectura"   # busca decisiones previas relevantes</code></pre>
+
+      <h2>Ejemplo 4 — Proyecto existente (import + merge)</h2>
+      <p><strong>Contexto:</strong> Tienes un proyecto Node.js en producción. Quieres usar FORGE para spec y planificar una nueva feature sin romper lo que hay.</p>
+      <pre><code class="bash"># 1. Inicializar en el proyecto existente (no borra nada)
+cd ~/mi-proyecto-existente
+forge init
+
+# 2. El investigador analiza el contexto existente
+/sdd.descubrir
+
+# 3. Definir la feature a añadir
+/forge "añadir sistema de notificaciones en tiempo real (WebSockets) al proyecto existente"
+
+# 4. El arquitecto detecta el stack existente automáticamente
+#    (core/stack-detector.js lee package.json, estructura de carpetas)
+#    y genera la spec adaptada al stack real
+
+# 5. Ver decisiones previas antes de planificar
+forge decisions list
+# → [JWT stateless] [PostgreSQL sin ORM] [REST over GraphQL]
+
+# 6. Aprobar spec y continuar
+forge aprobar spec
+# forge plan → plan toma en cuenta las decisiones existentes</code></pre>
+
+      <div class="callout tip">
+        <p><strong>Consejo:</strong> En proyectos existentes, <code>forge import --from=speckit --merge</code> es no-destructivo: solo rellena los huecos del estado que faltan, nunca sobreescribe artefactos ya existentes.</p>
+      </div>
+    `
+  },
+  en: {
+    titulo: "Usage Examples",
+    html: `
+      <h1>Usage Examples</h1>
+      <p class="lead">Concrete cases with real commands and expected artifacts. Each example shows a different path through FORGE.</p>
+
+      <h2>Example 1 — REST API with JWT (plugin mode)</h2>
+      <pre><code class="bash">forge init --template api-rest --preset lean
+forge doctor
+
+/forge "I want an API for my team to log work hours with JWT authentication"
+
+# After IR review:
+forge aprobar spec
+
+# Pipeline continues: plan → tasks → code → done
+forge status  # visual progress
+forge ui      # SSE dashboard at localhost:3001</code></pre>
+
+      <h2>Example 2 — CLI tool (fast mode)</h2>
+      <pre><code class="bash">forge init --template cli-tool --preset lean
+# sdd.config.yaml: sesion.modo: rapido  (skips 'critico' agent, ~30% fewer tokens)
+
+/forge "a CLI that reads CSV, validates against JSON schema and exports with error markers"</code></pre>
+
+      <h2>Example 3 — Portable runner (no Claude Code)</h2>
+      <pre><code class="bash">forge init
+forge step discovery
+forge dispatch --agente=investigador --tarea="Analyze existing context" --adapter=speckit
+# → generates speckit-handoff/TASK.md for Cursor/Copilot/Gemini
+
+# After the external agent runs:
+forge import --from=speckit --dir=speckit-handoff/output --merge
+forge step ir
+forge validate</code></pre>
+
+      <h2>Example 4 — Existing project</h2>
+      <pre><code class="bash">cd ~/my-existing-project
+forge init   # non-destructive, adds .sdd/ alongside existing code
+
+/forge "add real-time WebSocket notifications to the existing project"
+# stack-detector.js reads package.json and folder structure automatically
+
+forge decisions list   # review existing decisions before planning
+forge aprobar spec     # proceed to plan</code></pre>
     `
   }
 },
