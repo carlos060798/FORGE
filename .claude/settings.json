@@ -21,7 +21,8 @@
       "Bash(grep -c \"C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\usuario\")",
       "Bash(cd d:\\\\\\\\new_forge)",
       "Bash(npx -p forge-sdd sdd-es --version)",
-      "Bash(npx -p forge-sdd forge --version)"
+      "Bash(npx -p forge-sdd forge --version)",
+      "Bash(node --test tests/orchestrator-runner.test.js)"
     ]
   },
   "hooks": {
