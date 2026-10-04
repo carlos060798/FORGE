@@ -1,0 +1,98 @@
+{
+  "spec_id": "2026-10-03-saneamiento",
+  "total": 11,
+  "completadas": 10,
+  "en_progreso": null,
+  "bloqueadas": 1,
+  "tareas": {
+    "T001": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-001-02"
+      ]
+    },
+    "T002": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-001-01"
+      ]
+    },
+    "T003": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-001-03"
+      ]
+    },
+    "T004": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-002-01"
+      ]
+    },
+    "T005": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-002-02"
+      ]
+    },
+    "T006": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-002-03"
+      ]
+    },
+    "T007": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-002-04"
+      ]
+    },
+    "T008": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-003-01"
+      ]
+    },
+    "T009": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-003-02"
+      ]
+    },
+    "T010": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-003-03",
+        "CA-003-04"
+      ]
+    },
+    "T011": {
+      "estado": "bloqueada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-004-01"
+      ]
+    }
+  }
+}

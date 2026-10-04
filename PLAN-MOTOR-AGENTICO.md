@@ -172,7 +172,7 @@ Detalle: `.sdd/especificaciones/2026-10-03-ciclo-verificado/` (spec, checklist, 
 - **4.1** ~~Extender `ui/server.js`~~ **Cambio de decisión (ADR-13):** servidor aparte, `core/api/servidor.js`, en loopback, con secreto, sin CORS y rechazando `Origin` y `Host` ajeno. `ui/server.js` queda de solo lectura.
 - **4.2** La decisión de revisión reutiliza el mecanismo de `forge resume --decision`: la API lanza `forge run|resume --motor ciclo` como proceso aparte; el modo no se puede elegir.
 
-**Estado:** implementada y autoevaluada (spec `2026-10-03-api-http`, `docs/api-http.md`); sin revisión independiente.
+**Estado:** implementada, con verificación de criterios y revisión de seguridad independientes (aprobadas con observaciones, corregidas sin revisar). La verificación «una decisión por HTTP = una por CLI» está probada con Docker real para `aceptar`, `continuar` y `abortar` (spec `2026-10-03-api-http`, `docs/api-http.md`).
 
 **Reuso:** puntos de guardado y revisión de S1.
 

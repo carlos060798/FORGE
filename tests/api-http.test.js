@@ -411,3 +411,65 @@ describe("endurecimiento tras la verificación independiente", () => {
     } finally { await api.cerrar(); }
   });
 });
+
+// ── Verificación de la FASE 4: una decisión por HTTP produce el mismo estado que por CLI ──
+
+describe("decisión por HTTP = decisión por CLI (Docker real)", { skip: !(process.env.FORGE_TEST_DOCKER === "1") && "requiere FORGE_TEST_DOCKER=1 y Docker en marcha" }, () => {
+  const CLI = join(ROOT, "cli", "index.js");
+  const ENV = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "" };
+
+  /** Proyecto con la tarea T1 ya pausada por salida inválida (el proveedor de pruebas no devuelve el formato). */
+  async function pausado() {
+    const dir = proyecto();
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "demo", scripts: { test: "node --test" } }));
+    writeFileSync(join(dir, "tareas.json"), JSON.stringify([{ id: "T1", agente: "desarrollador-backend", prompt: "Implementa suma" }]));
+    const r = await new Promise((res) => {
+      const p = spawn(process.execPath, [CLI, "run", "--motor", "ciclo", "--tasks", "tareas.json", "--cwd", dir], { cwd: dir, env: ENV, stdio: ["ignore", "pipe", "pipe"] });
+      let t = ""; p.stdout.on("data", (d) => (t += d)); p.stderr.on("data", (d) => (t += d)); p.on("close", (c) => res({ c, t }));
+    });
+    assert.equal(r.c, 3, r.t);
+    return dir;
+  }
+  const porCli = (dir, decision) => new Promise((res) => {
+    const p = spawn(process.execPath, [CLI, "resume", "--motor", "ciclo", "--decision", decision, "--cwd", dir], { cwd: dir, env: ENV, stdio: ["ignore", "pipe", "pipe"] });
+    let t = ""; p.stdout.on("data", (d) => (t += d)); p.stderr.on("data", (d) => (t += d)); p.on("close", (c) => res({ codigo: c, salida: t }));
+  });
+  async function porApi(dir, decision) {
+    const api = crearServidorApi({ cwd: dir, token: TOKEN });
+    const { puerto } = await api.escuchar(0);
+    const antes = { ...process.env };
+    process.env.FORGE_LLM_PROVIDER = "stub"; process.env.ANTHROPIC_API_KEY = "";
+    try {
+      const lanzada = await pedir(puerto, { metodo: "POST", ruta: "/v1/decisiones", cuerpo: { decision } });
+      assert.equal(lanzada.estado, 202, lanzada.texto);
+      for (let i = 0; i < 160; i++) {
+        const r = await pedir(puerto, { ruta: `/v1/ejecuciones/${lanzada.cuerpo.id}` });
+        if (r.cuerpo.estado === "terminada") return { codigo: r.cuerpo.codigoSalida, tareas: (await pedir(puerto, {})).cuerpo.tareas };
+        await new Promise((res) => setTimeout(res, 500));
+      }
+      throw new Error("la ejecución no terminó");
+    } finally {
+      for (const k of ["FORGE_LLM_PROVIDER", "ANTHROPIC_API_KEY"]) { if (antes[k] === undefined) delete process.env[k]; else process.env[k] = antes[k]; }
+      await api.cerrar();
+    }
+  }
+  async function estadoDe(dir) {
+    const api = crearServidorApi({ cwd: dir, token: TOKEN });
+    const { puerto } = await api.escuchar(0);
+    try { return (await pedir(puerto, {})).cuerpo.tareas; } finally { await api.cerrar(); }
+  }
+
+  for (const decision of ["aceptar", "continuar", "abortar"]) {
+    test(`'${decision}': el estado final y el código de salida coinciden con los de la CLI`, async () => {
+      const dirCli = await pausado();
+      const dirApi = await pausado();
+      const cli = await porCli(dirCli, decision);
+      const tareasCli = await estadoDe(dirCli);
+      const api = await porApi(dirApi, decision);
+      assert.equal(api.codigo, cli.codigo, `API ${api.codigo} / CLI ${cli.codigo}\n${cli.salida}`);
+      assert.deepEqual(api.tareas.map((t) => [t.id, t.situacion, t.motivoRevision]), tareasCli.map((t) => [t.id, t.situacion, t.motivoRevision]));
+      if (decision === "aceptar") assert.equal(api.tareas[0].situacion, "aceptada_por_humano");
+      if (decision === "abortar") assert.equal(api.tareas[0].situacion, "abortada");
+    });
+  }
+});

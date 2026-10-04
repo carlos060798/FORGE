@@ -52,14 +52,14 @@ Si cambias `memoria.backend` de `markdown` a `sqlite` en un proyecto existente, 
 
 ### Algunos tests avanzados están desactivados (.skip)
 
-En v4.2.0, los 998 tests activos pasan todos (0 fallos). Sin embargo, hay tests desactivados con `.skip` que cubren funcionalidades aún en desarrollo:
+En 4.3.0 (sin publicar), los 1405 tests activos de la suite completa con Docker pasan todos en Windows (0 fallos, 3 saltados). Sin embargo, hay tests desactivados con `.skip` que cubren funcionalidades aún en desarrollo:
 - `tests/agent-enforcement.test.js.skip` — enforcement de permisos por agente
 - `tests/ast-compressor.test.js.skip` — compresión AST avanzada
 - `tests/delta-encoding.test.js.skip` — delta encoding para memoria
 - `tests/episodic-memory.test.js.skip` — memoria episódica avanzada
 - `tests/hybrid-indexer.test.js.skip` — indexación híbrida
 
-**Impacto:** Las funcionalidades cubiertas por estos tests (.skip) no están garantizadas. Las funcionalidades principales están todas cubiertas por los 998 tests activos.
+**Impacto:** Las funcionalidades cubiertas por estos tests (.skip) no están garantizadas. Las funcionalidades principales están todas cubiertas por los tests activos.
 
 ---
 

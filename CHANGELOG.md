@@ -5,7 +5,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
-## [Sin publicar]
+## [4.3.0] — Sin publicar
 
 Dos trabajos, cada uno con su spec en `.sdd/especificaciones/`: el saneamiento previo (`2026-10-03-saneamiento`) y el Ciclo Verificado (`2026-10-03-ciclo-verificado`). Ver `PLAN-MOTOR-AGENTICO.md`.
 

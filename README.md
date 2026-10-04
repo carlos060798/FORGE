@@ -6,10 +6,10 @@
 
 *De una idea en lenguaje natural a producción — un comando a la vez.*
 
-[![Versión](https://img.shields.io/badge/versión-4.2.0-blue)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-4.3.0-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
-[![Tests](https://img.shields.io/badge/tests-998%20pasando-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1405%20pasando-brightgreen)](tests/)
 
 </div>
 
@@ -212,6 +212,21 @@ memoria:
 O manualmente: añade archivos `.md` a `commands/`, `agents/` o `skills/` y regístralos en `.claude-plugin/plugin.json`.
 
 → Ver [Extender FORGE](docs/extending-forge.md).
+
+---
+
+## Motor agéntico (opt-in)
+
+Para tareas de código, FORGE puede corregirlas solo hasta que sus pruebas pasan, **ejecutando el código generado en un contenedor Docker sin red** (nunca en tu equipo), con un tope de gasto y una persona que decide cuando el ciclo no basta:
+
+```bash
+npx forge run --motor ciclo     # el ciclo verificado (necesita Docker)
+npx forge probar-modelo         # prueba mínima con un modelo real, gasta como máximo 0,50 USD
+npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer y escribir con las mismas reglas
+npx forge api                   # API HTTP local con secreto
+```
+
+Es opt-in: sin `--motor ciclo` FORGE funciona como siempre. **Todavía no se ha probado con un modelo de pago**; los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
 
 ---
 

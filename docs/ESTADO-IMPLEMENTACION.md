@@ -1,4 +1,4 @@
-# Estado de Implementación — FORGE v4.2.0
+# Estado de Implementación — FORGE 4.3.0 (sin publicar)
 
 > Fecha: 2026-06-27 | Propósito: clarificar qué está hecho, qué no, y qué prerequisitos necesita alguien que quiera usar FORGE hoy. Sin marketing.
 
@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD completo, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, motor de agentes agnóstico de LLM, decision store con búsqueda semántica, dashboard SSE en tiempo real, y aprobación humana obligatoria antes de planificar. **998 tests pasando, 0 fallos.**
+FORGE 4.3.0 (sin publicar; la 4.2.0 es la última publicada) tiene un núcleo sólido y probado: pipeline SDD completo, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, motor de agentes agnóstico de LLM, decision store con búsqueda semántica, dashboard SSE en tiempo real, y aprobación humana obligatoria antes de planificar. **998 tests pasando, 0 fallos.**
 
 ---
 
@@ -41,8 +41,11 @@ FORGE v4.2.0 tiene un núcleo sólido y probado: pipeline SDD completo, 14 agent
 | AST Indexer con limpiarTypeScript() | 18/18 ✅ | Beta | Decoradores, genéricos, JSX, satisfies, union types |
 | Templates de inicio | ✅ (3) | Beta | `api-rest`, `cli-tool`, `saas-mvp` — flujo verificado |
 | Integraciones MCP (Vercel/GitHub) | Parcial | Beta | Flujo básico probado, sin E2E automatizado |
+| Ciclo verificado (`--motor ciclo`) | ✅ | Opt-in | Docker real en Windows; **sin probar con un modelo de pago**; aislamiento en Linux sin probar. Ver `docs/ciclo-verificado.md` |
+| Servidor MCP propio (`forge mcp`) | ✅ | Opt-in | Verificado de forma independiente (con observaciones); sin probar con Claude Code |
+| API HTTP local (`forge api`) | ✅ | Opt-in | Verificada de forma independiente (con observaciones) |
 
-**Total tests: 998 pasando, 0 fallos.**
+**Total tests: 1405 pasando (suite completa, Windows con Docker), 0 fallos, 3 saltados.** (4.2.0: 998.)
 
 ---
 
@@ -151,7 +154,7 @@ El motor LLM (`core/llm-providers/`) soporta Anthropic/OpenAI/Ollama/Stub. Falta
 ### Para contribuir / desarrollar FORGE
 
 - [ ] Node.js ≥22.5.0
-- [ ] `npm test` — 998 tests deben pasar, 0 fallos
+- [ ] `npm test` — todos los tests deben pasar, 0 fallos (con `FORGE_TEST_DOCKER=1` y Docker en marcha: 1405 en Windows)
 - [ ] No se necesita `npm run build` — `core/` es JS puro
 
 ---

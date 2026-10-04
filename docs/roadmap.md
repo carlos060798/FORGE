@@ -1,6 +1,6 @@
 # Hoja de ruta
 
-Este documento describe el estado actual de FORGE v4.2.0 y las mejoras planificadas para versiones futuras.
+Este documento describe el estado actual de FORGE (4.3.0, sin publicar) y las mejoras planificadas para versiones futuras.
 
 ---
 
@@ -27,11 +27,23 @@ Todos los ítems siguientes están implementados y verificados contra el código
 
 ---
 
+## Completado en 4.3.0 (sin publicar)
+
+Mejora incremental, opt-in. Detalle y límites en [PLAN-MOTOR-AGENTICO.md](../PLAN-MOTOR-AGENTICO.md) y `.sdd/INDICE.md`:
+
+- **Saneamiento** del motor y del instalador (rutas de Windows, claves entre el motor y los comandos `/sdd.*`, tests portables)
+- **Ciclo verificado** — `forge run --motor ciclo`, ver [ciclo-verificado.md](ciclo-verificado.md)
+- **Servidor MCP** — `forge mcp`, ver [servidor-mcp.md](servidor-mcp.md)
+- **API HTTP local** — `forge api`, ver [api-http.md](api-http.md)
+- **`forge probar-modelo`** — la prueba con un modelo real, **todavía sin ejecutar con uno de pago**
+- Suite: 1405 tests pasando en Windows con Docker (3 saltados, 0 fallos)
+
 ## En desarrollo activo
 
-- **Ciclo verificado** (opt-in con `forge run --motor ciclo`): cada tarea de código se corrige hasta que sus pruebas pasan, en un contenedor Docker sin red, con tope de gasto y revisión humana. Implementado y probado con respuestas guionizadas y Docker real; falta probarlo con un proveedor de pago. Ver [ciclo-verificado.md](ciclo-verificado.md) y `PLAN-MOTOR-AGENTICO.md`.
+- **Memoria semántica** (FASE 3 de `PLAN-MOTOR-AGENTICO.md`): un recuperador con embeddings reales (LanceDB, opcional, Node ≥22) tras el puerto `Recuperador` del ciclo. No empezada.
+- **Ciclo por defecto** (FASE 5, 5.0.0): `motor.modo: ciclo` por defecto y retirar Node 18. Pendiente de probar el ciclo con un modelo de pago.
 
-Estas funcionalidades tienen trabajo iniciado pero no están disponibles en v4.2.0:
+Estas funcionalidades tienen trabajo iniciado pero no están disponibles en la versión publicada:
 
 ### Routing por confidence score
 Asignar el modelo por agente según la complejidad estimada de la tarea. Tareas simples → haiku, decisiones arquitectónicas → opus. Hoy el modelo por agente es fijo en la configuración.

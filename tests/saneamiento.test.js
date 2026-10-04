@@ -213,3 +213,21 @@ describe("S0 — la etapa del proyecto se entiende venga de quien venga", () => 
     assert.equal(etapa({}), "idea");
   });
 });
+
+describe("S0 — CA-003-04: el registro de memoria carga la tabla de modelos", () => {
+  test("agent-memory usa una única variable para la ruta de model-registry.js y el archivo existe", async () => {
+    const { readFileSync, existsSync } = await import("node:fs");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const raiz = join(dirname(fileURLToPath(import.meta.url)), "..", "claude-hooks");
+    const fuente = readFileSync(join(raiz, "agent-memory.js"), "utf8");
+    const usos = [...fuente.matchAll(/\b_{1,2}registryPath\b/g)].map((m) => m[0]);
+    assert.ok(usos.length >= 2, "se define y se usa");
+    assert.equal(new Set(usos).size, 1, `un solo nombre para la ruta: ${[...new Set(usos)].join(", ")}`);
+    assert.ok(existsSync(join(raiz, "model-registry.js")), "el archivo existe");
+    // El módulo de la tabla de modelos carga de verdad (antes caía siempre al valor de reserva)
+    const { pathToFileURL } = await import("node:url");
+    const m = await import(pathToFileURL(join(raiz, "model-registry.js")).href);
+    assert.equal(typeof m.resolveForAgent, "function");
+  });
+});
