@@ -30,13 +30,14 @@ export function clasificar(resultado, pruebas) {
  * topes: un pase en la última iteración permitida es un éxito.
  *
  * @param {import('./estado.js').EstadoCiclo} estado
- * @returns {{ ruta: 'fin_exito' } | { ruta: 'coder' } | { ruta: 'revision_humana', motivo: 'infraestructura'|'presupuesto'|'iteraciones' }}
+ * @returns {{ ruta: 'fin_exito' } | { ruta: 'coder' } | { ruta: 'revision_humana', motivo: 'infraestructura'|'presupuesto'|'iteraciones'|'exito_sospechoso' }}
  */
 export function decidirRuta(estado) {
   const ultima = estado.ejecuciones[estado.ejecuciones.length - 1];
   if (!ultima) throw new Error('decidirRuta: no hay ninguna ejecución registrada');
 
   if (ultima.categoria === 'infra_error')          return { ruta: 'revision_humana', motivo: 'infraestructura' };
+  if (ultima.categoria === 'pass' && ultima.sospecha?.length) return { ruta: 'revision_humana', motivo: 'exito_sospechoso' };
   if (ultima.categoria === 'pass')                 return { ruta: 'fin_exito' };
   if (estado.presupuesto.estado === 'agotado')     return { ruta: 'revision_humana', motivo: 'presupuesto' };
   if (estado.iteracion >= estado.maxIteraciones)   return { ruta: 'revision_humana', motivo: 'iteraciones' };

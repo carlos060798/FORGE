@@ -8,6 +8,7 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import http from "node:http";
+import net from "node:net";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -334,3 +335,78 @@ describe("recorrido real con Docker", { skip: !(process.env.FORGE_TEST_DOCKER ==
 });
 
 void readdirSync;
+
+// ── Verificación independiente: Host repetido, URL absoluta, enteros, token, tiempo máximo ──
+
+describe("endurecimiento tras la verificación independiente", () => {
+  /** Petición cruda por socket, para repetir cabeceras que http.request no deja repetir. */
+  const cruda = (puerto, texto) => new Promise((res) => {
+    const s = net.connect(puerto, "127.0.0.1", () => s.write(texto));
+    let t = ""; s.on("data", (d) => (t += d)); s.on("close", () => res(t)); setTimeout(() => s.destroy(), 1500);
+  });
+
+  test("una cabecera Host repetida y una URL absoluta se rechazan", async () => {
+    const falso = lanzadorFalso();
+    const api = crearServidorApi({ cwd: proyecto(), token: TOKEN, lanzar: falso.lanzar });
+    const { puerto } = await api.escuchar(0);
+    try {
+      const base = `Authorization: Bearer ${TOKEN}\r\nConnection: close\r\n\r\n`;
+      assert.match(await cruda(puerto, `GET /v1/estado HTTP/1.1\r\nHost: 127.0.0.1:${puerto}\r\nHost: evil.com\r\n${base}`), /^HTTP\/1\.1 400/);
+      assert.match(await cruda(puerto, `GET http://evil.com/v1/estado HTTP/1.1\r\nHost: 127.0.0.1:${puerto}\r\n${base}`), /^HTTP\/1\.1 400/);
+      assert.match(await cruda(puerto, `GET //x/v1/estado HTTP/1.1\r\nHost: 127.0.0.1:${puerto}\r\n${base}`), /^HTTP\/1\.1 400/);
+      assert.match(await cruda(puerto, `GET /v1/estado HTTP/1.1\r\nHost: 127.0.0.1:${puerto}\r\n${base}`), /^HTTP\/1\.1 200/);
+    } finally { await api.cerrar(); }
+  });
+
+  test("iteracionesExtra debe ser un entero", async () => {
+    const falso = lanzadorFalso();
+    const api = crearServidorApi({ cwd: proyecto(), token: TOKEN, lanzar: falso.lanzar });
+    const { puerto } = await api.escuchar(0);
+    try {
+      assert.equal((await pedir(puerto, { metodo: "POST", ruta: "/v1/decisiones", cuerpo: { decision: "continuar", iteracionesExtra: 1.5 } })).estado, 400);
+      assert.equal(falso.lanzados.length, 0);
+    } finally { await api.cerrar(); }
+  });
+
+  test("un secreto fijado a mano demasiado corto o con espacios se rechaza", () => {
+    assert.throws(() => crearServidorApi({ cwd: proyecto(), token: "corto" }), /al menos 16/);
+    assert.throws(() => crearServidorApi({ cwd: proyecto(), token: "a".repeat(20) + " b" }), /espacio/);
+  });
+
+  test("una ejecución que supera el tiempo máximo se mata y deja de bloquear la API", async () => {
+    const { lanzarCli } = await import("../core/api/servidor.js");
+    const t0 = Date.now();
+    // `forge api` no termina sola: sirve de proceso colgado
+    const { terminada } = lanzarCli(proyecto(), ["api", "--port", "0"], { timeoutMs: 400 });
+    const r = await terminada;
+    assert.ok(Date.now() - t0 < 8000, "se mató por tiempo");
+    assert.notEqual(r.codigo, 0);
+  });
+
+  test("el proceso hijo no hereda FORGE_API_TOKEN", async () => {
+    const { lanzarCli } = await import("../core/api/servidor.js");
+    process.env.FORGE_API_TOKEN = "z".repeat(32);
+    try {
+      let env = null;
+      const { terminada } = lanzarCli(proyecto(), ["api", "--port", "0"], { timeoutMs: 600, alLanzar: (p) => { env = p; } });
+      await terminada;
+      assert.ok(env);
+      // Si lo heredara, `forge api` usaría ese secreto y arrancaría imprimiendo la línea JSON con el: no debe aparecer
+    } finally { delete process.env.FORGE_API_TOKEN; }
+  });
+
+  test("las ejecuciones guardadas están acotadas", async () => {
+    const falso = lanzadorFalso();
+    const api = crearServidorApi({ cwd: proyecto(), token: TOKEN, lanzar: falso.lanzar });
+    const { puerto } = await api.escuchar(0);
+    try {
+      for (let i = 0; i < 60; i++) {
+        const r = await pedir(puerto, { metodo: "POST", ruta: "/v1/ejecuciones", cuerpo: {} });
+        assert.equal(r.estado, 202);
+        falso.terminarTodos(0, "");
+        await new Promise((res) => setTimeout(res, 5));
+      }
+      assert.ok(api.ejecuciones.size <= 51, String(api.ejecuciones.size));
+    } finally { await api.cerrar(); }
+  });
+});

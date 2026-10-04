@@ -22,7 +22,9 @@ El secreto es aleatorio, se genera en cada arranque y no se guarda en disco. Par
 - Toda petición, también a rutas que no existen, exige `Authorization: Bearer <secreto>`. No se acepta en la URL.
 - Se rechaza (403) toda petición con cabecera `Origin` —la que envía un navegador— aunque lleve el secreto, y toda cuyo `Host` no sea `127.0.0.1:<puerto>` o `localhost:<puerto>` (contra el rebinding de nombres).
 - No emite cabeceras CORS y no atiende `OPTIONS`: ninguna página web puede llamarla.
-- Los cuerpos están limitados a 64 KB y deben ser JSON de tipo `application/json`; se rechaza todo campo desconocido.
+- Los cuerpos están limitados a 64 KB y deben ser JSON de tipo `application/json`; se rechaza todo campo desconocido. Se rechazan (400) una cabecera `Host` repetida y una URL absoluta.
+- Una ejecución que tarda más de 2 horas se mata, y al cerrar la API también se mata la que esté en curso. El proceso hijo no recibe el secreto. Se guardan las últimas 50 ejecuciones terminadas.
+- Si fijas el secreto con `FORGE_API_TOKEN`, debe tener al menos 16 caracteres y ningún espacio.
 - **Siempre ejecuta el ciclo verificado**: el modo no se puede elegir, así que lo que genere un modelo solo se ejecuta en el contenedor. Sin Docker, la ejecución termina con el código 4.
 - Una ejecución a la vez.
 

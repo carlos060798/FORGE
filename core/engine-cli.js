@@ -184,6 +184,7 @@ const MOTIVOS_LEGIBLES = {
   infraestructura: 'el entorno de ejecución o el proveedor de modelos falló',
   dependencias:    'el implementador propone cambiar las dependencias del proyecto',
   salida_invalida: 'un agente no devolvió una salida utilizable',
+  exito_sospechoso: 'las pruebas pasan, pero hay señales de que no demuestran nada (mira el detalle)',
 };
 
 /** Explica por qué se pausó cada tarea y qué puede decidir la persona. No gasta nada. */

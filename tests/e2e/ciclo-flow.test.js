@@ -54,7 +54,7 @@ function montar({ fallan = [], conCiclo = true } = {}) {
         const falla = fallan.includes(actual);
         const hayImpl = existsSync(join(cwd, "src", `${actual}.js`));
         if (hayImpl && !falla) enCurso--;
-        return { exitCode: hayImpl && !falla ? 0 : 1, stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1 };
+        return { exitCode: hayImpl && !falla ? 0 : 1, stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1 };
       },
     },
   });

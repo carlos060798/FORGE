@@ -31,6 +31,10 @@ const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..
 const MAX_CUERPO = 64 * 1024;
 const ID = /^\w[\w.-]{0,63}$/;
 const DECISIONES = ['continuar', 'aceptar', 'abortar'];
+/** Una ejecucion que tarda mas se mata (el ciclo tiene su propio tope de gasto, pero un proceso puede colgarse). */
+const TIEMPO_MAX_MS = 2 * 60 * 60 * 1000;
+const MAX_EJECUCIONES_GUARDADAS = 50;
+const TOKEN_MIN = 16;
 
 /** @param {string} a @param {string} b */
 function igual(a, b) {
@@ -43,15 +47,21 @@ function igual(a, b) {
  * @param {string} cwd @param {string[]} args
  * @returns {{ terminada: Promise<{ codigo: number|null, salida: string }> }}
  */
-export function lanzarCli(cwd, args) {
-  const proc = spawn(process.execPath, [CLI, ...args, '--cwd', cwd], { cwd, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+export function lanzarCli(cwd, args, { timeoutMs = TIEMPO_MAX_MS, alLanzar = (/** @type {any} */ _proceso) => {} } = {}) {
+  // El hijo no necesita el secreto de la API: no se le pasa
+  const { FORGE_API_TOKEN: _omitido, ...env } = process.env;
+  const proc = spawn(process.execPath, [CLI, ...args, '--cwd', cwd], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  alLanzar(proc);
+  // Un proceso colgado no puede dejar la API bloqueada para siempre
+  const reloj = setTimeout(() => { try { proc.kill(); } catch { /* ya termino */ } }, timeoutMs);
+  reloj.unref?.();
   let salida = '';
   const juntar = (d) => { salida = (salida + d).slice(-64 * 1024); };
   proc.stdout.on('data', juntar);
   proc.stderr.on('data', juntar);
   const terminada = new Promise((resolver) => {
-    proc.on('error', (e) => resolver({ codigo: null, salida: salida + `\n${e.message}` }));
-    proc.on('close', (codigo) => resolver({ codigo, salida }));
+    proc.on('error', (e) => { clearTimeout(reloj); resolver({ codigo: null, salida: salida + `\n${e.message}` }); });
+    proc.on('close', (codigo) => { clearTimeout(reloj); resolver({ codigo, salida }); });
   });
   return { terminada };
 }
@@ -83,10 +93,13 @@ export function validarTareas(tareas) {
 export function crearServidorApi(opciones) {
   const cwd = path.resolve(opciones.cwd);
   const token = opciones.token ?? randomBytes(32).toString('hex');
+  if (token.length < TOKEN_MIN || /\s/.test(token)) throw new Error(`El secreto debe tener al menos ${TOKEN_MIN} caracteres y ningún espacio`);
   const lanzar = opciones.lanzar ?? lanzarCli;
   /** @type {Map<string, any>} */
   const ejecuciones = new Map();
   let activa = null;
+  /** @type {import('node:child_process').ChildProcess | null} */
+  let hijo = null;
   let permitidos = new Set();
   let n = 0;
 
@@ -112,8 +125,13 @@ export function crearServidorApi(opciones) {
     const id = `e${++n}-${randomBytes(4).toString('hex')}`;
     const registro = { id, tipo, estado: 'en_curso', codigoSalida: null, salida: '', iniciada: new Date().toISOString(), terminada: null, ...extra };
     ejecuciones.set(id, registro);
+    // Solo se conservan las ultimas: el mapa no puede crecer sin limite
+    for (const [clave, e] of ejecuciones) {
+      if (ejecuciones.size <= MAX_EJECUCIONES_GUARDADAS) break;
+      if (e.estado === 'terminada') ejecuciones.delete(clave);
+    }
     activa = id;
-    lanzar(cwd, args).terminada.then(({ codigo, salida }) => {
+    lanzar(cwd, args, { alLanzar: (p) => { hijo = p; } }).terminada.then(({ codigo, salida }) => {
       registro.estado = 'terminada';
       registro.codigoSalida = codigo;
       registro.salida = cola(salida, 8192);
@@ -149,6 +167,9 @@ export function crearServidorApi(opciones) {
     // 1. Quién llama: solo clientes que no son un navegador y que se dirigen a nosotros
     if (req.headers.origin !== undefined) return fallo(res, 403, 'Se rechazan las peticiones con cabecera Origin (navegadores)');
     if (!permitidos.has(String(req.headers.host ?? '').toLowerCase())) return fallo(res, 403, 'Host no permitido');
+    // Node se queda con la primera cabecera Host y descarta el resto: una segunda sigue siendo una peticion ambigua
+    if (req.rawHeaders.filter((h, i) => i % 2 === 0 && h.toLowerCase() === 'host').length > 1) return fallo(res, 400, 'Cabecera Host repetida');
+    if (!(req.url ?? '').startsWith('/') || (req.url ?? '').startsWith('//')) return fallo(res, 400, 'La URL debe ser una ruta que empiece por una sola "/"');
 
     // 2. Autenticación, antes de decir si la ruta existe
     const m = /^Bearer (\S+)$/.exec(String(req.headers.authorization ?? ''));
@@ -208,6 +229,7 @@ export function crearServidorApi(opciones) {
       if (desconocidos.length > 0) return fallo(res, 400, `Campos desconocidos: ${desconocidos.join(', ')}`);
       if (!DECISIONES.includes(b.decision)) return fallo(res, 400, `"decision" debe ser una de: ${DECISIONES.join(', ')}`);
       if (b.tarea !== undefined && (typeof b.tarea !== 'string' || !ID.test(b.tarea))) return fallo(res, 400, '"tarea" no es un identificador válido');
+      if (b.iteracionesExtra !== undefined && !Number.isInteger(b.iteracionesExtra)) return fallo(res, 400, '"iteracionesExtra" debe ser un número entero entre 0 y 1000');
       for (const campo of ['iteracionesExtra', 'presupuestoExtra']) {
         if (b[campo] !== undefined && (typeof b[campo] !== 'number' || !Number.isFinite(b[campo]) || b[campo] < 0 || b[campo] > 1000)) return fallo(res, 400, `"${campo}" debe ser un número entre 0 y 1000`);
       }
@@ -242,5 +264,5 @@ export function crearServidorApi(opciones) {
     });
   });
 
-  return { server, token, escuchar, ejecuciones, cerrar: () => new Promise((r) => server.close(() => r(undefined))) };
+  return { server, token, escuchar, ejecuciones, cerrar: () => new Promise((r) => { try { hijo?.kill(); } catch { /* ya termino */ } server.close(() => r(undefined)); }) };
 }

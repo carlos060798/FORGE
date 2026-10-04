@@ -49,7 +49,7 @@ function entorno(grafo, ejecuciones) {
     runner: { test: async () => {
       const r = cola.shift();
       if (r === undefined) throw new Error("guion de ejecuciones agotado");
-      return { stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+      return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
     } },
   };
   return { cwd, opciones, eventos, cola, llamadas: () => llamadas, ciclo: () => new CicloVerificado(opciones) };

@@ -5,7 +5,7 @@
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
 
@@ -17,6 +17,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {boolean} timedOut
  * @property {boolean} oomKilled
  * @property {number} durationMs
+ * @property {string[]} [sospecha]  motivos por los que un `pass` no se da por bueno (core/ciclo/sospecha.js)
  * @property {string} stdoutCola
  * @property {string} stderrCola
  */

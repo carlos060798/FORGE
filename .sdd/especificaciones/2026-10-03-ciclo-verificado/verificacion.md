@@ -29,7 +29,7 @@ Este documento ha tenido cuatro versiones, y conviene que se vean:
 | N8 | `--decision` sin tarea en revisión se ignoraba; `--tarea` sin valor valía para todas (incluida abortar) | **Corregido**: se rechazan | `ciclo-tercera-pasada` |
 | D1–D7 | Afirmaciones falsas en `PLAN-MOTOR-AGENTICO.md`, `docs/ciclo-verificado.md`, `CHANGELOG.md` | **Corregidas** (ver esos archivos) | — |
 | — | CA-001-05, CA-006-01, CA-006-02, CA-006-03: el verificador los bajó a ⚠️ | **Aceptado** salvo CA-006-03 (corregido, ✅): ver la tabla de criterios. Total actual: 31 ✅, 8 ⚠️, 0 ❌ | — |
-| — | `hayPruebas` cuenta archivos escritos: un archivo trivial con salida 0 cuenta como éxito | **Abierto** (misma familia que `process.exit(0)`) | — |
+| — | `hayPruebas` cuenta archivos escritos: un archivo trivial con salida 0 cuenta como éxito | **Mitigado**: el éxito exige evidencia de pruebas pasadas en la salida y se vigilan las salidas forzadas al cargar (`core/ciclo/sospecha.js`); los tests triviales que imprimen un resumen siguen pasando | `ciclo-tercera-pasada` (éxito sospechoso) |
 
 ## Estado de los hallazgos de la verificación independiente
 

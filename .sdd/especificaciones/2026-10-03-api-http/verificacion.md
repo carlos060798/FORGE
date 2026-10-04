@@ -1,12 +1,31 @@
 ---
 spec_id: 2026-10-03-api-http
 fecha_verificacion: 2026-10-03
-veredicto: AUTOEVALUADA  # con una revisión de seguridad independiente (observaciones corregidas); sin verificación de criterios independiente
+veredicto: APROBADA_CON_OBSERVACIONES  # verificación de criterios independiente (2026-10-03); observaciones corregidas después y sin revisar
 ---
 
 # Verificación: 2026-10-03-api-http
 
-## Veredicto: **AUTOEVALUADA**
+## Veredicto: **APROBADA_CON_OBSERVACIONES** por una verificación independiente
+
+Un agente independiente reprodujo los 14 criterios con entradas propias (sockets crudos contra `forge api` real): 11 ✅ y 3 ⚠️ (CA-001-03, CA-001-05, CA-003-02), sin ningún ❌ y sin fuga del secreto. Quedan abajo su tabla de reservas y lo corregido después. La tabla de criterios siguiente es mi autoevaluación original.
+
+### Reservas de la verificación independiente
+
+| Hallazgo | Estado |
+|---|---|
+| CA-001-03: una cabecera `Host` repetida (gana la primera) y una URL absoluta se aceptaban | **Corregido**: 400. Test con sockets crudos |
+| CA-001-05: solo se demuestra por `server.address()` y el código; no se pudo comprobar desde otra interfaz (los timeouts pueden ser el firewall) | **Abierto**: se da por cumplido por `listen(puerto, "127.0.0.1")` |
+| CA-003-02: `iteracionesExtra: 1.5` se aceptaba | **Corregido**: debe ser entero |
+| Sin límite de tiempo: un proceso colgado dejaba la API en 409 hasta reiniciar | **Corregido**: se mata a las 2 h; `cerrar()` también mata el proceso en curso |
+| El mapa de ejecuciones crecía sin límite | **Corregido**: se conservan las últimas 50 terminadas |
+| `FORGE_API_TOKEN` sin longitud mínima; el hijo heredaba el secreto | **Corregido**: mínimo 16 caracteres y sin espacios; el hijo no lo recibe |
+| CA-004-01 solo demostrado con un punto de guardado sintético | **Abierto** |
+| Cifras de suite de este documento sin comprobar por el verificador | Se actualizan abajo con la última ejecución propia |
+
+Estas correcciones las probé yo (`tests/api-http.test.js`); no las ha revisado nadie independiente.
+
+### Autoevaluación original
 
 La hizo quien implementó la API. **Revisión de seguridad independiente hecha** (cuarta pasada del proyecto, ver `revision-seguridad.md` del ciclo): OBSERVACIONES, sin ejecución en el anfitrión ni fuga del secreto; reprodujo la inyección de flags con `tarea:"--force"` (H2), ids `.`/`..` y archivos temporales sin borrar (H10), y conexiones lentas sin límite (H7, abierto). H2 y H10 están corregidos con tests; la corrección no está revisada de forma independiente. En este proyecto la primera autoevaluación del ciclo verificado fue rechazada por la verificación independiente y la tercera dejó observaciones que ya se habían dado por cerradas, así que **esto no es una aprobación**. Falta una verificación de criterios por el agente `revisor`, y que alguien ajeno revise las correcciones de esta ronda.
 
@@ -29,12 +48,12 @@ La hizo quien implementó la API. **Revisión de seguridad independiente hecha**
 | CA-003-04 | métodos y rutas inexistentes | ✅ |
 | CA-004-01 | etapa, sesión, tareas con situación y gasto | ✅ |
 
-Total: 13 ✅, 1 ⚠️, 0 ❌.
+Total (autoevaluación): 13 ✅, 1 ⚠️, 0 ❌. Total según la verificación independiente: 11 ✅, 3 ⚠️, 0 ❌.
 
 ## Pruebas
 
-- `tests/api-http.test.js`: 20 tests, uno de ellos (recorrido real) con `FORGE_TEST_DOCKER=1`: lanza el ciclo por HTTP con un proveedor de pruebas, ve que la tarea se pausa pidiendo decisión (`salida_invalida`, código 3), la aborta por HTTP y comprueba que queda abortada.
-- Suite completa en Windows con Docker, tras las correcciones de la tercera pasada: 1381 tests, 1378 pasan, 0 fallan, 3 saltados. `npx tsc`: 32 errores, los 32 previos; ninguno en `core/api/`.
+- `tests/api-http.test.js`: 25 tests (6 añadidos tras la verificación independiente), uno de ellos (recorrido real) con `FORGE_TEST_DOCKER=1`: lanza el ciclo por HTTP con un proveedor de pruebas, ve que la tarea se pausa pidiendo decisión (`salida_invalida`, código 3), la aborta por HTTP y comprueba que queda abortada.
+- Suite completa en Windows con Docker (última ejecución propia, antes de los últimos 6 tests de la API): 1399 tests, 1396 pasan, 0 fallan, 3 saltados. `npx tsc`: 32 errores, los 32 previos; ninguno en `core/api/`.
 - Sin dependencias nuevas.
 
 ## Lo que NO demuestra

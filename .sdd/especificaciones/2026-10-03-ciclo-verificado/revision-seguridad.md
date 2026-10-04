@@ -19,7 +19,7 @@
 | B2 / NUEVO-8 (baja) | Dos dueños del candado con 3 o más procesos | **Corregido**: reclamación aparte |
 | NUEVO-9 (baja) | `core/glob.js` lanza con llaves sin cerrar y `**/` repetido es exponencial; además `protecciones.no_tocar_archivos` no estaba conectado | **Corregido**: glob robusto y lista conectada (`leerRutasProtegidas`) |
 | NUEVO-10 (baja) | Los manifiestos se copian siguiendo enlaces de archivo | **Abierto** (no reproducido en Windows) |
-| M2 | `process.exit(0)` falsea un éxito | **Abierto y documentado** |
+| M2 | `process.exit(0)` falsea un éxito | **Mitigado, no cerrado**: un código 0 sin evidencia de pruebas pasadas, o con una salida forzada al comienzo de línea en lo que escribió el implementador, pausa la tarea (`exito_sospechoso`). Una salida forzada indentada o dentro de una función no se detecta |
 | A1 | Lista de configuración incompleta (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `tsconfig.json`, `scripts/*.sh`…) | **Abierto**: riesgo de la lista negra, documentado |
 | B3 | Valores con espacios (`PASS=a b c`) sin redactar | **Corregido** para `pass`, `pwd` y valores entre comillas. **Abierto**: un valor con espacios sin comillas |
 | — | El lockfile no va en `files` del paquete | **Abierto** (superficie de cadena de suministro; sin scripts de instalación hoy) |

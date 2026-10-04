@@ -17,7 +17,7 @@ export const INICIO = 'planner';
 export const REVISION = 'revision_humana';
 
 /** Nodo al que se vuelve tras una revisión, según qué la provocó en el router. */
-const REANUDAR = { iteraciones: 'coder', presupuesto: 'coder', infraestructura: 'sandbox' };
+const REANUDAR = { iteraciones: 'coder', presupuesto: 'coder', infraestructura: 'sandbox', exito_sospechoso: 'coder' };
 
 /**
  * @param {string} nodo                                    nodo que acaba de terminar
@@ -47,7 +47,9 @@ export function transicion(nodo, estado) {
       if (r.ruta === 'coder') return { siguiente: 'coder', parcial: {} };
       // Si el entorno falló, la persona necesita saber por qué: va en la revisión
       const ultima  = estado.ejecuciones[estado.ejecuciones.length - 1];
-      const detalle = r.motivo === 'infraestructura' && ultima?.stderrCola ? ultima.stderrCola.slice(-400) : undefined;
+      const detalle = r.motivo === 'infraestructura' && ultima?.stderrCola ? ultima.stderrCola.slice(-400)
+        : r.motivo === 'exito_sospechoso' ? `Las pruebas pasan (código 0), pero: ${(ultima?.sospecha ?? []).join('; ')}. Revisa el resultado y acéptalo si es correcto.`
+        : undefined;
       return { siguiente: REVISION, parcial: pedirRevision(r.motivo, REANUDAR[r.motivo], detalle) };
     }
     default:

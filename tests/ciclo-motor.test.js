@@ -66,7 +66,7 @@ function entorno(o = {}) {
         ejecutadas++;
         const r = ejecuciones.shift();
         if (r === undefined) throw new Error("guion de ejecuciones agotado");
-        return { stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+        return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
       },
     },
     testCmd: "npm test",
@@ -179,7 +179,7 @@ describe("escenario 2 — tope de iteraciones y revisión humana", () => {
     const e = cincoFallos();
     await e.ciclo().ejecutar(TAREA);
     e.opciones.llamar = async (p) => { e.llamadas.push(p); return { ok: true, output: impl(6), ...USO }; };
-    e.opciones.runner.test = async () => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1 });
+    e.opciones.runner.test = async () => ({ exitCode: 0, stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1 });
 
     const r = await e.ciclo().ejecutar(TAREA, { decision: "continuar", iteracionesExtra: 2 });
     assert.equal(r.status, "completada");
@@ -325,7 +325,7 @@ describe("escenario 9 — interrupción y reanudación", () => {
     await assert.rejects(e.ciclo().ejecutar(TAREA), /guion de ejecuciones agotado/);
     assert.equal(e.llamadas.length, 3);
 
-    e.opciones.runner.test = async () => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1 });
+    e.opciones.runner.test = async () => ({ exitCode: 0, stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1 });
     const r = await e.ciclo().ejecutar(TAREA);
     assert.equal(r.status, "completada");
     assert.equal(r.reanudada, true);

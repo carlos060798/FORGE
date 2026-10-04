@@ -6,6 +6,10 @@ veredicto: APROBADA_CON_OBSERVACIONES  # autoevaluación de quien implementó; s
 
 # Verificación: 2026-10-03-herramientas-mcp
 
+## Verificación de criterios independiente (2026-10-03)
+
+Un agente independiente reprodujo los 22 criterios contra `forge mcp` real y con Docker real: **18 ✅ y 4 ⚠️** (CA-001-03, CA-002-02, CA-003-02, CA-005-02), 0 ❌. Veredicto: **APROBADA_CON_OBSERVACIONES**. Reservas: no observó el choque de candado con un `forge run --motor ciclo` real en marcha (solo con un candado de un proceso vivo ajeno y con dos llamadas simultáneas); no pudo probar enlaces simbólicos de archivo en Windows (EPERM; solo junctions); `ejecutar_pruebas` solo probado en Windows; la configuración del cliente es solo documentación, sin test. Observaciones: el servidor guarda en memoria una línea de hasta 10 MB antes de descartarla; un mensaje de error de Docker sale con doble punto. La tabla de abajo es mi autoevaluación original (21 ✅, 1 ⚠️): la cifra independiente es 18 ✅, 4 ⚠️.
+
 ## Revisión de seguridad independiente (cuarta pasada del proyecto)
 
 Un agente independiente probó 94 mensajes JSON-RPC hostiles (lotes, ids no válidos, `params` no objeto, métodos `__proto__`, línea gigante, CRLF, JSON roto) y las rutas de `leer_archivo`/`escribir_archivo` (traversal, ADS, nombres de dispositivo, `GIT~1`, junctions, NUL, roles): todo correcto. Observaciones: el MCP almacena en memoria una línea de 11 MB antes de descartarla, `validarArgumentos` acepta un argumento llamado `constructor` (sin efecto), y el veto por nombres es una lista negra. No pudo probar `ejecutar_pruebas` con el contenedor real. Esto sigue sin ser una verificación de criterios de aceptación independiente.

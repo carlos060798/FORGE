@@ -192,7 +192,7 @@ function entorno({ uso, config = {}, ejecuciones = [] }) {
     runner: { test: async () => {
       const r = cuerpo.shift();
       if (r === undefined) throw new Error("guion de ejecuciones agotado");
-      return { stdout: "", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+      return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
     } },
   };
   return { cwd, opciones, llamadas, cuerpo, ciclo: () => new CicloVerificado(/** @type {any} */ (opciones)) };
@@ -475,5 +475,47 @@ describe("H9 — un punto de guardado dañado no abre el modo clásico", () => {
     const r = tareasSinTerminarEnElProyecto(dir);
     assert.equal(r.length, 1);
     assert.match(r[0], /dañado/);
+  });
+});
+
+// ── Éxito sospechoso ─────────────────────────────────────────────────────────
+
+describe("éxito sospechoso — un código 0 no se da por bueno sin evidencia", () => {
+  test("detectarSospecha: evidencia de ejecutores conocidos y salidas forzadas", async () => {
+    const { detectarSospecha, hayEvidenciaDePruebas } = await import("../core/ciclo/sospecha.js");
+    for (const salida of ["# tests 2\n# pass 2\n# fail 0", "ℹ pass 3", "Tests:       1 failed, 4 passed, 5 total", "===== 3 passed in 0.1s =====", "  4 passing (12ms)", "ok 1 - suma"]) {
+      assert.ok(hayEvidenciaDePruebas(salida), salida);
+    }
+    for (const salida of ["", "ok", "hecho", "# tests 0\n# pass 0", "0 passed", "no tests found"]) {
+      assert.ok(!hayEvidenciaDePruebas(salida), JSON.stringify(salida));
+    }
+    assert.deepEqual(detectarSospecha({ stdout: "# pass 1", archivos: [{ ruta: "src/a.js", contenido: "export const a = 1;\nif (x) process.exit(1);" }] }), [], "dentro de un bloque no se marca");
+    const m = detectarSospecha({ stdout: "# pass 1", archivos: [{ ruta: "src/a.js", contenido: "process.exit(0);\nexport const a = 1;" }, { ruta: "src/b.py", contenido: "import sys\nsys.exit(0)\n" }] });
+    assert.equal(m.length, 2);
+  });
+
+  test("una salida sin ninguna prueba pasada pausa para revisión en lugar de dar éxito, y la persona puede aceptarla", async () => {
+    const e = entorno({ uso: { inputTokens: 1000, outputTokens: 0, modelo: "claude-sonnet-4-6", proveedor: "anthropic" }, ejecuciones: [{ exitCode: 1 }, { exitCode: 0, stdout: "hecho" }] });
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.status, "en_revision");
+    assert.equal(r.estado.revision?.motivo, "exito_sospechoso");
+    assert.match(String(r.estado.revision?.detalle), /ninguna prueba ejecutada y pasada/);
+
+    const r2 = await e.ciclo().ejecutar(TAREA, { decision: "aceptar" });
+    assert.equal(r2.estado.resultado, "aceptada_por_humano");
+  });
+
+  test("un implementador que corta el proceso al cargarse no da éxito", async () => {
+    const e = entorno({ uso: { inputTokens: 1000, outputTokens: 0, modelo: "claude-sonnet-4-6", proveedor: "anthropic" }, ejecuciones: [{ exitCode: 1 }, { exitCode: 0 }] });
+    // El implementador devuelve código que sale al importarse; el ejecutor (simulado) informa de una prueba pasada
+    const guion = e.opciones;
+    const original = guion.llamar;
+    guion.llamar = async (p) => (p.agente === "desarrollador-backend"
+      ? { ok: true, output: json({ archivos: [{ ruta: "src/suma.js", contenido: "process.exit(0);\nexport const suma = (a, b) => a - b;" }] }), inputTokens: 1000, outputTokens: 0, modelo: "claude-sonnet-4-6", proveedor: "anthropic" }
+      : original(p));
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.status, "en_revision");
+    assert.equal(r.estado.revision?.motivo, "exito_sospechoso");
+    assert.match(String(r.estado.revision?.detalle), /src\/suma\.js corta el proceso/);
   });
 });

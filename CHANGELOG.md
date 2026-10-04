@@ -65,6 +65,8 @@ Las dos revisiones independientes de seguridad y verificación (2026-10-03) **re
 - El respaldo valida su manifiesto; la copia de trabajo tiene nombre único; LangGraph ya no puede enviar el estado a LangSmith
 - Una respuesta de modelo ya pagada no se paga de nuevo si cruzó el umbral de degradación o agotó el tope
 - El candado entre procesos resiste a tres procesos sobre un huérfano; abortar una tarea sale con código 0
+- Verificación independiente de la API y del MCP (aprobadas con observaciones): la API rechaza `Host` repetido y URL absoluta, mata ejecuciones colgadas (2 h), exige entero en `iteracionesExtra`, secreto de 16+ caracteres, no pasa el secreto al hijo y acota las ejecuciones guardadas
+- Éxito sospechoso: un código de salida 0 ya no basta. Sin una prueba pasada en la salida del ejecutor, o con `process.exit`/`sys.exit` al cargarse en lo que escribió el implementador, la tarea se pausa (`exito_sospechoso`) para que decidas. Mitigación, no cierre: ver `docs/ciclo-verificado.md`
 - Cuarta revisión independiente (API, MCP y correcciones): la lista `no_tocar_archivos` ya no se ignora en silencio con listas en línea, BOM o comentarios (y falla si no se entiende); la API rechaza ids de tarea con guion inicial (inyección de flags) y rutas absolutas; el respaldo y el barrido de copias no siguen enlaces ni tocan rutas vetadas; menos coste en `glob` y `redactar`
 - `protecciones.no_tocar_archivos` de `sdd.config.yaml` ahora se aplica en el ciclo, y `core/glob.js` no lanza con patrones mal formados
 - Se avisa de las copias de trabajo que no se pueden borrar y se barren al arrancar; más patrones de secretos redactados (`PASS=`, `pwd=`, valores entre comillas)

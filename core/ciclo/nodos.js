@@ -26,6 +26,7 @@ import { ampliar, ErrorConsumo, modeloEfectivo, puedeLlamar, registrar } from '.
 import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
 import { clasificar } from './router.js';
 import { cola } from './redactar.js';
+import { detectarSospecha } from './sospecha.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
 
@@ -242,6 +243,14 @@ export async function sandbox(estado, deps) {
     exitCode: r.exitCode ?? null, timedOut: Boolean(r.timedOut), oomKilled: Boolean(r.oomKilled),
     durationMs: r.durationMs ?? 0, stdoutCola: cola(r.stdout), stderrCola: cola(r.stderr),
   };
+  // Un pase solo se da por bueno si la salida lo confirma y el codigo escrito no corta el proceso al cargarse
+  if (categoria === 'pass') {
+    const archivos = estado.implementacion.archivos.map(({ ruta }) => {
+      try { return { ruta, contenido: fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8') }; } catch { return { ruta, contenido: '' }; }
+    });
+    const sospecha = detectarSospecha({ stdout: r.stdout, stderr: r.stderr, archivos });
+    if (sospecha.length > 0) ejecucion.sospecha = sospecha;
+  }
   deps.log.append('ciclo:ejecucion', { categoria, exitCode: ejecucion.exitCode, timedOut: ejecucion.timedOut, durationMs: ejecucion.durationMs, iteracion }, { taskId: estado.taskId });
 
   return { iteracion, ejecuciones: [ejecucion] };
