@@ -53,7 +53,11 @@ export function lanzarCli(cwd, args, { timeoutMs = TIEMPO_MAX_MS, alLanzar = (/*
   const proc = spawn(process.execPath, [CLI, ...args, '--cwd', cwd], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   alLanzar(proc);
   // Un proceso colgado no puede dejar la API bloqueada para siempre
-  const reloj = setTimeout(() => { try { proc.kill(); } catch { /* ya termino */ } }, timeoutMs);
+  // SIGTERM primero (el hijo puede cerrarse con limpieza) y SIGKILL si no obedece
+  const reloj = setTimeout(() => {
+    try { proc.kill(); } catch { /* ya termino */ }
+    setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* ya termino */ } }, 5000).unref?.();
+  }, timeoutMs);
   reloj.unref?.();
   let salida = '';
   const juntar = (d) => { salida = (salida + d).slice(-64 * 1024); };
