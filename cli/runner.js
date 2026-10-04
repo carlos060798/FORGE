@@ -1,7 +1,7 @@
 /**
  * cli/runner.js — Runner portable del pipeline FORGE sin LLM
  *
- * Usa la PipelineStateMachine del core/ compilado para gestionar
+ * Usa la PipelineStateMachine de core/ para gestionar
  * el estado del pipeline de forma determinista. Las transiciones
  * que requieren LLM se delegan al adaptador del host (Claude Code,
  * otro agente, o artefactos Spec Kit). El runner solo controla lo
@@ -20,27 +20,31 @@
 import {
   existsSync, mkdirSync, readFileSync, writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// ── Carga lazy del core compilado ─────────────────────────────────────────────
-// Usamos import() dinámico para que el runner funcione aunque dist/ no exista
-// (graceful degradation si el TS no se ha compilado).
+// ── Carga lazy del core ───────────────────────────────────────────────────────
+// core/ es JS puro y se publica con el paquete (no hay paso de build).
+// dist/core/ se mantiene como respaldo para instalaciones antiguas compiladas.
 
 function toFileURL(p) {
   // En Windows, import() necesita file:// para rutas absolutas
-  return new URL('file:///' + p.replace(/\\/g, '/')).href;
+  return pathToFileURL(p).href;
 }
 
 async function cargarCore(cwd) {
-  // Buscar dist/core/ relativo al CWD o relativo a este archivo (instalación global)
-  const distDir  = join(cwd, 'dist', 'core');
-  const selfDir  = resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'), '..', '..', 'dist', 'core');
-  const base = existsSync(distDir) ? distDir : existsSync(selfDir) ? selfDir : null;
+  const selfRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const candidatos = [
+    join(selfRoot, 'core'),
+    join(selfRoot, 'dist', 'core'),
+    join(cwd, 'dist', 'core'),
+  ];
+  const base = candidatos.find((d) => existsSync(join(d, 'state-machine.js')));
 
   if (!base) {
     throw new Error(
-      'dist/core/ no encontrado. Compila primero con: npx tsc\n'
-      + 'O instala desde el paquete publicado.'
+      'core/ no encontrado junto al CLI.\n'
+      + 'Reinstala el paquete: npm install -g forja-mvp'
     );
   }
 
@@ -54,7 +58,9 @@ async function cargarCore(cwd) {
     import(toFileURL(join(base, 'event-log.js'))),
   ]);
 
-  return { FileSystemStateStore, PipelineStateMachine, EventLog };
+  const { lineasEstadoCiclo } = await import(toFileURL(join(base, 'ciclo', 'index.js'))).catch(() => ({ lineasEstadoCiclo: () => [] }));
+
+  return { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo };
 }
 
 // ── Helpers visuales ─────────────────────────────────────────────────────────
@@ -108,7 +114,7 @@ function dibujarPipeline(stepActual) {
 // ── Subcomandos ───────────────────────────────────────────────────────────────
 
 async function cmdStatus(cwd) {
-  const { FileSystemStateStore, PipelineStateMachine, EventLog } = await cargarCore(cwd);
+  const { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo } = await cargarCore(cwd);
   const store = new FileSystemStateStore(join(cwd, '.sdd'));
   const log   = new EventLog(join(cwd, '.sdd', 'observabilidad'));
   const fsm   = new PipelineStateMachine(store, log);
@@ -151,6 +157,12 @@ async function cmdStatus(cwd) {
   if (presentes.length > 0) {
     console.log('');
     console.log('Artefactos: ' + presentes.map(([, l]) => COLORES.verde(l)).join(' · '));
+  }
+
+  const ciclo = lineasEstadoCiclo(cwd);
+  if (ciclo.length > 0) {
+    console.log('');
+    ciclo.forEach((l) => console.log(l));
   }
 
   console.log('');

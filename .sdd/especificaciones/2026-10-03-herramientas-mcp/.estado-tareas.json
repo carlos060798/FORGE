@@ -1,0 +1,112 @@
+{
+  "spec_id": "2026-10-03-herramientas-mcp",
+  "total": 9,
+  "completadas": 9,
+  "en_progreso": null,
+  "bloqueadas": 0,
+  "tareas": {
+    "T001": {
+      "estado": "completada",
+      "agente": "arquitecto",
+      "depende_de": [],
+      "cubre_cas": []
+    },
+    "T002": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": [
+        "CA-004-01",
+        "CA-004-02",
+        "CA-004-03",
+        "CA-004-04",
+        "CA-004-05"
+      ]
+    },
+    "T003": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T002"
+      ],
+      "cubre_cas": [
+        "CA-001-01",
+        "CA-001-02",
+        "CA-001-03",
+        "CA-001-04"
+      ]
+    },
+    "T004": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T002"
+      ],
+      "cubre_cas": [
+        "CA-002-01",
+        "CA-002-02",
+        "CA-002-03",
+        "CA-002-04"
+      ]
+    },
+    "T005": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T002"
+      ],
+      "cubre_cas": [
+        "CA-003-01",
+        "CA-003-02",
+        "CA-003-03",
+        "CA-003-04",
+        "CA-003-05",
+        "CA-003-06"
+      ]
+    },
+    "T006": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T003",
+        "T004",
+        "T005"
+      ],
+      "cubre_cas": [
+        "CA-005-01"
+      ]
+    },
+    "T007": {
+      "estado": "completada",
+      "agente": "tester",
+      "depende_de": [
+        "T006"
+      ],
+      "cubre_cas": [
+        "CA-004-06"
+      ]
+    },
+    "T008": {
+      "estado": "completada",
+      "agente": "documentador",
+      "depende_de": [
+        "T006"
+      ],
+      "cubre_cas": [
+        "CA-005-02"
+      ]
+    },
+    "T009": {
+      "estado": "completada",
+      "agente": "revisor",
+      "depende_de": [
+        "T007",
+        "T008"
+      ],
+      "cubre_cas": []
+    }
+  },
+  "ultima_actualizacion": "2026-10-03"
+}

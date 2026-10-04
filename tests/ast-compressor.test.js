@@ -3,6 +3,9 @@ import assert from 'node:assert';
 import { execSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+
+const TMP = os.tmpdir();
 
 /**
  * Tests para Phase 2.2 — AST Compressor
@@ -12,7 +15,7 @@ const compressorPath = path.join(process.cwd(), 'utils', 'ast-compressor.js');
 
 // Helper: crea archivo temp y comprime
 function compressFile(content, ext) {
-  const tempFile = `/tmp/test-compress.${ext}`;
+  const tempFile = path.join(TMP, `test-compress.${ext}`);
   writeFileSync(tempFile, content);
 
   try {

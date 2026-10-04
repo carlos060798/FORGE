@@ -30,3 +30,28 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  aislamiento:
+    name: Aislamiento con Docker real
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Suite de aislamiento
+        run: node --test tests/sandbox-real.test.js
+        env:
+          FORGE_TEST_DOCKER: "1"
+
+      - name: Sin contenedores residuales
+        run: test -z "$(docker ps -aq --filter label=forge.sandbox=1)"

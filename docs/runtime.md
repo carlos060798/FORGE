@@ -390,6 +390,10 @@ forge ui --no-open          # sin abrir navegador automáticamente
 
 ---
 
+## Ciclo verificado (opt-in)
+
+`forge run --motor ciclo` sustituye la ejecución única de cada tarea de código por un ciclo `planner → retriever → qa → coder → sandbox` que se repite hasta que las pruebas pasan. Vive en `core/ciclo/` (estado, router, presupuesto, nodos, motor), `core/sandbox/` (política de aislamiento y CLI de Docker) y `core/recuperacion/` (contexto). Códigos de salida: 0 completado, 1 fallo, 3 revisión humana pendiente, 4 Docker no disponible. Detalle en [ciclo-verificado.md](ciclo-verificado.md).
+
 ## Variables de entorno del runtime
 
 | Variable | Componente | Descripción |

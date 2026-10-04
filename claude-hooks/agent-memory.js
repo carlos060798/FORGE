@@ -28,7 +28,7 @@ import {
 } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Importación dinámica de model-registry para mantener compatibilidad
 // con entornos donde el archivo no exista aún (instalaciones parciales).
@@ -37,7 +37,7 @@ let _registry = null;
 async function registry() {
   if (_registry) return _registry;
   try {
-    _registry = await import(_registryPath);
+    _registry = await import(pathToFileURL(__registryPath).href);
   } catch {
     _registry = { resolveForAgent: () => ({ provider: "anthropic", tier: null }) };
   }

@@ -16,7 +16,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 /**
  * Estructura de un episodio
@@ -167,7 +167,7 @@ function queryEpisodes(episodes, type, tags = [], consulta = '') {
  * Guarda episodios en un índice JSONL para consulta rápida
  */
 function saveIndex(episodes, outputPath) {
-  mkdirSync(outputPath.split('/').slice(0, -1).join('/'), { recursive: true });
+  mkdirSync(dirname(outputPath), { recursive: true });
 
   const lines = episodes.map(ep => JSON.stringify(ep)).join('\n');
   writeFileSync(outputPath, lines);

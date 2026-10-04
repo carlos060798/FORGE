@@ -1,18 +1,49 @@
 #!/usr/bin/env node
 /**
  * adr-parser.js — Batch scan de ADRs en codebase existente
- * Uso: node utils/adr-parser.js . src/**/*.ts --update-ledger
+ * Uso: node utils/adr-parser.js . "src/[**]/[*].ts" --update-ledger
+ *      (sin los corchetes: aquí evitan cerrar este comentario)
  */
 
-const fs = require("fs");
-const path = require("path");
-const { globSync } = require("glob");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { globARegex } from "../core/glob.js";
 
-const ROOT_DIR = process.argv[2] || ".";
-const PATTERNS = process.argv.slice(3, -1);
-const UPDATE_LEDGER = process.argv.includes("--update-ledger");
+const IGNORADOS = new Set(["node_modules", ".git", "dist"]);
 
-function extraerADRsDelArchivo(contenido) {
+export { globARegex };
+
+/** Lista los archivos bajo rootDir, en rutas relativas con "/". */
+function listarArchivos(rootDir, rel = "") {
+  const salida = [];
+  let entradas = [];
+  try {
+    entradas = fs.readdirSync(path.join(rootDir, rel), { withFileTypes: true });
+  } catch {
+    return salida;
+  }
+  for (const e of entradas) {
+    if (IGNORADOS.has(e.name)) continue;
+    const hijo = rel ? rel + "/" + e.name : e.name;
+    if (e.isDirectory()) salida.push(...listarArchivos(rootDir, hijo));
+    else if (e.isFile()) salida.push(hijo);
+  }
+  return salida;
+}
+
+function globSync(patron, { cwd }) {
+  const re = globARegex(patron);
+  return listarArchivos(cwd).filter((f) => re.test(f));
+}
+
+const ARGS = process.argv.slice(2);
+const POSICIONALES = ARGS.filter((a) => !a.startsWith("--"));
+const ROOT_DIR = POSICIONALES[0] || ".";
+const PATTERNS = POSICIONALES.slice(1);
+const UPDATE_LEDGER = ARGS.includes("--update-ledger");
+
+export function extraerADRsDelArchivo(contenido) {
   const regex = /(?:\/\/|\/\*|#|--|<!--|REM)\s*ADR:\s*({[^}]*})/g;
   const adrs = [];
   let match;
@@ -29,11 +60,11 @@ function extraerADRsDelArchivo(contenido) {
   return adrs;
 }
 
-function scanCodigo(rootDir, patterns) {
+export function scanCodigo(rootDir, patterns) {
   const archivos = [];
 
   if (patterns.length === 0) {
-    // Por defecto: src/**/*.{ts,js,py,go,java,rs,rb,php,cs}
+    // Por defecto: código fuente bajo src/
     patterns.push("src/**/*.{ts,js,py,go,java,rs,rb,php,cs}");
   }
 
@@ -121,4 +152,6 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  main();
+}

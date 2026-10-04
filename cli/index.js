@@ -139,8 +139,14 @@ function copiarNucleo(claudeDir) {
   const hooksSrc = join(PLUGIN_DIR, "claude-hooks");
   const hooksDest = join(claudeDir, "hooks");
   mkdirSync(hooksDest, { recursive: true });
-  for (const f of readdirSync(hooksSrc).filter((f) => f.endsWith(".js"))) {
-    cpSync(join(hooksSrc, f), join(hooksDest, f));
+  // Los hooks importan ./shared/config.js y los wrappers .sh delegan en los .js:
+  // hay que copiar ambos, no solo los .js del primer nivel.
+  for (const entry of readdirSync(hooksSrc, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      copyDir(join(hooksSrc, entry.name), join(hooksDest, entry.name));
+    } else if (entry.name.endsWith(".js") || entry.name.endsWith(".sh")) {
+      cpSync(join(hooksSrc, entry.name), join(hooksDest, entry.name));
+    }
   }
   info(`Hooks instalados (${hooksDest})`);
 }
@@ -1485,6 +1491,21 @@ Uso:
   npx forge state                    Volcar estado.json formateado
   npx forge validate                 Verificar precondiciones del paso actual
   npx forge reset --force            Resetear pipeline a 'idea'
+  npx forge api [--port N] [--cwd <ruta>]
+                                     API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
+                                     estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
+  npx forge mcp [--cwd <ruta>]       Servidor MCP por stdin/stdout con tres herramientas: ejecutar pruebas
+                                     en el entorno aislado, leer y escribir archivos con las reglas del ciclo.
+                                     Configúralo en tu cliente: {"mcpServers":{"forge":{"command":"npx","args":["forge","mcp"]}}}
+  npx forge run [--tasks <json>] [--motor clasico|ciclo] [--force]
+                                     Ejecuta las tareas. Con --motor ciclo, cada tarea de código
+                                     se corrige hasta que sus pruebas pasan, en Docker y sin red
+  npx forge resume [--decision continuar|aceptar|abortar]
+                   [--iteraciones-extra N] [--presupuesto-extra USD]
+                                     Retoma lo interrumpido. Si una tarea espera tu decisión,
+                                     la muestra sin gastar nada hasta que indiques --decision
+                                     Códigos de salida: 0 completado · 1 fallo ·
+                                     3 revisión pendiente · 4 Docker no disponible
   npx forge --version                Muestra la versión
 
   (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
@@ -1586,6 +1607,25 @@ async function main() {
     case "aprobar":
       cmdAprobar(args.slice(1));
       break;
+    case "api": {
+      // API HTTP local con token (spec 2026-10-03-api-http). Por stdout sale una sola línea JSON con la URL y el token.
+      const valor = (flag) => { const i = args.indexOf(flag); return i !== -1 && args[i + 1] ? args[i + 1] : undefined; };
+      const { crearServidorApi } = await import("../core/api/servidor.js");
+      const api = crearServidorApi({ cwd: valor("--cwd") ?? process.cwd(), token: process.env.FORGE_API_TOKEN || undefined });
+      const { url } = await api.escuchar(valor("--port") === undefined ? 3002 : Number(valor("--port")));
+      console.log(JSON.stringify({ url, token: api.token }));
+      process.stderr.write(`FORGE API en ${url}. Envía el token en la cabecera "Authorization: Bearer ...". Ctrl+C para parar.\n`);
+      await new Promise((resolver) => { process.on("SIGINT", resolver); process.on("SIGTERM", resolver); });
+      await api.cerrar();
+      break;
+    }
+    case "mcp": {
+      // Servidor MCP por stdin/stdout: nada más que mensajes del protocolo debe salir por stdout
+      const i = args.indexOf("--cwd");
+      const { iniciarServidor } = await import("../core/mcp/servidor.js");
+      await iniciarServidor({ cwd: i !== -1 && args[i + 1] ? args[i + 1] : undefined });
+      break;
+    }
     case "run":
     case "resume": {
       const { main: engineMain } = await import("../core/engine-cli.js");

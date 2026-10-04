@@ -1,0 +1,318 @@
+/**
+ * ciclo/index.js — Fachada del ciclo verificado
+ *
+ * Ejecuta una tarea de código hasta que sus pruebas pasan o hasta que hace
+ * falta la decisión de una persona. Reanuda desde el último punto de guardado.
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { LlmAgentAdapter } from '../agent-registry.js';
+import { OllamaProvider } from '../llm-providers/index.js';
+import { crearRecuperador } from '../recuperacion/recuperador.js';
+import { precioDe } from '../session-budget.js';
+import { GuardadorArchivos } from './checkpoint-archivos.js';
+import { Diario, claveDe, LibroDeGasto } from './diario.js';
+import { estadoInicial } from './estado.js';
+import { INICIO, REVISION } from './grafo.js';
+import { elegirMotor } from './motores/index.js';
+import { estadoDe } from './presupuesto.js';
+import { Respaldo } from './respaldo.js';
+
+const ARCHIVO_SESION = 'sesion.json';
+const ID_VALIDO = /^\w[\w.-]*$/;
+
+/** @param {string} cwd */
+export function dirMotorBase(cwd) {
+  return path.join(cwd, '.sdd', 'motor');
+}
+
+/**
+ * Sesión en curso: la crea `forge run` y la reutiliza `forge resume`.
+ * @param {string} cwd
+ * @returns {{ runId: string, modo: string, creada: string } | null}
+ */
+export function sesionActual(cwd) {
+  try {
+    const sesion = JSON.parse(fs.readFileSync(path.join(dirMotorBase(cwd), ARCHIVO_SESION), 'utf8'));
+    // El runId acaba en rutas de disco: un sesion.json ajeno no puede apuntar fuera de .sdd/motor
+    return typeof sesion?.runId === 'string' && ID_VALIDO.test(sesion.runId) ? sesion : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Tareas del ciclo sin terminar en CUALQUIER sesion del proyecto. Una sesion nueva sobrescribe
+ * `sesion.json`, pero el codigo que dejo el modelo sigue en el proyecto: la guarda del modo clasico
+ * no puede fiarse solo de la ultima.
+ * @param {string} cwd
+ * @returns {string[]}
+ */
+export function tareasSinTerminarEnElProyecto(cwd) {
+  const pendientes = [];
+  let sesiones = [];
+  try { sesiones = fs.readdirSync(dirMotorBase(cwd), { withFileTypes: true }).filter((d) => d.isDirectory() && ID_VALIDO.test(d.name)); } catch { return []; }
+  for (const d of sesiones) {
+    try {
+      const ciclo = new CicloVerificado(/** @type {any} */ ({ cwd, runId: d.name }));
+      const resumen = ciclo.resumen();
+      for (const t of resumen) {
+        if (!RESULTADOS_FINALES.includes(t.resultado)) pendientes.push(t.taskId);
+      }
+      // Una carpeta de hilo sin ningun punto valido (dañado): no se sabe en que estaba, se trata como sin terminar
+      const hilos = fs.existsSync(ciclo.guardador.dir) ? fs.readdirSync(ciclo.guardador.dir).length : 0;
+      if (hilos > resumen.length) pendientes.push(`(${hilos - resumen.length} punto(s) de guardado dañado(s) en ${d.name})`);
+    } catch { /* una sesion ilegible no impide mirar las demas */ }
+  }
+  return [...new Set(pendientes)];
+}
+
+/** @param {string} cwd */
+export function nuevaSesion(cwd) {
+  const sesion = { runId: `run-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${process.pid}`, modo: 'ciclo', creada: new Date().toISOString() };
+  fs.mkdirSync(dirMotorBase(cwd), { recursive: true });
+  fs.writeFileSync(path.join(dirMotorBase(cwd), ARCHIVO_SESION), JSON.stringify(sesion, null, 2), 'utf8');
+  return sesion;
+}
+
+/**
+ * ¿Tiene esta tarea puntos de guardado del ciclo en la sesión? Si los tiene,
+ * hay que reanudarla con el ciclo: relanzarla en modo clásico ejecutaría en el
+ * equipo anfitrión código que escribió un modelo.
+ * @param {string} cwd @param {string} runId @param {string} taskId
+ */
+export function tienePuntosDeGuardado(cwd, runId, taskId) {
+  if (!ID_VALIDO.test(runId)) return false;
+  return new GuardadorArchivos(path.join(dirMotorBase(cwd), runId)).ultimo(`${runId}:${taskId}`).punto !== null;
+}
+
+/**
+ * Llamador por defecto: los agentes de agents/*.md a través del proveedor configurado.
+ * @param {import('../agent-registry.js').AgentRegistry} registry
+ * @param {string|undefined} apiKey
+ * @param {string} cwd
+ */
+export function crearLlamador(registry, apiKey, cwd) {
+  return {
+    /** @param {string} agente */
+    aliasDe: (agente) => registry.get(agente)?.model ?? 'sonnet',
+    /**
+     * `proveedorLocal`: usar un modelo local (Ollama) en lugar del proveedor configurado;
+     * es a donde lleva la degradación con `presupuesto.degradar_a: local`.
+     * @param {{ agente: string, modeloAlias: string, userPrompt: string, extraContext?: string, proveedorLocal?: boolean }} peticion
+     */
+    llamar: async ({ agente, modeloAlias, userPrompt, extraContext, proveedorLocal }) => {
+      const def = registry.get(agente);
+      if (!def) return { ok: false, error: `Agente desconocido: "${agente}"` };
+      const adaptador = new LlmAgentAdapter({ ...def, model: modeloAlias }, apiKey, undefined, cwd, proveedorLocal ? new OllamaProvider() : undefined);
+      const r = await adaptador.execute({ cwd, userPrompt, extraContext });
+      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, modelo: r.modelo, proveedor: r.provider, error: r.error };
+    },
+  };
+}
+
+/**
+ * Estado del ciclo verificado para `forge status`. Vacío si no hay sesión.
+ * @param {string} cwd
+ * @returns {string[]}
+ */
+export function lineasEstadoCiclo(cwd) {
+  const sesion = sesionActual(cwd);
+  if (!sesion) return [];
+  const ciclo  = new CicloVerificado(/** @type {any} */ ({ cwd, runId: sesion.runId }));
+  const tareas = ciclo.resumen();
+  if (tareas.length === 0) return [];
+
+  const gasto  = ciclo.libro.total();
+  const tope   = ciclo.libro.tope() ?? tareas[0].presupuesto.tope_usd;
+  const lineas = [
+    `Ciclo verificado · sesión ${sesion.runId}`,
+    `  Gasto: $${gasto.usd.toFixed(4)} de $${tope.toFixed(2)} · ${gasto.llamadas} llamadas`,
+  ];
+  for (const t of tareas) {
+    const situacion = t.revision && !t.revision.decision
+      ? `espera decisión (${t.revision.motivo})`
+      : t.siguiente ? `en curso, siguiente paso: ${t.siguiente}` : t.resultado;
+    lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}`);
+  }
+  return lineas;
+}
+
+/** @type {Record<string, 'completada'|'en_revision'|'abortada'>} */
+const ESTADO_POR_RESULTADO = {
+  exito: 'completada',
+  aceptada_por_humano: 'completada',
+  abortada: 'abortada',
+  revision_pendiente: 'en_revision',
+  en_curso: 'en_revision',
+};
+
+/** Resultados con los que una tarea ya no necesita nada más. */
+export const RESULTADOS_FINALES = ['exito', 'aceptada_por_humano', 'abortada'];
+
+export class CicloVerificado {
+  /**
+   * @param {{
+   *   cwd: string,
+   *   runId: string,
+   *   config: ReturnType<typeof import('./config.js').leerConfigCiclo>,
+   *   log: { append: Function },
+   *   llamar: Function,
+   *   aliasDe: (agente: string) => string,
+   *   runner: { test: (cwd: string) => Promise<any> },
+   *   testCmd: string,
+   *   specPath?: string,
+   *   vetadas?: string[],
+   *   recuperar?: Function,
+   * }} opciones
+   */
+  constructor(opciones) {
+    if (typeof opciones.runId !== 'string' || !ID_VALIDO.test(opciones.runId)) {
+      throw new Error(`Identificador de sesión no válido: "${opciones.runId}"`);
+    }
+    this.o         = opciones;
+    this.dirMotor  = path.join(dirMotorBase(opciones.cwd), opciones.runId);
+    this.guardador = new GuardadorArchivos(this.dirMotor);
+    this.diario    = new Diario(this.dirMotor);
+    this.libro     = new LibroDeGasto(this.dirMotor);
+    // Un punto guardado cierra lo que había en vuelo: el diario ya no hace falta
+    this.guardador.alGuardar = (threadId) => this.diario.limpiar(threadId);
+  }
+
+  /**
+   * Gasto real de la sesión: lo suma el libro llamada a llamada, así que no depende
+   * de que ninguna tarea llegue a guardar su estado.
+   */
+  _ajustarGasto(presupuesto) {
+    const t = this.libro.total();
+    const ajustado = { ...presupuesto, gastado_usd: t.usd, llamadas: t.llamadas, tokens_in: t.tokens_in, tokens_out: t.tokens_out };
+    return { ...ajustado, estado: estadoDe(ajustado) };
+  }
+
+  /**
+   * Llama al modelo con diario y libro de gasto. Una respuesta ya recibida de una
+   * ejecución cortada se recupera del diario: no se vuelve a pagar.
+   */
+  _llamador(threadId, taskId) {
+    return async (peticion) => {
+      const clave = claveDe(peticion);
+      const previa = this.diario.obtener(threadId, clave);
+      if (previa) return previa;
+
+      const r = await this.o.llamar(peticion);
+      if (r.ok) {
+        const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
+        const precio = precioDe(r.proveedor, r.modelo);
+        const usd = conConsumo ? r.inputTokens * precio.input + r.outputTokens * precio.output : 0;
+        // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
+        this.libro.anotar({ taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0 });
+        this.diario.anotar(threadId, clave, r);
+      }
+      return r;
+    };
+  }
+
+  /**
+   * @param {{ id: string, agente: string, prompt?: string, archivos?: string[], cubre_cas?: string[] }} tarea
+   * @param {{ decision: string, iteracionesExtra?: number, presupuestoExtra?: number }} [decision]
+   * @returns {Promise<{ status: 'completada'|'en_revision'|'abortada', estado: import('./estado.js').EstadoCiclo, reanudada: boolean, motor: 'langgraph'|'propio' }>}
+   */
+  async ejecutar(tarea, decision) {
+    const { cwd, runId, config, log } = this.o;
+    const threadId = `${runId}:${tarea.id}`;
+    const liberar  = this.guardador.bloquear(threadId);
+
+    try {
+      const { punto, descartados } = this.guardador.ultimo(threadId);
+      for (const d of descartados) {
+        log.append('custom', { message: `Punto de guardado dañado, se ignora: ${d.archivo} (${d.motivo})` }, { taskId: tarea.id });
+      }
+
+      let estado;
+      let desde;
+      if (punto) {
+        // Un punto de guardado de otra sesión o de otro proyecto no se obedece:
+        // los nodos usan estado.cwd para leer, copiar y escribir
+        const mismoProyecto = path.resolve(punto.estado.cwd).toLowerCase() === path.resolve(cwd).toLowerCase();
+        if (!mismoProyecto || punto.estado.runId !== runId || punto.estado.taskId !== tarea.id) {
+          throw new Error(`El punto de guardado de "${tarea.id}" no pertenece a esta sesión o a este proyecto: se ignora. Bórralo o inicia una sesión nueva.`);
+        }
+        estado = punto.estado;
+        desde  = punto.siguiente;
+      } else {
+        estado = estadoInicial(tarea, {
+          runId, cwd,
+          maxIteraciones: config.motor.max_iteraciones,
+          tope_usd: this.libro.tope() ?? config.presupuesto.tope_usd,
+          umbral_degradacion_usd: config.presupuesto.umbral_degradacion_usd,
+        });
+        desde = INICIO;
+      }
+
+      // Una decisión solo tiene sentido si la tarea está esperándola
+      if (decision && desde !== REVISION) {
+        throw new Error(`La tarea "${tarea.id}" no está en revisión: no hay nada que decidir.`);
+      }
+
+      // El presupuesto es de la sesión: el gasto y el tope ampliado vienen del libro
+      const tope = Math.max(estado.presupuesto.tope_usd, this.libro.tope() ?? 0);
+      estado = { ...estado, presupuesto: this._ajustarGasto({ ...estado.presupuesto, tope_usd: tope }) };
+
+      const deps = {
+        llamar: this._llamador(threadId, tarea.id),
+        respondida: (peticion) => this.diario.obtener(threadId, claveDe(peticion)) !== null,
+        aliasDe: this.o.aliasDe,
+        ajustarGasto: (p) => this._ajustarGasto(p),
+        runner: this.o.runner,
+        recuperar: this.o.recuperar ?? crearRecuperador(config.motor.recuperador),
+        respaldo: new Respaldo(cwd, path.join(this.dirMotor, 'respaldo', tarea.id.replace(/[^\w.-]/g, '_'))),
+        log, config,
+        testCmd: this.o.testCmd,
+        specPath: this.o.specPath,
+        vetadas: this.o.vetadas,
+      };
+
+      const motor = await elegirMotor(config.motor.grafo, (aviso) => log.append('custom', { message: aviso }, { taskId: tarea.id }));
+      estado = await motor.ejecutar({ estado, desde, deps, guardador: this.guardador, decision });
+
+      // Una ampliación del tope vale para el resto de la sesión, no solo para esta tarea
+      if (estado.presupuesto.tope_usd > (this.libro.tope() ?? 0)) this.libro.guardarTope(estado.presupuesto.tope_usd);
+      return { status: ESTADO_POR_RESULTADO[estado.resultado], estado, reanudada: Boolean(punto), motor: motor.nombre };
+    } finally {
+      liberar();
+    }
+  }
+
+  /**
+   * Resumen de cada tarea de la sesión, para `forge status`.
+   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any }[]}
+   */
+  resumen() {
+    if (!fs.existsSync(this.guardador.dir)) return [];
+    return fs.readdirSync(this.guardador.dir)
+      .map((carpeta) => this._ultimoDeCarpeta(carpeta))
+      .filter(Boolean)
+      .map((p) => ({
+        taskId: p.estado.taskId, nodo: p.nodo, siguiente: p.siguiente,
+        iteracion: p.estado.iteracion, maxIteraciones: p.estado.maxIteraciones,
+        resultado: p.estado.resultado, revision: p.estado.revision, presupuesto: p.estado.presupuesto,
+      }));
+  }
+
+  /** Último punto válido de una carpeta de hilo (el nombre de carpeta lleva una huella, no es el threadId). */
+  _ultimoDeCarpeta(carpeta) {
+    const dir = path.join(this.guardador.dir, carpeta);
+    let archivos;
+    try { archivos = fs.readdirSync(dir).filter((f) => /^\d{6}\.json$/.test(f)).sort().reverse(); } catch { return null; }
+    for (const archivo of archivos) {
+      try {
+        const punto = JSON.parse(fs.readFileSync(path.join(dir, archivo), 'utf8'));
+        const hilo = `${punto.estado.runId}:${punto.estado.taskId}`;
+        const valido = this.guardador.ultimo(hilo).punto;
+        if (valido) return valido;
+      } catch { /* siguiente */ }
+    }
+    return null;
+  }
+}

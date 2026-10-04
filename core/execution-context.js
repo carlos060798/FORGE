@@ -46,6 +46,8 @@ export class CircuitBreaker {
   constructor(options = {}) {
     this.nivelActual = options.nivelInicial ?? 'local';
     this.maxFallos   = options.maxFallosConsecutivos ?? 2;
+    /** Directorio del proyecto; el CLI lo fija con --cwd. */
+    this.cwd         = options.cwd ?? null;
     this.fallosPorAgente = new Map();
     this.agentStates = new Map();
     this._registrarListeners();
@@ -60,15 +62,7 @@ export class CircuitBreaker {
       if (fallos >= this.maxFallos) {
         const anterior = this.nivelActual;
         this.nivelActual = degradar(this.nivelActual);
-        try {
-          const sddDir = join(process.cwd(), '.sdd');
-          mkdirSync(sddDir, { recursive: true });
-          writeFileSync(
-            join(sddDir, 'execution-level.json'),
-            JSON.stringify({ nivel: this.nivelActual, ts: new Date().toISOString() }),
-            'utf8'
-          );
-        } catch { /* no interrumpir el flujo */ }
+        this._persistirNivel();
 
         if (anterior !== this.nivelActual) {
           process.stderr.write(
@@ -94,8 +88,12 @@ export class CircuitBreaker {
   forzarNivel(nivel) {
     this.nivelActual = nivel;
     this.fallosPorAgente.clear();
+    this._persistirNivel();
+  }
+
+  _persistirNivel() {
     try {
-      const sddDir = join(process.cwd(), '.sdd');
+      const sddDir = join(this.cwd ?? process.cwd(), '.sdd');
       mkdirSync(sddDir, { recursive: true });
       writeFileSync(
         join(sddDir, 'execution-level.json'),

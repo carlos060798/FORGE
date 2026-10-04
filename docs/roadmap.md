@@ -29,6 +29,8 @@ Todos los ítems siguientes están implementados y verificados contra el código
 
 ## En desarrollo activo
 
+- **Ciclo verificado** (opt-in con `forge run --motor ciclo`): cada tarea de código se corrige hasta que sus pruebas pasan, en un contenedor Docker sin red, con tope de gasto y revisión humana. Implementado y probado con respuestas guionizadas y Docker real; falta probarlo con un proveedor de pago. Ver [ciclo-verificado.md](ciclo-verificado.md) y `PLAN-MOTOR-AGENTICO.md`.
+
 Estas funcionalidades tienen trabajo iniciado pero no están disponibles en v4.2.0:
 
 ### Routing por confidence score

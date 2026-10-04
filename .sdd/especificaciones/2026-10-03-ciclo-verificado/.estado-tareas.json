@@ -1,0 +1,468 @@
+{
+  "spec_id": "2026-10-03-ciclo-verificado",
+  "total": 38,
+  "completadas": 38,
+  "en_progreso": null,
+  "bloqueadas": 0,
+  "tareas": {
+    "T001": {
+      "estado": "completada",
+      "agente": "arquitecto",
+      "modelo": "opus",
+      "depende_de": [],
+      "cubre_cas": []
+    },
+    "T002": {
+      "estado": "completada",
+      "agente": "arquitecto",
+      "modelo": "opus",
+      "depende_de": [],
+      "cubre_cas": []
+    },
+    "T003": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": []
+    },
+    "T004": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-008-01"
+      ]
+    },
+    "T005": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-008-03"
+      ]
+    },
+    "T006": {
+      "estado": "completada",
+      "agente": "operaciones",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": []
+    },
+    "T007": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": []
+    },
+    "T008": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-001-01",
+        "CA-001-03",
+        "CA-001-04",
+        "CA-001-05",
+        "CA-005-01",
+        "CA-005-05"
+      ]
+    },
+    "T009": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-004-01",
+        "CA-004-02",
+        "CA-004-05"
+      ]
+    },
+    "T010": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-002-02",
+        "CA-008-05"
+      ]
+    },
+    "T011": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-003-01",
+        "CA-003-03",
+        "CA-003-05"
+      ]
+    },
+    "T012": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-006-02",
+        "CA-006-03"
+      ]
+    },
+    "T013": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-002-01"
+      ]
+    },
+    "T014": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T012",
+        "T001"
+      ],
+      "cubre_cas": [
+        "CA-006-01",
+        "CA-006-02",
+        "CA-006-03"
+      ]
+    },
+    "T015": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T002"
+      ],
+      "cubre_cas": [
+        "CA-003-02",
+        "CA-003-08"
+      ]
+    },
+    "T016": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-005-04"
+      ]
+    },
+    "T017": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-004-04"
+      ]
+    },
+    "T018": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T008"
+      ],
+      "cubre_cas": [
+        "CA-001-01",
+        "CA-001-03",
+        "CA-001-04",
+        "CA-001-05",
+        "CA-005-01",
+        "CA-005-05"
+      ]
+    },
+    "T019": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T009",
+        "T017"
+      ],
+      "cubre_cas": [
+        "CA-004-01",
+        "CA-004-02",
+        "CA-004-03",
+        "CA-004-05"
+      ]
+    },
+    "T020": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T010"
+      ],
+      "cubre_cas": [
+        "CA-002-02",
+        "CA-008-05"
+      ]
+    },
+    "T021": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T011",
+        "T002"
+      ],
+      "cubre_cas": [
+        "CA-003-01",
+        "CA-003-03",
+        "CA-003-04",
+        "CA-003-05",
+        "CA-003-06",
+        "CA-003-07"
+      ]
+    },
+    "T022": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T021"
+      ],
+      "cubre_cas": [
+        "CA-003-09"
+      ]
+    },
+    "T023": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T015",
+        "T021",
+        "T022"
+      ],
+      "cubre_cas": [
+        "CA-003-02",
+        "CA-003-04",
+        "CA-003-06",
+        "CA-003-07"
+      ]
+    },
+    "T024": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T013",
+        "T018",
+        "T019",
+        "T020",
+        "T023",
+        "T016"
+      ],
+      "cubre_cas": [
+        "CA-001-02",
+        "CA-002-01",
+        "CA-002-03",
+        "CA-002-04",
+        "CA-005-02"
+      ]
+    },
+    "T025": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T003"
+      ],
+      "cubre_cas": [
+        "CA-007-01",
+        "CA-007-02",
+        "CA-007-03"
+      ]
+    },
+    "T026": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T024",
+        "T025",
+        "T014"
+      ],
+      "cubre_cas": [
+        "CA-001-02",
+        "CA-005-03",
+        "CA-006-01"
+      ]
+    },
+    "T027": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T026",
+        "T006"
+      ],
+      "cubre_cas": [
+        "CA-005-03",
+        "CA-006-01"
+      ]
+    },
+    "T028": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T026",
+        "T007"
+      ],
+      "cubre_cas": [
+        "CA-005-02",
+        "CA-005-03",
+        "CA-008-02"
+      ]
+    },
+    "T029": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T028"
+      ],
+      "cubre_cas": [
+        "CA-004-04"
+      ]
+    },
+    "T030": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T028"
+      ],
+      "cubre_cas": []
+    },
+    "T031": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T028"
+      ],
+      "cubre_cas": [
+        "CA-003-07",
+        "CA-005-01"
+      ]
+    },
+    "T032": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T026",
+        "T004",
+        "T005"
+      ],
+      "cubre_cas": [
+        "CA-008-01",
+        "CA-008-02",
+        "CA-008-04"
+      ]
+    },
+    "T033": {
+      "estado": "completada",
+      "agente": "tester",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T032",
+        "T028"
+      ],
+      "cubre_cas": [
+        "CA-001-02",
+        "CA-005-04",
+        "CA-006-01",
+        "CA-008-03"
+      ]
+    },
+    "T034": {
+      "estado": "completada",
+      "agente": "operaciones",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T023"
+      ],
+      "cubre_cas": [
+        "CA-003-01",
+        "CA-003-02",
+        "CA-003-03",
+        "CA-003-04",
+        "CA-003-05",
+        "CA-003-06"
+      ]
+    },
+    "T035": {
+      "estado": "completada",
+      "agente": "operaciones",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T027"
+      ],
+      "cubre_cas": [
+        "CA-008-01"
+      ]
+    },
+    "T036": {
+      "estado": "completada",
+      "agente": "revisor",
+      "modelo": "opus",
+      "depende_de": [
+        "T033",
+        "T034",
+        "T035"
+      ],
+      "cubre_cas": []
+    },
+    "T037": {
+      "estado": "completada",
+      "agente": "documentador",
+      "modelo": "sonnet",
+      "depende_de": [
+        "T036"
+      ],
+      "cubre_cas": []
+    },
+    "T038": {
+      "estado": "completada",
+      "agente": "seguridad",
+      "modelo": "opus",
+      "depende_de": [
+        "T036"
+      ],
+      "cubre_cas": [
+        "CA-003-08"
+      ]
+    }
+  },
+  "ultima_actualizacion": "2026-10-03"
+}

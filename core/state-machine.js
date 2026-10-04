@@ -60,7 +60,8 @@ const TRANSITIONS = [
     from: 'spec',
     to: 'plan',
     guard: (e) => {
-      if (!e.spec_activa && !e.spec_draft_path) return 'No hay spec activa ni draft registrado';
+      // Los comandos SDD escriben `especificacion_activa`; el engine, `spec_activa`.
+      if (!e.spec_activa && !e.especificacion_activa && !e.spec_draft_path) return 'No hay spec activa ni draft registrado';
       if (!e.spec_aprobado) return 'La spec debe aprobarse antes de planificar — ejecuta: forge aprobar spec';
       return null;
     },
@@ -87,6 +88,18 @@ const TRANSITIONS = [
   },
 ];
 
+/**
+ * Los comandos /sdd.* registran la etapa en `fase_actual` con su propio
+ * vocabulario. Cuando `pipeline_step` no existe, se traduce desde ahí.
+ */
+const DESDE_FASE = {
+  descubrimiento: 'discovery',
+  especificacion: 'spec',
+  tareas_generadas: 'tasks',
+  implementacion: 'code',
+  implementacion_completa: 'done',
+};
+
 export class PipelineStateMachine {
   /**
    * @param {import('./state-store.js').FileSystemStateStore} store
@@ -100,7 +113,7 @@ export class PipelineStateMachine {
   /** @returns {PipelineStep} */
   currentStep() {
     const estado = this.store.read();
-    return estado.pipeline_step ?? 'idea';
+    return estado.pipeline_step ?? DESDE_FASE[estado.fase_actual] ?? 'idea';
   }
 
   /**

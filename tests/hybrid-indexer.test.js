@@ -3,6 +3,9 @@ import assert from 'node:assert';
 import { writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
+
+const TMP = os.tmpdir();
 
 /**
  * Tests para Phase 2.3 — Hybrid Indexer + Re-ranking
@@ -11,8 +14,8 @@ import path from 'node:path';
 const indexerPath = path.join(process.cwd(), 'utils', 'hybrid-indexer.js');
 
 test('2.3.1 — Construye índice desde archivo de símbolos', (t) => {
-  const symbolsFile = '/tmp/test-symbols.txt';
-  const indexFile = '/tmp/test-index.json';
+  const symbolsFile = path.join(TMP, 'test-symbols.txt');
+  const indexFile = path.join(TMP, 'test-index.json');
 
   const symbols = `
 authenticateUser [src/auth.ts]
@@ -39,8 +42,8 @@ deleteUser [src/users.ts]
 });
 
 test('2.3.2 — Cada símbolo tiene embedding vectorial', (t) => {
-  const symbolsFile = '/tmp/test-symbols2.txt';
-  const indexFile = '/tmp/test-index2.json';
+  const symbolsFile = path.join(TMP, 'test-symbols2.txt');
+  const indexFile = path.join(TMP, 'test-index2.json');
 
   writeFileSync(symbolsFile, 'fetchData [api.ts]\nprocessData [utils.ts]\n');
 
@@ -60,8 +63,8 @@ test('2.3.2 — Cada símbolo tiene embedding vectorial', (t) => {
 });
 
 test('2.3.3 — Cada símbolo tiene características léxicas', (t) => {
-  const symbolsFile = '/tmp/test-symbols3.txt';
-  const indexFile = '/tmp/test-index3.json';
+  const symbolsFile = path.join(TMP, 'test-symbols3.txt');
+  const indexFile = path.join(TMP, 'test-index3.json');
 
   writeFileSync(symbolsFile, '_privateFunc [private.ts]\npublicFunc [public.ts]\n');
 
@@ -81,8 +84,8 @@ test('2.3.3 — Cada símbolo tiene características léxicas', (t) => {
 });
 
 test('2.3.4 — Query devuelve top 5 resultados rerankeados', (t) => {
-  const symbolsFile = '/tmp/test-symbols4.txt';
-  const indexFile = '/tmp/test-index4.json';
+  const symbolsFile = path.join(TMP, 'test-symbols4.txt');
+  const indexFile = path.join(TMP, 'test-index4.json');
 
   const symbols = `
 getUserData [users.ts]
@@ -113,8 +116,8 @@ userProfile [profile.ts]
 });
 
 test('2.3.5 — Re-ranking ordena por similitud', (t) => {
-  const symbolsFile = '/tmp/test-symbols5.txt';
-  const indexFile = '/tmp/test-index5.json';
+  const symbolsFile = path.join(TMP, 'test-symbols5.txt');
+  const indexFile = path.join(TMP, 'test-index5.json');
 
   const symbols = `
 authenticate [auth.ts]
@@ -146,8 +149,8 @@ validate [validation.ts]
 test('2.3.6 — Modo léxico es fallback (sin embeddings)', (t) => {
   // Un modo léxico puro seguiría usando regex sin embeddings
   // Este test verifica que el índice híbrido coexiste con fallback
-  const symbolsFile = '/tmp/test-symbols6.txt';
-  const indexFile = '/tmp/test-index6.json';
+  const symbolsFile = path.join(TMP, 'test-symbols6.txt');
+  const indexFile = path.join(TMP, 'test-index6.json');
 
   writeFileSync(symbolsFile, 'testFunc [test.ts]\n');
 
@@ -165,8 +168,8 @@ test('2.3.6 — Modo léxico es fallback (sin embeddings)', (t) => {
 });
 
 test('2.3.7 — Maneja símbolos vacíos sin error', (t) => {
-  const symbolsFile = '/tmp/test-symbols7.txt';
-  const indexFile = '/tmp/test-index7.json';
+  const symbolsFile = path.join(TMP, 'test-symbols7.txt');
+  const indexFile = path.join(TMP, 'test-index7.json');
 
   writeFileSync(symbolsFile, '');
 
@@ -181,8 +184,8 @@ test('2.3.7 — Maneja símbolos vacíos sin error', (t) => {
 });
 
 test('2.3.8 — Estima tamaño comprimido vs original', (t) => {
-  const symbolsFile = '/tmp/test-symbols8.txt';
-  const indexFile = '/tmp/test-index8.json';
+  const symbolsFile = path.join(TMP, 'test-symbols8.txt');
+  const indexFile = path.join(TMP, 'test-index8.json');
 
   const symbols = `
 function1 [file1.ts]
@@ -205,8 +208,8 @@ function3 [file3.ts]
 });
 
 test('2.3.9 — Query con tags múltiples', (t) => {
-  const symbolsFile = '/tmp/test-symbols9.txt';
-  const indexFile = '/tmp/test-index9.json';
+  const symbolsFile = path.join(TMP, 'test-symbols9.txt');
+  const indexFile = path.join(TMP, 'test-index9.json');
 
   writeFileSync(symbolsFile, 'debugUtils [debug.ts]\ntestUtils [test.ts]\n');
 
@@ -223,8 +226,8 @@ test('2.3.9 — Query con tags múltiples', (t) => {
 });
 
 test('2.3.10 — Timestamp de índice está presente', (t) => {
-  const symbolsFile = '/tmp/test-symbols10.txt';
-  const indexFile = '/tmp/test-index10.json';
+  const symbolsFile = path.join(TMP, 'test-symbols10.txt');
+  const indexFile = path.join(TMP, 'test-index10.json');
 
   writeFileSync(symbolsFile, 'example [example.ts]\n');
 

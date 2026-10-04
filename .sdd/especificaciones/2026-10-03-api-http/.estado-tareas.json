@@ -1,0 +1,65 @@
+{
+  "spec_id": "2026-10-03-api-http",
+  "total": 5,
+  "completadas": 5,
+  "en_progreso": null,
+  "bloqueadas": 0,
+  "tareas": {
+    "T001": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [],
+      "cubre_cas": [
+        "CA-001-01",
+        "CA-001-02",
+        "CA-001-03",
+        "CA-001-04",
+        "CA-001-05"
+      ]
+    },
+    "T002": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": [
+        "CA-002-01",
+        "CA-002-02",
+        "CA-002-03",
+        "CA-002-04"
+      ]
+    },
+    "T003": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": [
+        "CA-003-01",
+        "CA-003-02",
+        "CA-003-03",
+        "CA-003-04"
+      ]
+    },
+    "T004": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": [
+        "CA-004-01"
+      ]
+    },
+    "T005": {
+      "estado": "completada",
+      "agente": "desarrollador-backend",
+      "depende_de": [
+        "T001"
+      ],
+      "cubre_cas": []
+    }
+  }
+}

@@ -15,7 +15,8 @@ export class Orchestrator {
    * @param {import('./state-machine.js').PipelineStateMachine} stateMachine
    * @param {import('./event-log.js').EventLog} log
    * @param {import('./state-store.js').FileSystemStateStore} store
-   * @param {{ cwd: string, parallelThreshold?: number, stopOnFailure?: boolean, runner?: import('./runners/runner.js').Runner }} options
+   * @param {{ cwd: string, parallelThreshold?: number, stopOnFailure?: boolean, runner?: import('./runners/runner.js').Runner, ciclo?: import('./ciclo/index.js').CicloVerificado, decision?: { decision: string, taskIds: string[], iteracionesExtra?: number, presupuestoExtra?: number } }} options
+   *   Con `ciclo`, las tareas de código pasan por el ciclo verificado y se ejecutan en secuencia.
    */
   constructor(registry, stateMachine, log, store, options) {
     this.registry     = registry;
@@ -26,6 +27,8 @@ export class Orchestrator {
       parallelThreshold: 3,
       stopOnFailure: true,
       runner: undefined,
+      ciclo: undefined,
+      decision: undefined,
       ...options,
     };
   }
@@ -34,6 +37,8 @@ export class Orchestrator {
     const startTime = Date.now();
     const completedTasks = [];
     const failedTasks = [];
+    const pausedTasks = [];
+    const abortedTasks = [];
 
     const knownStates = this.log.replayTaskStates();
     const completed = new Set(
@@ -48,7 +53,8 @@ export class Orchestrator {
       const pending = level.filter(t => !completed.has(t.id));
       if (pending.length === 0) continue;
 
-      const levelResults = pending.length >= this.options.parallelThreshold
+      // En modo ciclo el área de trabajo y el presupuesto son compartidos: nunca en paralelo
+      const levelResults = !this.options.ciclo && pending.length >= this.options.parallelThreshold
         ? await this._runParallel(pending, apiKey)
         : await this._runSequential(pending, apiKey);
 
@@ -56,16 +62,24 @@ export class Orchestrator {
         if (result.status === 'completada') {
           completedTasks.push(result);
           completed.add(result.taskId);
+        } else if (result.status === 'en_revision') {
+          // Hace falta la decisión de una persona: no se sigue con las tareas siguientes
+          pausedTasks.push(result);
+          return { ok: false, completedTasks, failedTasks, pausedTasks, abortedTasks, totalDurationMs: Date.now() - startTime };
+        } else if (result.status === 'abortada') {
+          // Decision humana, no un fallo: se detiene sin marcar error (las siguientes dependen de ella)
+          abortedTasks.push(result);
+          return { ok: true, completedTasks, failedTasks, pausedTasks, abortedTasks, totalDurationMs: Date.now() - startTime };
         } else if (result.status === 'fallida') {
           failedTasks.push(result);
           if (!this._taskIsOptional(result.taskId, tasks) && this.options.stopOnFailure) {
-            return { ok: false, completedTasks, failedTasks, totalDurationMs: Date.now() - startTime };
+            return { ok: false, completedTasks, failedTasks, pausedTasks, abortedTasks, totalDurationMs: Date.now() - startTime };
           }
         }
       }
     }
 
-    return { ok: failedTasks.length === 0, completedTasks, failedTasks, totalDurationMs: Date.now() - startTime };
+    return { ok: failedTasks.length === 0, completedTasks, failedTasks, pausedTasks, abortedTasks, totalDurationMs: Date.now() - startTime };
   }
 
   async runReviewParallel(reviewerNames, sharedPrompt, apiKey) {
@@ -92,6 +106,7 @@ export class Orchestrator {
     for (const task of tasks) {
       const result = await this._executeTask(task, apiKey);
       results.push(result);
+      if (result.status === 'en_revision' || result.status === 'abortada') break;
       if (result.status === 'fallida' && !task.opcional && this.options.stopOnFailure) break;
     }
     return results;
@@ -128,6 +143,10 @@ export class Orchestrator {
       return { taskId: task.id, agente: task.agente, status: 'fallida', output: '', durationMs: Date.now() - start, error };
     }
 
+    if (this.options.ciclo && this._isCodeTask(task, def)) {
+      return this._executeConCiclo(task, start);
+    }
+
     const estado = this.store.read();
     const ctx = {
       cwd: this.options.cwd,
@@ -136,7 +155,7 @@ export class Orchestrator {
       extraContext: task.extraContext,
     };
 
-    const agent = new LlmAgentAdapter(def, apiKey);
+    const agent = new LlmAgentAdapter(def, apiKey, undefined, this.options.cwd);
     this.log.append('agent_invoked', { agente: task.agente, taskId: task.id }, { taskId: task.id, agent: task.agente });
 
     const agentResult = await agent.execute(ctx);
@@ -171,6 +190,33 @@ export class Orchestrator {
     this.log.appendEnvelope('task_completed', { taskId: task.id }, { from: `agente:${task.agente}`, to: 'pipeline' }, { taskId: task.id });
     await bus.emit('task:completed', { taskId: task.id, agente: task.agente, durationMs: agentResult.durationMs ?? 0 });
     return { taskId: task.id, agente: task.agente, status: 'completada', output: agentResult.output, durationMs: Date.now() - start, runnerResult };
+  }
+
+  /**
+   * Tarea de código en modo ciclo: planificar, escribir pruebas, implementar y
+   * ejecutar en el entorno aislado hasta que pasen o haga falta una persona.
+   */
+  async _executeConCiclo(task, start) {
+    const decision = this.options.decision?.taskIds?.includes(task.id) ? this.options.decision : undefined;
+    const r = await this.options.ciclo.ejecutar(task, decision);
+    const base = {
+      taskId: task.id, agente: task.agente, output: '', durationMs: Date.now() - start,
+      ciclo: { iteracion: r.estado.iteracion, resultado: r.estado.resultado, gastado_usd: r.estado.presupuesto.gastado_usd, revision: r.estado.revision },
+    };
+
+    if (r.status === 'completada') {
+      this.log.appendEnvelope('task_completed', { taskId: task.id, resultado: r.estado.resultado, iteraciones: r.estado.iteracion }, { from: `agente:${task.agente}`, to: 'pipeline' }, { taskId: task.id });
+      await bus.emit('task:completed', { taskId: task.id, agente: task.agente, durationMs: base.durationMs });
+      return { ...base, status: 'completada' };
+    }
+    if (r.status === 'en_revision') {
+      return { ...base, status: 'en_revision', error: r.estado.revision?.detalle ?? r.estado.revision?.motivo };
+    }
+    // Abortada por decisión humana: no es un fallo del agente, no cuenta para el circuit breaker
+    // Se registra como omitida, no como fallida: si no, cada `forge resume` volvería a lanzarla
+    const error = 'Abortada por decisión humana; los archivos se restauraron';
+    this.log.append('task_skipped', { taskId: task.id, motivo: 'abortada', error }, { taskId: task.id });
+    return { ...base, status: 'abortada', error };
   }
 
   _topologicalLevels(tasks) {

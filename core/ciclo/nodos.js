@@ -1,0 +1,298 @@
+/**
+ * nodos.js — Los seis nodos del ciclo verificado
+ *
+ * Cada nodo es `(estado, deps) => Promise<Partial<EstadoCiclo>>`. No decide a
+ * dónde se va después (eso es grafo.js), salvo cuando no puede continuar: en
+ * ese caso devuelve `revision`, y el grafo lleva a revisión humana.
+ *
+ * `deps`:
+ *   llamar({ agente, modeloAlias, proveedorLocal, userPrompt, extraContext })
+ *       → { ok, output, inputTokens, outputTokens, modelo, proveedor, error }
+ *   aliasDe(agente) → alias de modelo del agente (opus | sonnet | haiku | id)
+ *   ajustarGasto?(presupuesto) → el presupuesto con el gasto real de la sesión
+ *   runner.test(cwd) → resultado de ejecutar las pruebas en el entorno aislado
+ *   recuperar(entrada) → contexto y texto (ver core/recuperacion)
+ *   respaldo.registrar(ruta) / respaldo.restaurar()
+ *   log.append(tipo, payload, meta)
+ *   config   → leerConfigCiclo()
+ *   testCmd  → comando de pruebas del proyecto
+ *   specPath?, vetadas?
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
+import { ampliar, ErrorConsumo, modeloEfectivo, puedeLlamar, registrar } from './presupuesto.js';
+import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
+import { clasificar } from './router.js';
+import { cola } from './redactar.js';
+
+/** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
+
+const DECISIONES = ['continuar', 'aceptar', 'abortar'];
+
+/**
+ * @param {string} motivo
+ * @param {string} reanudarEn  nodo desde el que se sigue si la persona decide continuar
+ * @param {string} [detalle]
+ */
+export function pedirRevision(motivo, reanudarEn, detalle) {
+  return {
+    revision: { motivo, reanudarEn, ...(detalle ? { detalle } : {}) },
+    resultado: /** @type {const} */ ('revision_pendiente'),
+  };
+}
+
+/**
+ * Llama a un agente contabilizando el gasto. Nunca inicia una llamada con el
+ * presupuesto agotado.
+ * @returns {Promise<{ salida: string, presupuesto: any } | { fallo: Partial<EstadoCiclo> }>}
+ */
+async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext }) {
+  const efectivo = modeloEfectivo(deps.aliasDe(agente), presupuesto, deps.config.presupuesto.degradar_a);
+  // Una respuesta ya pagada y guardada en el diario no cuesta nada: se usa aunque haya agotado el tope
+  const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext }) === true;
+  if (!yaPagada && !puedeLlamar(presupuesto)) {
+    return { fallo: { presupuesto, ...pedirRevision('presupuesto', nodo) } };
+  }
+  const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext });
+  if (!r.ok) {
+    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${r.error ?? 'sin detalle'}`) } };
+  }
+
+  let siguiente;
+  try {
+    siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens });
+  } catch (e) {
+    if (!(e instanceof ErrorConsumo)) throw e;
+    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, e.message) } };
+  }
+  // El gasto de la sesión suma lo de todas las tareas, también las cortadas
+  if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);
+
+  if (presupuesto.estado === 'ok' && siguiente.estado !== 'ok') {
+    deps.log.append('ciclo:presupuesto_degradado', { gastado_usd: siguiente.gastado_usd, umbral_usd: siguiente.umbral_degradacion_usd }, { taskId: estado.taskId });
+  }
+  return { salida: r.output, presupuesto: siguiente };
+}
+
+/**
+ * Llama al agente y aplica los archivos que devuelve. Si la salida no se puede
+ * interpretar, lo intenta una vez más antes de pedir revisión.
+ */
+async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas }) {
+  let presupuesto = estado.presupuesto;
+  let error = '';
+
+  for (let intento = 0; intento < 2; intento++) {
+    const prompt = intento === 0 ? userPrompt
+      : `${userPrompt}\n\n## Tu respuesta anterior no se pudo interpretar\n${error}\nResponde solo con el bloque JSON pedido.`;
+    const r = await invocar(estado, deps, presupuesto, nodo, { agente, userPrompt: prompt, extraContext: contrato });
+    if ('fallo' in r) return { fallo: r.fallo };
+    presupuesto = r.presupuesto;
+
+    const bloque = extraerBloque(r.salida);
+    if (bloque.ok === false) { error = bloque.error; continue; }
+
+    const aplicado = aplicarArchivos(estado.cwd, bloque.archivos, {
+      rol, pruebas, vetadas: deps.vetadas,
+      antesDeEscribir: (ruta) => deps.respaldo.registrar(ruta),
+    });
+    for (const rechazo of aplicado.rechazados) {
+      deps.log.append('ciclo:escritura_rechazada', { nodo, ruta: rechazo.ruta, motivo: rechazo.motivo }, { taskId: estado.taskId });
+    }
+    return { presupuesto, aplicado };
+  }
+
+  return { fallo: { presupuesto, ...pedirRevision('salida_invalida', nodo, `El agente "${agente}" no devolvió una salida utilizable: ${error}`) } };
+}
+
+function textoDeContexto(estado, deps) {
+  return deps.recuperar({
+    cwd: estado.cwd, tarea: estado.tarea, plan: estado.plan,
+    maxBytes: deps.config.motor.contexto_max_bytes, specPath: deps.specPath, vetadas: deps.vetadas,
+  });
+}
+
+function seccionPlan(estado) {
+  return estado.plan?.pasos?.length ? `\n\n## Plan\n${estado.plan.pasos.map((p, i) => `${i + 1}. ${p}`).join('\n')}` : '';
+}
+
+// ── planner ──────────────────────────────────────────────────────────────────
+
+/** @param {EstadoCiclo} estado */
+export async function planner(estado, deps) {
+  const r = await invocar(estado, deps, estado.presupuesto, 'planner', {
+    agente: 'arquitecto', userPrompt: `## Tarea\n${estado.tarea.descripcion}`, extraContext: CONTRATO_PLANNER,
+  });
+  if ('fallo' in r) return r.fallo;
+
+  // El plan orienta, no decide: si no se puede interpretar se sigue con los archivos de la tarea
+  let plan = { pasos: [], archivosObjetivo: estado.tarea.archivos };
+  const ini = r.salida.indexOf('{');
+  const fin = r.salida.lastIndexOf('}');
+  try {
+    const json = JSON.parse(r.salida.slice(ini, fin + 1));
+    if (Array.isArray(json.pasos)) {
+      plan = {
+        pasos: json.pasos.filter((p) => typeof p === 'string'),
+        archivosObjetivo: Array.isArray(json.archivosObjetivo) ? json.archivosObjetivo.filter((a) => typeof a === 'string') : estado.tarea.archivos,
+      };
+    }
+  } catch { /* plan por defecto */ }
+
+  return { plan, presupuesto: r.presupuesto };
+}
+
+// ── retriever ────────────────────────────────────────────────────────────────
+
+/** @param {EstadoCiclo} estado */
+export async function retriever(estado, deps) {
+  return { contexto: textoDeContexto(estado, deps).contexto };
+}
+
+// ── qa ───────────────────────────────────────────────────────────────────────
+
+/** @param {EstadoCiclo} estado */
+export async function qa(estado, deps) {
+  const contexto = textoDeContexto(estado, deps).texto;
+  const userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
+    + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
+
+  const r = await generarArchivos(estado, deps, 'qa', { agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [] });
+  if ('fallo' in r) return r.fallo;
+
+  if (r.aplicado.escritos.length === 0) {
+    return { presupuesto: r.presupuesto, ...pedirRevision('salida_invalida', 'qa', 'El agente de pruebas no escribió ninguna prueba válida.') };
+  }
+
+  // Aviso, no bloqueo: unas pruebas que ya pasan sin implementación no prueban nada (CA-002-04)
+  const previa = await deps.runner.test(estado.cwd);
+  if (clasificar(previa, { hayPruebas: true, pruebasIntactas: true }) === 'pass') {
+    deps.log.append('custom', { message: 'Aviso: las pruebas recién escritas pasan sin implementación', aviso: 'pruebas_no_fallan' }, { taskId: estado.taskId });
+  }
+
+  return { pruebas: { archivos: r.aplicado.escritos, comando: deps.testCmd }, presupuesto: r.presupuesto };
+}
+
+// ── coder ────────────────────────────────────────────────────────────────────
+
+function leerPruebas(estado) {
+  return estado.pruebas.archivos.map(({ ruta }) => {
+    const abs = path.resolve(estado.cwd, ruta);
+    return `### ${ruta}\n${fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '(no existe)'}`;
+  }).join('\n\n');
+}
+
+/** @param {EstadoCiclo} estado */
+export async function coder(estado, deps) {
+  const contexto = textoDeContexto(estado, deps).texto;
+  const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];
+
+  let userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+    + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${leerPruebas(estado)}`
+    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '');
+  if (ultima) {
+    userPrompt += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
+      + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+  }
+
+  const r = await generarArchivos(estado, deps, 'coder', {
+    agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder',
+    pruebas: estado.pruebas.archivos.map((a) => a.ruta),
+  });
+  if ('fallo' in r) return r.fallo;
+
+  // Se conserva lo ya escrito en iteraciones anteriores; lo nuevo sustituye por ruta
+  const porRuta = new Map(estado.implementacion.archivos.map((a) => [a.ruta, a]));
+  for (const a of r.aplicado.escritos) porRuta.set(a.ruta, a);
+  const parcial = { implementacion: { archivos: [...porRuta.values()] }, presupuesto: r.presupuesto };
+
+  if (r.aplicado.requiereRevision) {
+    const propuestos = r.aplicado.rechazados
+      .filter((x) => x.motivo === 'dependencias' || x.motivo === 'configuracion')
+      .map((x) => x.ruta).join(', ');
+    return { ...parcial, ...pedirRevision('dependencias', 'coder',
+      `El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${propuestos}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`) };
+  }
+  if (r.aplicado.escritos.length === 0) {
+    return { ...parcial, ...pedirRevision('salida_invalida', 'coder', 'El implementador no escribió ningún archivo válido.') };
+  }
+  return parcial;
+}
+
+// ── sandbox ──────────────────────────────────────────────────────────────────
+
+/** @param {EstadoCiclo} estado */
+export async function sandbox(estado, deps) {
+  // Si las pruebas cambiaron desde que se escribieron, la ejecución no se realiza (CA-002-03)
+  const alteradas = huellasAlteradas(estado.cwd, estado.pruebas.archivos);
+  if (alteradas.length > 0) {
+    return pedirRevision('infraestructura', 'sandbox', `Las pruebas cambiaron desde que se escribieron: ${alteradas.join(', ')}. No se ejecutan.`);
+  }
+
+  const r = await deps.runner.test(estado.cwd);
+  const categoria = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
+
+  // Un fallo del entorno no consume iteraciones (CA-005-05)
+  const iteracion = categoria === 'infra_error' ? estado.iteracion : estado.iteracion + 1;
+  const ejecucion = {
+    iteracion, categoria,
+    exitCode: r.exitCode ?? null, timedOut: Boolean(r.timedOut), oomKilled: Boolean(r.oomKilled),
+    durationMs: r.durationMs ?? 0, stdoutCola: cola(r.stdout), stderrCola: cola(r.stderr),
+  };
+  deps.log.append('ciclo:ejecucion', { categoria, exitCode: ejecucion.exitCode, timedOut: ejecucion.timedOut, durationMs: ejecucion.durationMs, iteracion }, { taskId: estado.taskId });
+
+  return { iteracion, ejecuciones: [ejecucion] };
+}
+
+// ── revision_humana ──────────────────────────────────────────────────────────
+
+/**
+ * Aplica la decisión de una persona. Sin decisión no se ejecuta (el motor se
+ * detiene antes): mientras no la haya, no se gasta nada.
+ *
+ * @param {EstadoCiclo} estado
+ * @param {any} deps
+ * @param {{ decision: string, iteracionesExtra?: number, presupuestoExtra?: number }} decision
+ */
+export async function revisionHumana(estado, deps, decision) {
+  if (!estado.revision) throw new Error('revision_humana: no hay ninguna revisión pendiente');
+  if (!decision || !DECISIONES.includes(decision.decision)) {
+    throw new Error(`Decisión no válida. Opciones: ${DECISIONES.join(', ')}`);
+  }
+
+  const revision = { ...estado.revision, decision: decision.decision, ts: new Date().toISOString() };
+
+  // Se valida ANTES de registrar nada: una decisión rechazada no deja rastro
+  let presupuesto = estado.presupuesto;
+  let maxIteraciones = estado.maxIteraciones;
+  if (decision.decision === 'continuar') {
+    if (decision.presupuestoExtra) presupuesto = ampliar(presupuesto, decision.presupuestoExtra);
+    if (decision.iteracionesExtra) maxIteraciones += Math.max(0, Math.floor(decision.iteracionesExtra));
+
+    if (presupuesto.estado === 'agotado') {
+      throw new Error('El presupuesto sigue agotado: indica cuánto ampliarlo con --presupuesto-extra <USD>.');
+    }
+    // Siempre que se vuelva al implementador: si el motivo fue el gasto en la última iteración,
+    // ampliar solo el presupuesto no puede regalar una iteración más
+    if (estado.revision.reanudarEn === 'coder' && estado.iteracion >= maxIteraciones) {
+      throw new Error('No quedan iteraciones: indica cuántas añadir con --iteraciones-extra <N>.');
+    }
+  }
+
+  deps.log.append('ciclo:revision_decidida', { decision: decision.decision, motivo: revision.motivo, iteracionesExtra: decision.iteracionesExtra, presupuestoExtra: decision.presupuestoExtra }, { taskId: estado.taskId });
+
+  if (decision.decision === 'abortar') {
+    const restaurado = deps.respaldo.restaurar();
+    deps.log.append('custom', { message: 'Tarea abortada: archivos restaurados', ...restaurado }, { taskId: estado.taskId });
+    return { revision, resultado: 'abortada' };
+  }
+  if (decision.decision === 'aceptar') {
+    return { revision, resultado: 'aceptada_por_humano' };
+  }
+  return { revision, presupuesto, maxIteraciones, resultado: 'en_curso' };
+}
+
+export const NODOS = { planner, retriever, qa, coder, sandbox, revision_humana: revisionHumana };

@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * @typedef {'pipeline_step_changed'|'task_started'|'task_completed'|'task_failed'|'task_skipped'|'agent_invoked'|'agent_result'|'runner_started'|'runner_result'|'spec_validated'|'checkpoint_written'|'resume_attempted'|'custom'} EventType
+ * @typedef {'pipeline_step_changed'|'task_started'|'task_completed'|'task_failed'|'task_skipped'|'agent_invoked'|'agent_result'|'runner_started'|'runner_result'|'spec_validated'|'checkpoint_written'|'resume_attempted'|'custom'|'task_paused'|'ciclo:nodo_completado'|'ciclo:ejecucion'|'ciclo:escritura_rechazada'|'ciclo:presupuesto_degradado'|'ciclo:revision_decidida'} EventType
  */
 
 /**
@@ -79,7 +79,7 @@ export class EventLog {
     return events;
   }
 
-  /** @returns {Map<string, { estado: string, completedAt?: string, error?: string }>} */
+  /** @returns {Map<string, { estado: string, completedAt?: string, error?: string, motivo?: string }>} */
   replayTaskStates() {
     const states = new Map();
     for (const event of this.readAll()) {
@@ -96,6 +96,10 @@ export class EventLog {
           break;
         case 'task_skipped':
           states.set(event.taskId, { estado: 'omitida' });
+          break;
+        case 'task_paused':
+          // El ciclo verificado espera una decisión humana (forge resume --decision)
+          states.set(event.taskId, { estado: 'en_revision', motivo: String(event.payload['motivo'] ?? '') });
           break;
       }
     }

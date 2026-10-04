@@ -3,6 +3,9 @@ import assert from 'node:assert';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
+
+const TMP = os.tmpdir();
 
 /**
  * Tests para Phase 2.5 — Delta Encoding
@@ -11,8 +14,8 @@ import path from 'node:path';
 const deltaPath = path.join(process.cwd(), 'utils', 'delta-encoding.js');
 
 test('2.5.1 — Codifica delta entre dos objetos JSON', (t) => {
-  const prevFile = '/tmp/prev.json';
-  const currFile = '/tmp/curr.json';
+  const prevFile = path.join(TMP, 'prev.json');
+  const currFile = path.join(TMP, 'curr.json');
 
   const prev = { name: 'Alice', age: 30, email: 'alice@example.com' };
   const curr = { name: 'Alice', age: 31, email: 'alice@newdomain.com' };
@@ -40,8 +43,8 @@ test('2.5.1 — Codifica delta entre dos objetos JSON', (t) => {
 });
 
 test('2.5.2 — Comprime deltas significativamente', (t) => {
-  const prevFile = '/tmp/prev2.json';
-  const currFile = '/tmp/curr2.json';
+  const prevFile = path.join(TMP, 'prev2.json');
+  const currFile = path.join(TMP, 'curr2.json');
 
   const prev = { data: 'a'.repeat(1000), id: 1, name: 'test' };
   const curr = { data: 'a'.repeat(1000), id: 1, name: 'test-updated' };
@@ -69,8 +72,8 @@ test('2.5.2 — Comprime deltas significativamente', (t) => {
 });
 
 test('2.5.3 — Aplica delta correctamente al archivo anterior', (t) => {
-  const prevFile = '/tmp/prev3.json';
-  const deltaFile = '/tmp/delta3.json';
+  const prevFile = path.join(TMP, 'prev3.json');
+  const deltaFile = path.join(TMP, 'delta3.json');
 
   const prev = { name: 'Bob', count: 5 };
   const delta = {
@@ -98,8 +101,8 @@ test('2.5.3 — Aplica delta correctamente al archivo anterior', (t) => {
 });
 
 test('2.5.4 — Detecta cambios de campo', (t) => {
-  const prevFile = '/tmp/prev4.json';
-  const currFile = '/tmp/curr4.json';
+  const prevFile = path.join(TMP, 'prev4.json');
+  const currFile = path.join(TMP, 'curr4.json');
 
   const prev = { x: 1, y: 2, z: 3 };
   const curr = { x: 1, y: 20, z: 3 };
@@ -122,8 +125,8 @@ test('2.5.4 — Detecta cambios de campo', (t) => {
 });
 
 test('2.5.5 — Maneja archivos sin cambios', (t) => {
-  const prevFile = '/tmp/prev5.json';
-  const currFile = '/tmp/curr5.json';
+  const prevFile = path.join(TMP, 'prev5.json');
+  const currFile = path.join(TMP, 'curr5.json');
 
   const data = { unchanged: true };
 
@@ -143,8 +146,8 @@ test('2.5.5 — Maneja archivos sin cambios', (t) => {
 });
 
 test('2.5.6 — Soporta múltiples tipos de cambios', (t) => {
-  const prevFile = '/tmp/prev6.json';
-  const currFile = '/tmp/curr6.json';
+  const prevFile = path.join(TMP, 'prev6.json');
+  const currFile = path.join(TMP, 'curr6.json');
 
   const prev = {
     id: 1,
@@ -177,8 +180,8 @@ test('2.5.6 — Soporta múltiples tipos de cambios', (t) => {
 });
 
 test('2.5.7 — Valida base hash para integridad', (t) => {
-  const prevFile = '/tmp/prev7.json';
-  const currFile = '/tmp/curr7.json';
+  const prevFile = path.join(TMP, 'prev7.json');
+  const currFile = path.join(TMP, 'curr7.json');
 
   const prev = { value: 42 };
   const curr = { value: 43 };
@@ -201,8 +204,8 @@ test('2.5.7 — Valida base hash para integridad', (t) => {
 });
 
 test('2.5.8 — Maneja objetos anidados', (t) => {
-  const prevFile = '/tmp/prev8.json';
-  const currFile = '/tmp/curr8.json';
+  const prevFile = path.join(TMP, 'prev8.json');
+  const currFile = path.join(TMP, 'curr8.json');
 
   const prev = { user: { name: 'Alice', profile: { bio: 'Dev' } } };
   const curr = { user: { name: 'Alice', profile: { bio: 'Dev Updated' } } };
@@ -224,9 +227,9 @@ test('2.5.8 — Maneja objetos anidados', (t) => {
 });
 
 test('2.5.9 — Roundtrip: encode luego decode recupera el original', (t) => {
-  const prevFile = '/tmp/prev9.json';
-  const currFile = '/tmp/curr9.json';
-  const deltaFile = '/tmp/delta9.json';
+  const prevFile = path.join(TMP, 'prev9.json');
+  const currFile = path.join(TMP, 'curr9.json');
+  const deltaFile = path.join(TMP, 'delta9.json');
 
   const prev = { a: 1, b: 'test', c: [1, 2, 3] };
   const curr = { a: 2, b: 'updated', c: [1, 2, 4], d: 'new' };
@@ -254,8 +257,8 @@ test('2.5.9 — Roundtrip: encode luego decode recupera el original', (t) => {
 });
 
 test('2.5.10 — CLI muestra información de compresión', (t) => {
-  const prevFile = '/tmp/prev10.json';
-  const currFile = '/tmp/curr10.json';
+  const prevFile = path.join(TMP, 'prev10.json');
+  const currFile = path.join(TMP, 'curr10.json');
 
   const prev = { largeData: 'x'.repeat(500) };
   const curr = { largeData: 'x'.repeat(500), change: 'small' };

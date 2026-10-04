@@ -99,6 +99,12 @@ La skill de paralelización con PTC no está activa por defecto en todos los con
 
 ---
 
+## Ejecución de código generado
+
+En el modo por defecto (`motor.modo: clasico`), `forge run` ejecuta las pruebas del proyecto **directamente en tu equipo**, sin aislamiento. El nivel `sandbox` del circuit breaker no es un aislamiento: solo deja de ejecutar tareas tras varios fallos.
+
+El aislamiento real existe solo en el ciclo verificado (`forge run --motor ciclo`), que exige Docker. Sus propios límites están en [ciclo-verificado.md](ciclo-verificado.md#límites-conocidos).
+
 ## Limitaciones de escala
 
 ### Proyectos muy grandes pueden degradar el rendimiento de la memoria

@@ -403,3 +403,26 @@ compresion:
     - ELIMINAR
     - BORRAR
     - irreversible
+
+# ─── Motor Agéntico (ciclo verificado) ───────────────────────────────────────
+# Opt-in. Con modo "ciclo", forge run corrige cada tarea de código hasta que
+# sus pruebas pasan, ejecutándola en un contenedor Docker sin red.
+# Ver .sdd/especificaciones/2026-10-03-ciclo-verificado/ y ADR-01 a ADR-11.
+motor:
+  modo: clasico                 # clasico | ciclo
+  grafo: auto                   # auto (LangGraph.js si está instalado) | langgraph | propio
+  recuperador: archivos         # fuente de contexto de los agentes
+  max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
+  contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
+
+sandbox:
+  cpus: 1
+  memoria: 512m
+  pids: 256
+  timeout_s: 120
+  salida_max_bytes: 1048576
+
+presupuesto:
+  tope_usd: 2.00                # al alcanzarlo no se inicia ninguna llamada más
+  umbral_degradacion_usd: 1.50  # a partir de aquí se usa un modelo más barato
+  degradar_a: escalon           # escalon (opus → sonnet → haiku) | local

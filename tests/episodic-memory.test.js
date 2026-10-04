@@ -3,6 +3,9 @@ import assert from 'node:assert';
 import { writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
+
+const TMP = os.tmpdir();
 
 /**
  * Tests para Phase 2.4 — Episodic Memory
@@ -11,8 +14,8 @@ import path from 'node:path';
 const memoryPath = path.join(process.cwd(), 'utils', 'episodic-memory.js');
 
 test('2.4.1 — Indexa episodios desde archivo MD lineal', (t) => {
-  const memoryFile = '/tmp/test-memory.md';
-  const indexFile = '/tmp/test-episodes.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory.md');
+  const indexFile = path.join(TMP, 'test-episodes.jsonl');
 
   const memory = `
 ## Error en autenticación
@@ -59,8 +62,8 @@ Resultado: Migración ahora tarda 15min. Sin datos perdidos.
 });
 
 test('2.4.2 — Detecta tipo de episodio por título', (t) => {
-  const memoryFile = '/tmp/test-memory2.md';
-  const indexFile = '/tmp/test-episodes2.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory2.md');
+  const indexFile = path.join(TMP, 'test-episodes2.jsonl');
 
   const memory = `
 ## Error al compilar TypeScript
@@ -97,8 +100,8 @@ Resultado: Común en async.
 });
 
 test('2.4.3 — Query filtra por tipo de episodio', (t) => {
-  const memoryFile = '/tmp/test-memory3.md';
-  const indexFile = '/tmp/test-episodes3.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory3.md');
+  const indexFile = path.join(TMP, 'test-episodes3.jsonl');
 
   const memory = `
 ## Error 1
@@ -135,8 +138,8 @@ Resultado: ok.
 });
 
 test('2.4.4 — Query devuelve máximo 10 episodios', (t) => {
-  const memoryFile = '/tmp/test-memory4.md';
-  const indexFile = '/tmp/test-episodes4.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory4.md');
+  const indexFile = path.join(TMP, 'test-episodes4.jsonl');
 
   // Crea 15 episodios
   let memory = '';
@@ -161,8 +164,8 @@ test('2.4.4 — Query devuelve máximo 10 episodios', (t) => {
 });
 
 test('2.4.5 — Episodios tienen timestamp', (t) => {
-  const memoryFile = '/tmp/test-memory5.md';
-  const indexFile = '/tmp/test-episodes5.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory5.md');
+  const indexFile = path.join(TMP, 'test-episodes5.jsonl');
 
   const memory = `
 ## Test Episode
@@ -188,8 +191,8 @@ Resultado: ok.
 });
 
 test('2.4.6 — Episodios tienen tags para búsqueda', (t) => {
-  const memoryFile = '/tmp/test-memory6.md';
-  const indexFile = '/tmp/test-episodes6.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory6.md');
+  const indexFile = path.join(TMP, 'test-episodes6.jsonl');
 
   const memory = `
 ## Login Test Failed
@@ -215,8 +218,8 @@ Resultado: fixed.
 });
 
 test('2.4.7 — Maneja memoria vacía sin error', (t) => {
-  const memoryFile = '/tmp/test-memory7.md';
-  const indexFile = '/tmp/test-episodes7.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory7.md');
+  const indexFile = path.join(TMP, 'test-episodes7.jsonl');
 
   writeFileSync(memoryFile, '');
 
@@ -232,8 +235,8 @@ test('2.4.7 — Maneja memoria vacía sin error', (t) => {
 });
 
 test('2.4.8 — Query ordena por relevancia/recencia', (t) => {
-  const memoryFile = '/tmp/test-memory8.md';
-  const indexFile = '/tmp/test-episodes8.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory8.md');
+  const indexFile = path.join(TMP, 'test-episodes8.jsonl');
 
   const memory = `
 ## Error Antiguo
@@ -265,8 +268,8 @@ Resultado: ok.
 });
 
 test('2.4.9 — Soporta query con tipo wildcard', (t) => {
-  const memoryFile = '/tmp/test-memory9.md';
-  const indexFile = '/tmp/test-episodes9.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory9.md');
+  const indexFile = path.join(TMP, 'test-episodes9.jsonl');
 
   const memory = `
 ## Error 1
@@ -298,8 +301,8 @@ Resultado: ok.
 });
 
 test('2.4.10 — Extrae campos de episodio correctamente', (t) => {
-  const memoryFile = '/tmp/test-memory10.md';
-  const indexFile = '/tmp/test-episodes10.jsonl';
+  const memoryFile = path.join(TMP, 'test-memory10.md');
+  const indexFile = path.join(TMP, 'test-episodes10.jsonl');
 
   const memory = `
 ## Error en Producción

@@ -113,13 +113,14 @@ export class LlmAgentAdapter {
    * @param {string} [apiKey]  — solo necesario para provider anthropic
    * @param {number} [globalTimeoutMs]
    * @param {string} [cwd]     — directorio del proyecto para leer sdd.config.yaml
+   * @param {object} [provider] provider ya creado (por defecto, el configurado)
    */
-  constructor(definition, apiKey, globalTimeoutMs, cwd) {
+  constructor(definition, apiKey, globalTimeoutMs, cwd, provider) {
     this.definition      = definition;
     this.globalTimeoutMs = globalTimeoutMs ?? DEFAULT_GLOBAL_TIMEOUT_MS;
     this.cwd             = cwd ?? process.cwd();
     // El provider se crea una vez y se reutiliza por instancia
-    this._provider = crearProvider({
+    this._provider = provider ?? crearProvider({
       cwd: this.cwd,
       config: apiKey ? { api_key: apiKey } : {},
     });

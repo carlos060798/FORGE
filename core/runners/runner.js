@@ -56,8 +56,10 @@ export function run(cmd, cwd, timeoutMs = 120_000) {
  * @returns {string[]}
  */
 export function safeFiles(cwd, files) {
+  // path.relative en vez de startsWith: "/proy-malo" empieza por "/proy"
+  // pero no está dentro de él.
+  const root = path.resolve(cwd);
   return files
-    .map(f => path.resolve(cwd, f))
-    .filter(f => f.startsWith(path.resolve(cwd)))
-    .map(f => path.relative(cwd, f));
+    .map(f => path.relative(root, path.resolve(root, f)))
+    .filter(rel => rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel));
 }

@@ -2,8 +2,11 @@
  * engine-cli.js — CLI del engine FORGE
  *
  * Uso:
- *   node core/engine-cli.js run    [--cwd <path>] [--tasks <json>]
- *   node core/engine-cli.js resume [--cwd <path>]
+ *   node core/engine-cli.js run    [--cwd <path>] [--tasks <json>] [--motor clasico|ciclo] [--force]
+ *   node core/engine-cli.js resume [--cwd <path>] [--decision continuar|aceptar|abortar]
+ *                                  [--iteraciones-extra <N>] [--presupuesto-extra <USD>]
+ *
+ * Códigos de salida: 0 completado · 1 fallo · 3 revisión humana pendiente · 4 aislamiento no disponible
  *   node core/engine-cli.js status [--cwd <path>]
  *   node core/engine-cli.js validate [--cwd <path>] [--spec <path>]
  */
@@ -26,6 +29,16 @@ import { runnerForStack } from './runners/index.js';
 import { parseSpecMd, validateSpec, checkCoverage } from './spec.js';
 import { sessionBudget } from './session-budget.js';
 import { circuitBreaker } from './execution-context.js';
+import { cargarTareas, specActiva } from './tareas.js';
+import { leerConfigCiclo, leerRutasProtegidas } from './ciclo/config.js';
+import { CicloVerificado, crearLlamador, dirMotorBase, lineasEstadoCiclo, nuevaSesion, sesionActual, tareasSinTerminarEnElProyecto, tienePuntosDeGuardado } from './ciclo/index.js';
+import { adquirir, ErrorBloqueado } from './ciclo/candado.js';
+import { DockerCli } from './sandbox/docker-cli.js';
+import { SandboxRunner } from './sandbox/sandbox-runner.js';
+import { comprobarProyecto } from './sandbox/preparar-imagen.js';
+
+export const SALIDA = { OK: 0, FALLO: 1, REVISION: 3, SIN_AISLAMIENTO: 4 };
+const DECISIONES = ['continuar', 'aceptar', 'abortar'];
 
 // ── Colores de terminal ───────────────────────────────────────────────────────
 
@@ -46,13 +59,20 @@ const dim  = (msg) => console.log(c.gris(msg));
 
 // ── Parser de argumentos ──────────────────────────────────────────────────────
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const [,, command = 'status', ...rest] = argv;
   const flags = {};
-  for (let i = 0; i < rest.length; i += 2) {
-    const key = rest[i]?.replace(/^--/, '');
-    const val = rest[i + 1] ?? 'true';
-    if (key) flags[key] = val;
+  for (let i = 0; i < rest.length; i++) {
+    if (!rest[i].startsWith('--')) continue;
+    const key  = rest[i].slice(2);
+    const next = rest[i + 1];
+    // Un flag seguido de otro flag (o al final) es booleano: no consume el siguiente
+    if (next === undefined || next.startsWith('--')) {
+      flags[key] = 'true';
+    } else {
+      flags[key] = next;
+      i++;
+    }
   }
   return { command, flags };
 }
@@ -71,6 +91,116 @@ function buildDeps(cwd) {
   return { store, log, registry, fsm, stack, runner, sddDir };
 }
 
+/**
+ * Prepara el ciclo verificado si el modo es "ciclo"; devuelve null en modo clásico.
+ * @param {boolean} nueva       true en `forge run` (sesión y presupuesto nuevos); false en `forge resume`
+ * @param {string[]} [taskIds]  tareas que se van a lanzar: en `resume`, las que tengan puntos de guardado
+ *                              del ciclo se reanudan con el ciclo aunque no se pida
+ */
+async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
+  const previa = sesionActual(cwd);
+  const conPuntos = !nueva && previa?.modo === 'ciclo' && taskIds.some((id) => tienePuntosDeGuardado(cwd, previa.runId, id));
+
+  // Relanzar en modo clásico una tarea del ciclo ejecutaría en el equipo, sin aislamiento, lo que escribió un modelo
+  if (conPuntos && flags['motor'] === 'clasico' && flags['force'] !== 'true') {
+    err('Hay tareas empezadas con el ciclo verificado. Relanzarlas en modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Usa --motor ciclo, o --force si lo asumes.');
+  }
+  const modo   = flags['motor'] ?? (conPuntos ? 'ciclo' : undefined);
+  const config = leerConfigCiclo(cwd, { motor: modo });
+  if (config.motor.modo !== 'ciclo') return null;
+
+  // Todo lo que puede fallar antes de gastar o de cambiar nada, primero
+  const etapa = deps.fsm.currentStep();
+  const avanza = etapa === 'tasks' && deps.fsm.availableTransitions().includes('code');
+  if (etapa !== 'code' && !avanza && flags['force'] !== 'true') {
+    err(`El ciclo verificado solo se ejecuta en la etapa "code" (etapa actual: "${etapa}"). Avanza con "forge step code" o añade --force.`);
+  }
+
+  const problema = comprobarProyecto(cwd, deps.stack.lenguaje);
+  if (problema) err(problema);
+
+  const cli  = new DockerCli();
+  const disp = await cli.disponible();
+  if (disp.ok === false) {
+    console.error(`${c.rojo('✗')} ${disp.error}`);
+    console.error('  El ciclo verificado no ejecuta código generado fuera del entorno aislado.');
+    console.error('  Arranca Docker y vuelve a intentarlo.');
+    process.exit(SALIDA.SIN_AISLAMIENTO);
+  }
+
+  // Un solo ciclo por proyecto: dos a la vez compartirían la copia, el gasto y el barrido de contenedores
+  let liberar;
+  try {
+    liberar = adquirir(path.join(dirMotorBase(cwd), 'proyecto.lock'), 'El ciclo verificado de este proyecto');
+  } catch (e) {
+    if (e instanceof ErrorBloqueado) err(e.message);
+    throw e;
+  }
+  process.on('exit', liberar);
+
+  // De "tareas generadas" a "construcción" no hay ninguna condición: se avanza solo, ya sin riesgo de salir con error
+  if (avanza && deps.fsm.advance('code').ok) info('Etapa del proyecto: tasks → code');
+
+  const sesion   = nueva || !previa ? nuevaSesion(cwd) : previa;
+  const dirMotor = path.join(dirMotorBase(cwd), sesion.runId);
+  const sandbox  = new SandboxRunner({
+    runId: sesion.runId, dirMotor, cli,
+    lenguaje: deps.stack.lenguaje, testCmd: deps.stack.test_cmd,
+    limites: { cpus: config.sandbox.cpus, memoria: config.sandbox.memoria, pids: config.sandbox.pids },
+    timeoutMs: config.sandbox.timeout_s * 1000,
+    salidaMaxBytes: config.sandbox.salida_max_bytes,
+  });
+  const barridos = await sandbox.barrerHuerfanos();
+  if (barridos > 0) warn(`Se eliminaron ${barridos} contenedor(es) de una ejecución anterior.`);
+  const copiasSinBorrar = sandbox.barrerCopias();
+  if (copiasSinBorrar.length > 0) warn(`No se pudieron borrar ${copiasSinBorrar.length} copia(s) de trabajo de ejecuciones anteriores; bórralas a mano: ${copiasSinBorrar.join(', ')}`);
+
+  const spec  = specActiva(deps.store.read());
+  const ciclo = new CicloVerificado({
+    cwd, runId: sesion.runId, config, log: deps.log,
+    ...crearLlamador(deps.registry, apiKey, cwd),
+    runner: sandbox, testCmd: deps.stack.test_cmd,
+    vetadas: leerRutasProtegidas(cwd),
+    specPath: spec ? path.join(cwd, '.sdd', 'especificaciones', String(spec), 'spec.md') : undefined,
+  });
+  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${config.presupuesto.tope_usd.toFixed(2)} · Docker ${disp.version}`);
+  return { ciclo, config, dirMotor };
+}
+
+/** Las tareas de la sesión se guardan con ella: `forge resume` las necesita aunque vinieran de --tasks. */
+function tareasDeSesion(cwd) {
+  const sesion = sesionActual(cwd);
+  if (!sesion) return [];
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dirMotorBase(cwd), sesion.runId, 'tareas.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
+const MOTIVOS_LEGIBLES = {
+  iteraciones:     'se alcanzó el máximo de ejecuciones sin que las pruebas pasen',
+  presupuesto:     'se alcanzó el tope de gasto de la sesión',
+  infraestructura: 'el entorno de ejecución o el proveedor de modelos falló',
+  dependencias:    'el implementador propone cambiar las dependencias del proyecto',
+  salida_invalida: 'un agente no devolvió una salida utilizable',
+};
+
+/** Explica por qué se pausó cada tarea y qué puede decidir la persona. No gasta nada. */
+function informarRevision(pausadas) {
+  console.log('');
+  warn(`${pausadas.length} tarea(s) esperan tu decisión:`);
+  for (const t of pausadas) {
+    console.log(`  ${c.amarillo('⏸')} ${t.taskId}: ${MOTIVOS_LEGIBLES[t.motivo] ?? t.motivo}`);
+    if (t.detalle) dim(`     ${t.detalle}`);
+  }
+  console.log('\n  Opciones:');
+  console.log('    forge resume --decision continuar [--iteraciones-extra N] [--presupuesto-extra USD]');
+  console.log('    forge resume --decision aceptar     (dar la tarea por buena tal como está)');
+  console.log('    forge resume --decision abortar     (restaurar los archivos al estado previo)');
+  dim('  Mientras no decidas, no se gasta nada.');
+}
+
 // ── Comandos ──────────────────────────────────────────────────────────────────
 
 async function cmdStatus(cwd) {
@@ -85,7 +215,8 @@ async function cmdStatus(cwd) {
   console.log(`  Pipeline:   ${c.azul(step)}`);
   console.log(`  Stack:      ${stack.lenguaje} / ${stack.runtime}${stack.framework ? ` (${stack.framework})` : ''}`);
   console.log(`  Tareas:     ${completed}/${total} completadas`);
-  if (estado.spec_activa) console.log(`  Spec:       ${estado.spec_activa}`);
+  const spec = specActiva(estado);
+  if (spec) console.log(`  Spec:       ${spec}`);
   if (estado.ultima_actualizacion) dim(`  Actualizado: ${estado.ultima_actualizacion}`);
 
   const avail = fsm.availableTransitions();
@@ -93,10 +224,14 @@ async function cmdStatus(cwd) {
 
   console.log(`\n💰 Presupuesto sesión: ${sessionBudget.resumen()}`);
   console.log(`🔒 Circuit breaker:   ${circuitBreaker.nivel}`);
+
+  const lineas = lineasEstadoCiclo(cwd);
+  if (lineas.length > 0) console.log('\n' + lineas.join('\n'));
 }
 
-async function cmdResume(cwd) {
-  const { log, fsm, store, registry, runner } = buildDeps(cwd);
+async function cmdResume(cwd, flags = {}) {
+  const deps = buildDeps(cwd);
+  const { log, fsm, store, registry, runner } = deps;
   const apiKey = process.env['ANTHROPIC_API_KEY'];
 
   if (!log.exists()) {
@@ -118,53 +253,100 @@ async function cmdResume(cwd) {
 
   if (pendientes.length === 0) { ok('Todas las tareas registradas están completadas.'); return; }
 
+  // Tareas del ciclo verificado que esperan una decisión humana
+  const enRevision = pendientes.filter(([, v]) => v.estado === 'en_revision');
+  let decision;
+  /** Pausadas a las que no se ha dado decisión: se informa de ellas, sin gastar nada */
+  let sinDecision = enRevision.map(([taskId, v]) => ({ taskId, motivo: v.motivo }));
+  if (enRevision.length === 0 && flags['decision']) {
+    err('No hay ninguna tarea esperando una decisión; --decision no se aplica.');
+  }
+  if (enRevision.length > 0 && flags['decision']) {
+    if (!DECISIONES.includes(flags['decision'])) {
+      err(`Decisión no válida: "${flags['decision']}". Opciones: ${DECISIONES.join(', ')}`);
+    }
+    // --tarea limita la decisión a una; sin él vale para todas las que esperan
+    if (flags['tarea'] === 'true') err('--tarea necesita el identificador de la tarea (por ejemplo --tarea T1).');
+    const ids = flags['tarea'] ? [flags['tarea']] : enRevision.map(([id]) => id);
+    const desconocidas = ids.filter((id) => !enRevision.some(([i]) => i === id));
+    if (desconocidas.length > 0) err(`No hay ninguna tarea en revisión llamada: ${desconocidas.join(', ')}`);
+    decision = {
+      decision: flags['decision'],
+      taskIds: ids,
+      iteracionesExtra: Number(flags['iteraciones-extra']) || undefined,
+      presupuestoExtra: Number(flags['presupuesto-extra']) || undefined,
+    };
+    sinDecision = sinDecision.filter((t) => !ids.includes(t.taskId));
+  }
+
   const completed = new Set(
     [...taskStates.entries()].filter(([, v]) => v.estado === 'completada').map(([id]) => id)
   );
   const tareasARelanzar = pendientes
-    .filter(([, v]) => v.estado === 'fallida' || v.estado === 'en_progreso')
+    .filter(([id, v]) => v.estado === 'fallida' || v.estado === 'en_progreso' || (decision?.taskIds.includes(id) && v.estado === 'en_revision'))
     .map(([id]) => id)
     .filter(id => !completed.has(id));
 
   if (tareasARelanzar.length === 0) {
+    if (sinDecision.length > 0) {
+      informarRevision(sinDecision);
+      process.exit(SALIDA.REVISION);
+    }
     dim('  Ejecuta "forge run --tasks <json>" con las tareas pendientes para continuar.');
     return;
   }
 
-  let todasLasTareas = [];
-  const estadoTareasPath = path.join(cwd, '.sdd', 'estado-tareas.json');
-  if (fs.existsSync(estadoTareasPath)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(estadoTareasPath, 'utf8'));
-      if (Array.isArray(raw['tareas'])) todasLasTareas = raw['tareas'];
-    } catch { /* ignorar */ }
-  }
+  let { tareas: todasLasTareas } = cargarTareas(cwd, store.read());
+  if (!todasLasTareas.some(t => tareasARelanzar.includes(t.id))) todasLasTareas = tareasDeSesion(cwd);
 
   const tareasParaCorrer = todasLasTareas.filter(t => tareasARelanzar.includes(t.id));
   if (tareasParaCorrer.length === 0) {
-    warn('No se encontraron definiciones de tareas en .sdd/estado-tareas.json.');
+    warn('No se encontraron definiciones de tareas en .sdd/estado-tareas.json ni en la spec activa.');
     return;
   }
 
   console.log(`\n🔄 Relanzando ${tareasParaCorrer.length} tarea(s) fallidas/interrumpidas...`);
 
-  const orch = new Orchestrator(registry, fsm, log, store, { cwd, parallelThreshold: 3, stopOnFailure: false, runner });
-  const result = await orch.run(tareasParaCorrer, apiKey);
+  const motor = await prepararCiclo(cwd, flags, deps, apiKey, false, tareasParaCorrer.map((t) => t.id));
+  if (!motor && flags['force'] !== 'true') {
+    // Mismo riesgo que en `run`: otra tarea del ciclo pausada tiene codigo de un modelo en el proyecto
+    const sinTerminar = tareasSinTerminarEnElProyecto(cwd);
+    if (sinTerminar.length > 0) {
+      err(`Hay tareas del ciclo verificado sin terminar (${sinTerminar.join(', ')}). El modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Usa --motor ciclo, o --force si lo asumes.`);
+    }
+  }
+  const orch  = new Orchestrator(registry, fsm, log, store, { cwd, parallelThreshold: 3, stopOnFailure: false, runner, ciclo: motor?.ciclo, decision });
+  let result;
+  try {
+    result = await orch.run(tareasParaCorrer, apiKey);
+  } catch (e) {
+    err(e instanceof Error ? e.message : String(e));
+  }
 
   console.log('');
+  const pausadas = [
+    ...sinDecision,
+    ...(result.pausedTasks ?? []).map(t => ({ taskId: t.taskId, motivo: t.ciclo?.revision?.motivo, detalle: t.ciclo?.revision?.detalle })),
+  ];
+  for (const t of result.failedTasks) {
+    console.log(`  ${c.rojo('✗')} ${t.taskId} (${t.agente}): ${t.error?.slice(0, 120) ?? 'sin detalle'}`);
+  }
+  if (pausadas.length > 0) {
+    informarRevision(pausadas);
+    process.exit(SALIDA.REVISION);
+  }
+  for (const t of result.abortedTasks ?? []) console.log(`  ${c.amarillo('⏹')} ${t.taskId}: ${t.error}`);
   if (result.ok) {
     ok(`Resume completado: ${result.completedTasks.length} tareas en ${(result.totalDurationMs / 1000).toFixed(1)}s`);
   } else {
-    for (const t of result.failedTasks) {
-      console.log(`  ${c.rojo('✗')} ${t.taskId} (${t.agente}): ${t.error?.slice(0, 120) ?? 'sin detalle'}`);
-    }
     warn(`${result.failedTasks.length} tareas aún fallidas.`);
     process.exit(1);
   }
 }
 
 async function cmdRun(cwd, flags) {
-  const { store, log, registry, fsm, runner } = buildDeps(cwd);
+  const deps = buildDeps(cwd);
+  const { store, log, registry, fsm, runner } = deps;
   const apiKey = process.env['ANTHROPIC_API_KEY'];
 
   if (!apiKey) warn('ANTHROPIC_API_KEY no está definida — el engine correrá en modo stub.');
@@ -182,30 +364,50 @@ async function cmdRun(cwd, flags) {
   }
 
   if (tasks.length === 0) {
-    const estadoTareasPath = path.join(cwd, '.sdd', 'estado-tareas.json');
-    if (fs.existsSync(estadoTareasPath)) {
-      try {
-        const raw = JSON.parse(fs.readFileSync(estadoTareasPath, 'utf8'));
-        if (Array.isArray(raw['tareas'])) tasks = raw['tareas'];
-      } catch { /* ignorar */ }
-    }
+    const cargadas = cargarTareas(cwd, store.read());
+    tasks = cargadas.tareas;
+    if (cargadas.origen) dim(`  Tareas leídas de ${path.relative(cwd, cargadas.origen)}`);
   }
 
   if (tasks.length === 0) {
-    err('No hay tareas para ejecutar. Usa --tasks <archivo.json> o genera un plan con /sdd.planificar.');
+    err('No hay tareas para ejecutar. Usa --tasks <archivo.json> o genera las tareas con /sdd.tareas.');
   }
 
+  const motor = await prepararCiclo(cwd, flags, deps, apiKey, true);
+  if (!motor && flags['force'] !== 'true') {
+    // Una sesión del ciclo sin terminar deja código de un modelo en el proyecto: el modo clásico
+    // lo ejecutaría en tu equipo, sin aislamiento
+    const sinTerminar = tareasSinTerminarEnElProyecto(cwd);
+    if (sinTerminar.length > 0) {
+      err(`Hay tareas del ciclo verificado sin terminar (${sinTerminar.join(', ')}). El modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Usa --motor ciclo y forge resume, o --force si lo asumes.`);
+    }
+  }
+  if (motor) {
+    fs.mkdirSync(motor.dirMotor, { recursive: true });
+    fs.writeFileSync(path.join(motor.dirMotor, 'tareas.json'), JSON.stringify(tasks, null, 2), 'utf8');
+  }
   const orch = new Orchestrator(registry, fsm, log, store, {
     cwd,
     parallelThreshold: Number(flags['parallel-threshold'] ?? 3),
     stopOnFailure: flags['stop-on-failure'] !== 'false',
     runner,
+    ciclo: motor?.ciclo,
   });
 
   info(`Ejecutando ${tasks.length} tareas en ${cwd}`);
-  const result = await orch.run(tasks, apiKey);
+  let result;
+  try {
+    result = await orch.run(tasks, apiKey);
+  } catch (e) {
+    err(e instanceof Error ? e.message : String(e));
+  }
 
   console.log('');
+  if (result.pausedTasks?.length > 0) {
+    informarRevision(result.pausedTasks.map(t => ({ taskId: t.taskId, motivo: t.ciclo?.revision?.motivo, detalle: t.ciclo?.revision?.detalle })));
+    process.exit(SALIDA.REVISION);
+  }
+  for (const t of result.abortedTasks ?? []) console.log(`  ${c.amarillo('⏹')} ${t.taskId}: ${t.error}`);
   if (result.ok) {
     ok(`Pipeline completado: ${result.completedTasks.length} tareas en ${(result.totalDurationMs / 1000).toFixed(1)}s`);
   } else {
@@ -219,8 +421,9 @@ async function cmdRun(cwd, flags) {
 
 async function cmdValidate(cwd, flags) {
   const estado   = createStateStore(cwd).read();
-  const specPath = flags['spec'] ?? (estado.spec_activa
-    ? path.join(cwd, '.sdd', 'especificaciones', String(estado.spec_activa), 'spec.md')
+  const activa   = specActiva(estado);
+  const specPath = flags['spec'] ?? (activa
+    ? path.join(cwd, '.sdd', 'especificaciones', String(activa), 'spec.md')
     : null);
 
   if (!specPath || !fs.existsSync(specPath)) {
@@ -262,10 +465,11 @@ async function cmdValidate(cwd, flags) {
 async function main() {
   const { command, flags } = parseArgs(process.argv);
   const cwd = path.resolve(flags['cwd'] ?? process.cwd());
+  circuitBreaker.cwd = cwd;
 
   switch (command) {
     case 'status':   return cmdStatus(cwd);
-    case 'resume':   return cmdResume(cwd);
+    case 'resume':   return cmdResume(cwd, flags);
     case 'run':      return cmdRun(cwd, flags);
     case 'validate': return cmdValidate(cwd, flags);
     default:

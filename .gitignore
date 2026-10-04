@@ -9,8 +9,19 @@ dist/
 sdd-lite/mcp-figma/node_modules/
 sdd-lite/mcp-figma/dist/
 
-# Estado local del proyecto (generado en cada repo donde se instala SDD-ES)
-.sdd/
+# Estado local del proyecto (generado en cada repo donde se instala SDD-ES).
+# Se versionan solo los artefactos SDD del propio FORGE (ver ADR-10);
+# sdd.config.yaml, memoria de agentes, eventos y motor/ siguen ignorados.
+.sdd/*
+!.sdd/INDICE.md
+!.sdd/estado.json
+!.sdd/especificaciones/
+!.sdd/arquitectura/
+!.sdd/dominio/
+!.sdd/memoria/
+.sdd/memoria/*
+!.sdd/memoria/constitucion.md
+.sdd/arquitectura/*.jsonl
 
 # Variables de entorno
 .env
