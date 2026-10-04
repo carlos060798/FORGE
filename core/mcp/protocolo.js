@@ -9,7 +9,6 @@
  * (stderr en el servidor real): un cliente que lee stdout no debe ver nada más.
  */
 
-import { createInterface } from 'node:readline';
 
 export const VERSIONES = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
@@ -65,25 +64,51 @@ export class ServidorMcp {
   /** Empieza a atender. Se resuelve cuando se cierra la entrada y terminan las peticiones en curso. */
   iniciar() {
     return new Promise((resolver) => {
-      let descartando = false;
-      const rl = createInterface({ input: this.o.entrada, crlfDelay: Infinity, terminal: false });
-      rl.on('line', (linea) => {
-        if (descartando) { descartando = false; return; }
-        if (linea.length > MAX_LINEA) {
-          this.avisar(`línea de ${linea.length} bytes descartada`);
-          this._enviar({ jsonrpc: '2.0', id: null, error: { code: ERR.PETICION, message: 'Mensaje demasiado grande' } });
-          return;
-        }
+      const entrada = this.o.entrada;
+      entrada.setEncoding?.('utf8');
+      let resto = '';
+      let descartando = false;   // true mientras se tira el resto de una línea demasiado grande
+      let cerrada = false;
+
+      const procesar = (linea) => {
         if (linea.trim() === '') return;
-        const p = this._atender(linea).catch((e) => this.avisar(`error interno: ${e instanceof Error ? e.message : e}`));
+        const p = this._atender(linea).catch((e) => this.avisar('error interno: ' + (e instanceof Error ? e.message : e)));
         this.pendientes.add(p);
         p.finally(() => this.pendientes.delete(p));
+      };
+
+      // Se divide por saltos de línea a mano: así una línea sin fin nunca se acumula más allá del tope
+      entrada.on('data', (trozo) => {
+        let datos = resto + trozo;
+        resto = '';
+        let i;
+        while ((i = datos.indexOf('\n')) !== -1) {
+          const linea = datos.slice(0, i).replace(/\r$/, '');
+          datos = datos.slice(i + 1);
+          if (descartando) { descartando = false; continue; }
+          if (linea.length > MAX_LINEA) { this._lineaGrande(linea.length); continue; }
+          procesar(linea);
+        }
+        if (descartando) return;
+        if (datos.length > MAX_LINEA) { this._lineaGrande(datos.length); descartando = true; return; }
+        resto = datos;
       });
-      rl.on('close', async () => {
+
+      const cerrar = async () => {
+        if (cerrada) return;
+        cerrada = true;
+        if (resto.trim() !== '' && !descartando) procesar(resto.replace(/\r$/, ''));
         await Promise.allSettled([...this.pendientes]);
         resolver(undefined);
-      });
+      };
+      entrada.on('end', cerrar);
+      entrada.on('close', cerrar);
     });
+  }
+
+  _lineaGrande(bytes) {
+    this.avisar('línea de más de ' + bytes + ' caracteres descartada');
+    this._enviar({ jsonrpc: '2.0', id: null, error: { code: ERR.PETICION, message: 'Mensaje demasiado grande' } });
   }
 
   _enviar(mensaje) {

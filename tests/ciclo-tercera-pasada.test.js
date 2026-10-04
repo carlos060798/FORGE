@@ -519,3 +519,33 @@ describe("éxito sospechoso — un código 0 no se da por bueno sin evidencia", 
     assert.match(String(r.estado.revision?.detalle), /src\/suma\.js corta el proceso/);
   });
 });
+
+// ── A6: huecos menores ───────────────────────────────────────────────────────
+
+describe("A6 — vetos por nombre, carpetas con credenciales y líneas enormes del MCP", () => {
+  test("más nombres y carpetas de credenciales vetados, sin vetar código con nombre parecido", () => {
+    for (const ruta of ["config.env", "conf/prod.env", "wp-config.php", "wp-config-sample.php", "data/app.sqlite", "serviceaccount.json", "serviceaccount-prod.json", "config/database.yml", "appsettings.Production.json", ".my.cnf", "secrets.yml", ".gnupg/pubring.kbx", ".m2/settings.xml", ".gradle/gradle.properties", ".terraform/terraform.tfstate"]) {
+      assert.equal(clasificarRuta(ruta), "ruta_vetada", ruta);
+    }
+    for (const ruta of ["src/env.js", "src/config.js", "src/database.js", "appsettings.Development.json"]) {
+      assert.notEqual(clasificarRuta(ruta), "ruta_vetada", ruta);
+    }
+  });
+
+  test("el MCP descarta una línea enorme sin guardarla y sigue atendiendo", async () => {
+    const { PassThrough } = await import("node:stream");
+    const { ServidorMcp } = await import("../core/mcp/protocolo.js");
+    const entrada = new PassThrough(); const salida = new PassThrough();
+    const recibido = []; salida.on("data", (d) => recibido.push(...String(d).split("\n").filter(Boolean).map((l) => JSON.parse(l))));
+    const avisos = [];
+    const fin = new ServidorMcp({ nombre: "p", version: "1", herramientas: [], entrada, salida, avisar: (m) => avisos.push(m) }).iniciar();
+    // 12 MB sin ningún salto de línea, troceados: nunca debe acumularse más allá del tope
+    const trozo = "x".repeat(1024 * 1024);
+    for (let i = 0; i < 12; i++) entrada.write(trozo);
+    entrada.write("\n" + JSON.stringify({ jsonrpc: "2.0", id: 7, method: "ping" }) + "\n");
+    entrada.end();
+    await fin;
+    assert.equal(recibido.filter((m) => m.error?.message === "Mensaje demasiado grande").length, 1);
+    assert.deepEqual(recibido.find((m) => m.id === 7)?.result, {});
+  });
+});

@@ -257,6 +257,8 @@ export function crearServidorApi(opciones) {
   server.requestTimeout = 30_000;
   server.headersTimeout = 10_000;
   server.maxHeadersCount = 50;
+  // Un cliente local con cientos de conexiones abiertas no debe agotar el proceso
+  server.maxConnections = 64;
 
   /** @param {number} [puerto] 0 = uno libre */
   const escuchar = (puerto = 3002) => new Promise((resolver, rechazar) => {

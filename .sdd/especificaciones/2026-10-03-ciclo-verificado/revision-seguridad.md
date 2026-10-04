@@ -38,13 +38,13 @@ Veredicto: **OBSERVACIONES**. No encontró ninguna vía de ejecución en el anfi
 | H4 (medio) | `barrerCopias` seguía un enlace en `staging` y vaciaba su destino | **Corregido**: si `staging` es un enlace no se toca |
 | H5 (bajo-medio) | ReDoS en `globARegex` con muchos `*` | **Corregido**: más de 6 `*` no coinciden con nada |
 | H6 (bajo) | ReDoS cuadrático en `redactar` (credenciales en URL y nombres de secreto) | **Corregido** (de 2 s a milisegundos) |
-| H7 (bajo) | DoS por muchas conexiones lentas a la API | **Abierto**: no hay `maxConnections`; la API es solo local y está documentado |
+| H7 (bajo) | DoS por muchas conexiones lentas a la API | **Mitigado**: `maxConnections = 64` (más los tiempos de espera que ya había). No se ha probado con un ataque real |
 | H8 (bajo) | Un candado con marca de tiempo futura no caducaba | **Corregido** |
 | H9 (bajo) | Un único punto de guardado dañado abría el modo clásico | **Corregido**: una carpeta de hilo sin punto válido cuenta como sin terminar |
 | H10 (bajo) | Tareas con id `.`/`..`, `archivos` con rutas absolutas, archivos `tareas-*.json` que no se borraban | **Corregido** |
-| H11 (bajo) | Lista de vetos por nombre incompleta (`config.env`, `prod.env`, `serviceaccount.json`, `wp-config.php`, `database.yml`, `*.sqlite`) y dotdirs legibles (`.config/gh/`, `.m2/`) | **Abierto**: lista negra; solo importa si la raíz del proyecto es un HOME |
+| H11 (bajo) | Lista de vetos por nombre incompleta (`config.env`, `prod.env`, `serviceaccount.json`, `wp-config.php`, `database.yml`, `*.sqlite`) y dotdirs legibles (`.config/gh/`, `.m2/`) | **Parcialmente corregido**: se vetan esos nombres y `.gnupg`, `.m2`, `.gradle`, `.terraform`, `.password-store`. **Abierto**: sigue siendo una lista negra; `.config/` no se veta |
 
-Informativo sin corregir: una cabecera `Host` duplicada gana la primera; sin longitud mínima si fijas `FORGE_API_TOKEN`; el proceso hijo hereda el secreto y `cola()` no lo redacta si aparece suelto; el MCP almacena en memoria una línea de 11 MB antes de descartarla.
+Informativo sin corregir: una cabecera `Host` duplicada gana la primera; sin longitud mínima si fijas `FORGE_API_TOKEN`; el proceso hijo hereda el secreto y `cola()` no lo redacta si aparece suelto; el MCP almacenaba en memoria una línea de 11 MB antes de descartarla (corregido: ya no usa `readline`, la línea no se acumula más allá del tope).
 
 No pudo comprobar: el contenedor real desde el MCP, symlinks de archivo, Linux/macOS, DNS rebinding real. Las correcciones de esta pasada las probé yo (tests en `ciclo-tercera-pasada.test.js`); **no las ha revisado nadie independiente**.
 

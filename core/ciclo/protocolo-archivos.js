@@ -21,13 +21,14 @@ import { coincide } from '../glob.js';
  * git trata `sub/.git/` como un repositorio y ejecuta lo que diga su `config`.
  * Un ARCHIVO llamado `.git` también cuenta (puede redirigir a otra carpeta).
  */
-export const SEGMENTOS_VETADOS = ['.git', '.sdd', '.claude', 'node_modules', '.ssh', '.aws', '.docker', '.kube', 'secrets'];
+export const SEGMENTOS_VETADOS = ['.git', '.sdd', '.claude', 'node_modules', '.ssh', '.aws', '.docker', '.kube', 'secrets', '.gnupg', '.m2', '.gradle', '.terraform', '.password-store'];
 
 /** Nombres de archivo que suelen contener secretos, a cualquier profundidad. */
 export const NOMBRES_VETADOS = [
   '.env*', '.dev.vars', '*.pem', '*.key', '*.p12', '*.pfx', '*.jks', '*.keystore', '*.ppk',
   '.npmrc', '.netrc', '.pypirc', '.git-credentials', '.htpasswd',
   'id_rsa*', 'id_dsa*', 'id_ecdsa*', 'id_ed25519*',
+  '*.env', 'wp-config*.php', '*.sqlite', '*.sqlite3', 'serviceaccount*.json', 'database.yml', 'appsettings.production.json', '.my.cnf', 'secrets.*',
   '*.tfstate*', '*.tfvars', '*service-account*', '*key.json', '*credentials*', '*secret*',
   '.pgpass', '.vault-token', '.dockercfg', '.boto', '.s3cfg', '.*history', '*kubeconfig*', 'auth.json',
   // Solo con extension de datos: `tokenizer.js` o `password.js` son codigo
