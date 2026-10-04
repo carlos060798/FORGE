@@ -1491,6 +1491,9 @@ Uso:
   npx forge state                    Volcar estado.json formateado
   npx forge validate                 Verificar precondiciones del paso actual
   npx forge reset --force            Resetear pipeline a 'idea'
+  npx forge probar-modelo [--tope USD] [--conservar]
+                                     Prueba mínima del ciclo con un modelo real (necesita ANTHROPIC_API_KEY); gasta
+                                     como máximo el tope (0,50 USD por defecto) y resume formato, iteraciones y coste
   npx forge api [--port N] [--cwd <ruta>]
                                      API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
                                      estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
@@ -1617,6 +1620,18 @@ async function main() {
       process.stderr.write(`FORGE API en ${url}. Envía el token en la cabecera "Authorization: Bearer ...". Ctrl+C para parar.\n`);
       await new Promise((resolver) => { process.on("SIGINT", resolver); process.on("SIGTERM", resolver); });
       await api.cerrar();
+      break;
+    }
+    case "probar-modelo": {
+      // Prueba mínima del ciclo con un modelo real y un tope de gasto bajo (ver core/probar-modelo.js)
+      const valor = (flag) => { const i = args.indexOf(flag); return i !== -1 && args[i + 1] ? args[i + 1] : undefined; };
+      const { probarModelo, textoDelInforme } = await import("../core/probar-modelo.js");
+      const informe = await probarModelo({
+        tope: valor("--tope") === undefined ? undefined : Number(valor("--tope")),
+        conservar: args.includes("--conservar"),
+      });
+      console.log(textoDelInforme(informe));
+      process.exit(informe.ok ? 0 : informe.motivoNoEjecutada ? 2 : 1);
       break;
     }
     case "mcp": {
