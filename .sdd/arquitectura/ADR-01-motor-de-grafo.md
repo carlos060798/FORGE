@@ -1,7 +1,7 @@
 # ADR-01: Motor de grafo opcional detrás de un puerto
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-03
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-03 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-03-ciclo-verificado
 > Autor: Claude (pendiente de aceptación por el dueño)
 
@@ -31,6 +31,17 @@ La decisión de integrar LangGraph la tomó el asistente interpretando una frase
 - **B. Solo motor propio**: rechazada como opción principal porque obliga a escribir y mantener a mano interrupciones y reanudación. Se conserva como reserva.
 - **C. Reescritura en Python con LangGraph**: rechazada por decisión del dueño (mejora incremental) y porque los docs del repo descartan Python como dependencia de sistema (`docs/INFORME-MEMORIA-OSS.md:47`).
 - **D. LangGraph.js opcional detrás de un puerto, con motor propio de reserva**: aceptada porque respeta Node 18, el Principio IV y deja abierta la retirada.
+
+## Decisión final (2026-10-05)
+
+El dueño delegó esta decisión y se resuelve así: **LangGraph.js se queda como dependencia opcional**, con el motor propio como reserva, y se vuelve a evaluar en la FASE 5 (ciclo por defecto, 5.0.0).
+
+Razones:
+- Quitarlo no elimina ningún riesgo: es opcional, se carga de forma perezosa y con Node 18 se usa el motor propio sin avisos.
+- Los dos motores comparten puntos de guardado, pasan las mismas suites y se reanudan entre sí; eso ya está probado.
+- Hacerlo obligatorio obligaría a retirar Node 18 antes de haber probado el ciclo con un modelo de pago.
+
+Coste asumido: mantener dos motores y su suite cruzada. Si en la FASE 5 solo se usa uno, se elimina el otro (5.2).
 
 ## Consecuencias
 

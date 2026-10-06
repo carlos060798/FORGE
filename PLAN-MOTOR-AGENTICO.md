@@ -210,7 +210,7 @@ S2, S3 y S4 son independientes entre sí. S4 es más útil después de S2.
 
 | Riesgo | Mitigación |
 |---|---|
-| LangGraph.js exige Node ≥20 | Dependencia opcional con carga perezosa y motor propio de reserva (ADR-01). Comprobado: en Node 18 `npm install` solo avisa y se usa el motor propio |
+| LangGraph.js exige Node ≥20 | **Decidido (2026-10-05, ADR-01): se queda opcional**, con carga perezosa y motor propio de reserva; se revisa en la FASE 5. Comprobado: en Node 18 `npm install` solo avisa y se usa el motor propio |
 | El guardador de LangGraph.js depende de campos internos de `MemorySaver` | Versión fijada con `~`; los dos motores comparten puntos de guardado y hay test de reanudación cruzada |
 | Docker Desktop para Windows: montajes y usuario sin verificar | Spike 1.1; alternativa `docker cp` |
 | Falso pase con pruebas triviales | Huellas, pruebas no vacías; el router no mide la calidad de las pruebas |
