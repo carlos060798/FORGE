@@ -35,7 +35,7 @@ export class Respaldo {
       const ruta = typeof e?.ruta === 'string' ? e.ruta : '';
       const destino = path.resolve(this.cwd, ruta);
       const rel = path.relative(this.cwd, destino);
-      if (!ruta || typeof e.existia !== 'boolean' || path.isAbsolute(ruta) || rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
+      if (!ruta || typeof e.existia !== 'boolean' || path.isAbsolute(ruta) || rel === '' || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) {
         throw new Error('Manifiesto de respaldo invalido: ruta fuera del proyecto o entrada mal formada');
       }
       // Las mismas reglas que al escribir: nada vetado, ni a traves de enlaces. Las de dependencias y
@@ -76,23 +76,32 @@ export class Respaldo {
     this._guardarManifiesto();
   }
 
-  /** @returns {{ restaurados: string[], borrados: string[] }} */
+  /**
+   * Una copia que falta o un archivo que no se puede tocar no impide restaurar el resto: queda en `fallidos`
+   * (que solo está presente si hubo alguno).
+   * @returns {{ restaurados: string[], borrados: string[], fallidos?: string[] }}
+   */
   restaurar() {
     const restaurados = [];
     const borrados    = [];
+    const fallidos    = [];
     for (const { ruta, existia } of this.entradas) {
       const destino = path.join(this.cwd, ruta);
-      if (existia) {
-        fs.mkdirSync(path.dirname(destino), { recursive: true });
-        fs.copyFileSync(path.join(this.dir, 'archivos', ruta), destino);
-        restaurados.push(ruta);
-      } else if (fs.existsSync(destino)) {
-        fs.unlinkSync(destino);
-        borrados.push(ruta);
-        this._quitarCarpetasVacias(path.dirname(destino));
+      try {
+        if (existia) {
+          fs.mkdirSync(path.dirname(destino), { recursive: true });
+          fs.copyFileSync(path.join(this.dir, 'archivos', ruta), destino);
+          restaurados.push(ruta);
+        } else if (fs.existsSync(destino)) {
+          fs.unlinkSync(destino);
+          borrados.push(ruta);
+          this._quitarCarpetasVacias(path.dirname(destino));
+        }
+      } catch {
+        fallidos.push(ruta);
       }
     }
-    return { restaurados, borrados };
+    return fallidos.length > 0 ? { restaurados, borrados, fallidos } : { restaurados, borrados };
   }
 
   /** Sube desde `dir` borrando las carpetas que el ciclo creó y han quedado vacías. */

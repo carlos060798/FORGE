@@ -39,6 +39,7 @@ Lo que un modelo no puede leer: carpetas vetadas (`.git`, `.sdd`, `node_modules`
 
 - **`hash` no entiende significado.** Si necesitas búsqueda semántica real, usa `ollama` y comprueba el resultado.
 - La búsqueda recorre todos los vectores: pensada para repositorios de hasta unos miles de trozos. Para más, el puerto `Recuperador` admite sustituirla (LanceDB, por ejemplo).
-- El índice se guarda en `.sdd/indice/`, que git ignora, y contiene vectores derivados de tu código.
+- El índice se guarda en `.sdd/indice/` y contiene vectores derivados de tu código. **FORGE no modifica el `.gitignore` de tu proyecto**: añade `.sdd/indice/` para no subirlo por error. Está acotado a 3000 archivos y 20 000 trozos.
+- Con Ollama, las peticiones no siguen redirecciones y tienen un plazo que cubre la respuesta entera; una respuesta de más de 512 KB o un vector de más de 8192 dimensiones se rechaza.
 - No sustituye al indexador de `utils/hybrid-indexer.js`, que sigue como estaba.
 - Autoevaluada: sin verificación ni revisión de seguridad independientes.

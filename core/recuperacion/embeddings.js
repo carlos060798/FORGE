@@ -14,6 +14,9 @@
  */
 
 const DIMENSIONES_HASH = 256;
+const MAX_CARACTERES_TOKENIZAR = 6000;
+const MAX_DIMENSIONES_OLLAMA = 8192;
+const MAX_BYTES_RESPUESTA = 512 * 1024;
 
 /** FNV-1a de 32 bits. */
 function fnv1a(texto) {
@@ -27,7 +30,8 @@ function fnv1a(texto) {
 
 /** Palabras en minúscula; `getUserName` y `get_user_name` dan lo mismo. */
 export function tokenizar(texto) {
-  return texto
+  // Las regex de camelCase son cuadráticas con una racha enorme de mayúsculas: se acota la entrada
+  return texto.slice(0, MAX_CARACTERES_TOKENIZAR)
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .toLowerCase()
@@ -74,7 +78,11 @@ export function embedderHash() {
  * @param {{ modelo?: string, host?: string, fetch?: typeof fetch, timeoutMs?: number }} [opciones]
  */
 export function embedderOllama(opciones = {}) {
-  const host = (opciones.host ?? process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434').replace(/\/+$/, '');
+  let host = (opciones.host ?? process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434').trim().replace(/\/+$/, '');
+  // OLLAMA_HOST se escribe a menudo sin esquema ("127.0.0.1:11434"), como lo usa el propio Ollama
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(host)) host = 'http://' + host;
+  // Para los mensajes: sin usuario ni contraseña
+  const hostVisible = host.replace(/\/\/[^/@]*@/, '//');
   const modelo = opciones.modelo ?? 'nomic-embed-text';
   const peticion = opciones.fetch ?? fetch;
   return {
@@ -84,24 +92,41 @@ export function embedderOllama(opciones = {}) {
       const salida = [];
       for (const prompt of textos) {
         const ctl = new AbortController();
-        const reloj = setTimeout(() => ctl.abort(), opciones.timeoutMs ?? 30_000);
-        let r;
+        const plazoMs = opciones.timeoutMs ?? 30_000;
+        let reloj;
+        // El plazo cubre la petición entera, cuerpo incluido: un servidor que envía las cabeceras y se
+        // queda callado no puede colgar el ciclo
+        const vencido = new Promise((_, rechazar) => { reloj = setTimeout(() => { ctl.abort(); rechazar(new Error('sin respuesta en ' + plazoMs + ' ms')); }, plazoMs); });
+        vencido.catch(() => {});
         try {
-          r = await peticion(host + '/api/embeddings', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: modelo, prompt }), signal: ctl.signal,
-          });
+          const texto = await Promise.race([vencido, (async () => {
+            const r = await peticion(host + '/api/embeddings', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: modelo, prompt }), signal: ctl.signal,
+              // Una redirección enviaría el contenido del proyecto a otra dirección
+              redirect: 'error',
+            });
+            if (!r.ok) throw new Error('Ollama devolvió ' + r.status + ' para el modelo ' + modelo + ' (¿está descargado?)');
+            if (Number(r.headers?.get?.('content-length') ?? 0) > MAX_BYTES_RESPUESTA) throw new Error('respuesta demasiado grande');
+            const cuerpo = typeof r.text === 'function' ? await r.text() : JSON.stringify(await r.json());
+            if (cuerpo.length > MAX_BYTES_RESPUESTA) throw new Error('respuesta demasiado grande');
+            return cuerpo;
+          })()]);
+          let json;
+          try { json = JSON.parse(/** @type {string} */ (texto)); } catch { throw new Error('Ollama no devolvió JSON'); }
+          const v = json?.embedding;
+          if (!Array.isArray(v) || v.length === 0 || v.some((x) => typeof x !== 'number' || !Number.isFinite(x))) {
+            throw new Error('Ollama no devolvió un vector válido');
+          }
+          if (v.length > MAX_DIMENSIONES_OLLAMA) throw new Error('vector con demasiadas dimensiones (' + v.length + ')');
+          salida.push(normalizar(v));
         } catch (e) {
-          throw new Error('Ollama no responde en ' + host + ': ' + (e instanceof Error ? e.message : e));
+          const m = e instanceof Error ? e.message : String(e);
+          // Los errores propios de validación ya son claros; los de red se completan con la dirección
+          throw new Error(/^(Ollama|respuesta|vector)/.test(m) ? m : 'Ollama no responde en ' + hostVisible + ': ' + m.replace(host, hostVisible));
         } finally {
           clearTimeout(reloj);
         }
-        if (!r.ok) throw new Error('Ollama devolvió ' + r.status + ' para el modelo ' + modelo + ' (¿está descargado?)');
-        const json = /** @type {any} */ (await r.json());
-        if (!Array.isArray(json.embedding) || json.embedding.length === 0 || json.embedding.some((x) => typeof x !== 'number')) {
-          throw new Error('Ollama no devolvió un vector válido');
-        }
-        salida.push(normalizar(json.embedding));
       }
       return salida;
     },

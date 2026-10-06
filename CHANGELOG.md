@@ -63,7 +63,7 @@ Las dos revisiones independientes de seguridad y verificación (2026-10-03) **re
 - Secretos (`.npmrc`, claves SSH, `*.tfstate`…) llegaban al proveedor de modelos y a la copia de trabajo; hay una sola lista de rutas vetadas para escribir, leer y copiar
 - El modo clásico ejecutaba en el equipo, sin aislamiento, el código que había dejado una sesión del ciclo; ahora se niega
 - Un `sesion.json` o un punto de guardado ajeno podía hacer borrar carpetas fuera de `.sdd/motor`
-- **Sigue abierto**: un `process.exit(0)` en el código del implementador falsea un éxito, y no hay cuota de disco para la copia de trabajo
+- **Sigue abierto**: un `process.exit(0)` en el código del implementador puede falsear un éxito (mitigado: la salida de pruebas sin evidencia, o un `process.exit` al comienzo de línea, piden revisión humana; no se detecta si está indentado o dentro de una función), y no hay cuota de disco para la copia de trabajo
 
 ### Corregido tras la tercera ronda de revisiones independientes
 
@@ -72,7 +72,7 @@ Las dos revisiones independientes de seguridad y verificación (2026-10-03) **re
 - Más credenciales vetadas por nombre (`.pgpass`, `.vault-token`, `kubeconfig`, `auth.json`, `*token*.json`…); un enlace de directorio ya no sirve para leer lo vetado
 - El respaldo valida su manifiesto; la copia de trabajo tiene nombre único; LangGraph ya no puede enviar el estado a LangSmith
 - Una respuesta de modelo ya pagada no se paga de nuevo si cruzó el umbral de degradación o agotó el tope
-- El candado entre procesos resiste a tres procesos sobre un huérfano; abortar una tarea sale con código 0
+- El candado entre procesos resiste a tres procesos sobre un huérfano y a doce procesos compitiendo sin él (una lectura que falla de forma transitoria en Windows, `ENOENT`/`EPERM`/`EBUSY`, ya no se toma por un candado dañado); abortar una tarea sale con código 0
 - `forge probar-modelo`: prueba mínima del ciclo con un modelo real y un tope de gasto bajo (0,50 USD por defecto); resume formato, iteraciones y coste. Sin clave se niega. Probado con el proveedor de pruebas; **no se ha ejecutado con un modelo real**
 - Verificación independiente de la API y del MCP (aprobadas con observaciones): la API rechaza `Host` repetido y URL absoluta, mata ejecuciones colgadas (2 h), exige entero en `iteracionesExtra`, secreto de 16+ caracteres, no pasa el secreto al hijo y acota las ejecuciones guardadas
 - Huecos menores: más nombres de credenciales y carpetas vetadas (`*.env`, `wp-config*.php`, `*.sqlite`, `.gnupg/`, `.m2/`…), el MCP ya no acumula en memoria una línea enorme, y la API limita a 64 las conexiones simultáneas
@@ -108,7 +108,7 @@ Activar o no el ciclo no cambia nada, pero el saneamiento sí cambió el modo cl
 
 ### Tests
 
-- 1378 de 1381 (3 saltados) pasando / 0 fallos en Windows con `FORGE_TEST_DOCKER=1` (antes de empezar: 975 de 1014). Las cifras de Node 18/20/22 de abajo son anteriores a las últimas correcciones
+- 1443 de 1450 (7 saltados) pasando / 0 fallos en Windows sin Docker; con `FORGE_TEST_DOCKER=1` y el cliente oficial de MCP, 1450 de 1453 (3 saltados) antes de las correcciones de la revisión independiente, que añaden 16 tests (antes de empezar: 975 de 1014). Las cifras de Node 18/20/22 de abajo son anteriores a las últimas correcciones
 - Node 18: 1266 de 1274 pasan, 8 saltados (los que necesitan Docker); Node 20 y 22 también, con LangGraph instalado
 - 38 tests escribían en `/tmp` fijo; ahora usan el directorio temporal del sistema
 

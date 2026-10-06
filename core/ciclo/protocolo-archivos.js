@@ -28,8 +28,10 @@ export const NOMBRES_VETADOS = [
   '.env*', '.dev.vars', '*.pem', '*.key', '*.p12', '*.pfx', '*.jks', '*.keystore', '*.ppk',
   '.npmrc', '.netrc', '.pypirc', '.git-credentials', '.htpasswd',
   'id_rsa*', 'id_dsa*', 'id_ecdsa*', 'id_ed25519*',
-  '*.env', 'wp-config*.php', '*.sqlite', '*.sqlite3', 'serviceaccount*.json', 'database.yml', 'appsettings.production.json', '.my.cnf', 'secrets.*',
-  '*.tfstate*', '*.tfvars', '*service-account*', '*key.json', '*credentials*', '*secret*',
+  '*.env', 'wp-config*.php', '*.sqlite', '*.sqlite3', 'serviceaccount*.json', 'database.yml', 'appsettings.production.json', '.my.cnf', 'credentials', 'secrets', 'secrets.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem,toml,xml,properties}',
+  '*.tfstate*', '*.tfvars', '*service-account*', 'key.json', '*-key.json', '*_key.json', '*.key.json',
+  // Solo con extension de datos: `secrets-manager.ts` o `credentials.service.ts` son codigo
+  '*credentials*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem,toml,xml,properties}', '*secret*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem,toml,xml,properties}',
   '.pgpass', '.vault-token', '.dockercfg', '.boto', '.s3cfg', '.*history', '*kubeconfig*', 'auth.json',
   // Solo con extension de datos: `tokenizer.js` o `password.js` son codigo
   '*token*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}', '*apikey*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}', '*api_key*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}', '*api-key*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}', '*password*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}', '*passwd*.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem}',

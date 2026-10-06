@@ -14,7 +14,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { SEGMENTOS_VETADOS, esVetada, validarRuta } from '../ciclo/protocolo-archivos.js';
+import { SEGMENTOS_VETADOS, canonica, esVetada, validarRuta } from '../ciclo/protocolo-archivos.js';
 import { similitud } from './embeddings.js';
 
 const VERSION_INDICE = 1;
@@ -22,6 +22,7 @@ const LINEAS_POR_TROZO = 40;
 const AVANCE = 30;                 // 10 líneas de solape
 const MAX_BYTES_ARCHIVO = 200 * 1024;
 const MAX_ARCHIVOS = 3000;
+const MAX_TROZOS_TOTALES = 20000;  // acota la memoria y el tamaño del índice, sea cual sea el repositorio
 const MAX_CARACTERES_TROZO = 2400;
 const LOTE = 64;
 
@@ -130,13 +131,18 @@ export class IndiceVectorial {
     }
 
     const pendientes = [];
+    let acumulados = 0;
     for (const a of actuales) {
       const previo = this.datos.archivos[a.ruta];
-      if (previo && previo.size === a.size && previo.mtimeMs === a.mtimeMs) continue;
+      if (previo && previo.size === a.size && previo.mtimeMs === a.mtimeMs) { acumulados += previo.trozos.length; continue; }
       let texto;
       try { texto = fs.readFileSync(a.abs, 'utf8'); } catch { continue; }
       if (texto.includes('\0')) continue;                          // binario
-      pendientes.push({ a, trozos: partirEnTrozos(texto) });
+      const trozos = partirEnTrozos(texto);
+      // Tope global: lo que no cabe no se indexa (y si ya lo estaba, se quita para no dejar vectores viejos)
+      if (acumulados + trozos.length > MAX_TROZOS_TOTALES) { if (previo) { delete this.datos.archivos[a.ruta]; cambios = true; } continue; }
+      acumulados += trozos.length;
+      pendientes.push({ a, trozos });
     }
 
     // Se vectoriza por lotes: un proveedor remoto o local no recibe todo de golpe
@@ -167,7 +173,7 @@ export class IndiceVectorial {
     const [vq] = await this.embedder.embed([consulta]);
     const candidatos = [];
     for (const [ruta, f] of Object.entries(this.datos.archivos)) {
-      if (opciones.excluir?.has(ruta)) continue;
+      if (opciones.excluir?.has(canonica(ruta))) continue;
       for (const t of f.trozos) {
         const puntuacion = similitud(vq, t.vec);
         if (puntuacion >= minimo) candidatos.push({ ruta, ini: t.ini, fin: t.fin, puntuacion });
@@ -178,12 +184,19 @@ export class IndiceVectorial {
     const resultado = [];
     for (const c of candidatos) {
       if (resultado.length >= k) break;
+      // Dos trozos del mismo archivo que se solapan repetirían líneas: se queda el de mejor puntuación
+      if (resultado.some((r) => r.ruta === c.ruta && c.ini <= r.fin && r.ini <= c.fin)) continue;
       // El texto se lee del archivo en este momento: el índice solo guarda vectores. La ruta se vuelve a
       // validar con las reglas de lectura: un índice manipulado no puede apuntar a lo vetado ni fuera del proyecto
       const v = validarRuta(this.cwd, c.ruta, { vetadas: this.vetadas });
       if (v.ok === false && v.motivo !== 'dependencias' && v.motivo !== 'configuracion') continue;
       let lineas;
-      try { lineas = fs.readFileSync(path.join(this.cwd, c.ruta), 'utf8').split(/\r?\n/); } catch { continue; }
+      try {
+        const abs = path.join(this.cwd, c.ruta);
+        // Un archivo que creció desde que se indexó no se lee entero
+        if (fs.statSync(abs).size > MAX_BYTES_ARCHIVO) continue;
+        lineas = fs.readFileSync(abs, 'utf8').split(/\r?\n/);
+      } catch { continue; }
       const texto = lineas.slice(c.ini - 1, c.fin).join('\n').slice(0, MAX_CARACTERES_TROZO);
       if (texto.trim() !== '') resultado.push({ ...c, texto });
     }

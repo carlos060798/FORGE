@@ -19,6 +19,11 @@ const EVIDENCIA = [
   /\b[1-9]\d*\s+passed\b/i,                     // pytest, jest
   /\b[1-9]\d*\s+passing\b/i,                    // mocha
   /^ok\s+\S+\s+[\d.]+s/m,                       // go test
+  /^ok\s+\S+\s+\(cached\)/m,                    // go test con caché
+  /^Ran [1-9]\d* tests?\b/m,                    // unittest de Python
+  /^[1-9]\d* (?:examples?|specs?|tests?), 0 failures/m, // rspec, jasmine
+  /^OK \([1-9]\d* tests?\b/m,                   // phpunit
+  /^Tests run: [1-9]\d*, Failures: 0/m,         // maven (surefire)
 ];
 
 /** Salidas forzadas al comienzo de línea: se ejecutan al importar el módulo. */

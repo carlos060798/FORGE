@@ -81,7 +81,7 @@ const ENTORNO_POR_LENGUAJE = {
  */
 export function comandoDePruebas(testCmd) {
   const partes = dividirComando(testCmd);
-  if (partes[0] === 'npx') partes.shift();
+  if (partes[0] === 'npx') { partes.shift(); while (partes[0]?.startsWith('-')) partes.shift(); }
   if (partes.length === 0) throw new Error('No hay comando de pruebas');
   return partes;
 }

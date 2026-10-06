@@ -12,6 +12,7 @@
 
 import { recortar, bytes, recuperarPorArchivos } from './recuperador-archivos.js';
 import { crearEmbedder } from './embeddings.js';
+import { canonica } from '../ciclo/protocolo-archivos.js';
 import { IndiceVectorial } from './indice-vectorial.js';
 
 const PARTE_ARCHIVOS = 0.6;
@@ -36,7 +37,7 @@ export async function recuperarSemantico(entrada) {
     let indice = INDICES.get(clave);
     if (!indice) { indice = new IndiceVectorial({ cwd: entrada.cwd, embedder, vetadas: entrada.vetadas }); INDICES.set(clave, indice); }
     await indice.actualizar();
-    hallados = await indice.buscar(consulta, { k: entrada.k ?? 8, excluir: new Set(base.contexto.fragmentos.map((f) => f.ruta)) });
+    hallados = await indice.buscar(consulta, { k: entrada.k ?? 8, excluir: new Set(base.contexto.fragmentos.filter((f) => f.origen !== 'spec').map((f) => canonica(f.ruta))) });
   } catch (e) {
     return { ...base, contexto: { ...base.contexto, aviso: 'Búsqueda semántica no disponible: ' + (e instanceof Error ? e.message : String(e)) } };
   }
