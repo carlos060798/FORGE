@@ -40,6 +40,7 @@ export const NOMBRES_VETADOS = [
 export const MANIFIESTOS = [
   'package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb',
   'requirements*.txt', 'pyproject.toml', 'Pipfile', 'Pipfile.lock', 'poetry.lock', 'uv.lock', 'setup.py', 'setup.cfg',
+  'go.mod', 'go.sum', 'go.work', 'go.work.sum',
 ];
 
 /**
@@ -115,7 +116,7 @@ export function clasificarRuta(rutaPosix, vetadasExtra = []) {
 /**
  * ¿La recogería un ejecutor de pruebas? Se usa en los dos sentidos: lo que el
  * agente de pruebas puede escribir y lo que el implementador no puede tocar.
- * Cubre las convenciones de `node --test`, jest, vitest, mocha y pytest.
+ * Cubre las convenciones de `node --test`, jest, vitest, mocha, pytest y `go test` (`*_test.go`).
  * @param {string} rutaPosix
  */
 export function esRutaDePrueba(rutaPosix) {
@@ -128,6 +129,7 @@ export function esRutaDePrueba(rutaPosix) {
     || /^test\.[cm]?[jt]sx?$/.test(nombre)
     || /^test_.+\.py$/.test(nombre)
     || /_test\.py$/.test(nombre)
+    || /_test\.go$/.test(nombre)
     || /^tests?\.py$/.test(nombre);
 }
 

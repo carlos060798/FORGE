@@ -61,6 +61,10 @@ export function argvRun(opciones) {
     return ['-e', `${k}=${v}`];
   });
 
+  // /tmp es memoria del contenedor: su tamaño cuenta para el limite de memoria. Go necesita mas por su cache de compilacion
+  const tmpfsMb = opciones.tmpfsMb ?? 64;
+  if (!Number.isInteger(tmpfsMb) || tmpfsMb < 16 || tmpfsMb > 512) throw new Error('politica: tmpfsMb debe ser un entero entre 16 y 512');
+
   sinGuion('imagen', imagen);
   sinGuion('nombre', nombre);
   sinGuion('copia', copia);
@@ -87,7 +91,7 @@ export function argvRun(opciones) {
     '--ulimit', 'nofile=1024:1024',
     '--ulimit', 'fsize=104857600',
     '--read-only',
-    '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
+    '--tmpfs', `/tmp:rw,noexec,nosuid,size=${tmpfsMb}m`,
     // --mount, no -v: una ruta con ":" (Linux, macOS) rompería el formato de -v
     '--mount', `type=bind,source=${copia},target=${dirTrabajo}`,
     '-w', dirTrabajo,

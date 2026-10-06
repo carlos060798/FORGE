@@ -20,13 +20,20 @@ export const IMAGENES_BASE = {
   javascript: 'node:22-alpine',
   typescript: 'node:22-alpine',
   python:     'python:3.12-slim',
+  go:         'golang:1.23-alpine',
 };
 
 const MANIFIESTOS = {
   javascript: ['package.json', 'package-lock.json'],
   typescript: ['package.json', 'package-lock.json'],
   python:     ['requirements.txt'],
+  go:         ['go.mod', 'go.sum'],
 };
+
+/** Etiqueta corta del lenguaje en el nombre de la imagen preparada. */
+const ETIQUETA = { javascript: 'node', typescript: 'node', python: 'python', go: 'go' };
+
+const SOPORTADOS = 'JavaScript/TypeScript, Python y Go';
 
 export class ErrorPreparacion extends Error {
   /** @param {string} mensaje */
@@ -44,7 +51,10 @@ export class ErrorPreparacion extends Error {
  */
 export function comprobarProyecto(cwd, lenguaje) {
   if (!lenguajeCubierto(lenguaje)) {
-    return `El ciclo verificado no cubre todavía proyectos en "${lenguaje}" (solo JavaScript/TypeScript y Python).`;
+    return `El ciclo verificado no cubre todavía proyectos en "${lenguaje}" (solo ${SOPORTADOS}).`;
+  }
+  if (lenguaje === 'go' && !fs.existsSync(path.join(cwd, 'go.mod'))) {
+    return 'El proyecto Go no tiene go.mod en la raíz: el ciclo lo necesita para resolver los módulos.';
   }
   if (lenguaje === 'python' && !fs.existsSync(path.join(cwd, 'requirements.txt')) && fs.existsSync(path.join(cwd, 'pyproject.toml'))) {
     return 'El proyecto Python declara sus dependencias solo en pyproject.toml; el ciclo las instala únicamente desde requirements.txt. Añade un requirements.txt.';
@@ -70,6 +80,11 @@ export function manifiestosPresentes(cwd, lenguaje) {
 function declaraDependencias(cwd, lenguaje, presentes) {
   if (presentes.length === 0) return false;
   if (lenguaje === 'python') return fs.readFileSync(path.join(cwd, 'requirements.txt'), 'utf8').split(/\r?\n/).some((l) => l.trim() && !l.trim().startsWith('#'));
+  if (lenguaje === 'go') {
+    // Hay algo que descargar si go.mod exige módulos (en bloque o en línea)
+    const mod = fs.readFileSync(path.join(cwd, 'go.mod'), 'utf8').replace(/\/\/.*$/gm, '');
+    return /^\s*require\s*\(?\s*\S+\s+v\S+/m.test(mod) || /^\s*require\s*\(\s*$/m.test(mod);
+  }
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
     return Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).length > 0;
@@ -87,6 +102,12 @@ export function dockerfile(lenguaje, base, presentes) {
   const lineas = [`FROM ${base}`, `WORKDIR ${DIR_DEPS}`, `COPY ${presentes.join(' ')} ./`];
   if (lenguaje === 'python') {
     lineas.push('RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt');
+  } else if (lenguaje === 'go') {
+    // Los módulos se descargan aquí, con red; después se ejecuta sin red y de solo lectura
+    lineas.push(`ENV GOMODCACHE=${DIR_DEPS}/gomod GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE=${DIR_DEPS}/gocache CGO_ENABLED=0`);
+    lineas.push('RUN go mod download');
+    // Sin esto, cada ejecucion compilaria la biblioteca estandar (70-95 s con 1 CPU). La cache se copia a /tmp al arrancar
+    lineas.push('RUN go build testing fmt os io bufio bytes strings errors sort strconv time sync context math unicode/utf8 encoding/json path/filepath');
   } else {
     // --ignore-scripts: los scripts de instalación de un paquete son código ajeno con red
     const instalar = presentes.includes('package-lock.json') ? 'npm ci' : 'npm install';
@@ -111,19 +132,20 @@ export function dockerfile(lenguaje, base, presentes) {
 export async function prepararImagen(opciones) {
   const { cwd, lenguaje, cli, dirConstruccion } = opciones;
   if (!lenguajeCubierto(lenguaje)) {
-    throw new ErrorPreparacion(`El ciclo verificado no cubre todavía proyectos en "${lenguaje}" (solo JavaScript/TypeScript y Python).`);
+    throw new ErrorPreparacion(`El ciclo verificado no cubre todavía proyectos en "${lenguaje}" (solo ${SOPORTADOS}).`);
   }
   const base      = opciones.base ?? IMAGENES_BASE[lenguaje];
   const presentes = manifiestosPresentes(cwd, lenguaje);
 
   // Sin dependencias declaradas no hay nada que instalar: se usa la imagen base
-  if (!declaraDependencias(cwd, lenguaje, presentes)) return { imagen: base, construida: false, huella: null };
+  // Go siempre usa imagen propia: lleva la cache de compilacion de la biblioteca estandar ya calentada
+  if (lenguaje !== 'go' && !declaraDependencias(cwd, lenguaje, presentes)) return { imagen: base, construida: false, huella: null };
 
   const texto  = dockerfile(lenguaje, base, presentes);
   const hash   = createHash('sha256').update(texto);
   for (const m of presentes) hash.update(m).update(fs.readFileSync(path.join(cwd, m)));
   const huella = hash.digest('hex').slice(0, 16);
-  const imagen = `forge-sbx:${lenguaje === 'python' ? 'python' : 'node'}-${huella}`;
+  const imagen = `forge-sbx:${ETIQUETA[lenguaje] ?? 'node'}-${huella}`;
 
   if (await cli.existeImagen(imagen)) return { imagen, construida: false, huella };
 

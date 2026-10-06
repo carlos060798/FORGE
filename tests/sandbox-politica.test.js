@@ -236,7 +236,7 @@ describe("prepararImagen — dependencias sin red (ADR-03)", () => {
     const cwd = proyecto({ "requirements.txt": "paquete-que-no-existe\n" });
     const cli = new DockerCli(ejecutorFalso({ build: { code: 1, stderr: "ERROR: No matching distribution" } }));
     await assert.rejects(prepararImagen({ cwd, lenguaje: "python", cli, dirConstruccion: dirConstruccion() }), ErrorPreparacion);
-    await assert.rejects(prepararImagen({ cwd, lenguaje: "go", cli, dirConstruccion: dirConstruccion() }), /no cubre todavía/);
+    await assert.rejects(prepararImagen({ cwd, lenguaje: "rust", cli, dirConstruccion: dirConstruccion() }), /no cubre todavía/);
   });
 
   test("el Dockerfile instala sin scripts de instalación y deja los binarios en el PATH", () => {
@@ -282,7 +282,7 @@ describe("SandboxRunner — con ejecutor guionizado", () => {
   test("un lenguaje no cubierto es error de infraestructura, no un fallo de las pruebas", async () => {
     const cwd = proyecto({ "go.mod": "module x" });
     const f = ejecutorFalso();
-    const r = await runner(f, cwd, { lenguaje: "go", testCmd: "go test ./..." }).test(cwd);
+    const r = await runner(f, cwd, { lenguaje: "rust", testCmd: "cargo test" }).test(cwd);
     assert.equal(r.infraError, true);
     assert.ok(!f.llamadas.some((l) => l[0] === "run"));
   });

@@ -23,6 +23,56 @@ const ENTORNO = {
 };
 
 /**
+ * Go necesita una cache de compilacion escribible y un directorio ejecutable para los binarios de prueba.
+ * Se prepara con un `sh -c` de texto fijo; el comando del proyecto va como argumentos posicionales ("$@"),
+ * nunca dentro del texto del script.
+ * @param {string[]} comando
+ */
+export function envolverGo(comando) {
+  return ['sh', '-c', 'mkdir -p "$GOTMPDIR" && cp -r /deps/gocache "$GOCACHE" 2>/dev/null; exec "$@"', 'forge-go', ...comando];
+}
+
+/**
+ * Divide un comando en palabras respetando comillas simples y dobles ("a b" es una sola).
+ * No hay shell en el contenedor: ni variables, ni sustituciones, ni operadores. Un operador
+ * (&&, |, ;, >, <, &) es un error claro, no un argumento más que el programa recibiría tal cual.
+ * @param {string} texto
+ * @returns {string[]}
+ */
+export function dividirComando(texto) {
+  const partes = [];
+  let actual = '';
+  let hayPalabra = false;
+  let comilla = null;
+  for (const c of texto) {
+    if (comilla) {
+      if (c === comilla) comilla = null; else actual += c;
+    } else if (c === '"' || c === "'") {
+      comilla = c; hayPalabra = true;
+    } else if (/\s/.test(c)) {
+      if (hayPalabra) { partes.push(actual); actual = ''; hayPalabra = false; }
+    } else {
+      actual += c; hayPalabra = true;
+    }
+  }
+  if (comilla) throw new Error('El comando de pruebas tiene una comilla sin cerrar: ' + texto);
+  if (hayPalabra) partes.push(actual);
+  const operador = partes.find((p) => /^(?:&&|\|\||\||;|&|>>?|<)$/.test(p));
+  if (operador) throw new Error('El comando de pruebas usa el operador de shell "' + operador + '": el ciclo no usa shell. Usa un script de package.json o un Makefile con un solo comando.');
+  return partes;
+}
+
+/** Variables propias de cada lenguaje: la raíz es de solo lectura y todo lo que se escriba va a /tmp. */
+const ENTORNO_POR_LENGUAJE = {
+  go: {
+    // /tmp no permite ejecutar: los binarios de prueba se enlazan en la copia (GOTMPDIR). La cache va a /tmp,
+    // sembrada desde la de la imagen (ver `envolverGo`)
+    GOCACHE: '/tmp/gocache', GOPATH: '/tmp/go', GOMODCACHE: '/deps/gomod', GOPROXY: 'off', GOFLAGS: '-buildvcs=false',
+    GOTOOLCHAIN: 'local', CGO_ENABLED: '0', GOTMPDIR: '/deps/work/.gotmp',
+  },
+};
+
+/**
  * Convierte el comando de pruebas detectado en ejecutable y argumentos.
  * `npx x` pasa a `x`: los binarios de las dependencias están en el PATH de la
  * imagen preparada, y sin red npx no podría descargar nada.
@@ -30,7 +80,7 @@ const ENTORNO = {
  * @returns {string[]}
  */
 export function comandoDePruebas(testCmd) {
-  const partes = testCmd.trim().split(/\s+/).filter(Boolean);
+  const partes = dividirComando(testCmd);
   if (partes[0] === 'npx') partes.shift();
   if (partes.length === 0) throw new Error('No hay comando de pruebas');
   return partes;
@@ -113,12 +163,20 @@ export class SandboxRunner {
       } catch (e) {
         return resultado({ exitCode: null, stderr: `No se pudo preparar la copia de trabajo: ${e instanceof Error ? e.message : e}`, infraError: true, durationMs: Date.now() - t0 });
       }
+      let comando;
+      try {
+        comando = comandoDePruebas(this.o.testCmd);
+      } catch (e) {
+        return resultado({ exitCode: null, stderr: e instanceof Error ? e.message : String(e), infraError: true, durationMs: Date.now() - t0 });
+      }
+      if (this.o.lenguaje === 'go') comando = envolverGo(comando);
       const argv = argvRun({
         imagen, nombre, copia,
-        comando: comandoDePruebas(this.o.testCmd),
+        comando,
+        tmpfsMb: this.o.lenguaje === 'go' ? 128 : undefined,
         limites: this.o.limites,
         dirTrabajo: DIR_TRABAJO,
-        env: ENTORNO,
+        env: { ...ENTORNO, ...(ENTORNO_POR_LENGUAJE[this.o.lenguaje] ?? {}) },
         proyectoId: this.proyectoId,
       });
       const r = await this.cli.run(argv, {
