@@ -1,17 +1,17 @@
 /* ============================================================
-   FORGE Docs — datos v4.2.0 (bilingüe ES/EN)
+   FORGE Docs — datos v4.3.0 (bilingüe ES/EN)
    Actualizado: 2026-06-27 — refleja Etapas 0-5 completadas
    ============================================================ */
 
 const UI = {
   es: {
-    brand_tag: "v4.2.0",
+    brand_tag: "v4.3.0",
     search_placeholder: "Buscar…",
     search_input_placeholder: "Buscar en la documentación…",
     search_navigate: "navegar",
     search_open: "abrir",
     search_close: "cerrar",
-    footer_text: "FORGE v4.2.0 · Spec-Driven · MIT License",
+    footer_text: "FORGE v4.3.0 · Spec-Driven · MIT License",
     search_no_results: "Sin resultados",
     groups: {
       overview:  "◈ El framework",
@@ -21,13 +21,13 @@ const UI = {
     }
   },
   en: {
-    brand_tag: "v4.2.0",
+    brand_tag: "v4.3.0",
     search_placeholder: "Search…",
     search_input_placeholder: "Search the docs…",
     search_navigate: "navigate",
     search_open: "open",
     search_close: "close",
-    footer_text: "FORGE v4.2.0 · Spec-Driven · MIT License",
+    footer_text: "FORGE v4.3.0 · Spec-Driven · MIT License",
     search_no_results: "No results",
     groups: {
       overview:  "◈ The framework",
@@ -59,7 +59,7 @@ const PAGES = {
         <p><strong>Desde el repositorio:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; cd FORGE &amp;&amp; npm install</code></p>
       </div>
 
-      <h2>Qué es FORGE (v4.2.0)</h2>
+      <h2>Qué es FORGE (v4.3.0)</h2>
       <p>Tiene dos modos de uso:</p>
       <table>
         <thead><tr><th>Modo</th><th>Cómo se usa</th><th>Requiere Claude Code</th></tr></thead>
@@ -320,7 +320,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Análisis de Madurez",
     html: `
       <h1>Análisis de Madurez</h1>
-      <p class="lead">Estado real de cada área de FORGE v4.2.0. Basado en análisis estático del repositorio y la suite de tests (998/998 pasando).</p>
+      <p class="lead">Estado real de cada área de FORGE v4.3.0. Basado en análisis estático del repositorio y la suite de tests (998/998 pasando).</p>
 
       <table>
         <thead><tr><th>Área</th><th>Estado</th><th>Justificación</th></tr></thead>
@@ -360,7 +360,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Maturity Analysis",
     html: `
       <h1>Maturity Analysis</h1>
-      <p class="lead">Real status of each FORGE v4.2.0 area. Based on static repository analysis and test suite (998/998 passing).</p>
+      <p class="lead">Real status of each FORGE v4.3.0 area. Based on static repository analysis and test suite (998/998 passing).</p>
 
       <table>
         <thead><tr><th>Area</th><th>Status</th><th>Justification</th></tr></thead>
@@ -394,7 +394,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Arquitectura del Sistema",
     html: `
       <h1>Arquitectura del Sistema</h1>
-      <p class="lead">Referencia técnica de la arquitectura de 3 capas de FORGE v4.2.0. Basada en análisis estático del repositorio.</p>
+      <p class="lead">Referencia técnica de la arquitectura de 3 capas de FORGE v4.3.0. Basada en análisis estático del repositorio.</p>
 
       <h2>Arquitectura de 3 capas</h2>
       <pre><code class="text">╔══════════════════════════════════════════════════════════════════╗
@@ -526,7 +526,7 @@ utils/
     titulo: "System Architecture",
     html: `
       <h1>System Architecture</h1>
-      <p class="lead">Technical reference for FORGE v4.2.0's 3-layer architecture.</p>
+      <p class="lead">Technical reference for FORGE v4.3.0's 3-layer architecture.</p>
 
       <h2>3-layer architecture</h2>
       <pre><code class="text">╔══════════════════════════════════════════════════════════════╗
@@ -1921,9 +1921,9 @@ tools: ["Read", "Glob", "Grep"]
     titulo: "Recomendaciones",
     html: `
       <h1>Recomendaciones</h1>
-      <p class="lead">Qué cambios tendrían mayor impacto en FORGE v4.2.0, ordenados por prioridad.</p>
+      <p class="lead">Qué cambios tendrían mayor impacto en FORGE v4.3.0, ordenados por prioridad.</p>
 
-      <h2>Completado en v4.2.0</h2>
+      <h2>Completado en v4.3.0</h2>
       <ul>
         <li>✅ <strong>Tests E2E del pipeline</strong> — <code>tests/e2e/pipeline-flow.test.js</code>, 24 tests, idea→spec sin LLM</li>
         <li>✅ <strong>SSE en dashboard</strong> — estado, consumo y eventlog en tiempo real; fallback polling</li>
@@ -1977,9 +1977,9 @@ npm test           # 998/998 en verde antes de PR</code></pre>
     titulo: "Recommendations",
     html: `
       <h1>Recommendations</h1>
-      <p class="lead">What changes would have the greatest impact on FORGE v4.2.0, ordered by priority.</p>
+      <p class="lead">What changes would have the greatest impact on FORGE v4.3.0, ordered by priority.</p>
 
-      <h2>Completed in v4.2.0</h2>
+      <h2>Completed in v4.3.0</h2>
       <ul>
         <li>✅ <strong>E2E pipeline tests</strong> — <code>tests/e2e/pipeline-flow.test.js</code>, 24 tests, idea→spec without LLM</li>
         <li>✅ <strong>SSE dashboard</strong> — real-time state, consumption and eventlog; polling fallback</li>
