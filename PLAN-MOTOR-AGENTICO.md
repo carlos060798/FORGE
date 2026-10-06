@@ -138,6 +138,8 @@ Detalle: `.sdd/especificaciones/2026-10-03-ciclo-verificado/` (spec, checklist, 
 
 ## FASE 2 — Herramientas MCP (S2, hito 4.4.0)
 
+> **Decisión (2026-10-05, ADR-15): 2.2 se descarta.** Los nodos siguen llamando directamente al sandbox y a las reglas de archivos (el servidor MCP ya comparte ese código); el servidor queda como interfaz para agentes externos. Un cliente MCP interno no añadiría seguridad y complicaría los errores tipados y la reanudación.
+
 > **Estado (2026-10-03): implementada, sin verificación independiente.** `forge mcp` con tres herramientas, sin dependencias nuevas (ADR-12), probado con el cliente oficial del SDK y con Docker real. Spec, plan, tareas y verificación en `.sdd/especificaciones/2026-10-03-herramientas-mcp/`; guía en `docs/servidor-mcp.md`. Falta probarlo con Claude Code y una revisión independiente.
 
 **Objetivo:** exponer el aislamiento y la escritura confinada como servidor MCP propio, y consumirlos desde los nodos.

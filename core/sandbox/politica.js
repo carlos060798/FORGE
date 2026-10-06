@@ -39,6 +39,7 @@ export function nombreContenedor(runId, n) {
  * - `copia`: ruta absoluta en el anfitrión de la copia de trabajo.
  * - `comando`: ejecutable y argumentos; el primero sustituye al ENTRYPOINT de la imagen.
  * - `dirTrabajo`: dónde se monta la copia dentro del contenedor.
+ * - `tmpfsMb`: tamaño de /tmp (memoria del contenedor; 64 por defecto, entre 16 y 512).
  *
  * @param {{
  *   imagen: string,
@@ -49,6 +50,7 @@ export function nombreContenedor(runId, n) {
  *   dirTrabajo?: string,
  *   env?: Record<string, string>,
  *   proyectoId?: string,
+ *   tmpfsMb?: number,
  * }} opciones
  * @returns {string[]} argumentos para `docker`
  */

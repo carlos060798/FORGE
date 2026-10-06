@@ -11,7 +11,7 @@ Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola v
 - **Node ≥18.** LangGraph.js, que ejecuta el grafo cuando está instalado, exige Node ≥20; en Node 18 se usa el motor propio, que hace lo mismo.
 - Un proveedor de modelos que informe del consumo de cada llamada (Anthropic u OpenAI con clave, u Ollama).
 - El proyecto debe estar en la etapa de tareas generadas o de construcción. Desde "tareas generadas" se avanza solo; en cualquier otra etapa hace falta `--force`.
-- Proyectos en **JavaScript/TypeScript o Python**. Con otro lenguaje, `forge run --motor ciclo` se niega a empezar y lo explica, antes de gastar nada. En Python, las dependencias deben estar en `requirements.txt`: un proyecto que las declara solo en `pyproject.toml` se rechaza con ese mensaje.
+- Proyectos en **JavaScript/TypeScript, Python o Go**. Con otro lenguaje, `forge run --motor ciclo` se niega a empezar y lo explica, antes de gastar nada. En Python, las dependencias deben estar en `requirements.txt`: un proyecto que las declara solo en `pyproject.toml` se rechaza con ese mensaje. En Go hace falta `go.mod` en la raíz (y `go.sum` si hay dependencias); el comando de pruebas es `go test ./...`. **La primera ejecución de un proyecto Go prepara una imagen (alrededor de 90 segundos, con red)**: descarga los módulos y compila de antemano la biblioteca estándar; las siguientes la reutilizan.
 
 ## Cómo activarlo
 
@@ -75,7 +75,7 @@ Cada ejecución lanza un contenedor con:
 
 El contenedor no ve tu proyecto, sino una **copia desechable**. La copia no lleva `.git` ni ningún repositorio anidado, `.sdd`, `.claude`, `node_modules`, ni nada que parezca un secreto (`.env*`, `.npmrc`, `.netrc`, claves SSH, certificados, `*.tfstate`, `*credentials*`, `*secret*`…), a cualquier profundidad. Lo que el código escribe en ella se descarta. Cada ejecución usa su propia carpeta, con un nombre único por proceso; si el código de pruebas deja algo que Windows no puede borrar (enlaces, por ejemplo), no impide las siguientes, pero la copia queda en `.sdd/motor/<sesión>/staging/`. Al arrancar el ciclo se intenta borrar las copias anteriores y se avisa de las que no se pudieron borrar para que las borres a mano.
 
-Las dependencias declaradas en `package.json` o `requirements.txt` se instalan una vez, con red, en una imagen `forge-sbx:<huella>` construida solo a partir de esos manifiestos. En JavaScript, sin ejecutar scripts de instalación; en Python, `pip` sí puede ejecutar el `setup.py` de paquetes sin rueda. El código generado corre después sobre esa imagen, sin red.
+Las dependencias declaradas en `package.json`, `requirements.txt` o `go.mod`/`go.sum` se instalan una vez, con red, en una imagen `forge-sbx:<huella>` construida solo a partir de esos manifiestos. En JavaScript, sin ejecutar scripts de instalación; en Python, `pip` sí puede ejecutar el `setup.py` de paquetes sin rueda. El código generado corre después sobre esa imagen, sin red.
 
 **Un contenedor reduce el riesgo; no lo elimina.** Comparte el núcleo del sistema con tu equipo, y un fallo de Docker o del propio núcleo podría romper el aislamiento. No hay cuota de disco para la copia de trabajo: el único límite es el tiempo máximo y los 100 MB por archivo.
 
@@ -170,7 +170,9 @@ Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pru
 - **La redacción de secretos** de la salida de las pruebas cubre formatos comunes, no todos. La frontera real es lo que entra en la copia.
 - **`degradar_a: local`** cambia a Ollama al cruzar el umbral, pero no se ha probado contra un Ollama en marcha.
 - **Rutas rechazadas de más.** Para cerrar trucos de Windows y secretos, se rechaza cualquier archivo cuyo nombre contenga `secret`, `credentials` o termine en `key.json`, y las rutas con punto o espacio final, `~1` o `:`. Un agente no podrá escribir `src/secret-santa.js`.
-- **Un comando de pruebas con comillas, `&&` o variables** se parte por espacios: el ciclo usa el comando que detecta FORGE (`npm test`, `pytest`…), no scripts a medida.
+- **El comando de pruebas se ejecuta sin shell.** Las comillas se respetan (`--grep "a b"` es un argumento), pero no hay variables, sustituciones ni operadores: un `&&`, `|` o `;` es un error claro de infraestructura. El ciclo usa el comando que detecta FORGE (`npm test`, `pytest`, `go test ./...`…); para algo más complejo, ponlo en un script de `package.json` o un Makefile.
+- **Go:** solo `go test` con módulos descargados al preparar la imagen y `GOPROXY=off` al ejecutar. Sin cgo (`CGO_ENABLED=0`). Un proyecto Go grande puede quedarse sin sitio en `/tmp` (128 MB, en memoria). Probado con Docker real en Windows con y sin dependencias, aislamiento incluido; **no en Linux**.
+- **Java, Rust, C#, Ruby y PHP no están cubiertos**: el ciclo se niega a empezar y lo explica.
 - **Proyectos sin `pytest` o sin ejecutor de pruebas** entre sus dependencias: las pruebas fallarán en todas las iteraciones hasta el tope.
 - **Monorepos**: solo se leen los manifiestos de la raíz.
 - Rutas de proyecto con espacios o en una unidad distinta de `C:` no se han probado con el montaje de Docker.
