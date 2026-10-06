@@ -12,7 +12,9 @@ export const POR_DEFECTO = {
   motor: {
     modo: 'clasico',            // clasico | ciclo
     grafo: 'auto',              // auto | langgraph | propio
-    recuperador: 'archivos',    // fuente de contexto de los agentes
+    recuperador: 'archivos',    // fuente de contexto de los agentes: archivos | semantico
+    embeddings: 'hash',         // con recuperador semantico: hash (local, léxico) | ollama
+    embeddings_modelo: 'nomic-embed-text',
     max_iteraciones: 5,
     contexto_max_bytes: 65536,
   },
@@ -32,6 +34,7 @@ export const POR_DEFECTO = {
 
 const MODOS = ['clasico', 'ciclo'];
 const GRAFOS = ['auto', 'langgraph', 'propio'];
+const EMBEDDINGS = ['hash', 'ollama'];
 
 /**
  * @param {string} yaml
@@ -138,6 +141,9 @@ export function leerConfigCiclo(cwd, overrides = {}) {
     if (Number.isFinite(tope) && tope >= 0) config.presupuesto.tope_usd = tope;
   }
 
+  if (!EMBEDDINGS.includes(config.motor.embeddings)) {
+    throw new Error(`motor.embeddings desconocido: "${config.motor.embeddings}". Valores válidos: ${EMBEDDINGS.join(', ')}`);
+  }
   if (!MODOS.includes(config.motor.modo)) {
     throw new Error(`motor.modo desconocido: "${config.motor.modo}". Valores válidos: ${MODOS.join(', ')}`);
   }

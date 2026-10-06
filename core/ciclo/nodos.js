@@ -108,11 +108,15 @@ async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrat
   return { fallo: { presupuesto, ...pedirRevision('salida_invalida', nodo, `El agente "${agente}" no devolvió una salida utilizable: ${error}`) } };
 }
 
-function textoDeContexto(estado, deps) {
-  return deps.recuperar({
+async function textoDeContexto(estado, deps) {
+  const r = await deps.recuperar({
     cwd: estado.cwd, tarea: estado.tarea, plan: estado.plan,
     maxBytes: deps.config.motor.contexto_max_bytes, specPath: deps.specPath, vetadas: deps.vetadas,
+    embeddings: deps.config.motor.embeddings, embeddingsModelo: deps.config.motor.embeddings_modelo,
   });
+  // Una búsqueda semántica que falla no detiene el ciclo, pero queda anotada
+  if (r.contexto?.aviso) deps.log.append('custom', { message: r.contexto.aviso }, { taskId: estado.taskId });
+  return r;
 }
 
 function seccionPlan(estado) {
@@ -149,14 +153,14 @@ export async function planner(estado, deps) {
 
 /** @param {EstadoCiclo} estado */
 export async function retriever(estado, deps) {
-  return { contexto: textoDeContexto(estado, deps).contexto };
+  return { contexto: (await textoDeContexto(estado, deps)).contexto };
 }
 
 // ── qa ───────────────────────────────────────────────────────────────────────
 
 /** @param {EstadoCiclo} estado */
 export async function qa(estado, deps) {
-  const contexto = textoDeContexto(estado, deps).texto;
+  const contexto = (await textoDeContexto(estado, deps)).texto;
   const userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
@@ -188,7 +192,7 @@ function leerPruebas(estado) {
 
 /** @param {EstadoCiclo} estado */
 export async function coder(estado, deps) {
-  const contexto = textoDeContexto(estado, deps).texto;
+  const contexto = (await textoDeContexto(estado, deps)).texto;
   const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];
 
   let userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`

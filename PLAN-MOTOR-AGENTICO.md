@@ -153,6 +153,8 @@ Detalle: `.sdd/especificaciones/2026-10-03-ciclo-verificado/` (spec, checklist, 
 
 ## FASE 3 — Memoria semántica (S3, hito 4.5.0)
 
+> **Estado (2026-10-04): implementada en versión mínima, autoevaluada.** Índice de vectores propio en un archivo y recuperador `semantico` (ADR-14, spec `2026-10-04-memoria-semantica`, `docs/memoria-semantica.md`). **Cambios frente a lo previsto:** 3.2 no usa LanceDB; 3.1 no sustituye `utils/hybrid-indexer.js`; 3.3 el embedder local `hash` es léxico, no semántico, y el de Ollama solo se probó con un servidor simulado. Sin revisión independiente.
+
 **Objetivo:** una implementación del puerto `Recuperador` con búsqueda por similitud.
 
 - **3.1** Indexador del repositorio con embeddings reales, que sustituye el mock de `utils/hybrid-indexer.js`.

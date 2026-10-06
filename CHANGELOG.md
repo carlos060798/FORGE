@@ -9,6 +9,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 Dos trabajos, cada uno con su spec en `.sdd/especificaciones/`: el saneamiento previo (`2026-10-03-saneamiento`) y el Ciclo Verificado (`2026-10-03-ciclo-verificado`). Ver `PLAN-MOTOR-AGENTICO.md`.
 
+### Memoria semántica — `motor.recuperador: semantico` (spec `2026-10-04-memoria-semantica`)
+
+El ciclo puede añadir al contexto los trozos del repositorio más parecidos a la tarea. Índice de vectores propio en un archivo (`.sdd/indice/`), **sin dependencias nuevas** (ADR-14; LanceDB queda como alternativa futura). Guía: `docs/memoria-semantica.md`.
+
+- Dos embedders: `hash` (local, sin red, **léxico, no semántico**) y `ollama` (servidor local; probado solo con un servidor simulado)
+- Incremental, respeta el tope de bytes y las rutas vetadas; si la búsqueda falla, el ciclo sigue y lo anota
+- Autoevaluada, sin revisión independiente
+
 ### Ciclo verificado — opt-in
 
 `forge run --motor ciclo` corrige cada tarea de código hasta que sus pruebas pasan, en un contenedor Docker sin red, con tope de gasto y revisión humana. **Desactivado por defecto.** Guía y límites: `docs/ciclo-verificado.md`.

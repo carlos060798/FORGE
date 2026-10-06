@@ -411,7 +411,9 @@ compresion:
 motor:
   modo: clasico                 # clasico | ciclo
   grafo: auto                   # auto (LangGraph.js si está instalado) | langgraph | propio
-  recuperador: archivos         # fuente de contexto de los agentes
+  recuperador: archivos         # fuente de contexto de los agentes: archivos | semantico (añade trozos parecidos del repositorio)
+  embeddings: hash              # con semantico: hash (local, sin red; léxico, no semántico) | ollama (servidor local, vectores semánticos)
+  embeddings_modelo: nomic-embed-text   # modelo de Ollama para los vectores
   max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
   contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
 

@@ -642,3 +642,33 @@ function require_child() {
   return createRequire(import.meta.url)("node:child_process");
 }
 import { createRequire } from "node:module";
+
+describe("S3 — el ciclo con motor.recuperador: semantico", () => {
+  test("los agentes reciben, además de los archivos de la tarea, trozos parecidos del repositorio", async () => {
+    const e = entorno({ salidas: { "desarrollador-backend": [impl(1)] }, ejecuciones: [FALLA, PASA], config: { motor: { recuperador: "semantico" } } });
+    escribir(e.cwd, "src/calculadora.js", "// Operaciones: suma de dos numeros\nexport function suma(a, b) { return a + b; }\n");
+    escribir(e.cwd, "src/otro.js", "export const color = 'azul';\n");
+    const prompts = [];
+    const original = e.opciones.llamar;
+    e.opciones.llamar = async (p) => { prompts.push(p.userPrompt); return original(p); };
+
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.status, "completada");
+    assert.ok(prompts.some((p) => p.includes("(semantico, similitud") && p.includes("src/calculadora.js")), "contexto semántico en el prompt");
+    assert.ok(prompts.every((p) => !p.includes("src/otro.js")), "lo que no se parece no entra");
+    assert.ok(readFileSync(join(e.cwd, ".sdd", "indice", "hash.json"), "utf8").includes("calculadora"), "índice guardado");
+  });
+
+  test("si la búsqueda semántica falla, el ciclo sigue y lo anota", async () => {
+    const e = entorno({ salidas: { "desarrollador-backend": [impl(1)] }, ejecuciones: [FALLA, PASA], config: { motor: { recuperador: "semantico", embeddings: "ollama" } } });
+    const previo = process.env.OLLAMA_HOST;
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";      // nada escucha ahí
+    try {
+      const r = await e.ciclo().ejecutar(TAREA);
+      assert.equal(r.status, "completada");
+      assert.ok(e.eventos.some((x) => /Búsqueda semántica no disponible/.test(String(x.payload?.message))), "queda anotado");
+    } finally {
+      if (previo === undefined) delete process.env.OLLAMA_HOST; else process.env.OLLAMA_HOST = previo;
+    }
+  });
+});

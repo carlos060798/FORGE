@@ -8,13 +8,15 @@
  *   }
  *
  * La implementación por defecto reúne contexto por archivos, sin índice previo.
- * Una búsqueda semántica (spec S3) se registra aquí sin tocar el resto del ciclo.
+ * `semantico` añade los trozos del repositorio más parecidos a la tarea (índice de vectores).
+ * Un recuperador puede devolver el resultado directamente o una promesa.
  */
 
 import { recuperarPorArchivos } from './recuperador-archivos.js';
+import { recuperarSemantico } from './recuperador-semantico.js';
 
 /** @type {Map<string, Function>} */
-const REGISTRO = new Map([['archivos', recuperarPorArchivos]]);
+const REGISTRO = new Map(/** @type {[string, Function][]} */ ([['archivos', recuperarPorArchivos], ['semantico', recuperarSemantico]]));
 
 /**
  * @param {string} nombre

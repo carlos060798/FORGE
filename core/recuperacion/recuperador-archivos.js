@@ -15,10 +15,10 @@ import * as path from 'path';
 import { validarRuta } from '../ciclo/protocolo-archivos.js';
 
 const AVISO = '\n\n[contexto recortado al tamaño máximo]';
-const bytes = (t) => Buffer.byteLength(t, 'utf8');
+export const bytes = (t) => Buffer.byteLength(t, 'utf8');
 
 /** Recorta por bytes sin dejar un carácter UTF-8 partido al final. */
-function recortar(texto, max) {
+export function recortar(texto, max) {
   if (max <= 0) return '';
   const buffer = Buffer.from(texto, 'utf8');
   if (buffer.length <= max) return texto;
