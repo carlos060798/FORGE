@@ -125,7 +125,7 @@ Las órdenes de consulta de estado funcionan en una instalación limpia, la inst
 ## 11. Preguntas Abiertas
 
 - [x] CA-002-04. Resuelto sin cambiar ningún comando: la etapa del motor manda y, si falta, se traduce la de la metodología (`core/state-machine.js`). Unificar los dos vocabularios en los 19 archivos sigue siendo una opción, pero ya no bloquea.
-- [ ] [POR_DECIDIR]: CA-004-01. La guarda de escritura bloquea cualquier contenido que contenga un término citado tras "evitar" o "NO usar" en una decisión. Apuntarla a la carpeta de arquitectura sin afinar esa heurística bloquearía escrituras legítimas.
+- [x] CA-004-01. Resuelto (2026-10-05, ADR-16): la guarda lee los ADR aceptados de `.sdd/arquitectura/`, pero solo los términos de su sección `## Patrones prohibidos`; no deduce nada del texto libre.
 
 ## 12. Criterios de Éxito Medibles
 

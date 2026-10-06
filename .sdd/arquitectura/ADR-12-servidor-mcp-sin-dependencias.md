@@ -1,7 +1,7 @@
 # ADR-12: Servidor MCP propio, sin dependencias, por entrada y salida estándar
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-03
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-03 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-03-herramientas-mcp
 > Autor: Claude (pendiente de aceptación por el dueño)
 

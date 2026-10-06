@@ -1,7 +1,7 @@
 # ADR-13: API HTTP aparte del panel, con secreto y sin acceso entre orígenes
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-03
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-03 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-03-api-http
 > Autor: Claude (pendiente de aceptación por el dueño)
 

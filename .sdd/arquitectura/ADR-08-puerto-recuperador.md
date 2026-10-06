@@ -1,7 +1,7 @@
 # ADR-08: Puerto Recuperador con implementación por archivos
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-03
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-03 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-03-ciclo-verificado
 > Autor: Claude (pendiente de aceptación por el dueño)
 

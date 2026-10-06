@@ -161,6 +161,32 @@ function extraerPatronesProhibidos(adrs) {
   return [...new Set(patrones)];
 }
 
+/**
+ * ADR de `.sdd/arquitectura/ADR-NN-*.md` (ADR-16): solo los aceptados y solo los términos
+ * que declaran en la sección "## Patrones prohibidos", uno por línea y entre comillas
+ * invertidas. No se deduce nada del texto libre ("evitar X" en el contexto no bloquea).
+ */
+function cargarPatronesDeArquitectura(cwd) {
+  try {
+    const dir = join(cwd, '.sdd', 'arquitectura');
+    if (!existsSync(dir)) return [];
+    const patrones = [];
+    for (const f of readdirSync(dir)) {
+      if (!/^ADR-\d+.*\.md$/.test(f)) continue;
+      let texto = '';
+      try { texto = readFileSync(join(dir, f), 'utf8').replace(/\r\n/g, '\n'); } catch { continue; }
+      if (!/^>\s*Estado:\s*aceptada\b/m.test(texto)) continue;
+      const seccion = texto.match(/^##\s+Patrones prohibidos\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+      if (!seccion) continue;
+      for (const m of seccion[1].matchAll(/^\s*[-*]\s+`([^`\n]+)`/gm)) {
+        const termino = m[1].trim().toLowerCase();
+        if (termino.length > 2 && termino.length < 50) patrones.push(termino);
+      }
+    }
+    return [...new Set(patrones)];
+  } catch { return []; }
+}
+
 function verificarViolacionADR(contenido, patrones) {
   const contenidoLower = contenido.toLowerCase();
   return patrones.find(p => contenidoLower.includes(p)) ?? null;
@@ -196,14 +222,18 @@ function main(raw) {
   if (isWriteTool) {
     // 0aa. Verificación ADR activo
     const adrs = cargarADRs(process.cwd());
-    if (adrs.length > 0) {
-      const patrones = extraerPatronesProhibidos(adrs);
+    // Los artefactos de .sdd/ pueden nombrar los términos que prohíben sin bloquearse a sí mismos
+    const destino = String(toolInput?.file_path ?? toolInput?.path ?? '').replace(/\\/g, '/');
+    const esArtefactoSdd = /(^|\/)\.sdd\//.test(destino);
+    const patronesArquitectura = esArtefactoSdd ? [] : cargarPatronesDeArquitectura(process.cwd());
+    if (adrs.length > 0 || patronesArquitectura.length > 0) {
+      const patrones = [...new Set([...extraerPatronesProhibidos(adrs), ...patronesArquitectura])];
       const contenidoPropuesto = String(toolInput?.content ?? toolInput?.new_string ?? '');
       const violacion = verificarViolacionADR(contenidoPropuesto, patrones);
       if (violacion) {
         process.stderr.write(JSON.stringify({
           action: 'block',
-          message: `Violación de ADR: el contenido contiene "${violacion}" que está marcado como prohibido en un ADR registrado. Revisa .sdd/adrs/ antes de continuar.`
+          message: `Violación de ADR: el contenido contiene "${violacion}" que está marcado como prohibido en un ADR registrado. Revisa .sdd/adrs/ y .sdd/arquitectura/ antes de continuar.`
         }) + '\n');
         process.exit(2);
       }

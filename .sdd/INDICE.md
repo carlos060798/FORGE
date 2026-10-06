@@ -12,7 +12,7 @@
 
 | ID | Título | Estado | Tamaño | Spec | Plan | Tareas | Verif | Fecha |
 |----|--------|--------|--------|------|------|--------|-------|-------|
-| 2026-10-03-saneamiento | Saneamiento del motor y del instalador | en_implementacion (10 de 11 tareas; falta CA-004-01, decisión del dueño) | pequeño | ✅ | ✅ | ✅ | ⚠️ autoevaluación (12 de 13 criterios) | 2026-10-04 |
+| 2026-10-03-saneamiento | Saneamiento del motor y del instalador | en_implementacion (11 de 11 tareas; CA-004-01 resuelto por ADR-16) | pequeño | ✅ | ✅ | ✅ | ⚠️ autoevaluación (12 de 13 criterios) | 2026-10-04 |
 | 2026-10-03-ciclo-verificado | Ciclo Verificado | en_implementacion (38 de 38 tareas; tercera verificación independiente: APROBADA_CON_OBSERVACIONES; correcciones posteriores sin revisar) | grande | ✅ | ✅ | ✅ | ⚠️ aprobada con observaciones | 2026-10-03 |
 | 2026-10-03-herramientas-mcp | Herramientas de FORGE para agentes externos | en_implementacion (9 de 9 tareas; verificación y revisión de seguridad independientes: aprobada con observaciones) | mediano | ✅ | ✅ | ✅ | ⚠️ aprobada con observaciones | 2026-10-03 |
 | 2026-10-03-api-http | API HTTP local del ciclo verificado | en_implementacion (5 de 5 tareas; verificación y revisión de seguridad independientes: aprobada con observaciones, corregidas sin revisar) | mediano | ✅ | ✅ | ✅ | ⚠️ aprobada con observaciones | 2026-10-03 |

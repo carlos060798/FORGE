@@ -1,7 +1,7 @@
 # ADR-14: Índice vectorial propio en un archivo, en lugar de LanceDB
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-04
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-04 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-04-memoria-semantica
 > Autor: Claude (pendiente de aceptación por el dueño)
 
