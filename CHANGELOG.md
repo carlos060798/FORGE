@@ -108,7 +108,7 @@ Activar o no el ciclo no cambia nada, pero el saneamiento sí cambió el modo cl
 
 ### Tests
 
-- 1443 de 1450 (7 saltados) pasando / 0 fallos en Windows sin Docker; con `FORGE_TEST_DOCKER=1` y el cliente oficial de MCP, 1450 de 1453 (3 saltados) antes de las correcciones de la revisión independiente, que añaden 16 tests (antes de empezar: 975 de 1014). Las cifras de Node 18/20/22 de abajo son anteriores a las últimas correcciones
+- 1443 de 1450 (7 saltados) pasando / 0 fallos en Windows sin Docker; con `FORGE_TEST_DOCKER=1` y el cliente oficial de MCP, 1466 de 1469 (3 saltados) pasando / 0 fallos, incluidas las correcciones de la revisión independiente (antes de empezar: 975 de 1014). Las cifras de Node 18/20/22 de abajo son anteriores a las últimas correcciones
 - Node 18: 1266 de 1274 pasan, 8 saltados (los que necesitan Docker); Node 20 y 22 también, con LangGraph instalado
 - 38 tests escribían en `/tmp` fijo; ahora usan el directorio temporal del sistema
 
