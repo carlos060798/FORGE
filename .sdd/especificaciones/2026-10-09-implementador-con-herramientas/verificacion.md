@@ -110,3 +110,9 @@ Qué esperar, sin haberlo medido: menos tokens de salida por turnos, y **más to
 - **Tiempo máximo por turno**: el de cualquier llamada a un modelo (120 s). No hay tiempo máximo para el intento completo, solo tope de turnos y de gasto.
 - **El aviso de «proveedor sin herramientas»** solo queda en el registro de eventos.
 - `forge status` cuenta los turnos de los intentos que llegaron a guardar su punto; los de un intento en vuelo aparecen al terminar ese intento.
+
+## Prueba con un modelo real (2026-10-09, añadida tras la integración)
+
+El modo por turnos se ejecutó contra la API real con el nivel económico: ver la «Ronda 6» de `../2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`. En un archivo de 1812 líneas, el modo de bloque no pudo hacer el cambio (dos respuestas cortadas en el máximo de salida) y el modo por turnos lo hizo en 8 turnos y una iteración. Tokens de salida del implementador: 2823 frente a 16 384, un 83 % menos (el criterio pedía 50 %). El gasto total no bajó (0,205 frente a 0,170 USD) porque cada turno reenvía la conversación y no hay caché de prompts.
+
+Es una sola ejecución. Siguen sin probarse con un modelo real: la reanudación tras un corte entre turnos, el tope de turnos y la vuelta al modo de bloque con otro proveedor. Sigue pendiente la revisión independiente.

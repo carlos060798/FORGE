@@ -141,3 +141,20 @@ Veredicto: **RECHAZADA**, por un bloqueante. Informe completo y scripts de repro
 - El job `aislamiento` de CI (Linux): no se ha ejecutado nunca.
 - Una tarea real resuelta con el nivel alto en más de una iteración.
 - Proyectos grandes: todo se probó en proyectos de pocos archivos.
+
+## Ronda 6 — implementador por turnos frente a bloque (commit `075e38d`)
+
+La misma tarea en los dos modos, con el nivel económico y un tope de 0,35 USD: en un archivo de 1812 líneas (52 KB, 151 funciones), cambiar **solo** la función `precioFinal` (descuento por tramos y un error nuevo) sin tocar las otras 150.
+
+| # | Modo | Resultado | Iteraciones | Llamadas | Tokens de salida del implementador | Gasto calculado |
+|---|---|---|---|---|---|---|
+| 18 | `bloque` | **revisión por salida inválida** | 0 | 4 | 16 384 (dos respuestas cortadas en el máximo de 8192) | 0,1695 USD |
+| 19 | `turnos` | **éxito**, 19 de 19 pruebas | 1 | 10 (8 turnos) | 2823 | 0,2052 USD |
+
+- **18:** el implementador intentó devolver el archivo entero, las dos veces se cortó en el máximo de salida y el JSON quedó sin cerrar. En modo de bloque esta tarea **no se puede hacer**, con ningún número de iteraciones. Es la brecha C7 del plan, reproducida.
+- **19:** leyó el archivo por tramos, hizo una sustitución acotada, intentó escribir una prueba (rechazado y registrado: `prueba_inmutable`), ejecutó las pruebas en el entorno aislado, releyó y terminó. Las 150 funciones restantes quedaron intactas (el archivo creció 10 líneas).
+- **Costo:** los tokens de salida bajan un 83 % (criterio de la spec: al menos 50 %). El gasto total **no** baja: cada turno reenvía la conversación entera (unos 20 000 tokens de entrada por turno) y el modo por turnos no usa caché de prompts. La entrada del implementador es tres cuartas partes del gasto de la ejecución 19. La caché (FASE 9) es lo que decide si este modo sale más barato.
+
+Es una sola tarea, con un solo modelo. Demuestra que el modo funciona de extremo a extremo con la API real y que resuelve un caso que el modo de bloque no puede; no demuestra que sea mejor en general.
+
+Gasto calculado acumulado de las 19 ejecuciones: unos 1,75 USD.
