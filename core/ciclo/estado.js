@@ -52,6 +52,8 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {Presupuesto} presupuesto
  * @property {{motivo: string, reanudarEn: string, detalle?: string, decision?: string, ts?: string}|null} revision
  * @property {'en_curso'|'exito'|'revision_pendiente'|'aceptada_por_humano'|'abortada'} resultado
+ * @property {'bloque'|'turnos'} [implementador]  modo con el que el implementador trabaja en este hilo (ADR-21); lo fija su primer intento
+ * @property {number} [turnos]  turnos del implementador respondidos en esta tarea (solo en modo turnos)
  */
 
 /**

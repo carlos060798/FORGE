@@ -418,6 +418,9 @@ motor:
   max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
   sin_progreso: 3               # ejecuciones fallidas seguidas con la misma salida antes de pedir revisión (0 lo desactiva)
   contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
+  implementador: bloque         # bloque (una respuesta con los archivos completos) | turnos (opcional, ADR-21: lee, busca y edita por pasos; hoy solo con el proveedor anthropic; con otros avisa y usa bloque)
+  turnos_max: 30                # con turnos: respuestas del modelo por intento antes de ejecutar las pruebas finales (no son iteraciones)
+  turnos_pruebas_max: 5         # con turnos: veces que el implementador puede ejecutar las pruebas por intento
 
 sandbox:
   cpus: 1

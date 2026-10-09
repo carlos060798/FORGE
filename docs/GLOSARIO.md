@@ -287,6 +287,20 @@ Un **ADR** es un registro de una decisión arquitectónica significativa.
 
 ---
 
+### Modo de bloque y modo por turnos
+
+Las dos formas de trabajar del implementador en el ciclo verificado (`motor.implementador`).
+
+- **Modo de bloque** (por defecto): una respuesta con todos los archivos completos.
+- **Modo por turnos** (opcional, ADR-21): varias respuestas con acciones entre medias.
+- **Turno**: una respuesta del modelo dentro de un intento de implementación, que pide una o más acciones o declara que ha terminado. No es una iteración.
+- **Acción** (o herramienta): una de las cinco operaciones permitidas: `leer_archivo`, `listar`, `buscar`, `editar`, `ejecutar_pruebas`.
+- **Iteración**: una ejecución final de pruebas del ciclo. Es lo único que decide el éxito, en los dos modos.
+
+**Ver:** [docs/ciclo-verificado.md](ciclo-verificado.md)
+
+---
+
 ## Resumen de términos por categoría
 
 ### Metodología

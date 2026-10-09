@@ -2,7 +2,7 @@
 id: 2026-10-09-implementador-con-herramientas
 titulo: "Implementador que lee, busca y edita por pasos"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-09
 actualizada: 2026-10-09
 autor: humano  # humano | importado
@@ -157,8 +157,8 @@ El implementador puede consultar el proyecto y modificarlo por pasos pequeños d
 
 ### Asunciones
 - Al menos el proveedor por defecto admite trabajo por pasos.
-- [NECESITA_ACLARACION]: no está comprobado qué modelos locales lo admiten ni con qué fiabilidad.
-- [NECESITA_ACLARACION]: la prioridad de esta spec depende de la tasa de respuestas no interpretables que mida la validación con un modelo real.
+- Sigue sin comprobar qué modelos locales lo admiten ni con qué fiabilidad: en esta entrega los proveedores de modelos locales declaran que no lo admiten (aclaración 5).
+- La prioridad ya no depende de la tasa de respuestas no interpretables: el dueño delegó la aprobación y pidió implementarla como forma opcional (aclaración 1).
 
 ## 10. Términos del Dominio
 
@@ -169,10 +169,12 @@ El implementador puede consultar el proyecto y modificarlo por pasos pequeños d
 
 ## 11. Preguntas Abiertas
 
-- [ ] [POR_DECIDIR]: Máximo de pasos por intento. Propuesta: 30.
-- [ ] [POR_DECIDIR]: ¿Las ejecuciones de pruebas que pide el implementador tienen un máximo propio? Propuesta: 5 por intento.
-- [ ] [POR_DECIDIR]: ¿El recuperador de contexto sigue ejecutándose antes del implementador en la forma por pasos, o se reduce a los archivos de la tarea?
-- [ ] [NECESITA_ACLARACION]: ¿Se quiere que el implementador pueda borrar archivos? Hoy no puede.
+Todas resueltas el 2026-10-09 (ver el historial de aclaraciones):
+
+- [x] Máximo de pasos por intento: 30, configurable.
+- [x] Las ejecuciones de pruebas que pide el implementador tienen un máximo propio: 5 por intento, configurable.
+- [x] En la forma por pasos el implementador no recibe el contexto del recuperador: recibe la lista de archivos del proyecto y consulta lo que necesita. El recuperador sigue sirviendo al agente de pruebas.
+- [x] El implementador sigue sin poder borrar archivos.
 
 ## 12. Criterios de Éxito Medibles
 
@@ -192,3 +194,11 @@ El implementador puede consultar el proyecto y modificarlo por pasos pequeños d
 
 | # | Categoría | Pregunta | Decisión | Fecha |
 |---|-----------|----------|----------|-------|
+| 1 | Aprobación | ¿Se aprueba la spec para implementarla? | Aprobada por delegación del dueño, 2026-10-09. Se implementa como forma opcional; la forma actual sigue siendo la predeterminada | 2026-10-09 |
+| 2 | Límites | Máximo de pasos por intento | 30 por defecto, configurable entre 1 y 200. Al alcanzarlo se ejecutan las pruebas finales con lo que haya escrito | 2026-10-09 |
+| 3 | Límites | ¿Máximo propio para las ejecuciones de pruebas que pide el implementador? | Sí: 5 por intento, configurable (0 las desactiva). Alcanzado el máximo, la petición se rechaza con el motivo y el trabajo sigue | 2026-10-09 |
+| 4 | Alcance | ¿El recuperador de contexto se ejecuta antes del implementador en la forma por pasos? | No se le entrega su contexto: recibe la lista de archivos del proyecto y lee lo que necesita. Evita reenviar ese contexto en cada paso. El recuperador sigue ejecutándose para el agente de pruebas | 2026-10-09 |
+| 5 | Alcance | ¿Qué proveedores admiten el trabajo por pasos en esta entrega? | El proveedor por defecto y el de pruebas. Los demás declaran que no lo admiten y el ciclo avisa y usa la forma actual (CA-006-02). Queda fuera de esta entrega, no de la spec | 2026-10-09 |
+| 6 | Alcance | ¿Puede el implementador borrar archivos? | No. Sigue como hoy | 2026-10-09 |
+| 7 | Reanudación | ¿Qué significa «lo pausado en la forma actual» (CA-005-03)? | La forma de trabajo se fija la primera vez que el implementador trabaja en una tarea y se conserva hasta que la tarea termina, en los dos sentidos. Cambiar la configuración afecta a las tareas nuevas | 2026-10-09 |
+| 8 | Costo | ¿Cómo se verifica el requisito de costo? | Queda pendiente: exige un modelo de pago. El procedimiento está en `verificacion.md` | 2026-10-09 |

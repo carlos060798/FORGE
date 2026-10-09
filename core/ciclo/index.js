@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { LlmAgentAdapter } from '../agent-registry.js';
-import { OllamaProvider } from '../llm-providers/index.js';
+import { crearProvider, OllamaProvider } from '../llm-providers/index.js';
 import { crearRecuperador } from '../recuperacion/recuperador.js';
 import { precioDe } from '../session-budget.js';
 import { GuardadorArchivos } from './checkpoint-archivos.js';
@@ -94,7 +94,29 @@ export function tienePuntosDeGuardado(cwd, runId, taskId) {
  * @param {string} cwd
  */
 export function crearLlamador(registry, apiKey, cwd) {
+  // ADR-21. Un proveedor por cada destino, creado al primer uso: el configurado y el local de la degradación
+  /** @type {Record<string, any>} */
+  const proveedores = {};
+  const proveedorDe = (local) => proveedores[local ? 'local' : 'configurado'] ??= local
+    ? new OllamaProvider()
+    : crearProvider({ cwd, config: apiKey ? { api_key: apiKey } : {} });
   return {
+    /**
+     * ¿Admite conversaciones con herramientas el proveedor que atendería esta llamada?
+     * @param {{ agente?: string, proveedorLocal?: boolean }} [peticion]
+     */
+    admiteHerramientas: ({ proveedorLocal } = {}) => proveedorDe(Boolean(proveedorLocal)).admiteHerramientas === true,
+    /**
+     * Un turno del implementador por turnos: mismo agente y mismo prompt de sistema que `llamar`.
+     * @param {{ agente: string, modeloAlias: string, mensajes: any[], herramientas: any[], extraContext?: string, proveedorLocal?: boolean }} peticion
+     */
+    conversar: async ({ agente, modeloAlias, mensajes, herramientas, extraContext, proveedorLocal }) => {
+      const def = registry.get(agente);
+      if (!def) return { ok: false, error: `Agente desconocido: "${agente}"` };
+      const adaptador = new LlmAgentAdapter({ ...def, model: modeloAlias }, apiKey, undefined, cwd, proveedorDe(Boolean(proveedorLocal)));
+      const r = /** @type {any} */ (await /** @type {any} */ (adaptador).conversar({ mensajes, herramientas, extraContext }));
+      return { ok: r.ok, contenido: r.contenido, stopReason: r.stopReason, inputTokens: r.inputTokens, outputTokens: r.outputTokens, modelo: r.modelo, proveedor: r.provider, error: r.error };
+    },
     /** @param {string} agente */
     aliasDe: (agente) => registry.get(agente)?.model ?? 'sonnet',
     /**
@@ -130,11 +152,16 @@ export function lineasEstadoCiclo(cwd) {
     `Ciclo verificado · sesión ${sesion.runId}`,
     `  Gasto: $${gasto.usd.toFixed(4)} de $${tope.toFixed(2)} · ${gasto.llamadas} llamadas`,
   ];
+  const porTarea = ciclo.libro.porTarea();
   for (const t of tareas) {
     const situacion = t.revision && !t.revision.decision
       ? `espera decisión (${t.revision.motivo})`
       : t.siguiente ? `en curso, siguiente paso: ${t.siguiente}` : t.resultado;
-    lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}`);
+    // CA-004-04: con el implementador por turnos, cuántos turnos y cuánto gasto lleva la tarea
+    const turnos = t.implementador === 'turnos'
+      ? ` · ${t.turnos ?? 0} turno${t.turnos === 1 ? '' : 's'} · $${(porTarea[t.taskId]?.usd ?? 0).toFixed(4)}`
+      : '';
+    lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}${turnos}`);
   }
   return lineas;
 }
@@ -165,7 +192,10 @@ export class CicloVerificado {
    *   specPath?: string,
    *   vetadas?: string[],
    *   recuperar?: Function,
+   *   conversar?: Function,
+   *   admiteHerramientas?: (peticion: { agente: string, proveedorLocal?: boolean }) => boolean,
    * }} opciones
+   *   `conversar` y `admiteHerramientas`: solo para el implementador por turnos (ADR-21); sin ellos, modo de bloque.
    */
   constructor(opciones) {
     if (typeof opciones.runId !== 'string' || !ID_VALIDO.test(opciones.runId)) {
@@ -206,6 +236,29 @@ export class CicloVerificado {
         const precio = precioDe(r.proveedor, r.modelo, undefined, this.o.config?.precios);
         const usd = conConsumo ? r.inputTokens * precio.input + r.outputTokens * precio.output : 0;
         // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
+        this.libro.anotar({ taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0 });
+        this.diario.anotar(threadId, clave, r);
+      }
+      return r;
+    };
+  }
+
+  /**
+   * Un turno del implementador por turnos, con diario y libro de gasto. La clave no es la huella
+   * del prompt (que aquí es la conversación entera) sino la posición del turno: la pone turnos.js.
+   * La respuesta se anota antes de devolverla, es decir, antes de ejecutar ninguna herramienta.
+   */
+  _conversador(threadId, taskId) {
+    return async ({ clave, ...peticion }) => {
+      const previa = this.diario.obtener(threadId, clave);
+      if (previa) return { ...previa, delDiario: true };
+      if (typeof this.o.conversar !== 'function') return { ok: false, error: 'No hay un proveedor de modelos con herramientas configurado.' };
+
+      const r = await this.o.conversar(peticion);
+      if (r.ok) {
+        const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
+        const precio = precioDe(r.proveedor, r.modelo, undefined, this.o.config?.precios);
+        const usd = conConsumo ? r.inputTokens * precio.input + r.outputTokens * precio.output : 0;
         this.libro.anotar({ taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0 });
         this.diario.anotar(threadId, clave, r);
       }
@@ -262,6 +315,14 @@ export class CicloVerificado {
       const deps = {
         llamar: this._llamador(threadId, tarea.id),
         respondida: (peticion) => this.diario.obtener(threadId, claveDe(peticion)) !== null,
+        // ADR-21: implementador por turnos
+        conversar: this._conversador(threadId, tarea.id),
+        admiteHerramientas: (peticion) => typeof this.o.conversar === 'function' && this.o.admiteHerramientas?.(peticion) === true,
+        diario: {
+          obtener: (clave) => this.diario.obtener(threadId, clave),
+          anotar: (clave, valor) => this.diario.anotar(threadId, clave, valor),
+          claves: () => this.diario.claves(threadId),
+        },
         aliasDe: this.o.aliasDe,
         ajustarGasto: (p) => this._ajustarGasto(p),
         runner: this.o.runner,
@@ -286,7 +347,7 @@ export class CicloVerificado {
 
   /**
    * Resumen de cada tarea de la sesión, para `forge status`.
-   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any }[]}
+   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any, implementador?: string, turnos?: number }[]}
    */
   resumen() {
     if (!fs.existsSync(this.guardador.dir)) return [];
@@ -297,6 +358,8 @@ export class CicloVerificado {
         taskId: p.estado.taskId, nodo: p.nodo, siguiente: p.siguiente,
         iteracion: p.estado.iteracion, maxIteraciones: p.estado.maxIteraciones,
         resultado: p.estado.resultado, revision: p.estado.revision, presupuesto: p.estado.presupuesto,
+        // ADR-21: modo del implementador en este hilo y turnos respondidos
+        ...(p.estado.implementador ? { implementador: String(p.estado.implementador), turnos: Number(p.estado.turnos ?? 0) } : {}),
       }));
   }
 

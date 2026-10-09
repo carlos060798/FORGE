@@ -113,7 +113,7 @@ export function crearProvider(opts = {}) {
 
     case 'stub':
     case 'test':
-      return new StubProvider();
+      return new StubProvider(config);
 
     default:
       // Nombre desconocido: intentar como base_url de Ollama si parece URL

@@ -44,6 +44,18 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - Nuevo `motor.nivel_maximo` (`opus` | `sonnet` | `haiku`, o `FORGE_NIVEL_MAXIMO`): limita el nivel de modelo de todos los agentes sin editarlos. Por defecto `opus`, que no limita nada.
 - Detección de «sin progreso» (hallazgo H8): si las últimas 3 ejecuciones fallan con la misma salida (sin contar duraciones, marcas de tiempo ni direcciones de memoria), la tarea se pausa con el motivo nuevo `sin_progreso` en lugar de repetir hasta el tope de iteraciones. `continuar` hace que el agente de pruebas las reescriba, y recibe las pruebas anteriores y la salida que se repitió; si ya no quedan iteraciones hay que añadirlas con `--iteraciones-extra`. Nuevo `motor.sin_progreso` (entero ≥ 0, por defecto 3; 0 lo desactiva). **Cambia cuándo se pide revisión**: una tarea que antes llegaba a la quinta ejecución puede pausarse en la tercera. Una ejecución sin salida no cuenta. Probado con respuestas guionizadas (`tests/ciclo-sin-progreso.test.js`), no con un modelo real.
 
+**Implementador por turnos con herramientas, opcional** (spec `2026-10-09-implementador-con-herramientas`, ADR-21):
+
+- Nuevo `motor.implementador: bloque | turnos` (o `FORGE_IMPLEMENTADOR`). Por defecto `bloque`: **sin configurarlo, nada cambia**. Con `turnos`, el implementador trabaja por pasos con cinco acciones (`leer_archivo`, `listar`, `buscar`, `editar`, `ejecutar_pruebas`) en lugar de devolver cada archivo completo.
+- Mismas reglas que el modo de bloque, con el mismo código: lo vetado no se lee ni se escribe, las pruebas no se tocan, y un cambio en dependencias o configuración no se aplica y pide revisión. La suite de confinamiento se recorre también a través de `editar` y `leer_archivo`.
+- Topes nuevos: `motor.turnos_max` (30 respuestas del modelo por intento) y `motor.turnos_pruebas_max` (5 ejecuciones de pruebas por intento). Cada turno cuenta para el tope de gasto. Un turno no es una iteración, y el éxito lo sigue decidiendo la ejecución final de pruebas.
+- Reanudable: cada turno y el resultado de cada acción se anotan en el diario; tras un corte, los turnos ya respondidos no se pagan otra vez ni repiten sus acciones.
+- El modo se fija por tarea la primera vez que el implementador trabaja en ella: lo pausado en un modo se reanuda en ese modo aunque cambie la configuración.
+- Contrato de proveedor: método opcional `conversar` y propiedad `admiteHerramientas`. **Solo Anthropic lo implementa**; con OpenAI u Ollama el ciclo deja el evento `ciclo:implementador_sin_herramientas` y usa el modo de bloque. El proveedor de pruebas (`stub`) admite un guion de conversación.
+- Eventos nuevos: `ciclo:turno`, `ciclo:herramienta`, `ciclo:lectura_rechazada`, `ciclo:turnos_agotados`, `ciclo:implementador_sin_herramientas`. `forge status` muestra turnos y gasto de las tareas que trabajan por turnos.
+- El estado guardado de cada tarea lleva un campo nuevo, `implementador`. Los puntos de guardado anteriores siguen siendo válidos.
+- **Sin probar con un modelo real y con el costo sin medir.** Probado con respuestas guionizadas. Este modo no usa caché de prompts: cada turno reenvía toda la conversación, y el gasto total puede superar al del modo de bloque.
+
 Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 
 ## [4.3.0] — No publicada

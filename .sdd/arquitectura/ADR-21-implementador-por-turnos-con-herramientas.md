@@ -1,9 +1,9 @@
 # ADR-21: Implementador por turnos con herramientas en proceso, como modo opcional
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-09
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-09 (aceptada por delegación del dueño, 2026-10-09)
 > Spec relacionada: 2026-10-09-implementador-con-herramientas
-> Autor: Claude (pendiente de aceptación por el dueño)
+> Autor: Claude
 > Amplía: ADR-07 (salida de agentes como bloque de archivos), que queda como modo de respaldo. No cambia ADR-15.
 
 ## Contexto
@@ -61,8 +61,61 @@ El nodo `coder` gana un segundo modo, `turnos`, en el que el modelo pide accione
 - Si la validación con un modelo real (FASE 6) muestra que el modo de bloque falla el formato en menos del 5 % de las llamadas y las tareas reales son de archivos pequeños: esta decisión puede esperar.
 - Al preparar la siguiente versión MAYOR: decidir si `turnos` pasa a ser el modo por defecto y si `bloque` se retira.
 
+## Cómo quedó implementada
+
+Implementada el 2026-10-09 como modo opcional. Probada solo con respuestas guionizadas y con un cliente falso del SDK: **ningún modelo real ha trabajado todavía en este modo** (ver `verificacion.md` de la spec).
+
+**Piezas**
+
+| Pieza | Dónde |
+|---|---|
+| Contrato de proveedor: `admiteHerramientas` y `conversar`, en una forma neutra | `core/llm-providers/provider-interface.js` |
+| Proveedores que lo admiten: Anthropic (con clave) y el de pruebas (con guion). OpenAI y Ollama declaran que no | `core/llm-providers/` |
+| Las cinco herramientas | `core/ciclo/herramientas-coder.js` |
+| El bucle de turnos, la elección de modo y el prompt | `core/ciclo/turnos.js` |
+| Contrato del agente en este modo | `CONTRATO_CODER_TURNOS` en `core/ciclo/contratos.js` |
+| Bifurcación del nodo | principio de `coder` en `core/ciclo/nodos.js` |
+| Diario y libro de gasto por turno | `_conversador` en `core/ciclo/index.js` |
+| Configuración | `motor.implementador`, `motor.turnos_max` (30), `motor.turnos_pruebas_max` (5), `FORGE_IMPLEMENTADOR` |
+
+**Diferencias con lo decidido arriba**
+
+- *«Cada turno pasa por `invocar`»*: no literalmente. `invocar` hace llamadas de un solo mensaje y otra spec la estaba modificando a la vez. El bucle usa las mismas funciones de `presupuesto.js` (`puedeLlamar`, `modeloEfectivo`, `limitarNivel`, `registrar`, `sinPrecioConocido`) con una función propia de unas quince líneas que repite el orden de `invocar`. Es duplicación de pegamento, no de reglas; conviene unificarla cuando `invocar` se estabilice.
+- *Escritura atómica*: `aplicarArchivos` gana una opción `atomica` (temporal en la misma carpeta, creado en exclusiva, y renombrado). Solo la usa este modo; el de bloque escribe como antes.
+- *El recuperador*: en este modo el implementador no recibe su contexto, solo la lista de archivos.
+
+**Diario por turno y reanudación**
+
+El diario de un hilo guarda lo que está en vuelo dentro de un nodo y se vacía al guardar el punto de ese nodo. El modo de bloque lo indexa por la huella del prompt. Aquí el prompt de cada turno es la conversación entera, así que la clave es la posición del turno (el hilo no va en la clave: cada hilo tiene su archivo):
+
+| Clave | Contenido | Cuándo se anota |
+|---|---|---|
+| `turno:<iteración>:inicio` | el primer mensaje, tal como se envió | antes del primer turno |
+| `turno:<iteración>:<n>` | la respuesta del modelo | al recibirla, antes de ejecutar nada |
+| `turno:<iteración>:<n>:r:<i>` | el resultado de su herramienta `i` | al terminar de ejecutarla |
+
+Al reanudar, el nodo empieza de nuevo y recorre los mismos turnos. Los que están en el diario no se piden ni se pagan otra vez, y sus herramientas **no se vuelven a ejecutar**: se reutiliza el resultado anotado. Es necesario para la idempotencia (una sustitución ya aplicada no encontraría su fragmento) y para que la conversación reproducida sea la que el modelo vio. El primer mensaje también se guarda porque el mapa de archivos cambia con lo que el propio implementador escribe. El gasto no se cuenta dos veces porque la fuente de verdad es el libro de gasto de la sesión, que se anota una vez por llamada real.
+
+Ventana que queda: un corte entre que una herramienta escribe y que su resultado se anota. Al reanudar se repite esa acción. Un archivo entero se reescribe igual; una sustitución ya aplicada devuelve «el fragmento no aparece» sin cambiar nada.
+
+**El modo es del hilo**
+
+La primera vez que el implementador trabaja en una tarea, el modo usado se anota en su estado (`estado.implementador`) y se conserva hasta que termina: lo pausado en `bloque` se reanuda en `bloque` aunque la configuración diga `turnos`, y al revés. Para un corte dentro de ese primer intento, antes de que exista ningún punto del nodo, el modo se deduce del diario (hay claves `turno:` o no). Un hilo anterior a esta versión que ya tenga implementación o ejecuciones se trata como `bloque`.
+
+**Sin herramientas**
+
+Si toca `turnos` y el proveedor no las admite, queda un evento `ciclo:implementador_sin_herramientas` y la tarea se implementa en `bloque`. Si la degradación por gasto lleva a un modelo local a mitad de un intento, los turnos se detienen: con algo escrito se ejecutan las pruebas finales; sin nada escrito se pide revisión, y al continuar se trabaja en `bloque`.
+
+**Qué falta**
+
+- Probarlo con un modelo real y medir el costo.
+- Caché de prompts en `conversar`: hoy cada turno reenvía todo.
+- Herramientas en OpenAI y en modelos locales.
+- Revisión independiente de código y de seguridad.
+
 ## Referencias
 
 - `.sdd/arquitectura/ADR-07-salida-de-agentes-como-archivos.md`, `ADR-15-sin-cliente-mcp-en-los-nodos.md`, `ADR-04-puntos-de-guardado-en-archivos.md`, `ADR-06-presupuesto-en-el-estado.md`
 - `core/mcp/herramientas.js`, `core/ciclo/protocolo-archivos.js`
 - `PLAN-CIERRE-BRECHAS.md`, FASE 8
+- `.sdd/especificaciones/2026-10-09-implementador-con-herramientas/spikes/herramientas-por-proveedor.md` y `verificacion.md`

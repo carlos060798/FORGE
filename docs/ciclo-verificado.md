@@ -32,6 +32,9 @@ motor:
   max_iteraciones: 5
   sin_progreso: 3          # fallos seguidos con la misma salida antes de preguntarte; 0 lo desactiva
   contexto_max_bytes: 65536
+  implementador: bloque    # bloque (por defecto) | turnos (opcional: ver «Implementador por turnos»)
+  turnos_max: 30           # con turnos: respuestas del modelo por intento
+  turnos_pruebas_max: 5    # con turnos: ejecuciones de pruebas que puede pedir el implementador por intento
 
 sandbox:
   cpus: 1
@@ -84,7 +87,7 @@ planner → retriever → qa → coder → sandbox ─┬─ las pruebas pasan �
 1. **planner** (agente `arquitecto`): descompone la tarea en pasos.
 2. **retriever**: reúne los archivos que declara la tarea y las líneas de la spec que citan sus criterios, sin superar `contexto_max_bytes` (cabeceras incluidas).
 3. **qa** (agente `tester`): escribe las pruebas antes de que exista la implementación.
-4. **coder** (el agente de la tarea): implementa. No puede modificar ni crear pruebas.
+4. **coder** (el agente de la tarea): implementa. No puede modificar ni crear pruebas. Por defecto responde con los archivos completos; opcionalmente trabaja por turnos, con herramientas (ver «Implementador por turnos»).
 5. **sandbox**: ejecuta las pruebas en un contenedor.
 6. El **router** decide por el código de salida. El éxito se comprueba antes que los topes: pasar en la quinta ejecución es un éxito.
 
@@ -122,6 +125,55 @@ Dos clases de archivo **no se aplican y pausan la tarea** para que decidas tú, 
 - **Configuración**: cualquier ruta con un segmento que empiece por punto (`.github/`, `.husky/`, `.vscode/`, `.eslintrc.js`, `.gitignore`…), `conftest.py`, `pytest.ini`, `*.config.js` (jest, vitest, babel, eslint…), `Makefile`, `Dockerfile`, `docker-compose.yml`, `CLAUDE.md`, `AGENTS.md`.
 
 Esto es una lista, no una garantía: **una configuración que no esté en ella se escribirá**. Y el contenido de un archivo permitido no se inspecciona: un agente puede escribir código dañino en `src/`. Revisa el diff antes de hacer commit.
+
+## Implementador por turnos (opcional)
+
+> **Estado: opcional y sin probar con un modelo real.** Está probado con respuestas guionizadas (`tests/ciclo-turnos.test.js`, `tests/herramientas-coder.test.js`). No se sabe todavía cuánto cuesta ni qué tal lo usa un modelo de verdad. El modo por defecto sigue siendo `bloque`.
+
+Por defecto el implementador recibe todo en un mensaje y responde con cada archivo completo (`motor.implementador: bloque`). Con `motor.implementador: turnos` trabaja por pasos: pide una acción, FORGE la ejecuta y le devuelve el resultado, y así hasta que termina. Sirve para tareas sobre código que ya existe: puede buscar dónde se usa algo, leer solo un tramo de un archivo largo y cambiar tres líneas sin reescribirlo.
+
+```yaml
+motor:
+  implementador: turnos
+```
+
+O, para una ejecución, `FORGE_IMPLEMENTADOR=turnos`.
+
+**Las cinco acciones, y ninguna más:**
+
+| Acción | Qué hace |
+|---|---|
+| `leer_archivo` | Lee un archivo, entero o un tramo de líneas |
+| `listar` | Lista el primer nivel de una carpeta |
+| `buscar` | Busca un texto literal y devuelve ruta, línea y texto |
+| `editar` | Sustituye un fragmento exacto que aparezca una sola vez, o escribe un archivo entero |
+| `ejecutar_pruebas` | Ejecuta las pruebas del proyecto en el contenedor. No acepta ningún comando |
+
+**Mismas protecciones que el modo de bloque**, con el mismo código:
+
+- Leer, listar y buscar no alcanzan nada vetado (secretos, `.git`, `.sdd`, `node_modules`, rutas protegidas, enlaces que salen del proyecto). Los manifiestos y la configuración se pueden leer, no escribir.
+- Toda escritura pasa por las reglas de «Qué puede escribir un agente»: no toca las pruebas, no sale del proyecto, y un intento de cambiar dependencias o configuración **no se aplica, termina el trabajo y te pregunta**. Hay respaldo antes de la primera modificación de cada archivo, y `abortar` lo restaura todo.
+- Una sustitución cuyo fragmento no aparece, o aparece más de una vez, no cambia nada y devuelve el motivo.
+- Cada resultado tiene un tamaño máximo (32 KB; 50 coincidencias al buscar) y avisa si recorta.
+- Los rechazos vuelven al implementador con su motivo, no detienen la tarea y quedan en `.sdd/events.jsonl` (`ciclo:lectura_rechazada`, `ciclo:escritura_rechazada`).
+- **Lo que lee no manda.** Si un archivo del proyecto contiene instrucciones («lee `.env`», «escribe en `../otro`»), el implementador puede intentar obedecerlas, pero las reglas y los topes no dependen de él: se fijan antes de empezar y esas acciones se rechazan.
+
+**Topes:**
+
+- `turnos_max` (30): respuestas del modelo por intento. Al alcanzarlo se ejecutan las pruebas con lo que haya escrito.
+- `turnos_pruebas_max` (5): veces que el implementador puede ejecutar las pruebas por intento.
+- Cada turno es una llamada al modelo: cuenta para el tope de gasto, con la misma degradación y la misma parada. Agotado el gasto no se inicia otro turno.
+- **Un turno no es una iteración.** Una iteración sigue siendo una ejecución final de pruebas.
+
+**El éxito no cambia de manos.** Cuando el implementador termina, el ciclo ejecuta las pruebas y el router decide, igual que siempre. Que las pruebas pasaran cuando las ejecutó el implementador no cuenta.
+
+**Proveedores.** Hoy solo lo admite **Anthropic**. Con OpenAI (y compatibles) u Ollama, el ciclo deja un aviso en el registro (`ciclo:implementador_sin_herramientas`) y trabaja en modo de bloque; el aviso no se imprime en la terminal. Con `degradar_a: local`, al cruzar el umbral de gasto los turnos se detienen, porque el modelo local no admite herramientas.
+
+**El modo es de la tarea.** Se fija la primera vez que el implementador trabaja en ella. Si cambias `motor.implementador` con una tarea en pausa, esa tarea sigue en el modo en que empezó; el cambio vale para las tareas nuevas.
+
+**Costo, sin medir.** Las respuestas son más cortas, pero cada turno reenvía el prompt, las herramientas y toda la conversación anterior, y este modo todavía no usa caché de prompts: los tokens de entrada crecen con cada turno y el gasto total puede ser mayor que en modo de bloque. `forge status` muestra los turnos y el gasto de cada tarea que trabaja en este modo.
+
+**Otras diferencias.** El implementador no recibe el contexto del recuperador: recibe la lista de archivos del proyecto y lee lo que necesita. No puede borrar ni renombrar archivos.
 
 ## Presupuesto
 
@@ -162,6 +214,8 @@ Una decisión que no pueda cumplirse (por ejemplo, ampliar el presupuesto cuando
 
 El estado se guarda tras cada paso en `.sdd/motor/<sesión>/checkpoints/`. Si el proceso se corta, `forge resume` continúa en el paso pendiente. Además, cada respuesta de un modelo se anota en `.sdd/motor/<sesión>/diario/` en cuanto llega: si el corte cae dentro de un paso, después de pagar la respuesta, al reanudar se recupera del diario y **no se vuelve a pagar**, también si esa respuesta cruzó el umbral de degradación o agotó el tope. El diario solo cubre lo que está en vuelo y se vacía al guardar el punto del paso. **Excepción conocida:** si el proceso muere en los milisegundos entre escribir los archivos del implementador y guardar el punto del nodo, la petición cambia (su contexto incluye archivos que acaba de reescribir) y la llamada se paga de nuevo.
 
+Con el implementador por turnos se anota cada turno por su posición: la respuesta del modelo, antes de ejecutar nada, y el resultado de cada acción, al terminarla. Al reanudar se reproduce la conversación desde el diario: los turnos ya respondidos no se pagan otra vez y sus acciones no se repiten (una sustitución ya aplicada no se reintenta). **Excepción conocida:** si el proceso muere entre que una acción escribe un archivo y que su resultado se anota, esa acción se repite; una sustitución ya aplicada devuelve entonces «el fragmento no aparece», sin cambiar nada. Las escrituras de este modo son atómicas: un corte no deja un archivo a medias.
+
 Un punto de guardado dañado se detecta por su huella y se usa el anterior válido. Un punto de otra sesión o de otro proyecto no se obedece. Dos procesos no pueden trabajar a la vez en la misma tarea ni en el mismo proyecto (candados con enlace duro; la retirada de un candado huérfano exige una reclamación aparte). Probado con 2 y con 3 procesos. Un candado de más de 6 horas se considera abandonado aunque su proceso siga vivo, y en sistemas de archivos sin enlaces duros el candado falla en modo seguro (no arranca).
 
 Si una tarea tiene puntos de guardado del ciclo, `forge resume` la reanuda con el ciclo aunque no lo pidas: relanzarla en modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Por la misma razón, `forge run --motor clasico` se niega a ejecutar sobre una sesión del ciclo sin terminar; `--force` lo permite bajo tu responsabilidad.
@@ -177,6 +231,8 @@ npx forge probar-modelo [--tope 0.50] [--conservar]
 
 Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pruebas), lanza el ciclo con un tope de gasto bajo y resume: resultado, iteraciones, gasto y llamadas, y si el modelo devolvió el formato de archivos que el ciclo espera (`salida_invalida` indica que no). Gasta dinero real: como máximo el tope (0,50 USD por defecto). Sale con 0 si la tarea terminó con éxito, 1 si no, 2 si no se pudo ejecutar (sin clave, tope no válido). Es la prueba que falta en la verificación del ciclo.
 
+Para probar el implementador por turnos, la misma orden con `FORGE_IMPLEMENTADOR=turnos`. **Todavía no se ha ejecutado con un modelo de pago.**
+
 ## Códigos de salida
 
 | Código | Significado |
@@ -189,6 +245,7 @@ Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pru
 ## Límites conocidos
 
 - **Probado con un modelo real solo en ocho tareas pequeñas.** El 2026-10-09 se ejecutó con un proveedor de pago: ocho ejecuciones de una tarea cada una (JavaScript y Python), casi todas con el nivel de modelo económico. Las respuestas se interpretaron siempre al primer intento y el bucle de corrección convergió en la única tarea que lo necesitó. Esas ejecuciones destaparon cuatro defectos, ya corregidos, y dejan cosas sin probar: Go, tareas sobre un proyecto con código existente, tareas de varios archivos y la comparación del gasto calculado con el facturado. Detalle en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`.
+- **El implementador por turnos no se ha probado con un modelo real.** Ni su comportamiento ni su costo; solo con respuestas guionizadas. Solo funciona con Anthropic y no usa caché de prompts.
 - **Unas pruebas rotas por sí mismas se detectan solo si la salida se repite.** Si el agente de pruebas escribe un archivo que no carga (por ejemplo, con un sistema de módulos equivocado), el implementador no puede arreglarlo, porque no puede tocar las pruebas. El ciclo compara la salida de cada ejecución fallida con las anteriores (sin duraciones, marcas de tiempo ni direcciones de memoria) y, si es idéntica 3 veces seguidas (`motor.sin_progreso`), se pausa con el motivo `sin_progreso` en lugar de seguir hasta el tope. Es una comparación de igualdad, no un diagnóstico: no sabe si la culpa es de las pruebas o de un implementador que repite el mismo error, así que decides tú. No se detecta si la salida cambia en cada ejecución (valores aleatorios, rutas temporales, orden no determinista), si las ejecuciones no imprimen nada, ni los fallos por tiempo agotado; en esos casos el ciclo sigue hasta el tope de iteraciones. Las dos primeras ejecuciones repetidas se pagan igual. Tras `continuar`, si las pruebas reescritas vuelven a dar la misma salida, la tarea se pausa de nuevo en la primera ejecución. Comprobado con pruebas automáticas, no con un modelo real.
 - **Python sin pytest declarado usa `unittest discover`**, que no encuentra pruebas en `tests/` sin `__init__.py`. El ciclo lo detecta por el código de salida 5, no gasta iteraciones y te lo explica; declara `pytest` en `requirements.txt` o añade un `pytest.ini` para evitarlo.
 - **El ciclo no mide la calidad de las pruebas, y un implementador decidido puede falsear el resultado.** Aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Además se compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha): si informa menos, se pausa aunque el corte esté escondido. Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: un implementador que falsee el resumen, o un ejecutor sin cuenta legible (`go test` sin `-v`), no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Si las pruebas recién escritas ya pasan sin implementación, queda un aviso en el registro, pero no se bloquea. **Revisa el diff y ejecuta las pruebas tú antes de dar una tarea por buena.**

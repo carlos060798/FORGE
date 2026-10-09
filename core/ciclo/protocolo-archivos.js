@@ -234,13 +234,32 @@ export function validarRuta(cwd, ruta, opciones = {}) {
 }
 
 /**
+ * Escribe en un temporal de la misma carpeta y lo renombra sobre el destino. El temporal se crea en
+ * exclusiva: si ya existiera algo con ese nombre (también un enlace), no se escribe a través de él.
+ * @param {string} absoluta
+ * @param {string} contenido
+ */
+function escribirAtomico(absoluta, contenido) {
+  const tmp = `${absoluta}.forge-tmp-${process.pid}`;
+  fs.writeFileSync(tmp, contenido, { encoding: 'utf8', flag: 'wx' });
+  try {
+    fs.renameSync(tmp, absoluta);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch { /* ya no está */ }
+    throw e;
+  }
+}
+
+/**
  * Escribe los archivos permitidos y devuelve qué se escribió y qué se rechazó.
  *
  * @param {string} cwd
  * @param {{ ruta: string, contenido: string }[]} archivos
- * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void }} opciones
+ * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void, atomica?: boolean }} opciones
  *   `pruebas`: rutas (posix) de las pruebas ya escritas; inmutables para el rol `coder`.
  *   `antesDeEscribir`: se llama con cada ruta aceptada, antes de tocar el disco (respaldo).
+ *   `atomica`: escribe en un temporal junto al destino y lo renombra, de modo que un corte a mitad
+ *   de la escritura deja el archivo anterior entero (lo usa el implementador por turnos, ADR-21).
  * @returns {{ escritos: { ruta: string, sha256: string }[], rechazados: { ruta: string, motivo: string }[], requiereRevision: boolean }}
  *   `requiereRevision`: el agente propuso cambiar dependencias o configuración ejecutable.
  */
@@ -271,7 +290,8 @@ export function aplicarArchivos(cwd, archivos, opciones) {
     try {
       opciones.antesDeEscribir?.(v.rutaPosix);
       fs.mkdirSync(path.dirname(v.absoluta), { recursive: true });
-      fs.writeFileSync(v.absoluta, contenido, 'utf8');
+      if (opciones.atomica) escribirAtomico(v.absoluta, contenido);
+      else fs.writeFileSync(v.absoluta, contenido, 'utf8');
     } catch {
       // p. ej. la ruta es un directorio, o un segmento intermedio es un archivo
       rechazados.push({ ruta, motivo: 'error_escritura' });
