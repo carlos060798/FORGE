@@ -16,6 +16,9 @@ const nuevo = (tope = 2, umbral = 1.5) =>
 
 // 100 000 tokens de entrada de opus = 1,50 USD
 const OPUS = { proveedor: "anthropic", modelo: "claude-opus-4-8" };
+// Estas pruebas comprueban la aritmética del libro, no la tarifa: fijan el precio con el que se
+// escribieron (15/75 USD por millón). La lista incluida cobra hoy opus a 5/25 (core/precios.js, ADR-19).
+const FIJADO = { precios: { "claude-opus-4-8": { input: 15 / 1_000_000, output: 75 / 1_000_000 } } };
 
 describe("precioDe — tabla por proveedor", () => {
   test("anthropic usa su tabla", () => {
@@ -45,7 +48,7 @@ describe("precioDe — tabla por proveedor", () => {
 describe("registrar — transiciones de estado", () => {
   test("acumula gasto, llamadas y tokens sin mutar el original", () => {
     const p0 = nuevo();
-    const p1 = registrar(p0, { ...OPUS, inputTokens: 10_000, outputTokens: 1_000 });
+    const p1 = registrar(p0, { ...OPUS, inputTokens: 10_000, outputTokens: 1_000 }, FIJADO);
     assert.equal(p0.gastado_usd, 0);
     assert.ok(Math.abs(p1.gastado_usd - 0.225) < 1e-9);
     assert.equal(p1.llamadas, 1);
@@ -55,22 +58,22 @@ describe("registrar — transiciones de estado", () => {
   });
 
   test("CA-004-01: al alcanzar el umbral pasa a degradado", () => {
-    const p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 });
+    const p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 }, FIJADO);
     assert.equal(p.estado, "degradado");
     assert.equal(puedeLlamar(p), true);
   });
 
   test("CA-004-02: al alcanzar el tope pasa a agotado y no se puede llamar", () => {
-    let p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 });
-    p = registrar(p, { ...OPUS, inputTokens: 40_000, outputTokens: 0 });
+    let p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 }, FIJADO);
+    p = registrar(p, { ...OPUS, inputTokens: 40_000, outputTokens: 0 }, FIJADO);
     assert.equal(p.estado, "agotado");
     assert.equal(puedeLlamar(p), false);
   });
 
   test("CA-004-03: el gasto vive en el objeto y sobrevive a serializarlo", () => {
-    const p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 });
+    const p = registrar(nuevo(), { ...OPUS, inputTokens: 100_000, outputTokens: 0 }, FIJADO);
     const restaurado = JSON.parse(JSON.stringify(p));
-    const q = registrar(restaurado, { ...OPUS, inputTokens: 40_000, outputTokens: 0 });
+    const q = registrar(restaurado, { ...OPUS, inputTokens: 40_000, outputTokens: 0 }, FIJADO);
     assert.equal(q.llamadas, 2);
     assert.equal(q.estado, "agotado");
   });
@@ -95,7 +98,7 @@ describe("registrar — transiciones de estado", () => {
 
 describe("ampliar — tras una revisión humana", () => {
   test("ampliar el tope reabre un presupuesto agotado", () => {
-    let p = registrar(nuevo(), { ...OPUS, inputTokens: 140_000, outputTokens: 0 });
+    let p = registrar(nuevo(), { ...OPUS, inputTokens: 140_000, outputTokens: 0 }, FIJADO);
     assert.equal(p.estado, "agotado");
     p = ampliar(p, 1);
     assert.equal(p.tope_usd, 3);

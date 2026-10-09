@@ -44,6 +44,31 @@ presupuesto:
   degradar_a: escalon
 ```
 
+### Modelos y precios (ADR-19)
+
+El gasto se calcula multiplicando tokens por un precio. FORGE trae una lista de modelos y precios (`core/precios.js`) con la **fecha de su última revisión** contra la página oficial del proveedor; `forge status` y `forge doctor` muestran esa fecha. Si un precio o un modelo cambia, no hace falta esperar una versión: indícalo en `.sdd/sdd.config.yaml` y **lo que indiques manda sobre la lista incluida**.
+
+```yaml
+modelos:                         # identificador de modelo de cada nivel
+  opus: claude-opus-5-5
+  sonnet: claude-sonnet-5-5
+  haiku: claude-haiku-5-5
+
+precios:                         # USD por millón de tokens
+  claude-sonnet-5-5_entrada: 2
+  claude-sonnet-5-5_salida: 10
+  "qwen2.5-coder:7b_entrada": 0  # un identificador con dos puntos va entre comillas
+  "qwen2.5-coder:7b_salida": 0
+```
+
+- **`modelos:`** solo admite las claves `opus`, `sonnet` y `haiku`. Un nivel sin indicar conserva el que trae el proveedor. Se aplica al proveedor que esté en uso (también al local de `degradar_a: local`), así que indica identificadores que ese proveedor conozca. El proveedor de pruebas (`stub`) no lo usa.
+- **`precios:`** usa claves planas porque el lector de configuración es mínimo y no entiende anidamiento: `<identificador>_entrada` y `<identificador>_salida`, siempre las dos. El identificador es el que el proveedor recibe, tal cual.
+- **Un precio no numérico, negativo, vacío o sin su pareja, o un nivel desconocido en `modelos:`, impide empezar** (`forge run` y `forge resume`, en los dos modos), con un mensaje que nombra la clave.
+- **Un modelo sin precio** (ni en tu configuración ni en la lista incluida) **se cobra al precio más alto conocido** y deja en el registro un evento `ciclo:precio_desconocido` con su nombre. El tope se alcanzará antes de lo real: añade su precio.
+- Los proveedores locales (`ollama`) y el de pruebas siguen costando 0 aunque les pongas precio.
+- El gasto solo cuenta tokens de entrada y de salida. No contempla la caché de prompts ni el tramo caro de Claude Haiku 5.5 (peticiones de más de 100 000 tokens de entrada, 5 veces más caras).
+- Un precio más bajo que el real hace que el ciclo gaste más de lo que cree: el tope es tan bueno como los precios.
+
 `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
 
 ## Qué hace con cada tarea

@@ -33,11 +33,13 @@ export class OllamaProvider extends LlmProvider {
 
   constructor(config = {}) {
     super();
+    /** Niveles fijados en `modelos:` de sdd.config.yaml: mandan sobre los de este archivo (ADR-19) */
+    this.modelos = config.modelos ?? {};
     this.baseUrl = config.base_url ?? process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
   }
 
   resolveModelId(alias) {
-    return ALIASES[alias] ?? alias;
+    return this.modelos[alias] ?? ALIASES[alias] ?? alias;
   }
 
   async complete({ model, systemPrompt, userPrompt, maxTokens = 8192, signal }) {

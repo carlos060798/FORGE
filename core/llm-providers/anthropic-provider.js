@@ -26,11 +26,13 @@ export class AnthropicProvider extends LlmProvider {
 
   constructor(config = {}) {
     super();
+    /** Niveles fijados en `modelos:` de sdd.config.yaml: mandan sobre los de este archivo (ADR-19) */
+    this.modelos = config.modelos ?? {};
     this.apiKey = config.api_key ?? process.env.ANTHROPIC_API_KEY ?? process.env.CLAUDE_API_KEY ?? '';
   }
 
   resolveModelId(alias) {
-    return MODELOS[alias] ?? alias;
+    return this.modelos[alias] ?? MODELOS[alias] ?? alias;
   }
 
   async complete({ model, systemPrompt, userPrompt, maxTokens = 8192, signal }) {

@@ -5,7 +5,7 @@
  * gasto se guarda en cada punto de guardado y sobrevive a la reanudación.
  */
 
-import { precioDe, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
+import { precioDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 
 const ESCALON = { opus: 'sonnet', sonnet: 'haiku', haiku: 'haiku' };
 export const NIVELES = ['haiku', 'sonnet', 'opus'];
@@ -51,7 +51,8 @@ export function puedeLlamar(p) {
 /**
  * @param {import('./estado.js').Presupuesto} p
  * @param {{ proveedor: string, modelo: string, inputTokens?: number, outputTokens?: number }} llamada
- * @param {{ precioDesconocido?: { input: number, output: number } }} [opciones]
+ * @param {{ precioDesconocido?: { input: number, output: number }, precios?: Record<string, { input: number, output: number }> }} [opciones]
+ *        `precios`: los de `precios:` del proyecto (USD por token); mandan sobre la lista incluida
  * @returns {import('./estado.js').Presupuesto}
  */
 export function registrar(p, llamada, opciones = {}) {
@@ -61,7 +62,7 @@ export function registrar(p, llamada, opciones = {}) {
 
   const tokensIn  = llamada.inputTokens ?? 0;
   const tokensOut = llamada.outputTokens ?? 0;
-  const precio    = precioDe(llamada.proveedor, llamada.modelo, opciones.precioDesconocido);
+  const precio    = precioDe(llamada.proveedor, llamada.modelo, opciones.precioDesconocido, opciones.precios);
 
   const siguiente = {
     ...p,
@@ -72,6 +73,16 @@ export function registrar(p, llamada, opciones = {}) {
   };
   siguiente.estado = estadoDe(siguiente);
   return siguiente;
+}
+
+/**
+ * ¿Se cobró esta llamada al precio de modelo desconocido? El ciclo deja entonces un aviso
+ * con el nombre del modelo (ADR-19): cobrar de más en silencio esconde una tabla anticuada.
+ * @param {{ proveedor: string, modelo: string }} llamada
+ * @param {Record<string, { input: number, output: number }>} [precios]  `precios:` del proyecto
+ */
+export function sinPrecioConocido(llamada, precios) {
+  return !tienePrecio(llamada.proveedor, llamada.modelo, precios);
 }
 
 /**

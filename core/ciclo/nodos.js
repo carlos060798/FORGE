@@ -22,7 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
-import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar } from './presupuesto.js';
+import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
 import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinPruebasEjecutadas } from './router.js';
 import { cola } from './redactar.js';
@@ -63,10 +63,14 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
 
   let siguiente;
   try {
-    siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens });
+    siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens }, { precios: deps.config.precios });
   } catch (e) {
     if (!(e instanceof ErrorConsumo)) throw e;
     return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, cola(String(e.message), 600)) } };
+  }
+  // Un modelo sin precio se cobra al más caro conocido, y se avisa con su nombre (ADR-19)
+  if (sinPrecioConocido(r, deps.config.precios)) {
+    deps.log.append('ciclo:precio_desconocido', { modelo: r.modelo, proveedor: r.proveedor, aviso: `El modelo "${r.modelo}" no tiene precio conocido: se cobra al más caro conocido. Indica su precio en precios: de sdd.config.yaml.` }, { taskId: estado.taskId });
   }
   // El gasto de la sesión suma lo de todas las tareas, también las cortadas
   if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);

@@ -28,6 +28,7 @@ import { detectStack } from './stack-detector.js';
 import { runnerForStack } from './runners/index.js';
 import { parseSpecMd, validateSpec, checkCoverage } from './spec.js';
 import { sessionBudget } from './session-budget.js';
+import { lineaRevision } from './precios.js';
 import { circuitBreaker } from './execution-context.js';
 import { cargarTareas, specActiva } from './tareas.js';
 import { leerConfigCiclo, leerRutasProtegidas } from './ciclo/config.js';
@@ -237,6 +238,7 @@ async function cmdStatus(cwd) {
   if (avail.length > 0) dim(`  Próximo paso posible: ${avail.join(', ')}`);
 
   console.log(`\n💰 Presupuesto sesión: ${sessionBudget.resumen()}`);
+  console.log(`   ${lineaRevision()}`);
   console.log(`🔒 Circuit breaker:   ${circuitBreaker.nivel}`);
 
   const lineas = lineasEstadoCiclo(cwd);
