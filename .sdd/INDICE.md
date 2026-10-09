@@ -3,10 +3,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 5
+- Total: 9
 - Completadas: 0
-- En progreso: 4
-- En borrador: 0
+- En progreso: 5
+- En borrador: 4
 
 ## Especificaciones
 
@@ -18,6 +18,13 @@
 | 2026-10-03-api-http | API HTTP local del ciclo verificado | en_implementacion (5 de 5 tareas; verificación y revisión de seguridad independientes: aprobada con observaciones, corregidas sin revisar) | mediano | ✅ | ✅ | ✅ | ⚠️ aprobada con observaciones | 2026-10-03 |
 | 2026-10-04-memoria-semantica | Memoria semántica del repositorio | en_implementacion (autoevaluada; sin revisión independiente) | pequeño | ✅ | — | — | ⚠️ autoevaluación | 2026-10-04 |
 
+| 2026-10-09-validacion-modelo-real | Validación con un modelo real y gasto bien calculado | borrador (sin aprobar) | pequeño | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-pruebas-confiables | Pruebas confiables | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-implementador-con-herramientas | Implementador que lee, busca y edita por pasos | borrador (sin aprobar) | grande | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-puesta-al-dia | Puesta al día | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
+
 ## Previstas (sin especificar todavía)
 
 Ver el roadmap en `PLAN-MOTOR-AGENTICO.md`: S5 Ciclo por defecto.
+
+Las cuatro specs del 2026-10-09 siguen el roadmap de `PLAN-CIERRE-BRECHAS.md` (FASES 6 a 9). Sus decisiones técnicas están propuestas en ADR-19, ADR-20 y ADR-21.
