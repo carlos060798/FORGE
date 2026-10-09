@@ -232,7 +232,7 @@ npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer 
 npx forge api                   # API HTTP local con secreto
 ```
 
-Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Guía de migración en el [CHANGELOG](CHANGELOG.md). **Con un modelo de pago solo se ha probado en ocho tareas pequeñas** (2026-10-09); los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
+Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Guía de migración en el [CHANGELOG](CHANGELOG.md). **Con un modelo de pago se ha probado en 17 ejecuciones de tareas pequeñas** (2026-10-09); los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
 
 ---
 
