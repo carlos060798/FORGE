@@ -1,6 +1,6 @@
 # ADR-01: Motor de grafo opcional detrás de un puerto
 
-> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Estado: reemplazada-por-ADR-18  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
 > Fecha: 2026-10-03 (aceptada el 2026-10-05, por delegación del dueño)
 > Spec relacionada: 2026-10-03-ciclo-verificado
 > Autor: Claude (pendiente de aceptación por el dueño)
@@ -43,7 +43,7 @@ Razones:
 
 Coste asumido: mantener dos motores y su suite cruzada. Si en la FASE 5 solo se usa uno, se elimina el otro (5.2).
 
-**Actualización (2026-10-09, ADR-17):** Node 18 se retira en la 5.0.0, así que LangGraph.js ya no tiene el obstáculo de la versión. Se mantienen los dos motores: quitar uno se decide con datos de un modelo real.
+**Actualización (2026-10-09, ADR-18):** se cumplieron las dos condiciones de revisión y LangGraph.js se retiró en 5.0.0; queda el motor propio. Este ADR se conserva como historia.
 
 ## Consecuencias
 

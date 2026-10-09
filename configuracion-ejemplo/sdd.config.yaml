@@ -410,7 +410,7 @@ compresion:
 # Ver .sdd/especificaciones/2026-10-03-ciclo-verificado/ y ADR-01 a ADR-11.
 motor:
   modo: ciclo                   # ciclo | clasico
-  grafo: auto                   # auto (LangGraph.js si está instalado) | langgraph | propio
+  grafo: auto                   # auto | propio (el único motor; langgraph se retiró en 5.0.0 y solo avisa)
   recuperador: archivos         # fuente de contexto de los agentes: archivos | semantico (añade trozos parecidos del repositorio)
   embeddings: hash              # con semantico: hash (local, sin red; léxico, no semántico) | ollama (servidor local, vectores semánticos)
   embeddings_modelo: nomic-embed-text   # modelo de Ollama para los vectores

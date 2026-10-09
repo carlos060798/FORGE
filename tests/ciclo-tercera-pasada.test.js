@@ -149,21 +149,6 @@ describe("NUEVO-5 — la copia de trabajo no reutiliza el nombre entre procesos"
   });
 });
 
-describe("NUEVO-7 — LangGraph no envía el estado a LangSmith", () => {
-  test("al cargarlo se desactiva el trazado y se borra el destino", async (t) => {
-    process.env.LANGSMITH_TRACING = "true";
-    process.env.LANGSMITH_ENDPOINT = "http://127.0.0.1:9";
-    try {
-      const { cargar } = await import("../core/ciclo/motores/langgraph.js");
-      try { await cargar(); } catch { /* no instalado: el trazado debe quedar apagado igualmente */ }
-      assert.equal(process.env.LANGSMITH_TRACING, "false");
-      assert.equal(process.env.LANGSMITH_ENDPOINT, undefined);
-    } finally {
-      delete process.env.LANGSMITH_TRACING; delete process.env.LANGSMITH_ENDPOINT;
-    }
-  });
-});
-
 // ── Reanudación ──────────────────────────────────────────────────────────────
 
 const json = (o) => "```json\n" + JSON.stringify(o) + "\n```";

@@ -252,7 +252,10 @@ export async function sandbox(estado, deps) {
     const archivos = estado.implementacion.archivos.map(({ ruta }) => {
       try { return { ruta, contenido: fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8') }; } catch { return { ruta, contenido: '' }; }
     });
-    const sospecha = detectarSospecha({ stdout: r.stdout, stderr: r.stderr, archivos });
+    const pruebas = estado.pruebas.archivos.map(({ ruta }) => {
+      try { return { ruta, contenido: fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8') }; } catch { return { ruta, contenido: '' }; }
+    });
+    const sospecha = detectarSospecha({ stdout: r.stdout, stderr: r.stderr, archivos, pruebas });
     if (sospecha.length > 0) ejecucion.sospecha = sospecha;
   }
   deps.log.append('ciclo:ejecucion', { categoria, exitCode: ejecucion.exitCode, timedOut: ejecucion.timedOut, durationMs: ejecucion.durationMs, iteracion }, { taskId: estado.taskId });

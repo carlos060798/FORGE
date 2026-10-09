@@ -17,7 +17,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 **Cómo seguir como en 4.x:** `forge run --motor clasico`, o `motor.modo: clasico` en `sdd.config.yaml`. El modo clásico **ejecuta las pruebas en tu equipo, sin aislamiento**, igual que en 4.2.0, con los cambios del saneamiento descritos abajo.
 
-**LangGraph.js sigue siendo opcional** (ADR-01, ADR-17): con Node ≥20 `motor.grafo: auto` lo usa si está instalado y, si no, el motor propio. Los dos se mantienen.
+**LangGraph.js se retira** (ADR-18): el ciclo usa un único motor propio, sin dependencias. `motor.grafo: langgraph` en una configuración antigua sigue funcionando, con un aviso. Lo que estaba pausado se reanuda: los puntos de guardado no cambian.
+
+**Éxito sospechoso más difícil de esquivar:** además de buscar `process.exit` al cargar un archivo, el ciclo compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha); si informa menos, pide revisión humana aunque el corte esté escondido.
+
+**Diferido a propósito** (ADR-18): Java, Rust y monorepos, y LanceDB.
 
 **Este cambio de modo por defecto no se ha probado con un modelo de pago ni en Linux con Docker real.** No publicar sin `forge probar-modelo` y el job `aislamiento` de CI.
 
@@ -44,7 +48,7 @@ Probado con respuestas guionizadas y con Docker real en Windows, en proyectos Ja
 - `forge run --motor clasico|ciclo [--force]` y `forge resume --decision continuar|aceptar|abortar [--iteraciones-extra N] [--presupuesto-extra USD] [--tarea ID]`
 - Códigos de salida: 0 completado, 1 fallo o no se puede empezar, 3 revisión humana pendiente, 4 Docker no disponible
 - `forge status` muestra la sesión, el gasto y la situación de cada tarea
-- Dos motores para el mismo grafo: el propio (sin dependencias) y LangGraph.js (`optionalDependencies`, carga perezosa, solo con Node ≥20). `motor.grafo: auto | langgraph | propio`. Comparten puntos de guardado
+- Un motor propio para el grafo, sin dependencias (en 4.3.0 había además un LangGraph.js opcional, retirado en 5.0.0). `motor.grafo: auto | propio`
 - Aislamiento con la CLI de Docker, sin dependencias nuevas: sin red, sin privilegios, límites de recursos, copia desechable sin secretos, imagen con las dependencias preparada por huella de manifiesto
 - Gasto por sesión sumado llamada a llamada; degradación de modelo (`escalon` o `local` a Ollama) y parada dura
 - Reanudación sin repetir llamadas pagadas cuando el corte cae dentro de un paso (queda una ventana de milisegundos en el nodo `coder`, entre escribir y guardar, documentada); un solo ciclo por proyecto

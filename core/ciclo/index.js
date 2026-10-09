@@ -216,7 +216,7 @@ export class CicloVerificado {
   /**
    * @param {{ id: string, agente: string, prompt?: string, archivos?: string[], cubre_cas?: string[] }} tarea
    * @param {{ decision: string, iteracionesExtra?: number, presupuestoExtra?: number }} [decision]
-   * @returns {Promise<{ status: 'completada'|'en_revision'|'abortada', estado: import('./estado.js').EstadoCiclo, reanudada: boolean, motor: 'langgraph'|'propio' }>}
+   * @returns {Promise<{ status: 'completada'|'en_revision'|'abortada', estado: import('./estado.js').EstadoCiclo, reanudada: boolean, motor: 'propio' }>}
    */
   async ejecutar(tarea, decision) {
     const { cwd, runId, config, log } = this.o;

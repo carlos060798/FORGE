@@ -189,7 +189,7 @@ Detalle: `.sdd/especificaciones/2026-10-03-ciclo-verificado/` (spec, checklist, 
 **Objetivo:** activar el ciclo por defecto y simplificar.
 
 - **5.1** `motor.modo: ciclo` por defecto. **Hecho (2026-10-09, ADR-17)**; los errores del ciclo explican cómo volver al clásico.
-- **5.2** Retirar Node 18; decidir si queda un solo motor (ADR-01). **Hecho en parte**: `engines`, CI (20 y 22), instaladores y `forge doctor` piden Node ≥20; **se mantienen los dos motores** hasta tener datos de un modelo real.
+- **5.2** Retirar Node 18; decidir si queda un solo motor (ADR-01). **Hecho**: `engines`, CI (20 y 22), instaladores y `forge doctor` piden Node ≥20, y **LangGraph.js se retiró: queda el motor propio** (ADR-18). Java, Rust, monorepos y LanceDB se difieren (ADR-18).
 - **5.3** Declarar el SDK del proveedor en `dependencies`. **Hecho** (`@anthropic-ai/sdk`).
 
 **Verificación:** matriz de CI en verde sin Node 18 (**pendiente: la rama no está subida**); guía de migración en `CHANGELOG.md` (**hecha**).
@@ -214,8 +214,8 @@ S2, S3 y S4 son independientes entre sí. S4 es más útil después de S2.
 
 | Riesgo | Mitigación |
 |---|---|
-| LangGraph.js exige Node ≥20 | **Decidido (2026-10-05, ADR-01): se queda opcional**, con carga perezosa y motor propio de reserva; se revisa en la FASE 5. Comprobado: en Node 18 `npm install` solo avisa y se usa el motor propio |
-| El guardador de LangGraph.js depende de campos internos de `MemorySaver` | Versión fijada con `~`; los dos motores comparten puntos de guardado y hay test de reanudación cruzada |
+| LangGraph.js exige Node ≥20 | **Resuelto (2026-10-09, ADR-18): se retira**; queda el motor propio, sin dependencias |
+| El guardador de LangGraph.js depende de campos internos de `MemorySaver` | Ya no aplica: LangGraph.js se retiró (ADR-18) |
 | Docker Desktop para Windows: montajes y usuario sin verificar | Spike 1.1; alternativa `docker cp` |
 | Falso pase con pruebas triviales | Huellas, pruebas no vacías; el router no mide la calidad de las pruebas |
 | Sin S0, el ciclo no sirve para el flujo real | S0 es prerrequisito, no opcional |

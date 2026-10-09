@@ -11,7 +11,7 @@ import { join } from 'node:path';
 export const POR_DEFECTO = {
   motor: {
     modo: 'ciclo',              // ciclo (por defecto desde 5.0.0) | clasico
-    grafo: 'auto',              // auto | langgraph | propio
+    grafo: 'auto',              // auto | propio (langgraph se retiró en 5.0.0 y se acepta con un aviso)
     recuperador: 'archivos',    // fuente de contexto de los agentes: archivos | semantico
     embeddings: 'hash',         // con recuperador semantico: hash (local, léxico) | ollama
     embeddings_modelo: 'nomic-embed-text',

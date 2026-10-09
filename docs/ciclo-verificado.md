@@ -8,7 +8,7 @@ Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola v
 ## Requisitos
 
 - **Docker** instalado y en marcha. Sin Docker, el ciclo no arranca (código de salida 4): nunca ejecuta código generado en tu equipo.
-- **Node ≥20** (desde 5.0.0). El grafo lo ejecuta LangGraph.js si está instalado (dependencia opcional) o, si no, el motor propio, que hace lo mismo.
+- **Node ≥20** (desde 5.0.0). El grafo lo ejecuta un motor propio, sin dependencias (LangGraph.js se retiró en 5.0.0, ADR-18).
 - Un proveedor de modelos que informe del consumo de cada llamada (Anthropic u OpenAI con clave, u Ollama).
 - El proyecto debe estar en la etapa de tareas generadas o de construcción. Desde "tareas generadas" se avanza solo; en cualquier otra etapa hace falta `--force`.
 - Proyectos en **JavaScript/TypeScript, Python o Go**. Con otro lenguaje, `forge run --motor ciclo` se niega a empezar y lo explica, antes de gastar nada. En Python, las dependencias deben estar en `requirements.txt`: un proyecto que las declara solo en `pyproject.toml` se rechaza con ese mensaje. En Go hace falta `go.mod` en la raíz (y `go.sum` si hay dependencias); el comando de pruebas es `go test ./...`. **La primera ejecución de un proyecto Go prepara una imagen (alrededor de 90 segundos, con red)**: descarga los módulos y compila de antemano la biblioteca estándar; las siguientes la reutilizan.
@@ -26,7 +26,7 @@ O de forma permanente en `.sdd/sdd.config.yaml`:
 ```yaml
 motor:
   modo: ciclo              # ciclo (por defecto) | clasico
-  grafo: auto              # auto | langgraph | propio
+  grafo: auto              # auto | propio (langgraph se acepta, con un aviso: se retiró en 5.0.0)
   recuperador: archivos    # fuente de contexto de los agentes
   max_iteraciones: 5
   contexto_max_bytes: 65536

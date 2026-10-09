@@ -15,7 +15,7 @@ El dueño pidió completar la FASE 5 y probarla después. **Todavía no se ha pr
 ## Decisión
 
 1. **5.1.** `motor.modo` vale `ciclo` por defecto, en el código (`core/ciclo/config.js`) y en la configuración de ejemplo. El modo clásico sigue disponible con `--motor clasico` o `motor.modo: clasico`; todos los mensajes de error del ciclo (sin Docker, etapa equivocada, lenguaje no cubierto) indican cómo usarlo. **Nunca hay una vuelta automática al modo clásico**: ejecutaría en el equipo código que escribió un modelo.
-2. **5.2.** `engines.node` pasa a `>=20.0.0`; el CI prueba 20 y 22; `instalar.sh`, `instalar.ps1` y `forge doctor` comprueban la versión. **Se mantienen los dos motores de grafo** (el propio y LangGraph.js opcional): quitar uno es una decisión que necesita datos de un modelo real y no cambia nada hoy. Se revisará después de la primera prueba real.
+2. **5.2.** `engines.node` pasa a `>=20.0.0`; el CI prueba 20 y 22; `instalar.sh`, `instalar.ps1` y `forge doctor` comprueban la versión. Qué hacer con los dos motores de grafo se resolvió en ADR-18: LangGraph.js se retira y queda el propio.
 3. **5.3.** `@anthropic-ai/sdk` pasa a `dependencies`. Antes, sin el SDK instalado, el proveedor devolvía en silencio un texto de relleno.
 4. La versión pasa a **5.0.0**, con guía de migración en el CHANGELOG.
 
@@ -23,7 +23,7 @@ El dueño pidió completar la FASE 5 y probarla después. **Todavía no se ha pr
 
 - **A. Dejar el ciclo opt-in hasta probarlo con un modelo real**: es lo más prudente, pero el dueño pidió completar la fase. Se mitiga con una advertencia explícita en el CHANGELOG y la lista de publicación: **no publicar sin `forge probar-modelo` ni el job `aislamiento`**.
 - **B. Volver al clásico si no hay Docker**: rechazada por el Principio de aislamiento (ver ADR-02).
-- **C. Hacer LangGraph.js obligatorio o quitarlo**: rechazada por ahora (ver 2).
+- **C. Hacer LangGraph.js obligatorio**: rechazada; se retiró en ADR-18.
 
 ## Consecuencias
 
