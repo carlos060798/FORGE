@@ -417,6 +417,12 @@ motor:
   nivel_maximo: opus            # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
   sin_progreso: 3               # ejecuciones fallidas seguidas con la misma salida antes de pedir revisión (0 lo desactiva)
+  # Pruebas confiables (ADR-20). Tras un pase se hacen cambios pequeños en el código escrito, de uno en uno y
+  # sobre una copia, y se ejecutan las pruebas contra cada uno: unas pruebas que comprueban algo los detectan.
+  mutacion: informar            # no (no medir) | informar (mide y anota la puntuación; no cambia el resultado) | exigir (bajo el mínimo: un refuerzo de las pruebas y, si no basta, revisión humana)
+  mutacion_minima: 0.6          # con exigir: proporción mínima de cambios detectados, de 0 a 1
+  mutacion_max: 10              # cambios probados por tarea, como mucho (cada uno es una ejecución de las pruebas)
+  mutacion_timeout_s: 300       # tiempo máximo de la medición por tarea
   contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
 
 sandbox:

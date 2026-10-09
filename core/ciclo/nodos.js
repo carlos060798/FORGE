@@ -1,5 +1,7 @@
 /**
- * nodos.js — Los seis nodos del ciclo verificado
+ * nodos.js — Los nodos del ciclo verificado
+ *
+ * Los nodos `mutacion` y `refuerzo` (ADR-20) viven en pruebas-confiables.js y se registran aquí.
  *
  * Cada nodo es `(estado, deps) => Promise<Partial<EstadoCiclo>>`. No decide a
  * dónde se va después (eso es grafo.js), salvo cuando no puede continuar: en
@@ -25,10 +27,11 @@ import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
 import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
-import { aplicarArchivos, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
+import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
+import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, seccionPasanSinImplementacion } from './pruebas-confiables.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -88,7 +91,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
  * Llama al agente y aplica los archivos que devuelve. Si la salida no se puede
  * interpretar, lo intenta una vez más antes de pedir revisión.
  */
-async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas, clavePrompt }) {
+export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas, clavePrompt }) {
   let presupuesto = estado.presupuesto;
   let error = '';
 
@@ -292,40 +295,96 @@ export async function retriever(estado, deps) {
 
 // ── qa ───────────────────────────────────────────────────────────────────────
 
-/** @param {EstadoCiclo} estado */
+/**
+ * Escribe las pruebas y comprueba que fallan antes de que exista la implementación («rojo
+ * obligatorio», ADR-20). Si pasan, el agente de pruebas lo intenta una vez más sabiendo por qué;
+ * si vuelven a pasar, la tarea se pausa con el motivo `pruebas_no_fallan` y el implementador no
+ * se ejecuta. Una tarea que declara partir de código existente queda exenta.
+ * @param {EstadoCiclo} estado
+ */
 export async function qa(estado, deps) {
+  const meta = { taskId: estado.taskId };
+  // Un fallo del entorno dejó las pruebas escritas y sin comprobar: al continuar se comprueban, sin volver a pagarlas
+  const soloComprobar = estado.rojo?.estado === 'sin_comprobar' && estado.pruebas.archivos.length > 0
+    && huellasAlteradas(estado.cwd, estado.pruebas.archivos).length === 0;
+  const exenta = estado.tarea.parte_de_codigo_existente === true;
+
   const contexto = (await textoDeContexto(estado, deps)).texto;
-  const partes = (mapa) => `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+  const partes = (mapa, extra = '') => `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : mapa)
     + seccionProyecto(estado.cwd, deps.vetadas)
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`
     + seccionPruebasAnteriores(estado, deps)
-    + seccionPruebasNoEncontradas(estado);
-  const userPrompt = partes(seccionMapa(estado.cwd, deps.vetadas));
+    // Tras una pausa por «pruebas_no_fallan» el agente necesita saber qué pasó: con el mismo prompt devolvería lo mismo
+    + (estado.rojo?.estado === 'pasan' ? seccionPasabanAntes(estado) : seccionPruebasNoEncontradas(estado))
+    + extra;
 
-  const r = await generarArchivos(estado, deps, 'qa', {
-    agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [],
+  let presupuesto = estado.presupuesto;
+  /** Pide las pruebas al agente; `extra` es lo que se le añade en el reintento. */
+  const pedir = (extra = '') => generarArchivos({ ...estado, presupuesto }, deps, 'qa', {
+    agente: 'tester', userPrompt: partes(seccionMapa(estado.cwd, deps.vetadas), extra), contrato: CONTRATO_QA, rol: 'qa', pruebas: [],
     // El mapa cambia cuando este mismo nodo escribe las pruebas: fuera de la clave del diario
-    clavePrompt: partes(''),
+    clavePrompt: partes('', extra),
   });
-  if ('fallo' in r) return r.fallo;
 
-  if (r.aplicado.escritos.length === 0) {
-    return { presupuesto: r.presupuesto, ...pedirRevision('salida_invalida', 'qa', 'El agente de pruebas no escribió ninguna prueba válida.') };
+  let archivos    = soloComprobar ? estado.pruebas.archivos : [];
+  let reintentado = soloComprobar && estado.rojo?.reintentado === true;
+
+  if (!soloComprobar) {
+    const r = await pedir();
+    if ('fallo' in r) return r.fallo;
+    presupuesto = r.presupuesto;
+    if (r.aplicado.escritos.length === 0) {
+      return { presupuesto, ...pedirRevision('salida_invalida', 'qa', 'El agente de pruebas no escribió ninguna prueba válida.') };
+    }
+    archivos = r.aplicado.escritos;
   }
 
-  // Aviso, no bloqueo: unas pruebas que ya pasan sin implementación no prueban nada (CA-002-04)
-  const previa = await deps.runner.test(estado.cwd);
-  // Si el ejecutor no encuentra las pruebas recién escritas, implementar sería pagar por nada
-  if (sinPruebasEjecutadas(previa, deps.testCmd)) {
-    return { pruebas: { archivos: r.aplicado.escritos, comando: deps.testCmd }, presupuesto: r.presupuesto,
-      ...pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd)) };
-  }
-  if (clasificar(previa, { hayPruebas: true, pruebasIntactas: true }) === 'pass') {
-    deps.log.append('custom', { message: 'Aviso: las pruebas recién escritas pasan sin implementación', aviso: 'pruebas_no_fallan' }, { taskId: estado.taskId });
-  }
+  for (;;) {
+    const pruebas = { archivos, comando: deps.testCmd };
+    const previa  = await deps.runner.test(estado.cwd);
+    // Si el ejecutor no encuentra las pruebas recién escritas, implementar sería pagar por nada
+    if (sinPruebasEjecutadas(previa, deps.testCmd)) {
+      return { pruebas, presupuesto, rojo: null, ...pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd)) };
+    }
+    const categoria = clasificar(previa, { hayPruebas: true, pruebasIntactas: true });
 
-  return { pruebas: { archivos: r.aplicado.escritos, comando: deps.testCmd }, presupuesto: r.presupuesto };
+    // Un fallo del entorno no dice ni «fallan» ni «pasan» (CA-001-04): decide una persona, sin gastar más
+    if (categoria === 'infra_error') {
+      deps.log.append('ciclo:rojo', { resultado: 'sin_comprobar', exitCode: previa.exitCode ?? null }, meta);
+      return { pruebas, presupuesto, rojo: { estado: 'sin_comprobar', reintentado },
+        ...pedirRevision('infraestructura', 'qa', `No se pudo comprobar que las pruebas fallan sin implementación porque el entorno falló: ${cola(String(previa.stderr ?? ''), 400) || 'sin detalle'}. «continuar» repite la comprobación sin volver a pedir las pruebas.`) };
+    }
+    // Fallar o agotar el tiempo sin implementación es el rojo que se espera
+    if (categoria !== 'pass') {
+      deps.log.append('ciclo:rojo', { resultado: 'fallan', categoria, reintentado }, meta);
+      return { pruebas, presupuesto, rojo: { estado: 'fallan', reintentado } };
+    }
+
+    deps.log.append('custom', { message: 'Aviso: las pruebas recién escritas pasan sin implementación', aviso: 'pruebas_no_fallan' }, meta);
+    if (exenta) {
+      deps.log.append('ciclo:rojo', { resultado: 'exenta', motivo: 'la tarea declara parte_de_codigo_existente: las pruebas pueden pasar antes de implementar' }, meta);
+      return { pruebas, presupuesto, rojo: { estado: 'exenta', reintentado } };
+    }
+    if (reintentado) {
+      deps.log.append('ciclo:rojo', { resultado: 'pasan', reintentado: true }, meta);
+      return { pruebas, presupuesto, rojo: { estado: 'pasan', reintentado: true }, ...pedirRevision('pruebas_no_fallan', 'qa', DETALLE_PRUEBAS_NO_FALLAN) };
+    }
+
+    // Un solo reintento, y cuenta para el presupuesto como cualquier otra llamada (CA-001-05)
+    deps.log.append('ciclo:rojo', { resultado: 'pasan', reintentado: false }, meta);
+    reintentado = true;
+    const r = await pedir(seccionPasanSinImplementacion(estado.cwd, archivos));
+    // Si el reintento no se pudo hacer, al reanudar el agente de pruebas sabrá que las anteriores pasaban
+    if ('fallo' in r) return { pruebas, rojo: { estado: 'pasan', reintentado: false }, ...r.fallo };
+    presupuesto = r.presupuesto;
+    if (r.aplicado.escritos.length === 0) {
+      return { pruebas, presupuesto, rojo: { estado: 'pasan', reintentado: false }, ...pedirRevision('salida_invalida', 'qa', 'El agente de pruebas no escribió ninguna prueba válida al corregir unas pruebas que pasaban sin implementación.') };
+    }
+    const porRuta = new Map(archivos.map((a) => [canonica(a.ruta), a]));
+    for (const a of r.aplicado.escritos) porRuta.set(canonica(a.ruta), a);
+    archivos = [...porRuta.values()];
+  }
 }
 
 // ── coder ────────────────────────────────────────────────────────────────────
@@ -478,4 +537,4 @@ export async function revisionHumana(estado, deps, decision) {
   return { revision, presupuesto, maxIteraciones, resultado: 'en_curso' };
 }
 
-export const NODOS = { planner, retriever, qa, coder, sandbox, revision_humana: revisionHumana };
+export const NODOS = { planner, retriever, qa, coder, sandbox, mutacion, refuerzo, revision_humana: revisionHumana };

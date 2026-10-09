@@ -134,9 +134,19 @@ export function lineasEstadoCiclo(cwd) {
     const situacion = t.revision && !t.revision.decision
       ? `espera decisión (${t.revision.motivo})`
       : t.siguiente ? `en curso, siguiente paso: ${t.siguiente}` : t.resultado;
-    lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}`);
+    lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}${textoMutacion(t.mutacion)}`);
   }
   return lineas;
+}
+
+/**
+ * Puntuación de la medición por mutación de una tarea, para `forge status`. Vacío si no se midió.
+ * @param {import('./estado.js').Mutacion|null|undefined} m
+ */
+export function textoMutacion(m) {
+  if (!m) return '';
+  if (typeof m.puntuacion !== 'number') return m.omitida ? ' · mutación: no medida (nada que alterar)' : ' · mutación: no medida (falló el entorno)';
+  return ` · mutación: ${m.detectadas}/${m.probadas} detectadas (${Math.round(m.puntuacion * 100)} %${m.parcial ? ', parcial' : ''})`;
 }
 
 /** @type {Record<string, 'completada'|'en_revision'|'abortada'>} */
@@ -214,7 +224,26 @@ export class CicloVerificado {
   }
 
   /**
-   * @param {{ id: string, agente: string, prompt?: string, archivos?: string[], cubre_cas?: string[] }} tarea
+   * Avance de la medición por mutación de una tarea (ADR-20): el resultado de cada alteración ya
+   * probada. Si el proceso se corta a mitad de la medición, al reanudar no se repiten.
+   * @param {string} taskId
+   */
+  _avanceMutacion(taskId) {
+    const archivo = path.join(this.dirMotor, 'mutacion', `${taskId.replace(/[^\w.-]/g, '_')}.json`);
+    return {
+      leer: () => { try { return JSON.parse(fs.readFileSync(archivo, 'utf8')); } catch { return null; } },
+      guardar: (dato) => {
+        // Escritura atómica: un corte a mitad no deja un archivo a medias
+        fs.mkdirSync(path.dirname(archivo), { recursive: true });
+        const temporal = `${archivo}.${process.pid}.tmp`;
+        fs.writeFileSync(temporal, JSON.stringify(dato), 'utf8');
+        fs.renameSync(temporal, archivo);
+      },
+    };
+  }
+
+  /**
+   * @param {{ id: string, agente: string, prompt?: string, archivos?: string[], cubre_cas?: string[], parte_de_codigo_existente?: boolean }} tarea
    * @param {{ decision: string, iteracionesExtra?: number, presupuestoExtra?: number }} [decision]
    * @returns {Promise<{ status: 'completada'|'en_revision'|'abortada', estado: import('./estado.js').EstadoCiclo, reanudada: boolean, motor: 'propio' }>}
    */
@@ -269,6 +298,7 @@ export class CicloVerificado {
         respaldo: new Respaldo(cwd, path.join(this.dirMotor, 'respaldo', tarea.id.replace(/[^\w.-]/g, '_'))),
         log, config,
         testCmd: this.o.testCmd,
+        avanceMutacion: this._avanceMutacion(tarea.id),
         specPath: this.o.specPath,
         vetadas: this.o.vetadas,
       };
@@ -286,7 +316,7 @@ export class CicloVerificado {
 
   /**
    * Resumen de cada tarea de la sesión, para `forge status`.
-   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any }[]}
+   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any, mutacion: import('./estado.js').Mutacion|null }[]}
    */
   resumen() {
     if (!fs.existsSync(this.guardador.dir)) return [];
@@ -297,6 +327,7 @@ export class CicloVerificado {
         taskId: p.estado.taskId, nodo: p.nodo, siguiente: p.siguiente,
         iteracion: p.estado.iteracion, maxIteraciones: p.estado.maxIteraciones,
         resultado: p.estado.resultado, revision: p.estado.revision, presupuesto: p.estado.presupuesto,
+        mutacion: p.estado.mutacion ?? null,
       }));
   }
 

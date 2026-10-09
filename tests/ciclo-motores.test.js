@@ -33,7 +33,8 @@ function entorno(grafo, ejecuciones) {
   const cola = [...ejecuciones];
   const opciones = {
     cwd, runId: "r1", testCmd: "npm test",
-    config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo } },
+    // La medición por mutación (ADR-20) tiene sus tests en ciclo-mutacion.test.js: aquí se desactiva
+    config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo, mutacion: "no" } },
     log: { append: (type, payload) => eventos.push({ type, payload }) },
     aliasDe: () => "sonnet",
     llamar: async ({ agente }) => {

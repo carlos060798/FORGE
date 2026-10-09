@@ -1,7 +1,7 @@
 # Ciclo verificado
 
 > Desde la versión 5.0.0 es el modo por defecto de `forge run`. En 4.3.0 (no publicada) era opt-in.
-> Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-18`.
+> Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-18`. Rojo obligatorio y medición de las pruebas: spec `2026-10-09-pruebas-confiables` y `ADR-20`.
 
 Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola vez: la corrige hasta que sus pruebas pasan, ejecutando el código generado en un contenedor Docker sin red, sin superar un tope de gasto y pidiéndote una decisión cuando no puede terminar solo.
 
@@ -31,6 +31,10 @@ motor:
   nivel_maximo: opus       # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5
   sin_progreso: 3          # fallos seguidos con la misma salida antes de preguntarte; 0 lo desactiva
+  mutacion: informar       # medir cuánto detectan las pruebas tras un pase: no | informar | exigir
+  mutacion_minima: 0.6     # con exigir: proporción mínima de cambios detectados (de 0 a 1)
+  mutacion_max: 10         # cambios probados por tarea, como mucho
+  mutacion_timeout_s: 300  # tiempo máximo de la medición por tarea
   contexto_max_bytes: 65536
 
 sandbox:
@@ -70,25 +74,73 @@ precios:                         # USD por millón de tokens
 - El gasto solo cuenta tokens de entrada y de salida. No contempla la caché de prompts ni el tramo caro de Claude Haiku 5.5 (peticiones de más de 100 000 tokens de entrada, 5 veces más caras).
 - Un precio más bajo que el real hace que el ciclo gaste más de lo que cree: el tope es tan bueno como los precios.
 
-`motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
+`motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. Lo mismo con `motor.mutacion` (solo `no`, `informar` o `exigir`), `motor.mutacion_minima` (un número entre 0 y 1) y `motor.mutacion_max` y `motor.mutacion_timeout_s` (enteros mayores o iguales que 1): un valor mal escrito impide empezar, con un mensaje que nombra la clave. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
 
 ## Qué hace con cada tarea
 
 ```
-planner → retriever → qa → coder → sandbox ─┬─ las pruebas pasan ──▶ tarea completada
-                              ▲             ├─ fallan y quedan topes ▶ vuelve a coder
-                              └─────────────┘
+planner → retriever → qa → coder → sandbox ─┬─ las pruebas pasan ──▶ mutacion ─┬─▶ tarea completada
+                              ▲             ├─ fallan y quedan topes ▶ coder    ├─ exigir y bajo el mínimo ▶ refuerzo ▶ sandbox
+                              └─────────────┘                                   └─ sigue bajo el mínimo ▶ te pregunta
                                             └─ tope, gasto o fallo del entorno ▶ te pregunta
 ```
 
 1. **planner** (agente `arquitecto`): descompone la tarea en pasos.
 2. **retriever**: reúne los archivos que declara la tarea y las líneas de la spec que citan sus criterios, sin superar `contexto_max_bytes` (cabeceras incluidas).
-3. **qa** (agente `tester`): escribe las pruebas antes de que exista la implementación.
+3. **qa** (agente `tester`): escribe las pruebas antes de que exista la implementación y las ejecuta: **tienen que fallar** (ver «Pruebas confiables»).
 4. **coder** (el agente de la tarea): implementa. No puede modificar ni crear pruebas.
 5. **sandbox**: ejecuta las pruebas en un contenedor.
 6. El **router** decide por el código de salida. El éxito se comprueba antes que los topes: pasar en la quinta ejecución es un éxito.
+7. **mutacion** (sin modelo): tras un pase, mide cuánto detectan las pruebas. Con `motor.mutacion: no` este paso no existe.
+8. **refuerzo** (agente `tester`, solo con `exigir`): añade comprobaciones a partir de lo que las pruebas no detectaron.
 
 Las tareas de código se ejecutan de una en una. Las que no son de código (arquitecto, revisor, documentador…) siguen el camino clásico.
+
+## Pruebas confiables
+
+Que las pruebas pasen solo vale algo si esas pruebas comprueban algo. El ciclo hace dos comprobaciones, las dos con reglas fijas y sin preguntar a ningún modelo (ADR-20).
+
+### Las pruebas tienen que fallar antes de implementar
+
+Justo después de escribirlas, las pruebas se ejecutan en el contenedor, cuando la implementación todavía no existe:
+
+- **Fallan** (o agotan el tiempo): es lo esperado, y el ciclo sigue.
+- **Pasan**: el agente de pruebas recibe ese resultado y sus pruebas, y las reescribe **una vez**. Esa llamada cuenta para el tope de gasto como cualquier otra.
+- **Vuelven a pasar**: la tarea se pausa con el motivo `pruebas_no_fallan` y **no se llama al implementador**. `continuar` hace que el agente de pruebas las reescriba sabiendo qué pasó.
+- **Falla el entorno** (Docker no responde, por ejemplo): no cuenta ni como «fallan» ni como «pasan». La tarea se pausa con el motivo `infraestructura` y `continuar` repite solo la comprobación, sin volver a pagar las pruebas.
+
+Una tarea que parte de un comportamiento que ya existe (un refactor, unas pruebas para código heredado) puede declararlo y queda **exenta**: sus pruebas pueden pasar antes de implementar. Se declara en la definición de la tarea, con `"parte_de_codigo_existente": true` (en `.sdd/estado-tareas.json`, en el `.estado-tareas.json` de la spec o en el archivo de `--tasks`). La exención se anota en el registro (evento `ciclo:rojo` con `resultado: exenta`). Lo declara quien escribe la tarea: el ciclo no lo deduce de que los archivos ya existan.
+
+### Cuánto detectan las pruebas
+
+Tras un pase, el ciclo hace cambios pequeños y deliberados en los archivos que el implementador escribió en esa tarea, **de uno en uno**, y ejecuta las pruebas contra cada uno. Si las pruebas fallan (o agotan el tiempo), el cambio está **detectado**; si siguen pasando, no. Hay cuatro tipos de cambio:
+
+| Cambio | Ejemplo |
+|---|---|
+| Invertir una comparación | `a < b` → `a >= b`, `a === b` → `a !== b` |
+| Cambiar una constante | `0` → `1`, `41` → `42`, `true` → `false` |
+| Negar la condición de un `if` o un `while` | `if (a)` → `if (!(a))` |
+| Sustituir el valor devuelto | `return a + b` → `return null` |
+
+- **Nunca se toca tu proyecto.** Cada cambio se aplica sobre una copia temporal (con los mismos vetos que la copia de trabajo del contenedor: sin secretos, sin `.git`, sin `node_modules`) y las pruebas se ejecutan en el mismo contenedor aislado de siempre. La copia se borra al terminar, también si algo falla.
+- **Es determinista.** Los cambios posibles se ordenan por archivo y posición; si hay más que el tope, se toma uno de cada tantos, repartidos por todo el código. El mismo código da siempre los mismos cambios.
+- **No llama a ningún modelo y no gasta presupuesto.** Cuesta tiempo: una ejecución de las pruebas por cambio.
+- **Está acotada**: como mucho `mutacion_max` cambios (10) y `mutacion_timeout_s` segundos (300). Si no se prueban todos los cambios posibles, la puntuación se marca como **parcial**.
+- **Si no hay nada que cambiar** (el implementador no escribió código en un lenguaje cubierto, o su código no tiene comparaciones, constantes, condiciones ni valores devueltos), la medición **se omite** y queda anotado (evento `ciclo:mutacion_omitida`). No se inventa una puntuación.
+
+El resultado es una **puntuación** (cambios detectados entre cambios probados) y la lista de los no detectados, con archivo, línea y el texto antes y después. Queda en `.sdd/events.jsonl` (un evento `ciclo:mutante` por cambio probado y un `ciclo:mutacion` con el resumen) y `forge status` la muestra junto a cada tarea: `T1: iteración 1/5 · exito · mutación: 7/10 detectadas (70 %)`.
+
+Tres modos, en `motor.mutacion`:
+
+| Modo | Qué hace |
+|---|---|
+| `no` | No mide. El ciclo se comporta como antes de esta función (el rojo obligatorio sigue activo) |
+| `informar` (por defecto) | Mide y deja la puntuación en el registro y en `forge status`. **Nunca cambia el resultado**: la tarea termina en éxito con la puntuación que sea |
+| `exigir` | Si la puntuación queda por debajo de `mutacion_minima`, el agente de pruebas recibe la lista de cambios no detectados y **refuerza las pruebas una vez**. Las pruebas reforzadas se ejecutan contra la implementación: si fallan, el ciclo vuelve al implementador, como en cualquier fallo; si pasan, se mide otra vez. Si sigue por debajo, la tarea se pausa con el motivo `pruebas_debiles` y la lista, para que decidas |
+
+La decisión entre éxito, refuerzo y pausa depende solo de la puntuación, del mínimo y de cuántos refuerzos se han hecho. El implementador sigue sin poder tocar las pruebas, tampoco las reforzadas: sus huellas se vuelven a tomar tras el refuerzo y, si cambian en disco, no se ejecutan.
+
+**Cuánto tarda.** Medido el 2026-10-09 en Windows con Docker Desktop, en un proyecto JavaScript sin dependencias: 9 cambios tardaron entre 40 y 67 segundos en seis mediciones (entre 4,5 y 7,5 segundos cada uno, lo mismo que una ejecución normal de las pruebas). Son mediciones en un solo equipo y en un proyecto mínimo: en un proyecto real cada cambio cuesta lo que tarde su suite, hasta el tope de tiempo.
 
 ## Aislamiento
 
@@ -119,7 +171,7 @@ Los agentes devuelven un bloque JSON con archivos, y FORGE decide qué se escrib
 Dos clases de archivo **no se aplican y pausan la tarea** para que decidas tú, porque alguna herramienta los ejecuta o interpreta sin que nadie lo pida:
 
 - **Dependencias**: `package.json`, `requirements*.txt`, `pyproject.toml`, los `*.lock`, `setup.py`…
-- **Configuración**: cualquier ruta con un segmento que empiece por punto (`.github/`, `.husky/`, `.vscode/`, `.eslintrc.js`, `.gitignore`…), `conftest.py`, `pytest.ini`, `*.config.js` (jest, vitest, babel, eslint…), `Makefile`, `Dockerfile`, `docker-compose.yml`, `CLAUDE.md`, `AGENTS.md`.
+- **Configuración**: cualquier ruta con un segmento que empiece por punto (`.github/`, `.husky/`, `.vscode/`, `.eslintrc.js`, `.gitignore`…), `conftest.py`, `pytest.ini`, `*.config.js` (jest, vitest, babel, eslint…), `jest.setup.*`, `vitest.workspace.*`, `karma.conf.*`, cualquier archivo dentro de una carpeta `__mocks__/`, `Makefile`, `Dockerfile`, `docker-compose.yml`, `CLAUDE.md`, `AGENTS.md`.
 
 Esto es una lista, no una garantía: **una configuración que no esté en ella se escribirá**. Y el contenido de un archivo permitido no se inspecciona: un agente puede escribir código dañino en `src/`. Revisa el diff antes de hacer commit.
 
@@ -134,17 +186,19 @@ El tope es **por sesión** (un `forge run` y sus reanudaciones), no por tarea. E
 
 ## Cuando te pregunta
 
-El ciclo se pausa y `forge run` termina con código 3 en siete casos:
+El ciclo se pausa y `forge run` termina con código 3 en nueve casos:
 
 | Motivo | Qué pasó |
 |---|---|
 | `iteraciones` | 5 ejecuciones sin que las pruebas pasen |
 | `presupuesto` | Se alcanzó el tope de gasto |
-| `infraestructura` | Falló Docker o el proveedor de modelos, o las pruebas cambiaron en disco; la causa va en el detalle. Si cambiaron las pruebas, `continuar` hace que el agente de pruebas las vuelva a escribir |
+| `infraestructura` | Falló Docker o el proveedor de modelos, o las pruebas cambiaron en disco; la causa va en el detalle. Si cambiaron las pruebas, `continuar` hace que el agente de pruebas las vuelva a escribir. Si Docker falló al comprobar que las pruebas fallan sin implementación, o al medirlas con `exigir`, `continuar` repite solo esa comprobación |
 | `dependencias` | El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola |
 | `salida_invalida` | Un agente no devolvió el formato pedido, tras un reintento |
 | `exito_sospechoso` | Las pruebas pasan (código 0), pero la salida no muestra pruebas ejecutadas, informa de menos pruebas de las que escribió el agente de pruebas, o el código escrito corta el proceso. Si el resultado es correcto, `aceptar` |
 | `sin_progreso` | Las últimas 3 ejecuciones (`motor.sin_progreso`) fallaron con la misma salida aunque la implementación cambió: puede que las pruebas estén rotas por sí mismas. `continuar` hace que el agente de pruebas las reescriba; `aceptar` da la tarea por buena; `abortar` restaura los archivos |
+| `pruebas_no_fallan` | Las pruebas recién escritas pasan sin que exista la implementación, también tras pedir al agente de pruebas que las corrigiera. No se ha llamado al implementador. `continuar` hace que las reescriba; `aceptar` da la tarea por buena sin implementar; `abortar` las retira. Si la tarea parte de código que ya existe, declárala con `parte_de_codigo_existente` |
+| `pruebas_debiles` | Solo con `motor.mutacion: exigir`: las pruebas pasan, pero detectan menos cambios deliberados que el mínimo, también tras reforzarlas una vez. El detalle lista los no detectados. `continuar` pide otro refuerzo; `aceptar` da la tarea por buena; `abortar` restaura los archivos |
 
 `forge resume` sin más muestra el motivo y **no gasta nada**. Si además hay tareas fallidas, las relanza y te avisa de las pausadas. Para decidir:
 
@@ -191,8 +245,19 @@ Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pru
 - **Probado con un modelo real solo en ocho tareas pequeñas.** El 2026-10-09 se ejecutó con un proveedor de pago: ocho ejecuciones de una tarea cada una (JavaScript y Python), casi todas con el nivel de modelo económico. Las respuestas se interpretaron siempre al primer intento y el bucle de corrección convergió en la única tarea que lo necesitó. Esas ejecuciones destaparon cuatro defectos, ya corregidos, y dejan cosas sin probar: Go, tareas sobre un proyecto con código existente, tareas de varios archivos y la comparación del gasto calculado con el facturado. Detalle en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`.
 - **Unas pruebas rotas por sí mismas se detectan solo si la salida se repite.** Si el agente de pruebas escribe un archivo que no carga (por ejemplo, con un sistema de módulos equivocado), el implementador no puede arreglarlo, porque no puede tocar las pruebas. El ciclo compara la salida de cada ejecución fallida con las anteriores (sin duraciones, marcas de tiempo ni direcciones de memoria) y, si es idéntica 3 veces seguidas (`motor.sin_progreso`), se pausa con el motivo `sin_progreso` en lugar de seguir hasta el tope. Es una comparación de igualdad, no un diagnóstico: no sabe si la culpa es de las pruebas o de un implementador que repite el mismo error, así que decides tú. No se detecta si la salida cambia en cada ejecución (valores aleatorios, rutas temporales, orden no determinista), si las ejecuciones no imprimen nada, ni los fallos por tiempo agotado; en esos casos el ciclo sigue hasta el tope de iteraciones. Las dos primeras ejecuciones repetidas se pagan igual. Tras `continuar`, si las pruebas reescritas vuelven a dar la misma salida, la tarea se pausa de nuevo en la primera ejecución. Comprobado con pruebas automáticas, no con un modelo real.
 - **Python sin pytest declarado usa `unittest discover`**, que no encuentra pruebas en `tests/` sin `__init__.py`. El ciclo lo detecta por el código de salida 5, no gasta iteraciones y te lo explica; declara `pytest` en `requirements.txt` o añade un `pytest.ini` para evitarlo.
-- **El ciclo no mide la calidad de las pruebas, y un implementador decidido puede falsear el resultado.** Aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Además se compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha): si informa menos, se pausa aunque el corte esté escondido. Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: un implementador que falsee el resumen, o un ejecutor sin cuenta legible (`go test` sin `-v`), no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Si las pruebas recién escritas ya pasan sin implementación, queda un aviso en el registro, pero no se bloquea. **Revisa el diff y ejecuta las pruebas tú antes de dar una tarea por buena.**
-- **Lista de archivos de configuración incompleta.** Se exige revisión humana para los que conocemos (`conftest.py`, `jest.config.*`, `.husky/`, `.github/`…), no para otros que alguna herramienta también interpreta (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`, `tsconfig.json`, `scripts/*.sh`, `Procfile`…). Si no está en la lista, se escribirá.
+- **La medición de las pruebas es una muestra, no una garantía, y un implementador decidido puede falsear el resultado.** El ciclo aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Además se compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha): si informa menos, se pausa aunque el corte esté escondido. Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: un implementador que falsee el resumen, o un ejecutor sin cuenta legible (`go test` sin `-v`), no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Unas pruebas que pasan sin implementación ya no se dan por buenas (motivo `pruebas_no_fallan`) y, desde ADR-20, se mide cuánto detectan; pero por defecto esa medición solo informa. **Revisa el diff, mira la puntuación y ejecuta las pruebas tú antes de dar una tarea por buena.**
+- **Límites de la medición por mutación.**
+  - *Cambios equivalentes.* Algunos cambios no alteran el comportamiento (cambiar una constante que no se usa, por ejemplo) y ninguna prueba puede detectarlos: aparecen como «no detectados» y bajan la puntuación. Por eso el modo por defecto solo informa, y `exigir` acaba en una persona, no en un fallo.
+  - *Es una muestra.* Cuatro tipos de cambio y, por defecto, diez por tarea. Una puntuación del 100 % dice que las pruebas notaron esos diez cambios, no que el código sea correcto. Una puntuación parcial se usa tal cual para decidir en `exigir`.
+  - *Python, Go y TypeScript con tipos se alteran por patrones de texto*, no con un análisis sintáctico. Es conservador (solo líneas completas, solo comparaciones con espacios a los lados, solo enteros sueltos; nada dentro de cadenas ni comentarios), así que deja sin alterar parte del código, y puede producir código que no compila: eso cuenta como «detectado» e **infla la puntuación en esos lenguajes**. En Go solo se sustituye un valor devuelto si es `true` o `false`. JavaScript (y TypeScript que no usa sintaxis de tipos) se analiza con `acorn`. Un archivo JavaScript que `acorn` no entiende (JSX, por ejemplo) no se altera.
+  - *Solo se alteran los archivos que escribió el implementador en la tarea.* Si no escribió código alterable, la medición se omite.
+  - *Tiempo.* El tope de tiempo se comprueba antes de empezar cada cambio: la medición puede pasarse del tope en lo que tarde una ejecución (120 s como mucho, por `sandbox.timeout_s`).
+  - *Reanudación.* El resultado de cada cambio probado se guarda en `.sdd/motor/<sesión>/mutacion/`: si el proceso se corta a mitad de la medición, al reanudar no se repiten los ya probados. El cambio que estaba en curso sí se repite (no cuesta dinero). Si entre tanto cambian el código o las pruebas, la medición empieza de cero.
+  - *Un fallo del entorno durante la medición* la detiene y la marca como parcial. Con `informar` la tarea termina en éxito igual; con `exigir`, si no se llegó a probar ningún cambio, te pregunta.
+  - *No probado con un modelo real.* El rojo obligatorio, el refuerzo y los tres modos se han probado con respuestas guionizadas, y la medición con Docker real solo en un proyecto JavaScript mínimo. No se ha medido cuánto tarda en un proyecto real ni cómo de bien refuerza las pruebas un modelo a partir de la lista.
+- **El rojo obligatorio solo mira el código de salida.** Unas pruebas que fallan por un motivo equivocado (un error de sintaxis en la propia prueba, un nombre de archivo mal escrito) cuentan como «fallan». Que fallen no demuestra que sean buenas; eso lo estima la medición posterior.
+- **El agente de pruebas tampoco puede escribir en `__mocks__/`.** La regla que impide al implementador sustituir módulos desde esa carpeta se aplica a todos los agentes: si unas pruebas necesitan un módulo simulado ahí, la tarea se pausará para que lo decidas.
+- **Lista de archivos de configuración incompleta.** Se exige revisión humana para los que conocemos (`conftest.py`, `jest.config.*`, `.husky/`, `.github/`…), también `jest.setup.*`, `__mocks__/`, `vitest.workspace.*` y `karma.conf.*` desde ADR-20), no para otros que alguna herramienta también interpreta (`tsconfig.json`, `scripts/*.sh`, `Procfile`, un archivo de preparación de jest con otro nombre declarado en `package.json`…). Si no está en la lista, se escribirá.
 - **Las credenciales se vetan por nombre.** Se rechazan los nombres habituales (`.pgpass`, `.vault-token`, `.dockercfg`, `kubeconfig`, `auth.json`, `*token*.json`, `*apikey*.txt`, `*.env`, `wp-config*.php`, `*.sqlite`, `database.yml`, `.gnupg/`, `.m2/`…), pero un secreto con un nombre inesperado se leería y se copiaría. Los nombres con `secret`, `credentials`, `token` o `password` solo se vetan con extensión de datos (`.json`, `.yml`, `.txt`, `.env`, `.pem`…): `tokenizer.js`, `password.js`, `secrets-manager.ts` o `credentials.service.ts` (código) no se vetan. Siguen vetados por prudencia los datos que parecen credenciales aunque sean otra cosa (`tokens.json`, `key.json`, `database.yml`): si el agente necesita uno, renómbralo o quítalo de la tarea.
 - **`protecciones.no_tocar_archivos` de `sdd.config.yaml` se aplica** (se leen los elementos `- "patrón"` de esa sección): esas rutas ni se escriben ni se leen. Es un lector de YAML mínimo: reconoce la lista con guiones y la lista en línea (`[a, b]`); cualquier otro formato hace que el ciclo se niegue a empezar.
 - **Una sola vía de ejecución en tu equipo**: con el ciclo activado, nada generado se ejecuta fuera del contenedor. Pero lo que el ciclo deja escrito en tu proyecto sí lo ejecutarán después tus herramientas (tu editor, tu ejecutor de pruebas, `git`).

@@ -23,6 +23,10 @@ export const POR_DEFECTO = {
     max_iteraciones: 5,
     sin_progreso: 3,            // ejecuciones fallidas seguidas con la misma salida antes de pedir revisión; 0 lo desactiva
     contexto_max_bytes: 65536,
+    mutacion: 'informar',       // medir las pruebas por mutación tras un pase (ADR-20): no | informar | exigir
+    mutacion_minima: 0.6,       // con exigir: proporción mínima de alteraciones detectadas (0 a 1)
+    mutacion_max: 10,           // alteraciones probadas por tarea, como mucho
+    mutacion_timeout_s: 300,    // tiempo máximo de la medición por tarea
   },
   sandbox: {
     cpus: 1,
@@ -45,6 +49,7 @@ const MODOS = ['clasico', 'ciclo'];
 const GRAFOS = ['auto', 'langgraph', 'propio'];
 const EMBEDDINGS = ['hash', 'ollama'];
 const NIVELES = ['haiku', 'sonnet', 'opus'];
+const MUTACION = ['no', 'informar', 'exigir'];
 
 /**
  * @param {string} yaml
@@ -245,6 +250,20 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   const sinProgreso = leidos.motor.sin_progreso;
   if ((sinProgreso !== undefined && !/^\d+$/.test(sinProgreso)) || !Number.isInteger(config.motor.sin_progreso) || config.motor.sin_progreso < 0) {
     throw new Error(`motor.sin_progreso no válido: "${sinProgreso ?? config.motor.sin_progreso}". Debe ser un entero ≥ 0 (0 desactiva la detección).`);
+  }
+  if (!MUTACION.includes(config.motor.mutacion)) {
+    throw new Error(`motor.mutacion desconocido: "${config.motor.mutacion}". Valores válidos: ${MUTACION.join(', ')}`);
+  }
+  // Igual que arriba: un valor mal escrito no puede acabar en silencio en el de por defecto
+  const minima = leidos.motor.mutacion_minima;
+  if ((minima !== undefined && !/^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/.test(minima)) || typeof config.motor.mutacion_minima !== 'number' || !(config.motor.mutacion_minima >= 0 && config.motor.mutacion_minima <= 1)) {
+    throw new Error(`motor.mutacion_minima no válido: "${minima ?? config.motor.mutacion_minima}". Debe ser un número entre 0 y 1 (0.6 es el 60 %).`);
+  }
+  for (const clave of ['mutacion_max', 'mutacion_timeout_s']) {
+    const texto = leidos.motor[clave];
+    if ((texto !== undefined && !/^\d+$/.test(texto)) || !Number.isInteger(config.motor[clave]) || config.motor[clave] < 1) {
+      throw new Error(`motor.${clave} no válido: "${texto ?? config.motor[clave]}". Debe ser un entero ≥ 1.`);
+    }
   }
   if (process.env.FORGE_BUDGET_USD) {
     const tope = Number(process.env.FORGE_BUDGET_USD);

@@ -5,8 +5,8 @@
 ## Estadísticas
 - Total: 9
 - Completadas: 0
-- En progreso: 5
-- En borrador: 4
+- En progreso: 6
+- En borrador: 3
 
 ## Especificaciones
 
@@ -19,7 +19,7 @@
 | 2026-10-04-memoria-semantica | Memoria semántica del repositorio | en_implementacion (autoevaluada; sin revisión independiente) | pequeño | ✅ | — | — | ⚠️ autoevaluación | 2026-10-04 |
 
 | 2026-10-09-validacion-modelo-real | Validación con un modelo real y gasto bien calculado | borrador (sin aprobar) | pequeño | ✅ | — | — | — | 2026-10-09 |
-| 2026-10-09-pruebas-confiables | Pruebas confiables | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-pruebas-confiables | Pruebas confiables | en_implementacion (aprobada por delegación del dueño; implementada sin plan ni tareas formales; autoevaluada, sin revisión independiente ni modelo real) | mediano | ✅ | — | — | ⚠️ autoevaluación (20 de 20 criterios con test) | 2026-10-09 |
 | 2026-10-09-implementador-con-herramientas | Implementador que lee, busca y edita por pasos | borrador (sin aprobar) | grande | ✅ | — | — | — | 2026-10-09 |
 | 2026-10-09-puesta-al-dia | Puesta al día | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
 
@@ -27,4 +27,4 @@
 
 Ver el roadmap en `PLAN-MOTOR-AGENTICO.md`: S5 Ciclo por defecto.
 
-Las cuatro specs del 2026-10-09 siguen el roadmap de `PLAN-CIERRE-BRECHAS.md` (FASES 6 a 9). Sus decisiones técnicas están propuestas en ADR-19, ADR-20 y ADR-21.
+Las cuatro specs del 2026-10-09 siguen el roadmap de `PLAN-CIERRE-BRECHAS.md` (FASES 6 a 9). Sus decisiones técnicas están propuestas en ADR-19, ADR-20 y ADR-21. ADR-20 está aceptada (por delegación del dueño, 2026-10-09).

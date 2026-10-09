@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * @typedef {'pipeline_step_changed'|'task_started'|'task_completed'|'task_failed'|'task_skipped'|'agent_invoked'|'agent_result'|'runner_started'|'runner_result'|'spec_validated'|'checkpoint_written'|'resume_attempted'|'custom'|'task_paused'|'ciclo:nodo_completado'|'ciclo:ejecucion'|'ciclo:escritura_rechazada'|'ciclo:presupuesto_degradado'|'ciclo:revision_decidida'} EventType
+ * @typedef {'pipeline_step_changed'|'task_started'|'task_completed'|'task_failed'|'task_skipped'|'agent_invoked'|'agent_result'|'runner_started'|'runner_result'|'spec_validated'|'checkpoint_written'|'resume_attempted'|'custom'|'task_paused'|'ciclo:nodo_completado'|'ciclo:ejecucion'|'ciclo:escritura_rechazada'|'ciclo:presupuesto_degradado'|'ciclo:revision_decidida'|'ciclo:rojo'|'ciclo:mutante'|'ciclo:mutacion'|'ciclo:mutacion_omitida'} EventType
  */
 
 /**

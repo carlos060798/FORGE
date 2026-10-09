@@ -6,7 +6,7 @@
  * dicen en qué formato, sin modificar los agentes.
  */
 
-const FORMATO_ARCHIVOS = `Responde ÚNICAMENTE con un bloque JSON con esta forma, sin texto antes ni después:
+export const FORMATO_ARCHIVOS = `Responde ÚNICAMENTE con un bloque JSON con esta forma, sin texto antes ni después:
 
 \`\`\`json
 { "archivos": [ { "ruta": "ruta/relativa/al/proyecto.ext", "contenido": "contenido completo del archivo" } ] }
