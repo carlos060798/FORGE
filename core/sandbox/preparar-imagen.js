@@ -12,6 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
+import { problemaConPytest } from '../pytest-deteccion.js';
 
 export const DIR_DEPS    = '/deps';
 export const DIR_TRABAJO = '/deps/work';
@@ -49,7 +50,7 @@ export class ErrorPreparacion extends Error {
  * @param {string} cwd @param {string} lenguaje
  * @returns {string|null} descripción del problema, o null si todo va bien
  */
-export function comprobarProyecto(cwd, lenguaje) {
+export function comprobarProyecto(cwd, lenguaje, testCmd) {
   if (!lenguajeCubierto(lenguaje)) {
     return `El ciclo verificado no cubre todavía proyectos en "${lenguaje}" (solo ${SOPORTADOS}).`;
   }
@@ -58,6 +59,11 @@ export function comprobarProyecto(cwd, lenguaje) {
   }
   if (lenguaje === 'python' && !fs.existsSync(path.join(cwd, 'requirements.txt')) && fs.existsSync(path.join(cwd, 'pyproject.toml'))) {
     return 'El proyecto Python declara sus dependencias solo en pyproject.toml; el ciclo las instala únicamente desde requirements.txt. Añade un requirements.txt.';
+  }
+  // Elegir pytest sin que la imagen lo instale gastaría todas las iteraciones en un fallo que nadie puede arreglar
+  if (lenguaje === 'python') {
+    const problema = problemaConPytest(cwd, testCmd);
+    if (problema) return problema;
   }
   return null;
 }

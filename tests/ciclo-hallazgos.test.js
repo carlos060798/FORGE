@@ -666,7 +666,8 @@ describe("S3 — el ciclo con motor.recuperador: semantico", () => {
     const r = await e.ciclo().ejecutar(TAREA);
     assert.equal(r.status, "completada");
     assert.ok(prompts.some((p) => p.includes("(semantico, similitud") && p.includes("src/calculadora.js")), "contexto semántico en el prompt");
-    assert.ok(prompts.every((p) => !p.includes("src/otro.js")), "lo que no se parece no entra");
+    // El planificador recibe los NOMBRES de los archivos del proyecto (mapa, H9); lo que no debe entrar es el contenido
+    assert.ok(prompts.every((p) => !p.includes("color = 'azul'") && !p.includes("### src/otro.js")), "lo que no se parece no entra");
     assert.ok(readFileSync(join(e.cwd, ".sdd", "indice", "hash.json"), "utf8").includes("calculadora"), "índice guardado");
   });
 

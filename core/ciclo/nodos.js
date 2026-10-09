@@ -25,10 +25,11 @@ import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
 import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
-import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
+import { aplicarArchivos, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
-import { cola } from './redactar.js';
+import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
+import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
 
@@ -51,14 +52,14 @@ export function pedirRevision(motivo, reanudarEn, detalle) {
  * presupuesto agotado.
  * @returns {Promise<{ salida: string, presupuesto: any } | { fallo: Partial<EstadoCiclo> }>}
  */
-async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext }) {
+async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext, clavePrompt }) {
   const efectivo = modeloEfectivo(limitarNivel(deps.aliasDe(agente), deps.config.motor?.nivel_maximo), presupuesto, deps.config.presupuesto.degradar_a);
   // Una respuesta ya pagada y guardada en el diario no cuesta nada: se usa aunque haya agotado el tope
-  const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext }) === true;
+  const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) }) === true;
   if (!yaPagada && !puedeLlamar(presupuesto)) {
     return { fallo: { presupuesto, ...pedirRevision('presupuesto', nodo) } };
   }
-  const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext });
+  const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) });
   if (!r.ok) {
     return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}`) } };
   }
@@ -87,14 +88,16 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
  * Llama al agente y aplica los archivos que devuelve. Si la salida no se puede
  * interpretar, lo intenta una vez más antes de pedir revisión.
  */
-async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas }) {
+async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas, clavePrompt }) {
   let presupuesto = estado.presupuesto;
   let error = '';
 
   for (let intento = 0; intento < 2; intento++) {
-    const prompt = intento === 0 ? userPrompt
-      : `${userPrompt}\n\n## Tu respuesta anterior no se pudo interpretar\n${error}\nResponde solo con el bloque JSON pedido.`;
-    const r = await invocar(estado, deps, presupuesto, nodo, { agente, userPrompt: prompt, extraContext: contrato });
+    const reintento = intento === 0 ? '' : `\n\n## Tu respuesta anterior no se pudo interpretar\n${error}\nResponde solo con el bloque JSON pedido.`;
+    const r = await invocar(estado, deps, presupuesto, nodo, {
+      agente, userPrompt: userPrompt + reintento, extraContext: contrato,
+      ...(clavePrompt ? { clavePrompt: clavePrompt + reintento } : {}),
+    });
     if ('fallo' in r) return { fallo: r.fallo };
     presupuesto = r.presupuesto;
 
@@ -138,23 +141,62 @@ const MAX_BYTES_PROPIOS = 24 * 1024;
  * Solo se leen campos concretos del manifiesto, nunca su texto completo.
  * @param {string} cwd
  */
-export function seccionProyecto(cwd) {
+export function seccionProyecto(cwd, vetadas = []) {
+  /** Lee un manifiesto con las mismas reglas que el recuperador: nada vetado, nada de fuera del proyecto. */
+  const leerManifiesto = (ruta) => {
+    const v = validarRuta(cwd, ruta, { vetadas });
+    if (v.ok === false && v.motivo !== 'dependencias' && v.motivo !== 'configuracion') return null;
+    try { return fs.readFileSync(path.resolve(cwd, ruta), 'utf8').replace(/^\uFEFF/, ''); } catch { return null; }
+  };
+  /** Una sola línea, sin secretos: lo que venga del manifiesto no puede abrir secciones propias en el prompt. */
+  const unaLinea = (texto, max) => redactar(String(texto)).replace(/[\s\u0000-\u001f]+/g, ' ').replace(/[#`]/g, '').trim().slice(0, max);
+
   const lineas = [];
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
-    lineas.push(pkg.type === 'module'
-      ? '- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.'
-      : '- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
-    if (typeof pkg.scripts?.test === 'string') lineas.push(`- Script de pruebas: ${pkg.scripts.test.slice(0, 200)}`);
-    const deps = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
-      .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d)).slice(0, 40);
-    lineas.push(deps.length ? `- Dependencias instaladas: ${deps.join(', ')}` : '- Sin dependencias instaladas: usa solo la biblioteca estándar.');
-  } catch { /* sin package.json legible */ }
-  try {
-    const mod = /^module\s+(\S{1,200})/m.exec(fs.readFileSync(path.join(cwd, 'go.mod'), 'utf8'));
+  const crudo = leerManifiesto('package.json');
+  if (crudo !== null) {
+    try {
+      const pkg = JSON.parse(crudo);
+      const nombres = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
+        .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d));
+      const esTs = nombres.includes('typescript') || fs.existsSync(path.join(cwd, 'tsconfig.json'));
+      if (esTs) lineas.push('- Proyecto TypeScript: usa import/export.');
+      else lineas.push(pkg.type === 'module'
+        ? '- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.'
+        : '- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
+      if (typeof pkg.scripts?.test === 'string') lineas.push(`- Script de pruebas: ${unaLinea(pkg.scripts.test, 200)}`);
+      lineas.push(nombres.length ? `- Dependencias instaladas: ${nombres.slice(0, 40).join(', ')}` : '- Sin dependencias instaladas: usa solo la biblioteca estándar.');
+    } catch { /* package.json ilegible: no se dice nada */ }
+  }
+  const gomod = leerManifiesto('go.mod');
+  if (gomod !== null) {
+    const mod = /^module\s+([\w./~-]{1,200})\s*$/m.exec(gomod);
     if (mod) lineas.push(`- Módulo de Go: ${mod[1]}`);
-  } catch { /* sin go.mod */ }
+  }
   return lineas.length ? `\n\n## Proyecto\n${lineas.join('\n')}` : '';
+}
+
+const MAX_ARCHIVOS_MAPA = 200;
+
+/**
+ * Lista de archivos del proyecto, con los mismos vetos que el índice de búsqueda (secretos, rutas
+ * protegidas, carpetas internas y enlaces simbólicos quedan fuera). Solo nombres, nunca contenido.
+ * Sin ella, el planificador no podía nombrar archivos reales y, si devolvía una lista vacía, el
+ * recuperador no aportaba nada: los agentes trabajaban sin ver el proyecto (hallazgo H9).
+ * El orden es fijo: la misma carpeta da el mismo texto.
+ * @param {string} cwd
+ * @param {string[]} [vetadas]
+ */
+export function seccionMapa(cwd, vetadas = []) {
+  let rutas;
+  try {
+    rutas = listarArchivosIndexables(cwd, vetadas).map((a) => a.ruta)
+      .filter((r) => r.length <= 200 && /^[\w@.+\-/ ()\[\]]+$/.test(r))   // un nombre raro no entra en el prompt
+      .sort();
+  } catch { return ''; }
+  if (rutas.length === 0) return '';
+  const visibles = rutas.slice(0, MAX_ARCHIVOS_MAPA);
+  const resto = rutas.length - visibles.length;
+  return `\n\n## Archivos del proyecto\n${visibles.map((r) => `- ${r}`).join('\n')}${resto > 0 ? `\n(y ${resto} más)` : ''}`;
 }
 
 /**
@@ -163,11 +205,14 @@ export function seccionProyecto(cwd) {
  * @param {EstadoCiclo} estado
  * @param {Set<string>} yaEnContexto  rutas que el recuperador ya incluyó
  */
-function seccionImplementacionActual(estado, yaEnContexto) {
+function seccionImplementacionActual(estado, yaEnContexto, vetadas = []) {
   let restante = MAX_BYTES_PROPIOS;
   const partes = [];
   for (const { ruta } of estado.implementacion.archivos) {
     if (yaEnContexto.has(ruta)) continue;
+    // La ruta viene de un punto de guardado y el disco pudo cambiar entre iteraciones: se valida otra vez,
+    // con las mismas reglas que al escribir (nada vetado, nada fuera del proyecto, enlaces resueltos)
+    if (validarRuta(estado.cwd, ruta, { vetadas }).ok !== true) continue;
     let contenido;
     try { contenido = fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8'); } catch { continue; }
     const bytes = Buffer.byteLength(contenido, 'utf8');
@@ -195,12 +240,29 @@ function seccionPruebasAnteriores(estado, deps) {
     + `\n### Salida que se repitió\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
 }
 
+/**
+ * Al reescribir las pruebas porque el ejecutor no las encontró: sin esto el prompt era idéntico al
+ * primero y el agente devolvería lo mismo (R5 de la revisión independiente).
+ * @param {EstadoCiclo} estado
+ */
+function seccionPruebasNoEncontradas(estado) {
+  // La revisión ya se borró al decidir «continuar». Que haya pruebas escritas sin ninguna implementación ni
+  // ejecución solo ocurre por ese camino: el ejecutor no las encontró justo después de escribirlas.
+  if (estado.pruebas.archivos.length === 0 || estado.implementacion.archivos.length > 0 || estado.ejecuciones.length > 0) return '';
+  return '\n\n## El ejecutor no encontró tus pruebas anteriores'
+    + `\nEscribiste: ${estado.pruebas.archivos.map((a) => a.ruta).join(', ')}. El comando de pruebas terminó sin encontrar ninguna. `
+    + 'Usa los mismos nombres de archivo y corrige lo que impide que el comando las encuentre '
+    + '(carpeta, nombre, y con unittest un tests/__init__.py).';
+}
+
 // ── planner ──────────────────────────────────────────────────────────────────
 
 /** @param {EstadoCiclo} estado */
 export async function planner(estado, deps) {
   const r = await invocar(estado, deps, estado.presupuesto, 'planner', {
-    agente: 'arquitecto', userPrompt: `## Tarea\n${estado.tarea.descripcion}`, extraContext: CONTRATO_PLANNER,
+    agente: 'arquitecto',
+    userPrompt: `## Tarea\n${estado.tarea.descripcion}${seccionMapa(estado.cwd, deps.vetadas)}${seccionProyecto(estado.cwd, deps.vetadas)}`,
+    extraContext: CONTRATO_PLANNER,
   });
   if ('fallo' in r) return r.fallo;
 
@@ -233,13 +295,19 @@ export async function retriever(estado, deps) {
 /** @param {EstadoCiclo} estado */
 export async function qa(estado, deps) {
   const contexto = (await textoDeContexto(estado, deps)).texto;
-  const userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
-    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
-    + seccionProyecto(estado.cwd)
+  const partes = (mapa) => `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : mapa)
+    + seccionProyecto(estado.cwd, deps.vetadas)
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`
-    + seccionPruebasAnteriores(estado, deps);
+    + seccionPruebasAnteriores(estado, deps)
+    + seccionPruebasNoEncontradas(estado);
+  const userPrompt = partes(seccionMapa(estado.cwd, deps.vetadas));
 
-  const r = await generarArchivos(estado, deps, 'qa', { agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [] });
+  const r = await generarArchivos(estado, deps, 'qa', {
+    agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [],
+    // El mapa cambia cuando este mismo nodo escribe las pruebas: fuera de la clave del diario
+    clavePrompt: partes(''),
+  });
   if ('fallo' in r) return r.fallo;
 
   if (r.aplicado.escritos.length === 0) {
@@ -275,19 +343,25 @@ export async function coder(estado, deps) {
   const contexto = recuperado.texto;
   const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];
 
-  let userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
-    + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${leerPruebas(estado)}`
-    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
-    + seccionProyecto(estado.cwd);
-  if (ultima) {
-    const yaEnContexto = new Set((recuperado.contexto?.fragmentos ?? []).map((f) => f.ruta));
-    userPrompt += seccionImplementacionActual(estado, yaEnContexto);
-    userPrompt += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
-      + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
-  }
+  // `volatil`: lo que este mismo nodo cambia en el disco al escribir (el mapa de archivos y su propia
+  // versión anterior). Va en el prompt, pero no en la clave del diario (R3).
+  const partes = (volatil) => {
+    let p = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+      + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${leerPruebas(estado)}`
+      + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : (volatil ? seccionMapa(estado.cwd, deps.vetadas) : ''))
+      + seccionProyecto(estado.cwd, deps.vetadas);
+    if (ultima) {
+      const yaEnContexto = new Set((recuperado.contexto?.fragmentos ?? []).map((f) => f.ruta));
+      if (volatil) p += seccionImplementacionActual(estado, yaEnContexto, deps.vetadas);
+      p += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
+        + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+    }
+    return p;
+  };
+  const userPrompt = partes(true);
 
   const r = await generarArchivos(estado, deps, 'coder', {
-    agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder',
+    agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder', clavePrompt: partes(false),
     pruebas: estado.pruebas.archivos.map((a) => a.ruta),
   });
   if ('fallo' in r) return r.fallo;
@@ -322,11 +396,9 @@ export async function sandbox(estado, deps) {
   }
 
   const r = await deps.runner.test(estado.cwd);
-  // Ninguna prueba encontrada: no consume iteraciones ni vuelve al implementador
-  if (sinPruebasEjecutadas(r, deps.testCmd)) {
-    deps.log.append('ciclo:ejecucion', { categoria: 'sin_pruebas', exitCode: r.exitCode, timedOut: false, durationMs: r.durationMs ?? 0, iteracion: estado.iteracion }, { taskId: estado.taskId });
-    return pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd));
-  }
+  // Aquí un código 5 NO se trata como «ninguna prueba encontrada»: esa comprobación ya se hizo al escribir
+  // las pruebas, antes de que existiera la implementación. Después, el 5 lo puede provocar el propio código
+  // (os._exit(5)), y eximirlo de las iteraciones sería un hueco (R4 de la revisión independiente).
   const categoria = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
 
   // Un fallo del entorno no consume iteraciones (CA-005-05)

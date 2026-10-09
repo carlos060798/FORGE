@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { run, safeFiles } from './runner.js';
+import { usaPytest } from '../pytest-deteccion.js';
 
 export class PythonRunner {
   constructor(opts = {}) {
@@ -42,11 +43,7 @@ export function createPythonRunner(cwd) {
     : req ? 'pip install -r requirements.txt'
     : 'pip install -e .';
 
-  const leer = (f) => { try { return fs.readFileSync(path.join(cwd, f), 'utf8'); } catch { return ''; } };
-  const usaPytest = toml.includes('pytest') || fs.existsSync(path.join(cwd, 'pytest.ini')) || fs.existsSync(path.join(cwd, 'conftest.py'))
-    || ['requirements.txt', 'requirements-dev.txt', 'requirements-test.txt', 'dev-requirements.txt', 'setup.cfg', 'tox.ini']
-      .some((f) => leer(f).toLowerCase().includes('pytest'));
-  const testCmd = usaPytest
+  const testCmd = usaPytest(cwd)
     ? 'python -m pytest'
     : 'python -m unittest discover';
 

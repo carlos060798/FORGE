@@ -19,9 +19,12 @@ const nombre = (threadId) => threadId.replace(/[^\w.-]/g, '_') + '.jsonl';
  * acumulado, que cambia justo con la respuesta que se quiere recuperar (si la respuesta cruzo el
  * umbral, al reanudar el alias seria otro y se pagaria dos veces).
  */
-export function claveDe({ agente, userPrompt, extraContext }) {
+export function claveDe({ agente, userPrompt, extraContext, clavePrompt }) {
+  // `clavePrompt`: la parte del prompt que no cambia por lo que el propio nodo escribe en el disco.
+  // Sin ella, un corte tras escribir y antes de guardar el punto daba otro prompt al reanudar y la
+  // llamada se pagaba dos veces (R3 de la revisión independiente).
   return createHash('sha256')
-    .update(JSON.stringify([agente, userPrompt, extraContext ?? '']))
+    .update(JSON.stringify([agente, clavePrompt ?? userPrompt, extraContext ?? '']))
     .digest('hex');
 }
 

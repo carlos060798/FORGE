@@ -128,7 +128,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     err(`El ciclo verificado solo se ejecuta en la etapa "code" (etapa actual: "${etapa}"). Avanza con "forge step code" o añade --force. ${SALIDA_CLASICA}`);
   }
 
-  const problema = comprobarProyecto(cwd, deps.stack.lenguaje);
+  const problema = comprobarProyecto(cwd, deps.stack.lenguaje, deps.stack.test_cmd);
   if (problema) err(`${problema} ${SALIDA_CLASICA}`);
 
   const cli  = new DockerCli();
@@ -177,7 +177,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     vetadas: leerRutasProtegidas(cwd),
     specPath: spec ? path.join(cwd, '.sdd', 'especificaciones', String(spec), 'spec.md') : undefined,
   });
-  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${config.presupuesto.tope_usd.toFixed(2)} · Docker ${disp.version}`);
+  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${(ciclo.libro.tope() ?? config.presupuesto.tope_usd).toFixed(2)} · Docker ${disp.version}`);
   return { ciclo, config, dirMotor };
 }
 

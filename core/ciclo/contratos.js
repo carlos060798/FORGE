@@ -27,7 +27,9 @@ Responde ÚNICAMENTE con un bloque JSON con esta forma:
 { "pasos": ["paso 1", "paso 2"], "archivosObjetivo": ["ruta/relativa.ext"] }
 \`\`\`
 
-"archivosObjetivo" son los archivos del proyecto que habrá que crear o modificar.`;
+"archivosObjetivo" son los archivos del proyecto que habrá que crear o modificar.
+Si recibes la lista «Archivos del proyecto», incluye además las rutas de esa lista que convenga leer
+para hacer la tarea (código relacionado y pruebas existentes), copiadas tal cual. Como máximo 12 rutas.`;
 
 export const CONTRATO_QA = `## Contrato de salida (motor headless)
 

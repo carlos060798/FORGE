@@ -44,7 +44,7 @@ async function crearRunnerDocker(cwd) {
   ]);
 
   const stack = detectStack(cwd);
-  const problema = comprobarProyecto(cwd, stack.lenguaje);
+  const problema = comprobarProyecto(cwd, stack.lenguaje, stack.test_cmd);
   if (problema) throw new Error(problema);
 
   const cli = new DockerCli();

@@ -4,6 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { usaPytest } from './pytest-deteccion.js';
 
 /**
  * @typedef {'typescript'|'javascript'|'python'|'go'|'rust'|'java'|'csharp'|'ruby'|'php'|'dart'|'unknown'} Lenguaje
@@ -93,12 +94,8 @@ export function detectStack(cwd = process.cwd()) {
     else if (contains(combined, 'flask'))     { framework = 'Flask';      señales.push('dep: flask'); }
     else if (contains(combined, 'starlette')) { framework = 'Starlette';  señales.push('dep: starlette'); }
 
-    // pytest se declara a menudo solo en requirements*.txt, setup.cfg o tox.ini: sin mirarlos se elegía
-    // unittest, que no encuentra pruebas en tests/ sin __init__.py (hallazgo H1 de la validación con modelo real)
-    const usaPytest = exists('pytest.ini') || exists('conftest.py') || contains(toml, 'pytest')
-      || ['requirements.txt', 'requirements-dev.txt', 'requirements-test.txt', 'dev-requirements.txt', 'setup.cfg', 'tox.ini']
-        .some((f) => contains(read(f), 'pytest'));
-    const test_cmd = usaPytest
+    // Se leen líneas reales, no subcadenas (R1 de la revisión independiente): ver core/pytest-deteccion.js
+    const test_cmd = usaPytest(cwd)
       ? 'python -m pytest'
       : 'python -m unittest discover';
 
