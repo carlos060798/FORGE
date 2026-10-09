@@ -8,6 +8,19 @@
 import { precioDe, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 
 const ESCALON = { opus: 'sonnet', sonnet: 'haiku', haiku: 'haiku' };
+export const NIVELES = ['haiku', 'sonnet', 'opus'];
+
+/**
+ * Limita el nivel de modelo que pide un agente (`motor.nivel_maximo`). Un identificador
+ * directo de modelo, que no es un nivel, no se toca.
+ * @param {string} alias
+ * @param {string} [maximo]  haiku | sonnet | opus
+ */
+export function limitarNivel(alias, maximo) {
+  const a = NIVELES.indexOf(alias);
+  const m = NIVELES.indexOf(String(maximo ?? ''));
+  return a !== -1 && m !== -1 && a > m ? NIVELES[m] : alias;
+}
 
 export class ErrorConsumo extends Error {
   /** @param {string} proveedor */

@@ -15,6 +15,7 @@ export const POR_DEFECTO = {
     recuperador: 'archivos',    // fuente de contexto de los agentes: archivos | semantico
     embeddings: 'hash',         // con recuperador semantico: hash (local, léxico) | ollama
     embeddings_modelo: 'nomic-embed-text',
+    nivel_maximo: 'opus',       // nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
     max_iteraciones: 5,
     contexto_max_bytes: 65536,
   },
@@ -35,6 +36,7 @@ export const POR_DEFECTO = {
 const MODOS = ['clasico', 'ciclo'];
 const GRAFOS = ['auto', 'langgraph', 'propio'];
 const EMBEDDINGS = ['hash', 'ollama'];
+const NIVELES = ['haiku', 'sonnet', 'opus'];
 
 /**
  * @param {string} yaml
@@ -135,6 +137,10 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   if (process.env.FORGE_MOTOR_GRAFO) config.motor.grafo = process.env.FORGE_MOTOR_GRAFO;
   if (!GRAFOS.includes(config.motor.grafo)) {
     throw new Error(`motor.grafo desconocido: "${config.motor.grafo}". Valores válidos: ${GRAFOS.join(', ')}`);
+  }
+  if (process.env.FORGE_NIVEL_MAXIMO) config.motor.nivel_maximo = process.env.FORGE_NIVEL_MAXIMO;
+  if (!NIVELES.includes(config.motor.nivel_maximo)) {
+    throw new Error(`motor.nivel_maximo desconocido: "${config.motor.nivel_maximo}". Valores válidos: ${NIVELES.join(', ')}`);
   }
   if (process.env.FORGE_BUDGET_USD) {
     const tope = Number(process.env.FORGE_BUDGET_USD);

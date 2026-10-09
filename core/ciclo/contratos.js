@@ -37,6 +37,8 @@ Otro agente implementará después y no podrá modificar tus pruebas.
 ${FORMATO_ARCHIVOS}
 - Solo puedes escribir archivos de prueba (carpetas tests/, test/ o __tests__/, o nombres *.test.* / *.spec.* / test_*.py).
 - Las pruebas deben fallar mientras no exista la implementación y pasar cuando sea correcta.
+- No escribas la implementación ni un esbozo de ella: se rechazará. Devuelve solo archivos de prueba.
+- Escribe las pruebas con el sistema de módulos que indique la sección «Proyecto», si aparece.
 - No añadas dependencias nuevas: usa el ejecutor de pruebas que ya tiene el proyecto.`;
 
 export const CONTRATO_CODER = `## Contrato de salida (motor headless)
@@ -45,6 +47,8 @@ Implementa lo necesario para que las pruebas dadas pasen.
 
 ${FORMATO_ARCHIVOS}
 - No puedes modificar ni crear archivos de prueba: se rechazarán.
+- No incluyas en tu respuesta los archivos de prueba que has recibido: ya existen. Devuelve solo los
+  archivos de implementación que creas o cambias.
 - No modifiques manifiestos de dependencias (package.json, requirements.txt, ...). Si de verdad
   hace falta una dependencia nueva, incluye el manifiesto modificado: el cambio no se aplicará
   y una persona lo revisará.

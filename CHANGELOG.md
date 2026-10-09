@@ -23,7 +23,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 **Diferido a propósito** (ADR-18): Java, Rust y monorepos, y LanceDB.
 
-**Este cambio de modo por defecto no se ha probado con un modelo de pago ni en Linux con Docker real.** No publicar sin `forge probar-modelo` y el job `aislamiento` de CI.
+**Probado con un modelo de pago el 2026-10-09** en ocho tareas pequeñas de JavaScript y Python (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`). **Sigue sin probarse en Linux con Docker real:** no publicar sin el job `aislamiento` de CI.
+
+**Correcciones nacidas de esas ejecuciones:**
+
+- Un proyecto Python que declara `pytest` en `requirements*.txt`, `setup.cfg`, `tox.ini` o tiene `conftest.py` se prueba con pytest. Antes solo se miraban `pytest.ini` y `pyproject.toml`, se elegía `unittest discover` y no se encontraba ninguna prueba.
+- Si el ejecutor de Python termina sin encontrar pruebas (código 5), el ciclo pide revisión con la explicación y no gasta iteraciones ni llama al implementador. Antes consumía las cinco.
+- Los agentes de pruebas e implementación reciben una sección «Proyecto» con el tipo de módulos, el script de pruebas y los nombres de las dependencias. Antes el agente de pruebas podía escribir `require` en un proyecto de módulos ES y ninguna implementación pasaba.
+- Al corregir, el implementador recibe su versión anterior además del fallo. Antes corregía a ciegas.
+- Los contratos piden al implementador no devolver las pruebas y al agente de pruebas no escribir la implementación (se rechazaban igual, pero se pagaban).
+- Nuevo `motor.nivel_maximo` (`opus` | `sonnet` | `haiku`, o `FORGE_NIVEL_MAXIMO`): limita el nivel de modelo de todos los agentes sin editarlos. Por defecto `opus`, que no limita nada.
 
 Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 

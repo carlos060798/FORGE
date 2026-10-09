@@ -93,7 +93,12 @@ export function detectStack(cwd = process.cwd()) {
     else if (contains(combined, 'flask'))     { framework = 'Flask';      señales.push('dep: flask'); }
     else if (contains(combined, 'starlette')) { framework = 'Starlette';  señales.push('dep: starlette'); }
 
-    const test_cmd = exists('pytest.ini') || contains(toml, 'pytest')
+    // pytest se declara a menudo solo en requirements*.txt, setup.cfg o tox.ini: sin mirarlos se elegía
+    // unittest, que no encuentra pruebas en tests/ sin __init__.py (hallazgo H1 de la validación con modelo real)
+    const usaPytest = exists('pytest.ini') || exists('conftest.py') || contains(toml, 'pytest')
+      || ['requirements.txt', 'requirements-dev.txt', 'requirements-test.txt', 'dev-requirements.txt', 'setup.cfg', 'tox.ini']
+        .some((f) => contains(read(f), 'pytest'));
+    const test_cmd = usaPytest
       ? 'python -m pytest'
       : 'python -m unittest discover';
 

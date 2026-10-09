@@ -22,9 +22,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
-import { ampliar, ErrorConsumo, modeloEfectivo, puedeLlamar, registrar } from './presupuesto.js';
+import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar } from './presupuesto.js';
 import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
-import { clasificar } from './router.js';
+import { clasificar, detalleSinPruebas, sinPruebasEjecutadas } from './router.js';
 import { cola } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
 
@@ -50,7 +50,7 @@ export function pedirRevision(motivo, reanudarEn, detalle) {
  * @returns {Promise<{ salida: string, presupuesto: any } | { fallo: Partial<EstadoCiclo> }>}
  */
 async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext }) {
-  const efectivo = modeloEfectivo(deps.aliasDe(agente), presupuesto, deps.config.presupuesto.degradar_a);
+  const efectivo = modeloEfectivo(limitarNivel(deps.aliasDe(agente), deps.config.motor?.nivel_maximo), presupuesto, deps.config.presupuesto.degradar_a);
   // Una respuesta ya pagada y guardada en el diario no cuesta nada: se usa aunque haya agotado el tope
   const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext }) === true;
   if (!yaPagada && !puedeLlamar(presupuesto)) {
@@ -123,6 +123,55 @@ function seccionPlan(estado) {
   return estado.plan?.pasos?.length ? `\n\n## Plan\n${estado.plan.pasos.map((p, i) => `${i + 1}. ${p}`).join('\n')}` : '';
 }
 
+const MAX_BYTES_PROPIOS = 24 * 1024;
+
+/**
+ * Datos del proyecto que condicionan cómo se escribe el código y que no dependen de la tarea.
+ * Sin esto, el agente de pruebas escribía `require` en un proyecto de módulos ES y ninguna
+ * implementación podía pasar (hallazgo H6 de la validación con modelo real).
+ * Solo se leen campos concretos del manifiesto, nunca su texto completo.
+ * @param {string} cwd
+ */
+export function seccionProyecto(cwd) {
+  const lineas = [];
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
+    lineas.push(pkg.type === 'module'
+      ? '- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.'
+      : '- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
+    if (typeof pkg.scripts?.test === 'string') lineas.push(`- Script de pruebas: ${pkg.scripts.test.slice(0, 200)}`);
+    const deps = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
+      .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d)).slice(0, 40);
+    lineas.push(deps.length ? `- Dependencias instaladas: ${deps.join(', ')}` : '- Sin dependencias instaladas: usa solo la biblioteca estándar.');
+  } catch { /* sin package.json legible */ }
+  try {
+    const mod = /^module\s+(\S{1,200})/m.exec(fs.readFileSync(path.join(cwd, 'go.mod'), 'utf8'));
+    if (mod) lineas.push(`- Módulo de Go: ${mod[1]}`);
+  } catch { /* sin go.mod */ }
+  return lineas.length ? `\n\n## Proyecto\n${lineas.join('\n')}` : '';
+}
+
+/**
+ * Lo que el implementador ya escribió en iteraciones anteriores. Sin esto corregía a ciegas:
+ * recibía el fallo pero no el código que lo produjo (hallazgo H7).
+ * @param {EstadoCiclo} estado
+ * @param {Set<string>} yaEnContexto  rutas que el recuperador ya incluyó
+ */
+function seccionImplementacionActual(estado, yaEnContexto) {
+  let restante = MAX_BYTES_PROPIOS;
+  const partes = [];
+  for (const { ruta } of estado.implementacion.archivos) {
+    if (yaEnContexto.has(ruta)) continue;
+    let contenido;
+    try { contenido = fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8'); } catch { continue; }
+    const bytes = Buffer.byteLength(contenido, 'utf8');
+    if (bytes > restante) { partes.push(`### ${ruta}\n(omitido: no cabe en el contexto)`); continue; }
+    restante -= bytes;
+    partes.push(`### ${ruta}\n${contenido}`);
+  }
+  return partes.length ? `\n\n## Tu implementación actual (la que produjo el resultado de abajo)\n${partes.join('\n\n')}` : '';
+}
+
 // ── planner ──────────────────────────────────────────────────────────────────
 
 /** @param {EstadoCiclo} estado */
@@ -163,6 +212,7 @@ export async function qa(estado, deps) {
   const contexto = (await textoDeContexto(estado, deps)).texto;
   const userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
+    + seccionProyecto(estado.cwd)
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
 
   const r = await generarArchivos(estado, deps, 'qa', { agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [] });
@@ -174,6 +224,11 @@ export async function qa(estado, deps) {
 
   // Aviso, no bloqueo: unas pruebas que ya pasan sin implementación no prueban nada (CA-002-04)
   const previa = await deps.runner.test(estado.cwd);
+  // Si el ejecutor no encuentra las pruebas recién escritas, implementar sería pagar por nada
+  if (sinPruebasEjecutadas(previa, deps.testCmd)) {
+    return { pruebas: { archivos: r.aplicado.escritos, comando: deps.testCmd }, presupuesto: r.presupuesto,
+      ...pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd)) };
+  }
   if (clasificar(previa, { hayPruebas: true, pruebasIntactas: true }) === 'pass') {
     deps.log.append('custom', { message: 'Aviso: las pruebas recién escritas pasan sin implementación', aviso: 'pruebas_no_fallan' }, { taskId: estado.taskId });
   }
@@ -192,13 +247,17 @@ function leerPruebas(estado) {
 
 /** @param {EstadoCiclo} estado */
 export async function coder(estado, deps) {
-  const contexto = (await textoDeContexto(estado, deps)).texto;
+  const recuperado = await textoDeContexto(estado, deps);
+  const contexto = recuperado.texto;
   const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];
 
   let userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
     + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${leerPruebas(estado)}`
-    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '');
+    + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
+    + seccionProyecto(estado.cwd);
   if (ultima) {
+    const yaEnContexto = new Set((recuperado.contexto?.fragmentos ?? []).map((f) => f.ruta));
+    userPrompt += seccionImplementacionActual(estado, yaEnContexto);
     userPrompt += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
       + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
   }
@@ -239,6 +298,11 @@ export async function sandbox(estado, deps) {
   }
 
   const r = await deps.runner.test(estado.cwd);
+  // Ninguna prueba encontrada: no consume iteraciones ni vuelve al implementador
+  if (sinPruebasEjecutadas(r, deps.testCmd)) {
+    deps.log.append('ciclo:ejecucion', { categoria: 'sin_pruebas', exitCode: r.exitCode, timedOut: false, durationMs: r.durationMs ?? 0, iteracion: estado.iteracion }, { taskId: estado.taskId });
+    return pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd));
+  }
   const categoria = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
 
   // Un fallo del entorno no consume iteraciones (CA-005-05)

@@ -26,6 +26,27 @@ export function clasificar(resultado, pruebas) {
 }
 
 /**
+ * ¿El ejecutor terminó sin encontrar ninguna prueba? pytest y unittest (Python ≥3.12) lo indican con
+ * el código de salida 5. No es un fallo de la implementación: ninguna versión del código lo arregla,
+ * así que no debe gastar iteraciones (hallazgo H2 de la validación con modelo real).
+ * La decisión depende del código de salida y del comando configurado, no del texto de la salida.
+ *
+ * @param {{ exitCode: number|null, timedOut?: boolean, infraError?: boolean }} resultado
+ * @param {string} [comando]  comando de pruebas del proyecto
+ */
+export function sinPruebasEjecutadas(resultado, comando = '') {
+  if (resultado.infraError || resultado.timedOut || resultado.exitCode !== 5) return false;
+  return /(^|[\s/\\])(pytest|py\.test)(\s|$)|-m\s+(pytest|unittest)\b/.test(comando);
+}
+
+/** @param {string} comando */
+export const detalleSinPruebas = (comando) =>
+  `El comando de pruebas (${comando}) terminó sin encontrar ninguna prueba (código 5). `
+  + 'No es un fallo de la implementación. Comprueba que el comando encuentra los archivos de prueba '
+  + '(con unittest hace falta tests/__init__.py o «discover -s tests»; con pytest, revisa testpaths). '
+  + 'Si continúas, el agente de pruebas las vuelve a escribir.';
+
+/**
  * Siguiente paso tras ejecutar las pruebas. El éxito se evalúa antes que los
  * topes: un pase en la última iteración permitida es un éxito.
  *

@@ -414,6 +414,7 @@ motor:
   recuperador: archivos         # fuente de contexto de los agentes: archivos | semantico (añade trozos parecidos del repositorio)
   embeddings: hash              # con semantico: hash (local, sin red; léxico, no semántico) | ollama (servidor local, vectores semánticos)
   embeddings_modelo: nomic-embed-text   # modelo de Ollama para los vectores
+  nivel_maximo: opus            # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
   contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
 
