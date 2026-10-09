@@ -63,3 +63,81 @@ Regresión: `tests/validacion-modelo-real.test.js` (20 pruebas) y, para H8, `tes
 - Todas las tareas fueron de un solo archivo en un proyecto vacío. No hay evidencia sobre código existente ni sobre tareas de varios archivos.
 - Casi todo se ejecutó con el nivel económico. Los niveles altos solo se usaron en las ejecuciones 2 y 3.
 - El job `aislamiento` de CI no se ejecutó: el flujo solo se dispara en `main`, `master`, `develop` y en solicitudes de cambio.
+
+---
+
+# Segunda jornada de ejecuciones (2026-10-09, tarde)
+
+> Añadido tras integrar H8 (sin progreso), ADR-19 (precios) y las correcciones de la revisión independiente. Lo de arriba describe la primera jornada y se conserva como estaba; donde dice «Go no se probó» o «todas las tareas fueron de un solo archivo», ya no es cierto: ver abajo.
+
+## Ronda 4 — flujos que nunca se habían ejecutado con un modelo real
+
+Nivel económico salvo donde se indica. Gasto calculado con la tabla anterior a ADR-19.
+
+| # | Qué se probó | Resultado | Iteraciones | Llamadas | Gasto calculado |
+|---|---|---|---|---|---|
+| 9 | Proyecto JavaScript **con código existente**, cambio en **dos archivos** nombrados por la tarea | éxito | 2 (1 de 2 pruebas, luego 12 de 12) | 5 | 0,0605 USD |
+| 10 | **Go**, nivel económico | revisión por iteraciones | 5 | 8 | 0,0689 USD |
+| 11 | **Go**, nivel medio | éxito | 1 | 3 | 0,0752 USD |
+| 12 | **Corte y reanudación**: proceso matado a los 12 s, tras la primera llamada pagada | éxito al reanudar | 1 | 3 en total | 0,0167 USD |
+| 13 | **Tope mínimo** (0,012 USD) → pausa por presupuesto → `continuar --presupuesto-extra` | éxito tras continuar | 3 (18, 19 y 22 de 22 pruebas) | 6 | 0,0406 USD |
+
+- **12:** la llamada pagada antes del corte no se repitió: el libro de gasto tiene tres líneas, no cuatro, y el tope de la sesión se conservó.
+- **10:** el ciclo funcionó (devolvió al implementador un error de compilación y una dependencia inexistente, y los corrigió), pero el agente de pruebas del nivel económico escribió valores esperados erróneos (`Invertir("hola mundo")` «debía» dar `"odnum alohan"`). Ninguna implementación correcta puede pasar unas pruebas equivocadas. Con el nivel medio (11) la misma tarea pasó a la primera.
+
+## Ronda 5 — sobre el código final (commit `3da91d3`)
+
+Gasto calculado con la tabla de ADR-19.
+
+| # | Qué se probó | Resultado | Iteraciones | Llamadas | Gasto calculado |
+|---|---|---|---|---|---|
+| 14 | Python con `pytest` solo en `requirements-dev.txt` | **el ciclo se niega a empezar** y dice qué añadir | — | 0 | 0 USD |
+| 15 | Proyecto existente, la tarea **no nombra archivos** | éxito (15 de 15 pruebas, incluidas las que ya había) | 1 | 3 | 0,0454 USD |
+| 16 | **Dos tareas encadenadas** en una sesión; la segunda usa el módulo de la primera | T1 éxito; T2 **pausa por sin progreso**, dos veces | 1 y 6 | 13 | 0,2220 USD |
+| 17 | `forge probar-modelo` **con los niveles por defecto** (alto, medio, medio) | éxito | 1 | 3 | 0,0470 USD |
+
+- **14** confirma R1 corregido: antes habría gastado siete llamadas.
+- **15:** el planificador devolvió otra vez `archivosObjetivo` vacío, pero ahora el agente de pruebas y el implementador recibieron el mapa del proyecto (H9) y la tarea pasó sin romper las pruebas existentes.
+- **16:** es la primera vez que la detección de «sin progreso» (H8) actúa con un modelo real. T2 falló tres veces con la misma salida (60 de 62 pruebas) y se pausó en la tercera en lugar de la quinta. Con `continuar`, el agente de pruebas reescribió sus pruebas (66 en total) y el implementador volvió a quedarse en 62 de 66, tres veces. La pausa es correcta; que el nivel económico no resuelva la tarea es el mismo límite que en la ejecución 10.
+
+**Gasto calculado total de las 17 ejecuciones: unos 1,38 USD**, sumando líneas calculadas con dos tablas distintas. La tabla antigua cobraba el nivel económico un 20 % por debajo del precio publicado y el nivel alto al triple. **Sigue sin compararse con lo facturado.**
+
+## Revisión independiente del commit `bd7cd9f`
+
+Veredicto: **RECHAZADA**, por un bloqueante. Informe completo y scripts de reproducción en `revision-independiente.md`. Respuesta, hallazgo por hallazgo:
+
+| Id | Gravedad | Hallazgo | Estado |
+|---|---|---|---|
+| R1 | bloqueante | Se elegía pytest por una subcadena en seis archivos, pero la imagen solo instala `requirements.txt`: cinco iteraciones de «No module named pytest». | **Corregido** (`core/pytest-deteccion.js`): líneas reales en vez de subcadenas, y el ciclo no empieza si `requirements.txt` no instala pytest. Comprobado con la ejecución 14 |
+| R2 | alta | La sección «Proyecto» leía `package.json` aunque el usuario lo hubiera protegido. | **Corregido**: pasa por `validarRuta` con las rutas protegidas |
+| R3 | media | La versión anterior del implementador en el prompt cambiaba la clave del diario: un corte tras escribir pagaba la llamada dos veces. | **Corregido**: la clave ya no incluye lo que el propio nodo cambia en el disco (`clavePrompt`). Con test que corta en ese punto |
+| R4 | media | El implementador podía forzar el código 5 (`os._exit(5)`) y eximirse de las iteraciones. | **Corregido**: el código 5 solo se interpreta como «sin pruebas» al escribirlas, antes de que exista implementación |
+| R5 | media | Al reescribir pruebas no encontradas, el prompt era idéntico al primero. | **Corregido en parte**: el agente recibe el motivo. **Abierto**: si responde con otro nombre de archivo, el anterior queda huérfano |
+| R6 | media | La versión anterior se leía sin revalidar la ruta. | **Corregido**: se revalida con las reglas de escritura |
+| R7 | media | `scripts.test` entraba en el prompt con saltos de línea y sin redactar. | **Corregido**: una línea, sin cabeceras, redactado |
+| R8 | media | TypeScript recibía «usa require»; un BOM hacía desaparecer la sección. | **Corregido** |
+| R9 | baja | El detalle de revisión lleva el comando de pruebas sin redactar. | **Abierto** (latente: hoy los comandos son fijos) |
+| R10 | baja | `nivel_maximo` mal sangrado o mal escrito queda en `opus` sin aviso; el modo clásico no lo aplica. | **Abierto** |
+| R11 | baja | `aceptar` en la revisión de pruebas no encontradas completa la tarea sin implementación. | **Abierto**: es una decisión humana explícita, pero conviene avisarlo en el mensaje |
+| R12 | baja | La expresión no reconoce `tox`, `make test` ni `python -mpytest`. | **Abierto** (no alcanzable desde la CLI) |
+
+**Estas correcciones no han pasado una segunda revisión independiente.** Regresión: `tests/validacion-modelo-real.test.js` (34 pruebas).
+
+## Estado de los hallazgos de la primera jornada
+
+- **H8** (sin progreso): corregido y visto en acción (ejecución 16).
+- **H9** (contexto vacío): corregido con el mapa del proyecto (ejecución 15).
+- **H5** (precios): tabla contrastada con la tarifa publicada (ADR-19); falta compararla con lo facturado.
+
+## Hallazgo nuevo
+
+| # | Hallazgo | Evidencia | Estado |
+|---|---|---|---|
+| H10 | **Con el nivel económico, el agente de pruebas escribe a veces pruebas con valores esperados erróneos**, y el ciclo no puede distinguirlas de una implementación que falla. La detección de «sin progreso» acota el gasto, pero no lo resuelve. | Ejecuciones 10 y 16 | **Abierto.** Mitigación disponible hoy: no limitar al nivel económico el agente de pruebas. Lo trata la spec `2026-10-09-pruebas-confiables` |
+
+## Lo que sigue sin demostrarse
+
+- El gasto calculado frente al facturado.
+- El job `aislamiento` de CI (Linux): no se ha ejecutado nunca.
+- Una tarea real resuelta con el nivel alto en más de una iteración.
+- Proyectos grandes: todo se probó en proyectos de pocos archivos.
