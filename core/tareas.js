@@ -61,6 +61,8 @@ export function normalizarTareas(raw, tareasMd = '') {
       prompt:       secciones.get(id) ?? `Tarea ${id}`,
       dependencias: t.depende_de ?? t.dependencias ?? [],
       cubre_cas:    t.cubre_cas ?? [],
+      // Exención del rojo obligatorio (ADR-20): la tarea parte de un comportamiento que ya existe
+      ...(t.parte_de_codigo_existente === true ? { parte_de_codigo_existente: true } : {}),
     }));
 }
 

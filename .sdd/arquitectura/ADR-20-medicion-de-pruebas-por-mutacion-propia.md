@@ -1,7 +1,7 @@
 # ADR-20: Rojo obligatorio y medición de las pruebas por mutación propia, sin dependencias
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
-> Fecha: 2026-10-09
+> Estado: aceptada  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Fecha: 2026-10-09 (aceptada el 2026-10-09, por delegación del dueño)
 > Spec relacionada: 2026-10-09-pruebas-confiables
 > Autor: Claude (pendiente de aceptación por el dueño)
 
@@ -27,6 +27,16 @@ Se añaden al grafo dos comprobaciones deterministas, hechas con código propio:
 3. **Tres modos**, `motor.mutacion: no | informar | exigir`, con `informar` por defecto. Solo `exigir` cambia la ruta: bajo el umbral, una ronda de refuerzo de `qa` con la lista de alteraciones no detectadas y, si no basta, revisión humana con motivo `pruebas_debiles`.
 
 El router recibe dos motivos nuevos y una ruta nueva (`refuerzo`). Sigue decidiendo por código de salida, puntuación y estado de control (Principio VI).
+
+**Ajustes al implementar (2026-10-09).**
+
+- La medición es un nodo propio del grafo, `mutacion`, entre `sandbox` y el final, y el refuerzo es otro, `refuerzo`. Un nodo propio tiene su punto de guardado (el resultado no se repite al reanudar), su evento `ciclo:nodo_completado` con la duración, y deja el nodo `sandbox` y la función `decidirRuta` como estaban. La decisión posterior es una función pura aparte, `decidirTrasMutacion`.
+- La alteración no se aplica sobre la copia de trabajo del `SandboxRunner`, sino sobre una copia temporal propia del proyecto (creada con la misma función y los mismos vetos); el `SandboxRunner` se usa sin cambios y hace de ella su copia de siempre. Es una copia más por medición, a cambio de no tocar el código de aislamiento.
+- El rojo obligatorio no es una arista nueva: el reintento ocurre dentro del nodo `qa`, así que no hace falta la ruta `refuerzo` para él. El router no cambia para HU-001; la pausa la pide el propio nodo, como ya hacían `salida_invalida` y `dependencias`.
+- TypeScript: si `acorn` no puede analizar el archivo (sintaxis de tipos), se usan los patrones de texto. JavaScript que `acorn` no entiende no se altera.
+- En Go, el valor devuelto solo se sustituye si es `true` o `false`: sin conocer el tipo, cualquier otra sustitución no compilaría y contaría como detectada.
+- Se guarda el avance de la medición (resultado de cada alteración probada) fuera del punto de guardado, en `.sdd/motor/<sesión>/mutacion/`, para que un corte no obligue a repetirla entera.
+- Queda sin hacer la consecuencia neutral sobre `skills/mutation-detector` (renombrar o aclarar).
 
 ## Alternativas consideradas
 

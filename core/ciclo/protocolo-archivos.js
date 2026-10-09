@@ -56,7 +56,15 @@ export const CONFIGURACION = [
   '*.config.js', '*.config.cjs', '*.config.mjs', '*.config.ts', '*.config.cts', '*.config.mts', '*.config.json',
   'Makefile', 'Dockerfile*', 'docker-compose*.yml', 'docker-compose*.yaml', 'compose.yml', 'compose.yaml',
   'CLAUDE.md', 'AGENTS.md',
+  // Archivos que el ejecutor de pruebas carga solo sin llamarse *.config.* (ADR-20, HU-004)
+  'jest.setup.*', 'vitest.workspace.*', 'karma.conf.*',
 ];
+
+/**
+ * Carpetas cuyo contenido alguna herramienta carga sola, a cualquier profundidad.
+ * `__mocks__/`: jest y vitest sustituyen un módulo por el archivo del mismo nombre que haya ahí.
+ */
+export const CARPETAS_CONFIGURACION = ['__mocks__'];
 
 /** Nombres que Windows trata como dispositivos, con o sin extensión. */
 const DISPOSITIVOS = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -112,6 +120,7 @@ export function clasificarRuta(rutaPosix, vetadasExtra = []) {
   if (MANIFIESTOS.some((p) => coincide(nombre, p))) return 'dependencias';
   if (segmentos.some((s) => s.startsWith('.'))) return 'configuracion';
   if (CONFIGURACION.some((p) => coincide(nombre, p))) return 'configuracion';
+  if (segmentos.slice(0, -1).some((s) => CARPETAS_CONFIGURACION.includes(s))) return 'configuracion';
   return null;
 }
 

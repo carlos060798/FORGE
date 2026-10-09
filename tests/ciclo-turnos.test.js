@@ -70,7 +70,7 @@ function entorno({ turnos = [], ejecuciones = [], motor = {}, presupuesto = {}, 
         cwd, runId: "r1", testCmd: "npm test",
         config: {
           ...POR_DEFECTO,
-          motor: { ...POR_DEFECTO.motor, grafo: "propio", implementador: "turnos", ...motor, ...cambios.motor },
+          motor: { ...POR_DEFECTO.motor, grafo: "propio", mutacion: "no", implementador: "turnos", ...motor, ...cambios.motor },
           presupuesto: { ...POR_DEFECTO.presupuesto, ...presupuesto },
         },
         log: { append: (type, payload, meta) => { e.alLog?.(type, payload); e.eventos.push({ type, payload, meta }); } },

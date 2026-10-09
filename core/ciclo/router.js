@@ -96,6 +96,50 @@ export function decidirRuta(estado, opciones = {}) {
 }
 
 /**
+ * Siguiente paso tras medir las pruebas por mutación (ADR-20). Depende solo de la puntuación, del
+ * mínimo y del estado de control (cuántos refuerzos se han hecho): nunca del texto de una salida
+ * ni de un modelo (Principio VI).
+ *
+ *  - Solo el modo `exigir` puede cambiar la ruta; con `informar` la medición nunca cambia el resultado.
+ *  - Sin puntuación porque no había nada que alterar: éxito (no se exige lo que no se puede medir).
+ *  - Sin puntuación porque el entorno falló: una persona decide.
+ *  - Bajo el mínimo: un refuerzo de las pruebas, una sola vez; después, una persona decide.
+ *
+ * @param {import('./estado.js').EstadoCiclo} estado
+ * @param {{ modo?: string, minima?: number }} [opciones]  motor.mutacion y motor.mutacion_minima
+ * @returns {{ ruta: 'fin_exito' } | { ruta: 'refuerzo' } | { ruta: 'revision_humana', motivo: 'pruebas_debiles'|'infraestructura' }}
+ */
+export function decidirTrasMutacion(estado, opciones = {}) {
+  const modo   = opciones.modo ?? POR_DEFECTO.motor.mutacion;
+  const minima = opciones.minima ?? POR_DEFECTO.motor.mutacion_minima;
+  const m = estado.mutacion;
+  if (modo !== 'exigir' || !m) return { ruta: 'fin_exito' };
+  if (typeof m.puntuacion !== 'number') {
+    return m.motivoParcial === 'infraestructura' ? { ruta: 'revision_humana', motivo: 'infraestructura' } : { ruta: 'fin_exito' };
+  }
+  if (m.puntuacion >= minima) return { ruta: 'fin_exito' };
+  if ((m.refuerzos ?? 0) === 0) return { ruta: 'refuerzo' };
+  return { ruta: 'revision_humana', motivo: 'pruebas_debiles' };
+}
+
+/** @param {number} fraccion */
+export const porcentaje = (fraccion) => `${Math.round(fraccion * 100)} %`;
+
+/**
+ * @param {NonNullable<import('./estado.js').EstadoCiclo['mutacion']>} m
+ * @param {number} minima
+ */
+export function detallePruebasDebiles(m, minima) {
+  const lista = m.sobrevivientes.slice(0, 10)
+    .map((s) => `${s.ruta}:${s.linea} (${s.operador}) «${s.antes}» → «${s.despues}»`).join('; ');
+  return `Las pruebas pasan, pero solo detectan ${m.detectadas} de ${m.probadas} cambios deliberados en el código `
+    + `(${porcentaje(m.puntuacion ?? 0)}; el mínimo es ${porcentaje(minima)})${m.parcial ? ', medición parcial' : ''}, también tras reforzarlas una vez. `
+    + `Cambios que no detectan: ${lista || '(ninguno listado)'}. `
+    + 'Un cambio puede no alterar el comportamiento y no ser detectable: decide tú. '
+    + '«continuar» pide otro refuerzo al agente de pruebas; «aceptar» da la tarea por buena tal como está; «abortar» restaura los archivos.';
+}
+
+/**
  * Tras un nodo que llama a un modelo: no se sigue si el presupuesto se agotó.
  *
  * @template {string} T

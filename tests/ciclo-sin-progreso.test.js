@@ -238,7 +238,8 @@ describe("ciclo completo — unas pruebas rotas no gastan todas las iteraciones"
     const guion = { arquitecto: [PLAN], tester: [PRUEBAS, PRUEBAS_2], "desarrollador-backend": [IMPL, IMPL, IMPL, IMPL, IMPL, IMPL] };
     const opciones = {
       cwd, runId: "r1", testCmd: "npm test",
-      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio", ...motor } },
+      // La medición por mutación (ADR-20) tiene sus tests en ciclo-mutacion.test.js: aquí se desactiva
+      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio", mutacion: "no", ...motor } },
       log: { append: (type, payload, meta) => eventos.push({ type, payload, meta }) },
       aliasDe: () => "sonnet",
       llamar: async (p) => {

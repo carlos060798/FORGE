@@ -26,6 +26,10 @@ export const POR_DEFECTO = {
     implementador: 'bloque',    // forma de trabajar del implementador: bloque (una respuesta con archivos completos) | turnos (ADR-21, con herramientas)
     turnos_max: 30,             // con implementador turnos: respuestas del modelo por intento antes de ejecutar las pruebas finales
     turnos_pruebas_max: 5,      // con implementador turnos: ejecuciones de pruebas que puede pedir el implementador por intento
+    mutacion: 'informar',       // medir las pruebas por mutación tras un pase (ADR-20): no | informar | exigir
+    mutacion_minima: 0.6,       // con exigir: proporción mínima de alteraciones detectadas (0 a 1)
+    mutacion_max: 10,           // alteraciones probadas por tarea, como mucho
+    mutacion_timeout_s: 300,    // tiempo máximo de la medición por tarea
   },
   sandbox: {
     cpus: 1,
@@ -50,6 +54,7 @@ const EMBEDDINGS = ['hash', 'ollama'];
 const NIVELES = ['haiku', 'sonnet', 'opus'];
 const IMPLEMENTADORES = ['bloque', 'turnos'];
 const TOPE_TURNOS = 200;
+const MUTACION = ['no', 'informar', 'exigir'];
 
 /**
  * @param {string} yaml
@@ -261,6 +266,20 @@ export function leerConfigCiclo(cwd, overrides = {}) {
     const valor = config.motor[clave];
     if ((leido !== undefined && !/^\d+$/.test(leido)) || !Number.isInteger(valor) || valor < minimo || valor > maximo) {
       throw new Error(`motor.${clave} no válido: "${leido ?? valor}". Debe ser un entero entre ${minimo} y ${maximo}.`);
+    }
+  }
+  if (!MUTACION.includes(config.motor.mutacion)) {
+    throw new Error(`motor.mutacion desconocido: "${config.motor.mutacion}". Valores válidos: ${MUTACION.join(', ')}`);
+  }
+  // Igual que arriba: un valor mal escrito no puede acabar en silencio en el de por defecto
+  const minima = leidos.motor.mutacion_minima;
+  if ((minima !== undefined && !/^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/.test(minima)) || typeof config.motor.mutacion_minima !== 'number' || !(config.motor.mutacion_minima >= 0 && config.motor.mutacion_minima <= 1)) {
+    throw new Error(`motor.mutacion_minima no válido: "${minima ?? config.motor.mutacion_minima}". Debe ser un número entre 0 y 1 (0.6 es el 60 %).`);
+  }
+  for (const clave of ['mutacion_max', 'mutacion_timeout_s']) {
+    const texto = leidos.motor[clave];
+    if ((texto !== undefined && !/^\d+$/.test(texto)) || !Number.isInteger(config.motor[clave]) || config.motor[clave] < 1) {
+      throw new Error(`motor.${clave} no válido: "${texto ?? config.motor[clave]}". Debe ser un entero ≥ 1.`);
     }
   }
   if (process.env.FORGE_BUDGET_USD) {

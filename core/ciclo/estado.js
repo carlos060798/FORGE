@@ -5,7 +5,8 @@
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles'];
+export const ESTADOS_ROJO  = ['fallan', 'pasan', 'exenta', 'sin_comprobar'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
 
@@ -35,17 +36,34 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  */
 
 /**
+ * Resultado de medir las pruebas por mutación (core/ciclo/mutacion.js, ADR-20).
+ * @typedef {Object} Mutacion
+ * @property {number} probadas
+ * @property {number} detectadas
+ * @property {number|null} puntuacion   detectadas / probadas; null si no se probó ninguna alteración
+ * @property {boolean} parcial          no se probaron todas las alteraciones posibles
+ * @property {'tope_alteraciones'|'tiempo'|'infraestructura'} [motivoParcial]
+ * @property {number} [candidatas]      alteraciones posibles antes de aplicar el tope
+ * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
+ * @property {string} [omitida]         por qué no se midió (no había nada que alterar)
+ * @property {string} [detalleInfra]
+ * @property {number} refuerzos         rondas de refuerzo de las pruebas ya hechas en esta tarea
+ */
+
+/**
  * @typedef {Object} EstadoCiclo
  * @property {string} schemaVersion
  * @property {string} runId
  * @property {string} threadId
  * @property {string} taskId
  * @property {string} cwd
- * @property {{id: string, descripcion: string, agente: string, archivos: string[], cas: string[], criterioCmd?: string}} tarea
+ * @property {{id: string, descripcion: string, agente: string, archivos: string[], cas: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean}} tarea
  * @property {{pasos: string[], archivosObjetivo: string[]}|null} plan
  * @property {{fragmentos: {ruta: string, origen: string, bytes: number}[], bytesTotales: number, truncado: boolean}} contexto
  * @property {{archivos: {ruta: string, sha256: string}[], comando: string}} pruebas
  * @property {{archivos: {ruta: string, sha256: string}[]}} implementacion
+ * @property {{estado: 'fallan'|'pasan'|'exenta'|'sin_comprobar', reintentado: boolean}|null} [rojo]  comprobación de que las pruebas fallan antes de implementar
+ * @property {Mutacion|null} [mutacion]  última medición de las pruebas por mutación; null si no se ha medido
  * @property {Ejecucion[]} ejecuciones
  * @property {number} iteracion
  * @property {number} maxIteraciones
@@ -57,7 +75,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  */
 
 /**
- * @param {{id: string, prompt?: string, descripcion?: string, agente: string, archivos?: string[], cubre_cas?: string[], cas?: string[], criterioCmd?: string}} tarea
+ * @param {{id: string, prompt?: string, descripcion?: string, agente: string, archivos?: string[], cubre_cas?: string[], cas?: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean}} tarea
  * @param {{runId: string, cwd: string, maxIteraciones?: number, tope_usd?: number, umbral_degradacion_usd?: number}} opciones
  * @returns {EstadoCiclo}
  */
@@ -75,11 +93,15 @@ export function estadoInicial(tarea, opciones) {
       archivos:    tarea.archivos ?? [],
       cas:         tarea.cas ?? tarea.cubre_cas ?? [],
       ...(tarea.criterioCmd ? { criterioCmd: tarea.criterioCmd } : {}),
+      // La tarea declara que parte de un comportamiento que ya existe: exenta del rojo obligatorio (ADR-20)
+      ...(tarea.parte_de_codigo_existente === true ? { parte_de_codigo_existente: true } : {}),
     },
     plan: null,
     contexto: { fragmentos: [], bytesTotales: 0, truncado: false },
     pruebas: { archivos: [], comando: '' },
     implementacion: { archivos: [] },
+    rojo: null,
+    mutacion: null,
     ejecuciones: [],
     iteracion: 0,
     maxIteraciones: opciones.maxIteraciones ?? 5,
@@ -136,6 +158,22 @@ export function validarEstado(estado) {
   if (!Number.isInteger(e.maxIteraciones) || e.maxIteraciones < 1) errores.push('maxIteraciones debe ser un entero ≥ 1');
   if (!RESULTADOS.includes(e.resultado)) errores.push(`resultado desconocido: ${e.resultado}`);
   if (e.revision !== null && !MOTIVOS.includes(e.revision?.motivo)) errores.push(`motivo de revisión desconocido: ${e.revision?.motivo}`);
+
+  // Opcionales: los puntos de guardado anteriores a ADR-20 no los llevan
+  if (e.rojo !== undefined && e.rojo !== null && !ESTADOS_ROJO.includes(e.rojo?.estado)) errores.push(`estado del rojo desconocido: ${e.rojo?.estado}`);
+  if (e.mutacion !== undefined && e.mutacion !== null) {
+    const m = e.mutacion;
+    if (typeof m !== 'object') errores.push('mutacion debe ser un objeto o null');
+    else {
+      for (const campo of ['probadas', 'detectadas', 'refuerzos']) {
+        if (!Number.isInteger(m[campo]) || m[campo] < 0) errores.push(`mutacion.${campo} debe ser un entero ≥ 0`);
+      }
+      if (m.detectadas > m.probadas) errores.push('mutacion.detectadas supera a mutacion.probadas');
+      if (m.puntuacion !== null && (typeof m.puntuacion !== 'number' || !(m.puntuacion >= 0 && m.puntuacion <= 1))) errores.push('mutacion.puntuacion debe ser null o un número entre 0 y 1');
+      if (typeof m.parcial !== 'boolean') errores.push('mutacion.parcial debe ser verdadero o falso');
+      if (!Array.isArray(m.sobrevivientes)) errores.push('mutacion.sobrevivientes debe ser una lista');
+    }
+  }
 
   const p = e.presupuesto;
   if (!p || typeof p !== 'object') errores.push('presupuesto ausente');

@@ -2,7 +2,7 @@
 id: 2026-10-09-pruebas-confiables
 titulo: "Pruebas confiables: que un pase demuestre algo"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-09
 actualizada: 2026-10-09
 autor: humano  # humano | importado
@@ -37,11 +37,11 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 **Para** que el éxito no se alcance sin haber construido nada
 
 **Criterios de aceptación:**
-- [ ] **CA-001-01**: Si las pruebas recién escritas pasan antes de que exista la implementación, el agente de pruebas recibe ese resultado y lo intenta una vez más. (P1)
-- [ ] **CA-001-02**: Si tras ese intento siguen pasando, la tarea se pausa para revisión humana con un motivo propio y el implementador no se ejecuta. (P1)
-- [ ] **CA-001-03**: Una tarea que declara partir de un comportamiento ya existente queda exenta, y la exención queda anotada en el registro. (P1)
-- [ ] **CA-001-04**: Un fallo del entorno de ejecución en esta comprobación no cuenta ni como «fallan» ni como «pasan»: se trata como fallo de infraestructura. (P1)
-- [ ] **CA-001-05**: El intento adicional cuenta para el tope de gasto. (P1)
+- [x] **CA-001-01**: Si las pruebas recién escritas pasan antes de que exista la implementación, el agente de pruebas recibe ese resultado y lo intenta una vez más. (P1)
+- [x] **CA-001-02**: Si tras ese intento siguen pasando, la tarea se pausa para revisión humana con un motivo propio y el implementador no se ejecuta. (P1)
+- [x] **CA-001-03**: Una tarea que declara partir de un comportamiento ya existente queda exenta, y la exención queda anotada en el registro. (P1)
+- [x] **CA-001-04**: Un fallo del entorno de ejecución en esta comprobación no cuenta ni como «fallan» ni como «pasan»: se trata como fallo de infraestructura. (P1)
+- [x] **CA-001-05**: El intento adicional cuenta para el tope de gasto. (P1)
 
 ### HU-002: Medir cuánto detectan las pruebas
 **Como** dueño del proyecto
@@ -49,13 +49,13 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 **Para** decidir si me fío del resultado
 
 **Criterios de aceptación:**
-- [ ] **CA-002-01**: Tras un pase, el sistema introduce cambios pequeños y deliberados, de uno en uno, en los archivos que escribió el implementador, y ejecuta las pruebas contra cada uno. (P1)
-- [ ] **CA-002-02**: Cada cambio se ejecuta en el entorno aislado, nunca en el equipo anfitrión, y el proyecto real no queda alterado al terminar. (P1)
-- [ ] **CA-002-03**: El resultado es una puntuación (cambios detectados entre cambios probados) y la lista de los no detectados, con archivo y línea. (P1)
-- [ ] **CA-002-04**: La medición tiene un tope de cambios y un tope de tiempo; al alcanzarlos se detiene y la puntuación indica que es parcial. (P1)
-- [ ] **CA-002-05**: Si no se puede generar ningún cambio para el lenguaje o los archivos de la tarea, la medición se omite y queda anotado; no se inventa una puntuación. (P1)
-- [ ] **CA-002-06**: Los cambios se eligen por reglas fijas: la misma entrada produce los mismos cambios. (P1)
-- [ ] **CA-002-07**: La medición no llama a ningún modelo y no consume presupuesto. (P2)
+- [x] **CA-002-01**: Tras un pase, el sistema introduce cambios pequeños y deliberados, de uno en uno, en los archivos que escribió el implementador, y ejecuta las pruebas contra cada uno. (P1)
+- [x] **CA-002-02**: Cada cambio se ejecuta en el entorno aislado, nunca en el equipo anfitrión, y el proyecto real no queda alterado al terminar. (P1)
+- [x] **CA-002-03**: El resultado es una puntuación (cambios detectados entre cambios probados) y la lista de los no detectados, con archivo y línea. (P1)
+- [x] **CA-002-04**: La medición tiene un tope de cambios y un tope de tiempo; al alcanzarlos se detiene y la puntuación indica que es parcial. (P1)
+- [x] **CA-002-05**: Si no se puede generar ningún cambio para el lenguaje o los archivos de la tarea, la medición se omite y queda anotado; no se inventa una puntuación. (P1)
+- [x] **CA-002-06**: Los cambios se eligen por reglas fijas: la misma entrada produce los mismos cambios. (P1)
+- [x] **CA-002-07**: La medición no llama a ningún modelo y no consume presupuesto. (P2)
 
 ### HU-003: Exigir un mínimo
 **Como** operador
@@ -63,13 +63,13 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 **Para** que las tareas con pruebas débiles no se den por buenas solas
 
 **Criterios de aceptación:**
-- [ ] **CA-003-01**: Hay tres modos: no medir, informar (por defecto) y exigir. Con «no medir» el ciclo se comporta como antes de esta spec. (P1)
-- [ ] **CA-003-02**: Con «informar», la puntuación queda en el registro y en la consulta de estado, y nunca cambia el resultado de la tarea. (P1)
-- [ ] **CA-003-03**: Con «exigir», por debajo del mínimo configurado el agente de pruebas recibe la lista de cambios no detectados y refuerza las pruebas una sola vez. (P1)
-- [ ] **CA-003-04**: Tras el refuerzo, las pruebas nuevas se ejecutan contra la implementación: si fallan, el ciclo vuelve al implementador como en cualquier fallo. (P1)
-- [ ] **CA-003-05**: Si tras el refuerzo la puntuación sigue bajo el mínimo, la tarea se pausa para revisión humana con un motivo propio. (P1)
-- [ ] **CA-003-06**: El implementador sigue sin poder modificar las pruebas en ningún momento, tampoco las reforzadas. (P1)
-- [ ] **CA-003-07**: La decisión entre éxito, refuerzo y revisión depende solo de la puntuación, del mínimo y del estado de control. (P1)
+- [x] **CA-003-01**: Hay tres modos: no medir, informar (por defecto) y exigir. Con «no medir» el ciclo se comporta como antes de esta spec. (P1)
+- [x] **CA-003-02**: Con «informar», la puntuación queda en el registro y en la consulta de estado, y nunca cambia el resultado de la tarea. (P1)
+- [x] **CA-003-03**: Con «exigir», por debajo del mínimo configurado el agente de pruebas recibe la lista de cambios no detectados y refuerza las pruebas una sola vez. (P1)
+- [x] **CA-003-04**: Tras el refuerzo, las pruebas nuevas se ejecutan contra la implementación: si fallan, el ciclo vuelve al implementador como en cualquier fallo. (P1)
+- [x] **CA-003-05**: Si tras el refuerzo la puntuación sigue bajo el mínimo, la tarea se pausa para revisión humana con un motivo propio. (P1)
+- [x] **CA-003-06**: El implementador sigue sin poder modificar las pruebas en ningún momento, tampoco las reforzadas. (P1)
+- [x] **CA-003-07**: La decisión entre éxito, refuerzo y revisión depende solo de la puntuación, del mínimo y del estado de control. (P1)
 
 ### HU-004: Menos vías para anular las pruebas
 **Como** dueño del proyecto
@@ -77,7 +77,7 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 **Para** que no las anule desde un archivo que el ejecutor carga solo
 
 **Criterios de aceptación:**
-- [ ] **CA-004-01**: Los archivos que el ejecutor de pruebas carga de forma automática y que hoy constan como límite conocido exigen revisión humana cuando el implementador los propone. (P2)
+- [x] **CA-004-01**: Los archivos que el ejecutor de pruebas carga de forma automática y que hoy constan como límite conocido exigen revisión humana cuando el implementador los propone. (P2)
 
 ## 5. Escenarios de Uso
 
@@ -129,7 +129,7 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 
 ### Asunciones
 - Unas pruebas que fallan porque la implementación no existe cuentan como «fallan».
-- [NECESITA_ACLARACION]: no se sabe cuánto tarda la medición en un proyecto real; los topes por defecto son una propuesta.
+- Sigue sin saberse cuánto tarda la medición en un proyecto real; los topes por defecto (10 cambios, 5 minutos) se mantienen como propuesta. Única medida disponible (2026-10-09, proyecto JavaScript mínimo, Docker Desktop en Windows): 9 cambios en 40 a 67 segundos. Ver `verificacion.md`.
 
 ## 10. Términos del Dominio
 
@@ -140,10 +140,10 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 
 ## 11. Preguntas Abiertas
 
-- [ ] [NECESITA_ACLARACION]: El refuerzo ocurre después de la implementación. ¿Es compatible con el Principio VII tal como está escrito, o hace falta una enmienda de la constitución?
-- [ ] [POR_DECIDIR]: Mínimo por defecto en el modo «exigir». Propuesta: 60 %.
-- [ ] [POR_DECIDIR]: ¿La exención de HU-001 la declara quien escribe la tarea, o se deduce de que los archivos objetivo ya existen?
-- [ ] [POR_DECIDIR]: ¿El modo por defecto pasa a «exigir» en la siguiente versión MAYOR?
+- [x] El refuerzo ocurre después de la implementación. ¿Es compatible con el Principio VII tal como está escrito, o hace falta una enmienda de la constitución? → **Se implementa sin enmienda** (aclaración 2). Las pruebas iniciales se siguen escribiendo antes que el código; el refuerzo lo hace el rol de pruebas, no el implementador, y el implementador sigue sin poder tocarlas. La constitución no se ha modificado: si el dueño quiere que la letra del Principio VII lo recoja, es una enmienda suya.
+- [x] Mínimo por defecto en el modo «exigir» → **60 %** (`motor.mutacion_minima: 0.6`), configurable (aclaración 3).
+- [x] ¿La exención de HU-001 la declara quien escribe la tarea, o se deduce de que los archivos objetivo ya existen? → **La declara quien escribe la tarea** (`parte_de_codigo_existente: true`). Deducirla de que los archivos existan eximiría sin querer a cualquier tarea que modifique un archivo (aclaración 4).
+- [ ] [POR_DECIDIR]: ¿El modo por defecto pasa a «exigir» en la siguiente versión MAYOR? → **Sin decidir.** No hay datos para decidirlo: falta medir con un modelo real cuántos cambios equivalentes aparecen y cuánto tarda en un proyecto real. El modo por defecto queda en «informar».
 
 ## 12. Criterios de Éxito Medibles
 
@@ -164,3 +164,10 @@ Una tarea solo termina en éxito sin intervención humana si sus pruebas fallaba
 
 | # | Categoría | Pregunta | Decisión | Fecha |
 |---|-----------|----------|----------|-------|
+| 1 | Aprobación | ¿Se aprueba la spec? | Aprobada por delegación del dueño, 2026-10-09 | 2026-10-09 |
+| 2 | Constitución | ¿El refuerzo tras implementar es compatible con el Principio VII? | Se implementa sin enmienda: lo hace el rol de pruebas y el implementador sigue sin poder tocar las pruebas. La constitución no se modifica | 2026-10-09 |
+| 3 | Configuración | Mínimo por defecto en «exigir» | 60 %, configurable | 2026-10-09 |
+| 4 | Alcance | ¿Quién declara la exención del rojo obligatorio? | Quien escribe la tarea, con un campo explícito; no se deduce | 2026-10-09 |
+| 5 | Alcance | ¿Qué pasa en «exigir» si no hay nada que medir, o si el entorno falla al medir? | Sin nada que alterar: éxito, anotado (no se exige lo que no se puede medir). Si el entorno falla sin haber probado ningún cambio: revisión humana | 2026-10-09 |
+| 6 | Alcance | Tras la pausa por pruebas débiles, ¿qué hace «continuar»? | Otra ronda de refuerzo, autorizada por la persona | 2026-10-09 |
+| 7 | Alcance | ¿El agente de pruebas ve la implementación al reforzar? | No: recibe la tarea, sus pruebas y, de cada cambio no detectado, la línea antes y después | 2026-10-09 |

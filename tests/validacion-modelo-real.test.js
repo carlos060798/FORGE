@@ -83,7 +83,8 @@ describe("H2 — ninguna prueba ejecutada no es un fallo del implementador", () 
     const guion = { arquitecto: [PLAN], tester: [PRUEBAS], "desarrollador-backend": [IMPL, IMPL, IMPL, IMPL, IMPL] };
     const opciones = {
       cwd, runId: "r1", testCmd,
-      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio", ...motor } },
+      // La medición por mutación (ADR-20) tiene sus tests en ciclo-mutacion.test.js: aquí se desactiva
+      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio", mutacion: "no", ...motor } },
       log: { append: (type, payload, meta) => eventos.push({ type, payload, meta }) },
       aliasDe: () => alias,
       llamar: async (p) => {
@@ -446,7 +447,7 @@ describe("R3 — la clave del diario no depende de lo que el nodo escribe en el 
     const cola = [{ exitCode: 1 }, { exitCode: 1, stdout: "# fail 1\n" }];
     const opciones = {
       cwd, runId: "r1", testCmd: "npm test",
-      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio" } },
+      config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: "propio", mutacion: "no" } },
       log: { append: () => {} },
       aliasDe: () => "sonnet",
       llamar: async (p) => {

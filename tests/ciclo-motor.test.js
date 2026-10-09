@@ -51,7 +51,8 @@ function entorno(o = {}) {
 
   const opciones = {
     cwd, runId: "r1",
-    config: { ...POR_DEFECTO, ...o.config, motor: { ...POR_DEFECTO.motor, grafo: process.env.FORGE_MOTOR_GRAFO ?? "propio", ...o.config?.motor }, presupuesto: { ...POR_DEFECTO.presupuesto, ...o.config?.presupuesto } },
+    // La medición por mutación (ADR-20) tiene sus tests en ciclo-mutacion.test.js: aquí se desactiva
+    config: { ...POR_DEFECTO, ...o.config, motor: { ...POR_DEFECTO.motor, grafo: process.env.FORGE_MOTOR_GRAFO ?? "propio", mutacion: "no", ...o.config?.motor }, presupuesto: { ...POR_DEFECTO.presupuesto, ...o.config?.presupuesto } },
     log: { append: (type, payload, meta) => eventos.push({ type, payload, meta }) },
     aliasDe: (agente) => (agente === "arquitecto" ? "opus" : "sonnet"),
     llamar: async (p) => {
@@ -121,9 +122,11 @@ describe("escenario 1 — caso feliz", () => {
     assert.ok(e.eventos.every((x) => x.meta?.taskId === "T1"));
   });
 
-  test("CA-002-04: unas pruebas que pasan sin implementación generan un aviso, no un bloqueo", async () => {
+  // Desde la spec 2026-10-09-pruebas-confiables esto solo vale para una tarea exenta; el bloqueo
+  // del resto se prueba en ciclo-rojo-obligatorio.test.js
+  test("CA-002-04: en una tarea que parte de código existente, unas pruebas que pasan sin implementación generan un aviso, no un bloqueo", async () => {
     const e = entorno({ salidas: { "desarrollador-backend": [impl(1)] }, ejecuciones: [PASA, PASA] });
-    const r = await e.ciclo().ejecutar(TAREA);
+    const r = await e.ciclo().ejecutar({ ...TAREA, parte_de_codigo_existente: true });
     assert.equal(r.status, "completada");
     assert.ok(e.eventos.some((x) => x.payload.aviso === "pruebas_no_fallan"));
   });

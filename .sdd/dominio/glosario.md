@@ -136,3 +136,60 @@
 - 2026-10-03-ciclo-verificado
 
 **Última actualización:** 2026-10-03
+
+### Rojo
+
+**Definición:** estado en el que las pruebas recién escritas fallan porque todavía no existe la implementación. El ciclo lo exige antes de implementar: unas pruebas que pasan sin implementación no demuestran nada.
+**Categoría:** proceso
+**Ejemplos:**
+- Unas pruebas que fallan porque no encuentran el módulo que se va a implementar están en rojo.
+- Agotar el tiempo sin implementación también cuenta como rojo; un fallo del entorno aislado, no.
+
+**Referenciado en:**
+- 2026-10-09-pruebas-confiables
+
+**Última actualización:** 2026-10-09
+
+### Cambio deliberado
+
+**Definición:** alteración pequeña del código escrito por el implementador (invertir una comparación, cambiar una constante, negar una condición o sustituir un valor devuelto), hecha sobre una copia para ver si las pruebas la detectan.
+**Categoría:** técnico
+**Sinónimos a evitar:**
+- ~~mutante~~ en mensajes al usuario (usar "cambio deliberado"; en el código y los eventos se llama "alteración")
+- No confundir con el skill `mutation-detector`, que registra qué archivos cambian los agentes.
+
+**Referenciado en:**
+- 2026-10-09-pruebas-confiables
+
+**Última actualización:** 2026-10-09
+
+### Puntuación de detección
+
+**Definición:** cambios deliberados detectados entre cambios deliberados probados, de 0 a 1. Un cambio está detectado si, con él aplicado, las pruebas fallan o agotan el tiempo. Es parcial si no se probaron todos los cambios posibles.
+**Categoría:** técnico
+**Ejemplos:**
+- 7 detectados de 10 probados: 0,7 (70 %).
+- Si no se probó ninguno, no hay puntuación: no se inventa.
+
+**Referenciado en:**
+- 2026-10-09-pruebas-confiables
+
+**Última actualización:** 2026-10-09
+
+### Refuerzo
+
+**Definición:** ronda en la que el agente de pruebas añade comprobaciones a partir de los cambios deliberados que sus pruebas no detectaron. Ocurre una sola vez por tarea sin intervención humana, y solo en el modo «exigir».
+**Categoría:** proceso
+**Referenciado en:**
+- 2026-10-09-pruebas-confiables
+
+**Última actualización:** 2026-10-09
+
+### Exención del rojo
+
+**Definición:** declaración, hecha por quien escribe la tarea, de que la tarea parte de un comportamiento que ya existe, por lo que sus pruebas pueden pasar antes de implementar.
+**Categoría:** proceso
+**Referenciado en:**
+- 2026-10-09-pruebas-confiables
+
+**Última actualización:** 2026-10-09
