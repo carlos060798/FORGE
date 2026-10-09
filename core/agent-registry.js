@@ -180,6 +180,44 @@ export class LlmAgentAdapter {
   }
 }
 
+/**
+ * Un turno de una conversación con herramientas (ADR-21). Método aparte de `execute`: mismo
+ * prompt de sistema, mismo tiempo máximo y mismos reintentos, pero con la lista de mensajes y
+ * las herramientas en lugar de un único mensaje.
+ * @this {LlmAgentAdapter}
+ * @param {{ mensajes: any[], herramientas: any[], extraContext?: string }} ctx
+ */
+LlmAgentAdapter.prototype.conversar = async function conversar(ctx) {
+  const start = Date.now();
+  const systemParts = [this.definition.systemPrompt];
+  if (this.definition.goal) systemParts.push(`\n## Objetivo\n${this.definition.goal}`);
+  if (ctx.extraContext)     systemParts.push(`\n## Contexto adicional\n${ctx.extraContext}`);
+
+  const modelAlias = this.definition.model ?? 'sonnet';
+  const modelId    = this._provider.resolveModelId(modelAlias);
+  const base       = { agentName: this.definition.name, modelo: modelId, provider: this._provider.nombre };
+  if (this._provider.admiteHerramientas !== true) {
+    return { ok: false, ...base, contenido: [], durationMs: 0, error: `El proveedor "${this._provider.nombre}" no admite conversaciones con herramientas.` };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), this.definition.timeout_ms ?? this.globalTimeoutMs);
+  try {
+    const result = await withRetry(
+      () => this._provider.conversar({
+        model: modelAlias, systemPrompt: systemParts.join('\n'),
+        mensajes: ctx.mensajes, herramientas: ctx.herramientas, maxTokens: 8192, signal: controller.signal,
+      }),
+      { maxAttempts: 3, backoffMs: 1000 },
+    );
+    return { ok: true, ...base, contenido: result.contenido, stopReason: result.stopReason, inputTokens: result.inputTokens, outputTokens: result.outputTokens, durationMs: Date.now() - start };
+  } catch (err) {
+    return { ok: false, ...base, contenido: [], durationMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /** @param {string} forgeRoot @returns {AgentRegistry} */
 export function createAgentRegistry(forgeRoot) {
   const registry = new AgentRegistry();

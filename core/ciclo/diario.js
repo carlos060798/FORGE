@@ -6,6 +6,10 @@
  * se perdería y habría que pagarla otra vez. Este diario la guarda en cuanto
  * llega; al reanudar, el mismo nodo la recupera en lugar de volver a llamar.
  * Se vacía al guardar el punto del nodo: solo cubre lo que está en vuelo.
+ *
+ * Dos clases de clave conviven en el mismo archivo: la huella de la petición (`claveDe`), para
+ * las llamadas de un solo mensaje, y `turno:<iteración>:<n>` para el implementador por turnos,
+ * que guarda además el resultado de cada herramienta (ver core/ciclo/turnos.js).
  */
 
 import * as fs from 'fs';
@@ -50,6 +54,18 @@ export class Diario {
     return null;
   }
 
+  /** Claves anotadas en el hilo, en orden. Dice qué había en vuelo cuando se cortó el nodo. */
+  claves(threadId) {
+    let texto;
+    try { texto = fs.readFileSync(this._archivo(threadId), 'utf8'); } catch { return []; }
+    const claves = [];
+    for (const linea of texto.split('\n')) {
+      if (!linea) continue;
+      try { claves.push(String(JSON.parse(linea).clave)); } catch { /* línea cortada */ }
+    }
+    return claves;
+  }
+
   anotar(threadId, clave, respuesta) {
     fs.mkdirSync(this.dir, { recursive: true });
     fs.appendFileSync(this._archivo(threadId), JSON.stringify({ clave, respuesta }) + '\n', 'utf8');
@@ -89,6 +105,27 @@ export class LibroDeGasto {
         t.llamadas++;
         t.tokens_in += Number(e.inputTokens) || 0;
         t.tokens_out += Number(e.outputTokens) || 0;
+      } catch { /* línea cortada */ }
+    }
+    return t;
+  }
+
+  /**
+   * Gasto de cada tarea de la sesión (para `forge status`).
+   * @returns {Record<string, { usd: number, llamadas: number }>}
+   */
+  porTarea() {
+    /** @type {Record<string, { usd: number, llamadas: number }>} */
+    const t = {};
+    let texto = '';
+    try { texto = fs.readFileSync(this.archivo, 'utf8'); } catch { return t; }
+    for (const linea of texto.split('\n')) {
+      if (!linea) continue;
+      try {
+        const e = JSON.parse(linea);
+        const tarea = t[String(e.taskId)] ??= { usd: 0, llamadas: 0 };
+        tarea.usd += Number(e.usd) || 0;
+        tarea.llamadas++;
       } catch { /* línea cortada */ }
     }
     return t;

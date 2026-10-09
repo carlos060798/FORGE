@@ -21,7 +21,7 @@ import { clasificar } from '../ciclo/router.js';
 export const MAX_LECTURA_BYTES = 256 * 1024;
 export const MAX_ESCRITURA_BYTES = 1024 * 1024;
 
-const MOTIVOS = {
+export const MOTIVOS = {
   ruta_absoluta: 'la ruta debe ser relativa a la raíz del proyecto',
   fuera_del_proyecto: 'la ruta sale del proyecto',
   ruta_no_portable: 'el nombre contiene algo que Windows resuelve a otro archivo (punto o espacio final, ":", "~1", nombres de dispositivo…)',

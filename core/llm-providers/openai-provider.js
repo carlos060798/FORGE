@@ -34,6 +34,9 @@ const ALIASES = {
 export class OpenAIProvider extends LlmProvider {
   get nombre() { return 'openai'; }
 
+  /** ADR-21: sin conversación con herramientas por ahora; el ciclo avisa y usa el modo de bloque. */
+  get admiteHerramientas() { return false; }
+
   constructor(config = {}) {
     super();
     /** Niveles fijados en `modelos:` de sdd.config.yaml: mandan sobre los de este archivo (ADR-19) */

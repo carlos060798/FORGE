@@ -29,6 +29,7 @@ import { aplicarArchivos, extraerBloque, huellasAlteradas, validarRuta } from '.
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
+import { coderPorTurnos, modoImplementador } from './turnos.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -337,8 +338,19 @@ function leerPruebas(estado) {
   }).join('\n\n');
 }
 
-/** @param {EstadoCiclo} estado */
+/**
+ * Dos modos (ADR-21): `bloque`, el de siempre, y `turnos`, con herramientas (core/ciclo/turnos.js).
+ * El modo usado queda anotado en el estado del hilo: lo empezado en un modo sigue en ese modo.
+ * @param {EstadoCiclo} estado
+ */
 export async function coder(estado, deps) {
+  const { modo, marca } = modoImplementador(estado, deps);
+  if (modo === 'turnos') return coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+  return { ...(await coderEnBloque(estado, deps)), implementador: marca };
+}
+
+/** @param {EstadoCiclo} estado */
+async function coderEnBloque(estado, deps) {
   const recuperado = await textoDeContexto(estado, deps);
   const contexto = recuperado.texto;
   const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];

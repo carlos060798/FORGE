@@ -23,6 +23,9 @@ export const POR_DEFECTO = {
     max_iteraciones: 5,
     sin_progreso: 3,            // ejecuciones fallidas seguidas con la misma salida antes de pedir revisión; 0 lo desactiva
     contexto_max_bytes: 65536,
+    implementador: 'bloque',    // forma de trabajar del implementador: bloque (una respuesta con archivos completos) | turnos (ADR-21, con herramientas)
+    turnos_max: 30,             // con implementador turnos: respuestas del modelo por intento antes de ejecutar las pruebas finales
+    turnos_pruebas_max: 5,      // con implementador turnos: ejecuciones de pruebas que puede pedir el implementador por intento
   },
   sandbox: {
     cpus: 1,
@@ -45,6 +48,8 @@ const MODOS = ['clasico', 'ciclo'];
 const GRAFOS = ['auto', 'langgraph', 'propio'];
 const EMBEDDINGS = ['hash', 'ollama'];
 const NIVELES = ['haiku', 'sonnet', 'opus'];
+const IMPLEMENTADORES = ['bloque', 'turnos'];
+const TOPE_TURNOS = 200;
 
 /**
  * @param {string} yaml
@@ -245,6 +250,18 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   const sinProgreso = leidos.motor.sin_progreso;
   if ((sinProgreso !== undefined && !/^\d+$/.test(sinProgreso)) || !Number.isInteger(config.motor.sin_progreso) || config.motor.sin_progreso < 0) {
     throw new Error(`motor.sin_progreso no válido: "${sinProgreso ?? config.motor.sin_progreso}". Debe ser un entero ≥ 0 (0 desactiva la detección).`);
+  }
+  // ADR-21. FORGE_IMPLEMENTADOR permite probar el modo por turnos con un modelo real sin editar el proyecto
+  if (process.env.FORGE_IMPLEMENTADOR) config.motor.implementador = process.env.FORGE_IMPLEMENTADOR;
+  if (!IMPLEMENTADORES.includes(config.motor.implementador)) {
+    throw new Error(`motor.implementador desconocido: "${config.motor.implementador}". Valores válidos: ${IMPLEMENTADORES.join(', ')}`);
+  }
+  for (const [clave, minimo, maximo] of /** @type {[string, number, number][]} */ ([['turnos_max', 1, TOPE_TURNOS], ['turnos_pruebas_max', 0, TOPE_TURNOS]])) {
+    const leido = leidos.motor[clave];
+    const valor = config.motor[clave];
+    if ((leido !== undefined && !/^\d+$/.test(leido)) || !Number.isInteger(valor) || valor < minimo || valor > maximo) {
+      throw new Error(`motor.${clave} no válido: "${leido ?? valor}". Debe ser un entero entre ${minimo} y ${maximo}.`);
+    }
   }
   if (process.env.FORGE_BUDGET_USD) {
     const tope = Number(process.env.FORGE_BUDGET_USD);
