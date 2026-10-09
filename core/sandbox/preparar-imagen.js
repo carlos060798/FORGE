@@ -126,6 +126,7 @@ export function dockerfile(lenguaje, base, presentes) {
  *   cli: import('./docker-cli.js').DockerCli,
  *   dirConstruccion: string,
  *   base?: string,
+ *   descargarBase?: boolean,   // descargar la imagen base (con red) si no esta en el equipo; solo lo pide el CLI
  * }} opciones
  * @returns {Promise<{ imagen: string, construida: boolean, huella: string|null }>}
  */
@@ -139,7 +140,14 @@ export async function prepararImagen(opciones) {
 
   // Sin dependencias declaradas no hay nada que instalar: se usa la imagen base
   // Go siempre usa imagen propia: lleva la cache de compilacion de la biblioteca estandar ya calentada
-  if (lenguaje !== 'go' && !declaraDependencias(cwd, lenguaje, presentes)) return { imagen: base, construida: false, huella: null };
+  if (lenguaje !== 'go' && !declaraDependencias(cwd, lenguaje, presentes)) {
+    // La ejecucion usa --pull never: en un equipo que nunca ha descargado la base, la primera vez fallaria
+    if (opciones.descargarBase && !(await cli.existeImagen(base))) {
+      const p = await cli.descargar(base);
+      if (!p.ok) throw new ErrorPreparacion(`No se pudo descargar la imagen base ${base}: ${p.error}`);
+    }
+    return { imagen: base, construida: false, huella: null };
+  }
 
   const texto  = dockerfile(lenguaje, base, presentes);
   const hash   = createHash('sha256').update(texto);

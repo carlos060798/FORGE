@@ -100,9 +100,10 @@ describe("release-safety — clave del MCP coherente", () => {
 
 describe("release-safety — package.json files[] existen", () => {
   const pkg = JSON.parse(readFile(join(ROOT, "package.json")));
+  // Las entradas con "!" excluyen un archivo: lo que importa es que exista el archivo que excluyen
   for (const entry of pkg.files || []) {
     test(`files[] incluye '${entry}' y existe`, () => {
-      const ruta = join(ROOT, entry.replace(/\/$/, ""));
+      const ruta = join(ROOT, entry.replace(/^!/, "").replace(/\/$/, ""));
       assert.ok(existsSync(ruta), `package.json files[] lista '${entry}' pero no existe`);
     });
   }

@@ -58,7 +58,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
   }
   const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext });
   if (!r.ok) {
-    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${r.error ?? 'sin detalle'}`) } };
+    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}`) } };
   }
 
   let siguiente;
@@ -66,7 +66,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
     siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens });
   } catch (e) {
     if (!(e instanceof ErrorConsumo)) throw e;
-    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, e.message) } };
+    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, cola(String(e.message), 600)) } };
   }
   // El gasto de la sesión suma lo de todas las tareas, también las cortadas
   if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);
@@ -234,7 +234,8 @@ export async function sandbox(estado, deps) {
   // Si las pruebas cambiaron desde que se escribieron, la ejecución no se realiza (CA-002-03)
   const alteradas = huellasAlteradas(estado.cwd, estado.pruebas.archivos);
   if (alteradas.length > 0) {
-    return pedirRevision('infraestructura', 'sandbox', `Las pruebas cambiaron desde que se escribieron: ${alteradas.join(', ')}. No se ejecutan.`);
+    // Reanudar en "sandbox" repetiría el mismo error sin salida: "continuar" vuelve a pedir las pruebas al agente de pruebas
+    return pedirRevision('infraestructura', 'qa', `Las pruebas cambiaron desde que se escribieron: ${alteradas.join(', ')}. No se ejecutan. Si continúas, el agente de pruebas las vuelve a escribir; si las cambiaste tú y están bien, acepta.`);
   }
 
   const r = await deps.runner.test(estado.cwd);

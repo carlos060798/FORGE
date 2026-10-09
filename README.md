@@ -50,7 +50,10 @@ FORGE:
 ## Inicio rápido
 
 ```bash
-# Clonar e instalar
+# Desde npm (el paquete se llama forja-mvp; el comando, forge)
+npm install -g forja-mvp
+
+# O clonando el repositorio
 git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
 
 # Verificar instalación
@@ -59,6 +62,8 @@ forge doctor
 # En Claude Code, dentro de tu proyecto:
 /forge
 ```
+
+> **Instala antes de usar `npx forge …`.** El paquete es `forja-mvp`: sin instalarlo, `npx forge` descargaría otro paquete de npm llamado `forge`. Si no quieres instalarlo, usa `npx -p forja-mvp forge <comando>`. Es un paquete de línea de comandos y plugin, no una librería: no tiene API para `import`.
 
 → Ver la [Guía de inicio](docs/getting-started.md) para un recorrido completo.
 

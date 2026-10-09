@@ -1,7 +1,7 @@
 # Ciclo verificado
 
 > Desde la versión 5.0.0 es el modo por defecto de `forge run`. En 4.3.0 (no publicada) era opt-in.
-> Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-11`.
+> Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-18`.
 
 Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola vez: la corrige hasta que sus pruebas pasan, ejecutando el código generado en un contenedor Docker sin red, sin superar un tope de gasto y pidiéndote una decisión cuando no puede terminar solo.
 
@@ -107,15 +107,16 @@ El tope es **por sesión** (un `forge run` y sus reanudaciones), no por tarea. E
 
 ## Cuando te pregunta
 
-El ciclo se pausa y `forge run` termina con código 3 en cinco casos:
+El ciclo se pausa y `forge run` termina con código 3 en seis casos:
 
 | Motivo | Qué pasó |
 |---|---|
 | `iteraciones` | 5 ejecuciones sin que las pruebas pasen |
 | `presupuesto` | Se alcanzó el tope de gasto |
-| `infraestructura` | Falló Docker o el proveedor de modelos, o las pruebas cambiaron en disco; la causa va en el detalle |
+| `infraestructura` | Falló Docker o el proveedor de modelos, o las pruebas cambiaron en disco; la causa va en el detalle. Si cambiaron las pruebas, `continuar` hace que el agente de pruebas las vuelva a escribir |
 | `dependencias` | El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola |
 | `salida_invalida` | Un agente no devolvió el formato pedido, tras un reintento |
+| `exito_sospechoso` | Las pruebas pasan (código 0), pero la salida no muestra pruebas ejecutadas, informa de menos pruebas de las que escribió el agente de pruebas, o el código escrito corta el proceso. Si el resultado es correcto, `aceptar` |
 
 `forge resume` sin más muestra el motivo y **no gasta nada**. Si además hay tareas fallidas, las relanza y te avisa de las pausadas. Para decidir:
 
@@ -160,7 +161,7 @@ Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pru
 ## Límites conocidos
 
 - **No probado con un modelo real.** El recorrido completo está probado con respuestas guionizadas y con Docker real, pero no con un proveedor de pago: no había clave disponible al desarrollarlo. No se sabe con qué frecuencia un modelo real devuelve el formato que el ciclo espera.
-- **El ciclo no mide la calidad de las pruebas, y un implementador decidido puede falsear el resultado.** Aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: una salida forzada indentada o escondida en una función no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Si las pruebas recién escritas ya pasan sin implementación, queda un aviso en el registro, pero no se bloquea. **Revisa el diff y ejecuta las pruebas tú antes de dar una tarea por buena.**
+- **El ciclo no mide la calidad de las pruebas, y un implementador decidido puede falsear el resultado.** Aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Además se compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha): si informa menos, se pausa aunque el corte esté escondido. Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: un implementador que falsee el resumen, o un ejecutor sin cuenta legible (`go test` sin `-v`), no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Si las pruebas recién escritas ya pasan sin implementación, queda un aviso en el registro, pero no se bloquea. **Revisa el diff y ejecuta las pruebas tú antes de dar una tarea por buena.**
 - **Lista de archivos de configuración incompleta.** Se exige revisión humana para los que conocemos (`conftest.py`, `jest.config.*`, `.husky/`, `.github/`…), no para otros que alguna herramienta también interpreta (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`, `tsconfig.json`, `scripts/*.sh`, `Procfile`…). Si no está en la lista, se escribirá.
 - **Las credenciales se vetan por nombre.** Se rechazan los nombres habituales (`.pgpass`, `.vault-token`, `.dockercfg`, `kubeconfig`, `auth.json`, `*token*.json`, `*apikey*.txt`, `*.env`, `wp-config*.php`, `*.sqlite`, `database.yml`, `.gnupg/`, `.m2/`…), pero un secreto con un nombre inesperado se leería y se copiaría. Los nombres con `secret`, `credentials`, `token` o `password` solo se vetan con extensión de datos (`.json`, `.yml`, `.txt`, `.env`, `.pem`…): `tokenizer.js`, `password.js`, `secrets-manager.ts` o `credentials.service.ts` (código) no se vetan. Siguen vetados por prudencia los datos que parecen credenciales aunque sean otra cosa (`tokens.json`, `key.json`, `database.yml`): si el agente necesita uno, renómbralo o quítalo de la tarea.
 - **`protecciones.no_tocar_archivos` de `sdd.config.yaml` se aplica** (se leen los elementos `- "patrón"` de esa sección): esas rutas ni se escriben ni se leen. Es un lector de YAML mínimo: reconoce la lista con guiones y la lista en línea (`[a, b]`); cualquier otro formato hace que el ciclo se niegue a empezar.

@@ -116,6 +116,7 @@ export class SandboxRunner {
    *   timeoutMs?: number,
    *   salidaMaxBytes?: number,
    *   imagenBase?: string,
+   *   descargarBase?: boolean,
    *   excluir?: string[],
    * }} opciones
    */
@@ -143,7 +144,7 @@ export class SandboxRunner {
     let imagen;
     try {
       this.ultimaImagen = await prepararImagen({
-        cwd, lenguaje: this.o.lenguaje, cli: this.cli, base: this.o.imagenBase,
+        cwd, lenguaje: this.o.lenguaje, cli: this.cli, base: this.o.imagenBase, descargarBase: this.o.descargarBase,
         dirConstruccion: path.join(this.o.dirMotor, 'construccion'),
       });
       imagen = this.ultimaImagen.imagen;

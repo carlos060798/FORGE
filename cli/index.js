@@ -1491,6 +1491,8 @@ Uso:
   npx forge state                    Volcar estado.json formateado
   npx forge validate                 Verificar precondiciones del paso actual
   npx forge reset --force            Resetear pipeline a 'idea'
+  npx forge adr <raíz> "<glob>" [--update-ledger]
+                                     Busca ADRs en el código y, con --update-ledger, los añade al registro
   npx forge probar-modelo [--tope USD] [--conservar]
                                      Prueba mínima del ciclo con un modelo real (necesita ANTHROPIC_API_KEY); gasta
                                      como máximo el tope (0,50 USD por defecto) y resume formato, iteraciones y coste
@@ -1641,8 +1643,18 @@ async function main() {
       await iniciarServidor({ cwd: i !== -1 && args[i + 1] ? args[i + 1] : undefined });
       break;
     }
+    case "adr": {
+      // forge adr <raíz> <glob> [--update-ledger]: busca ADRs en el código. Los comandos y skills del plugin
+      // llaman a esto en lugar de a una ruta relativa que no existe en el proyecto del usuario.
+      const { spawnSync } = await import("node:child_process");
+      const script = fileURLToPath(new URL("../utils/adr-parser.js", import.meta.url));
+      const r = spawnSync(process.execPath, [script, ...args.slice(1)], { stdio: "inherit" });
+      process.exit(r.status ?? 1);
+      break;
+    }
     case "run":
     case "resume": {
+      if (args.includes("--help") || args.includes("-h")) { uso(); break; }
       const { main: engineMain } = await import("../core/engine-cli.js");
       process.argv = [process.argv[0], process.argv[1], comando, ...args.slice(1)];
       await engineMain();
@@ -1654,6 +1666,7 @@ async function main() {
       break;
     case "--help":
     case "-h":
+    case "help":
     case undefined:
       uso();
       break;

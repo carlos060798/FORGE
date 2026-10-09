@@ -142,7 +142,7 @@ Cada línea es un ADR en JSON:
 Para proyectos existentes, scan automático:
 
 ```bash
-node utils/adr-parser.js . src/**/*.ts --update-ledger
+forge adr . "src/**/*.ts" --update-ledger
 → Encuentra todos los ADRs en codebase
 → Añade al ledger si no existen
 ```
@@ -172,7 +172,7 @@ const userSchema = z.object({
 ### Ejecutar Scan
 
 ```bash
-/sdd.adr new  (o node utils/adr-parser.js . src/**/*.ts)
+/sdd.adr new  (o forge adr . "src/**/*.ts")
 ↓
 ✅ 3 ADRs encontrados y registrados
 ```

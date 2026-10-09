@@ -165,7 +165,7 @@ function registrarADR(cwd, agente, archivo, adrs) {
 Batch scan del codebase:
 
 ```bash
-node utils/adr-parser.js . src/**/*.ts --update-ledger
+forge adr . "src/**/*.ts" --update-ledger
 ```
 
 Encuentra todos los ADRs en archivos existentes y los añade al ledger.

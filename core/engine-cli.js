@@ -110,7 +110,15 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
   }
   const modo   = flags['motor'] ?? (conPuntos ? 'ciclo' : undefined);
   const config = leerConfigCiclo(cwd, { motor: modo });
-  if (config.motor.modo !== 'ciclo') return null;
+  if (config.motor.modo !== 'ciclo') {
+    // Ejecutar las pruebas del proyecto en el equipo debe pedirse en el momento: no puede venir solo de un
+    // archivo del repositorio (quien clona un proyecto ajeno creería que se ejecuta aislado)
+    if (flags['motor'] !== 'clasico') {
+      err('sdd.config.yaml pide motor.modo: clasico, que ejecuta las pruebas del proyecto EN TU EQUIPO, sin aislamiento. Por seguridad hay que pedirlo en la orden: añade --motor clasico, o quita esa línea para usar el modo aislado.');
+    }
+    console.error(`${c.amarillo?.('⚠') ?? '⚠'} Modo clásico (--motor clasico): las pruebas de tu proyecto se ejecutan en tu equipo, sin aislamiento.`);
+    return null;
+  }
 
   // Todo lo que puede fallar antes de gastar o de cambiar nada, primero
   const etapa = deps.fsm.currentStep();
@@ -150,6 +158,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
   const sandbox  = new SandboxRunner({
     runId: sesion.runId, dirMotor, cli,
     lenguaje: deps.stack.lenguaje, testCmd: deps.stack.test_cmd,
+    descargarBase: true,   // la primera vez en un equipo, la imagen base se descarga (con red) en lugar de fallar
     limites: { cpus: config.sandbox.cpus, memoria: config.sandbox.memoria, pids: config.sandbox.pids },
     timeoutMs: config.sandbox.timeout_s * 1000,
     salidaMaxBytes: config.sandbox.salida_max_bytes,

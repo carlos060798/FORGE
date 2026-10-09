@@ -123,6 +123,16 @@ export class DockerCli {
     return { ok: r.code === 0, error: r.error ?? r.stderr.trim().split(/\r?\n/).slice(-3).join(' | ') };
   }
 
+  /**
+   * Descarga una imagen con red. Solo para la imagen base cuando no está en el equipo: la ejecución
+   * del código generado usa siempre `--pull never` y `--network none`.
+   * @param {string} imagen
+   */
+  async descargar(imagen) {
+    const r = await this.ejecutar(['pull', '-q', imagen], { timeoutMs: 600_000 });
+    return { ok: r.code === 0, error: r.error ?? r.stderr.trim().split(/\r?\n/).slice(-3).join(' | ') };
+  }
+
   /** @param {string} imagen @returns {Promise<boolean>} */
   async existeImagen(imagen) {
     const r = await this.ejecutar(['image', 'inspect', '--format', '{{.Id}}', imagen], { timeoutMs: 15_000 });
