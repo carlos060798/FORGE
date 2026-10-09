@@ -5,8 +5,8 @@
 ## Estadísticas
 - Total: 9
 - Completadas: 0
-- En progreso: 5
-- En borrador: 4
+- En progreso: 6
+- En borrador: 3
 
 ## Especificaciones
 
@@ -21,7 +21,7 @@
 | 2026-10-09-validacion-modelo-real | Validación con un modelo real y gasto bien calculado | borrador (sin aprobar) | pequeño | ✅ | — | — | — | 2026-10-09 |
 | 2026-10-09-pruebas-confiables | Pruebas confiables | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
 | 2026-10-09-implementador-con-herramientas | Implementador que lee, busca y edita por pasos | borrador (sin aprobar) | grande | ✅ | — | — | — | 2026-10-09 |
-| 2026-10-09-puesta-al-dia | Puesta al día | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-puesta-al-dia | Puesta al día | en_implementacion (aprobada por delegación del dueño; autoevaluada, sin revisión independiente; ahorro de la caché sin medir y revisión nueva del protocolo sin probar con un cliente real) | mediano | ✅ | — | — | ⚠️ autoevaluación (17 de 19 criterios con prueba) | 2026-10-09 |
 
 ## Previstas (sin especificar todavía)
 

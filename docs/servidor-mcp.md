@@ -54,7 +54,12 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 - Solo una ejecución a la vez por proyecto, compartida con el ciclo verificado: si hay un `forge run --motor ciclo` en marcha, o dos llamadas simultáneas, la segunda recibe un error de «proyecto ocupado».
 - Proyectos en JavaScript/TypeScript o Python (los mismos que el ciclo).
 - Por la salida estándar solo salen mensajes del protocolo; los avisos van a la salida de errores.
-- Versiones del protocolo: 2024-11-05, 2025-03-26 y 2025-06-18.
+- Revisiones del protocolo:
+  - **con saludo** (el cliente abre con `initialize`): 2024-11-05, 2025-03-26, 2025-06-18 y 2025-11-25;
+  - **sin estado** (no hay saludo: cada petición trae su versión en `_meta`): 2026-07-28, la vigente.
+
+  El servidor atiende las dos a la vez y elige petición a petición. A un cliente que pida sin saludo una revisión que no admite le responde el error `-32022` con las que sí. Qué cambia en cada revisión y de qué página oficial sale: `.sdd/especificaciones/2026-10-09-puesta-al-dia/spikes/mcp-revision-vigente.md`.
+- Si `sandbox.runtime` está configurado, `ejecutar_pruebas` usa ese mecanismo de aislamiento; si Docker no lo tiene, devuelve un error y no ejecuta nada.
 
 ## Límites conocidos
 
@@ -63,4 +68,5 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 - **Los respaldos se guardan, pero no hay herramienta para restaurarlos**: están en `.sdd/motor/mcp-<n>/respaldo/mcp/archivos/`.
 - **No hay mensajes agrupados** (retirados en la versión 2025-06-18 del protocolo); solo herramientas: ni recursos, ni prompts, ni muestreo.
 - **El resultado de las pruebas se decide por el código de salida**, con los mismos límites que el ciclo: un `process.exit(0)` en el código falsea un éxito.
-- Probado con el cliente oficial del SDK de MCP y con Docker real en Windows. **No probado con Claude Code ni con otros clientes**, ni en Linux con Docker.
+- **La revisión 2026-07-28 no se ha probado con el cliente oficial**, solo con un cliente mínimo escrito a partir de la especificación (`tests/mcp-sin-estado.test.js`). De esa revisión se implementa lo que necesita un servidor de herramientas: `server/discover`, `tools/list`, `tools/call`, la cancelación y una suscripción que no notifica nada (la lista de herramientas no cambia).
+- Las revisiones con saludo: probado con el cliente oficial del SDK de MCP y con Docker real en Windows. **No probado con Claude Code ni con otros clientes**, ni en Linux con Docker.

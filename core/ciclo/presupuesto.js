@@ -5,7 +5,7 @@
  * gasto se guarda en cada punto de guardado y sobrevive a la reanudación.
  */
 
-import { precioDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
+import { precioCompletoDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 
 const ESCALON = { opus: 'sonnet', sonnet: 'haiku', haiku: 'haiku' };
 export const NIVELES = ['haiku', 'sonnet', 'opus'];
@@ -48,9 +48,30 @@ export function puedeLlamar(p) {
   return p.estado !== 'agotado';
 }
 
+/** Tokens de caché de una respuesta: un proveedor que no los informa cuenta cero. */
+const entero = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
+
 /**
+ * Costo en USD de una llamada, cada tipo de token a su precio (CA-001-02). En la API de
+ * Anthropic `input_tokens` NO incluye los tokens de caché: son tres cantidades que se suman.
+ * @param {{ proveedor: string, modelo: string, inputTokens?: number, outputTokens?: number, cacheCreationTokens?: number, cacheReadTokens?: number }} llamada
+ * @param {{ precioDesconocido?: { input: number, output: number }, precios?: Record<string, { input: number, output: number, cacheWrite?: number, cacheRead?: number }> }} [opciones]
+ * @returns {number}
+ */
+export function costoDe(llamada, opciones = {}) {
+  const precio = precioCompletoDe(llamada.proveedor, llamada.modelo, opciones.precioDesconocido, opciones.precios);
+  return (llamada.inputTokens ?? 0) * precio.input
+    + (llamada.outputTokens ?? 0) * precio.output
+    + entero(llamada.cacheCreationTokens) * precio.cacheWrite
+    + entero(llamada.cacheReadTokens) * precio.cacheRead;
+}
+
+/**
+ * Los tokens de caché (`cacheCreationTokens`, `cacheReadTokens`) son opcionales: solo los
+ * informa un proveedor con caché de prompts. Cuando llegan, el presupuesto gana los campos
+ * `tokens_cache_escritura` y `tokens_cache_lectura`; sin ellos, su forma no cambia.
  * @param {import('./estado.js').Presupuesto} p
- * @param {{ proveedor: string, modelo: string, inputTokens?: number, outputTokens?: number }} llamada
+ * @param {{ proveedor: string, modelo: string, inputTokens?: number, outputTokens?: number, cacheCreationTokens?: number, cacheReadTokens?: number }} llamada
  * @param {{ precioDesconocido?: { input: number, output: number }, precios?: Record<string, { input: number, output: number }> }} [opciones]
  *        `precios`: los de `precios:` del proyecto (USD por token); mandan sobre la lista incluida
  * @returns {import('./estado.js').Presupuesto}
@@ -62,14 +83,20 @@ export function registrar(p, llamada, opciones = {}) {
 
   const tokensIn  = llamada.inputTokens ?? 0;
   const tokensOut = llamada.outputTokens ?? 0;
-  const precio    = precioDe(llamada.proveedor, llamada.modelo, opciones.precioDesconocido, opciones.precios);
+  const cacheEscritura = entero(llamada.cacheCreationTokens);
+  const cacheLectura   = entero(llamada.cacheReadTokens);
+  const hayCache = cacheEscritura > 0 || cacheLectura > 0 || 'tokens_cache_escritura' in p || 'tokens_cache_lectura' in p;
 
   const siguiente = {
     ...p,
-    gastado_usd: p.gastado_usd + tokensIn * precio.input + tokensOut * precio.output,
+    gastado_usd: p.gastado_usd + costoDe(llamada, opciones),
     llamadas:    p.llamadas + 1,
     tokens_in:   p.tokens_in + tokensIn,
     tokens_out:  p.tokens_out + tokensOut,
+    ...(hayCache ? {
+      tokens_cache_escritura: (/** @type {any} */ (p).tokens_cache_escritura ?? 0) + cacheEscritura,
+      tokens_cache_lectura:   (/** @type {any} */ (p).tokens_cache_lectura ?? 0) + cacheLectura,
+    } : {}),
   };
   siguiente.estado = estadoDe(siguiente);
   return siguiente;

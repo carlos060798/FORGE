@@ -58,9 +58,9 @@ async function cargarCore(cwd) {
     import(toFileURL(join(base, 'event-log.js'))),
   ]);
 
-  const { lineasEstadoCiclo } = await import(toFileURL(join(base, 'ciclo', 'index.js'))).catch(() => ({ lineasEstadoCiclo: () => [] }));
+  const { lineasEstadoCiclo, lineaAislamiento } = await import(toFileURL(join(base, 'ciclo', 'index.js'))).catch(() => ({ lineasEstadoCiclo: () => [], lineaAislamiento: undefined }));
 
-  return { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo };
+  return { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo, lineaAislamiento };
 }
 
 // ── Helpers visuales ─────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ function dibujarPipeline(stepActual) {
 // ── Subcomandos ───────────────────────────────────────────────────────────────
 
 async function cmdStatus(cwd) {
-  const { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo } = await cargarCore(cwd);
+  const { FileSystemStateStore, PipelineStateMachine, EventLog, lineasEstadoCiclo, lineaAislamiento } = await cargarCore(cwd);
   const store = new FileSystemStateStore(join(cwd, '.sdd'));
   const log   = new EventLog(join(cwd, '.sdd', 'observabilidad'));
   const fsm   = new PipelineStateMachine(store, log);
@@ -163,6 +163,12 @@ async function cmdStatus(cwd) {
   if (ciclo.length > 0) {
     console.log('');
     ciclo.forEach((l) => console.log(l));
+  }
+
+  // Qué mecanismo de aislamiento usará el ciclo verificado (sandbox.runtime)
+  if (lineaAislamiento) {
+    console.log('');
+    console.log(lineaAislamiento(cwd));
   }
 
   console.log('');

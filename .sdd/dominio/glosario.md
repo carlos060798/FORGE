@@ -128,6 +128,58 @@
 
 **Última actualización:** 2026-10-03
 
+### Parte fija
+
+**Definición:** lo que se repite idéntico entre las llamadas a un modelo dentro de una misma tarea: las instrucciones del agente y el contrato de salida.
+**Categoría:** técnico
+**Referenciado en:**
+- 2026-10-09-puesta-al-dia
+
+**Última actualización:** 2026-10-09
+
+### Reutilización
+
+**Definición:** cobro reducido de la parte fija de una llamada cuando el proveedor de modelos reconoce que ya la recibió poco antes. El proveedor distingue lo guardado para reutilizar (más caro que la entrada normal) de lo reutilizado (más barato).
+**Categoría:** técnico
+**Sinónimos a evitar:**
+- ~~prompt caching~~ en textos para usuarios (usar "caché de prompts" o "reutilización")
+
+**Referenciado en:**
+- 2026-10-09-puesta-al-dia
+
+**Última actualización:** 2026-10-09
+
+### Mecanismo de aislamiento
+
+**Definición:** el componente que separa el entorno aislado del equipo anfitrión. El operador puede elegir uno de los que su equipo ya tiene instalados; si el elegido no está, el ciclo no empieza.
+**Categoría:** técnico
+**Sinónimos a evitar:**
+- ~~runtime~~ a secas en textos para usuarios (es también el nombre del entorno de ejecución del lenguaje)
+
+**Referenciado en:**
+- 2026-10-09-puesta-al-dia
+
+**Última actualización:** 2026-10-09
+
+### Archivo de instrucciones para agentes
+
+**Definición:** archivo en la raíz del proyecto que los agentes de código leen antes de trabajar. Resume las reglas de la constitución, cómo ejecutar las pruebas y dónde están las especificaciones y las decisiones.
+**Categoría:** técnico
+**Referenciado en:**
+- 2026-10-09-puesta-al-dia
+
+**Última actualización:** 2026-10-09
+
+### Revisión del protocolo
+
+**Definición:** versión fechada del protocolo con el que los agentes externos usan las herramientas de FORGE. Hay revisiones «con saludo» (el cliente se presenta una vez al conectarse) y «sin estado» (cada petición dice qué revisión habla).
+**Categoría:** técnico
+**Referenciado en:**
+- 2026-10-09-puesta-al-dia
+- 2026-10-03-herramientas-mcp
+
+**Última actualización:** 2026-10-09
+
 ### Modo clásico
 
 **Definición:** el comportamiento actual del motor: cada tarea se ejecuta una vez y, si falla, se marca como fallida sin intento de corrección.

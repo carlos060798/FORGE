@@ -32,8 +32,8 @@ export const FUENTE = 'https://platform.claude.com/docs/en/about-claude/pricing'
 
 /**
  * Precios en USD por millón de tokens, por proveedor e identificador de modelo.
- * Los de caché se guardan para la spec de caché de prompts; hoy el gasto solo
- * usa entrada y salida.
+ * Los de caché los usa el libro de gasto del ciclo (spec 2026-10-09-puesta-al-dia):
+ * escritura en la caché de 5 minutos y lectura, ver `preciosCache`.
  * @type {Record<string, Record<string, PrecioModelo>>}
  */
 export const TABLA = {
@@ -105,6 +105,39 @@ export function precioMasCaro(configurados = {}) {
     input:  Math.max(...todos.map((p) => p.input)),
     output: Math.max(...todos.map((p) => p.output)),
   };
+}
+
+/**
+ * Multiplicador documentado de la escritura en la caché de 5 minutos sobre el precio de
+ * entrada. Se usa cuando un modelo no trae su precio de caché: cobrar la escritura al precio
+ * de entrada sería cobrar MENOS de lo que cobra el proveedor.
+ * Fuente: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+ * («5-minute cache write tokens are 1.25 times the base input tokens price»).
+ */
+export const MULTIPLICADOR_ESCRITURA_5M = 1.25;
+
+/**
+ * Precios de caché de la lista incluida para un modelo, en USD por token: escritura en la
+ * caché de 5 minutos (la que usa FORGE) y lectura. `null` si el modelo no los trae.
+ * @param {string} proveedor
+ * @param {string} modelo
+ * @returns {{ escritura: number, lectura: number } | null}
+ */
+export function preciosCache(proveedor, modelo) {
+  const p = Object.hasOwn(TABLA[proveedor] ?? {}, modelo) ? TABLA[proveedor][modelo] : null;
+  if (!p || typeof p.cache_escritura_5m !== 'number' || typeof p.cache_lectura !== 'number') return null;
+  return { escritura: p.cache_escritura_5m / POR_MILLON, lectura: p.cache_lectura / POR_MILLON };
+}
+
+/**
+ * Precio al que se cobran los tokens de caché cuando no se conoce uno propio: la lectura al
+ * precio de entrada normal (nunca por debajo de lo que cobra el proveedor, que la rebaja) y
+ * la escritura al de entrada por el multiplicador documentado.
+ * @param {number} entradaPorToken
+ * @returns {{ escritura: number, lectura: number }}
+ */
+export function preciosCachePorDefecto(entradaPorToken) {
+  return { escritura: entradaPorToken * MULTIPLICADOR_ESCRITURA_5M, lectura: entradaPorToken };
 }
 
 /** Línea que muestran `forge status` y `forge doctor`. */

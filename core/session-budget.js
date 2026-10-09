@@ -3,7 +3,7 @@
  */
 
 import { bus } from './event-bus.js';
-import { precioMasCaro, tablaPorToken } from './precios.js';
+import { precioMasCaro, preciosCache, preciosCachePorDefecto, tablaPorToken } from './precios.js';
 
 // Los precios viven en core/precios.js (ADR-19): aquí solo se leen
 const TABLA_POR_TOKEN = tablaPorToken();
@@ -52,6 +52,36 @@ export function precioDe(proveedor, modelo, desconocido, configurados = {}) {
   return desconocido ?? precioMasCaro(configurados);
 }
 
+/**
+ * Los cuatro precios de una llamada, en USD por token: entrada, salida, escritura de caché
+ * y lectura de caché (spec 2026-10-09-puesta-al-dia, CA-001-02 y CA-001-03).
+ *
+ * Orden para los de caché: los que indique el proyecto (`<id>_cache_escritura` y
+ * `<id>_cache_lectura` en `precios:`) → los de la lista incluida, si el precio de entrada
+ * también sale de ella → el precio de entrada (lectura) y el de entrada × 1,25 (escritura).
+ * Así un modelo sin precios de caché nunca se cobra por debajo de lo que cobra el proveedor.
+ * @param {string} proveedor
+ * @param {string} modelo
+ * @param {{ input: number, output: number }} [desconocido]
+ * @param {Record<string, { input: number, output: number, cacheWrite?: number, cacheRead?: number }>} [configurados]
+ * @returns {{ input: number, output: number, cacheWrite: number, cacheRead: number }}
+ */
+export function precioCompletoDe(proveedor, modelo, desconocido, configurados = {}) {
+  const base = precioDe(proveedor, modelo, desconocido, configurados);
+  if (PROVEEDORES_SIN_COSTO.has(proveedor)) return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+  const defecto = preciosCachePorDefecto(base.input);
+  if (Object.hasOwn(configurados, modelo)) {
+    const cfg = configurados[modelo];
+    return { input: base.input, output: base.output, cacheWrite: cfg.cacheWrite ?? defecto.escritura, cacheRead: cfg.cacheRead ?? defecto.lectura };
+  }
+  const incluidos = preciosCache(proveedor, modelo);
+  return {
+    input: base.input, output: base.output,
+    cacheWrite: incluidos?.escritura ?? defecto.escritura,
+    cacheRead:  incluidos?.lectura ?? defecto.lectura,
+  };
+}
+
 export class SessionBudget {
   /** @param {number} [umbral_usd] */
   constructor(umbral_usd = 1.0) {
@@ -67,7 +97,12 @@ export class SessionBudget {
   _registrarListener() {
     bus.on('agent:result', async (payload) => {
       const precio = precioParaModelo(payload.modelo);
-      const costo = payload.tokens_input * precio.input + payload.tokens_output * precio.output;
+      // Con caché de prompts parte de la entrada llega aparte (guardada o reutilizada): si no se
+      // contara, este acumulador registraría menos de lo que cobra el proveedor
+      const cache = preciosCache('anthropic', payload.modelo) ?? preciosCachePorDefecto(precio.input);
+      const costo = payload.tokens_input * precio.input + payload.tokens_output * precio.output
+        + (Number(payload.tokens_cache_escritura) || 0) * cache.escritura
+        + (Number(payload.tokens_cache_lectura) || 0) * cache.lectura;
       this.tokens_input  += payload.tokens_input;
       this.tokens_output += payload.tokens_output;
       this.costo_usd     += costo;

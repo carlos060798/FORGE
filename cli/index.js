@@ -24,6 +24,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
+import { generarAgentsMd } from "../core/agents-md.js";
+import { detectStack } from "../core/stack-detector.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -357,6 +359,47 @@ function integrarClaudeMd(cwd) {
   }
 }
 
+/**
+ * `AGENTS.md`: el archivo de instrucciones que leen los agentes de código (spec
+ * 2026-10-09-puesta-al-dia, HU-003). Se genera de la constitución del proyecto o, si aún no
+ * la tiene, de la plantilla mínima.
+ *
+ * Si el proyecto ya tiene uno, NO se toca: la propuesta se deja en `.sdd/AGENTS.propuesto.md`.
+ * @param {string} cwd
+ * @returns {"creado"|"propuesto"|"al_dia"}
+ */
+function integrarAgentsMd(cwd) {
+  const destino = join(cwd, "AGENTS.md");
+  const rutaConstitucion = join(cwd, ".sdd", "memoria", "constitucion.md");
+  const constitucion = existsSync(rutaConstitucion) ? readFileSync(rutaConstitucion, "utf8") : null;
+  const plantilla = readFileSync(join(PLUGIN_DIR, "plantillas", "AGENTS.md"), "utf8");
+
+  // Solo datos del propio proyecto y nunca su ruta: el nombre de su manifiesto y su comando de pruebas
+  let nombre;
+  try { nombre = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")).name; } catch { /* sin manifiesto de Node */ }
+  let pruebas;
+  try { pruebas = detectStack(cwd).test_cmd || undefined; } catch { /* sin stack reconocible */ }
+
+  const { contenido, origen } = generarAgentsMd({ constitucion, plantilla, nombre: typeof nombre === "string" ? nombre : undefined, pruebas });
+  const de = origen === "constitucion" ? "la constitución del proyecto" : "la plantilla mínima (el proyecto aún no tiene constitución)";
+
+  if (!existsSync(destino)) {
+    writeFileSync(destino, contenido, "utf8");
+    info(`AGENTS.md creado a partir de ${de}`);
+    return "creado";
+  }
+  if (readFileSync(destino, "utf8").replace(/\r\n/g, "\n") === contenido) {
+    info("AGENTS.md ya está al día");
+    return "al_dia";
+  }
+  const propuesta = join(cwd, ".sdd", "AGENTS.propuesto.md");
+  mkdirSync(join(cwd, ".sdd"), { recursive: true });
+  writeFileSync(propuesta, contenido, "utf8");
+  aviso("AGENTS.md ya existe — no se sobreescribe");
+  aviso(`  Propuesta generada de ${de}: .sdd/AGENTS.propuesto.md (compárala y copia lo que quieras)`);
+  return "propuesto";
+}
+
 function cmdInit(global, guided = false, withUi = false, preset = null, template = null) {
   banner();
   const claudeDir = global
@@ -388,6 +431,7 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
 
   if (!global) {
     integrarClaudeMd(process.cwd());
+    integrarAgentsMd(process.cwd());
   }
 
   if (withUi) {
@@ -1072,6 +1116,36 @@ async function cmdDoctor() {
     info("Dashboard disponible en el paquete ✓  →  forge ui");
   } else {
     aviso("Dashboard no disponible — instala con: forge init --ui");
+  }
+
+  // ── Aislamiento del ciclo verificado ─────────────────────────────────────────
+  titulo("Verificando el aislamiento del ciclo verificado...");
+  try {
+    const { leerConfigCiclo } = await import("../core/ciclo/config.js");
+    const runtime = leerConfigCiclo(process.cwd()).sandbox.runtime;
+    if (!runtime) {
+      // Sin mecanismo pedido no hay nada que comprobar aquí: no se consulta a Docker
+      info("Mecanismo de aislamiento: el de Docker por defecto (sandbox.runtime sin indicar)");
+    } else {
+      // Con uno pedido, se pregunta a Docker si lo conoce: es lo que decidirá si el ciclo empieza
+      const { DockerCli } = await import("../core/sandbox/docker-cli.js");
+      const docker = new DockerCli();
+      const disp = await docker.disponible();
+      if (disp.ok === false) {
+        aviso(`Mecanismo de aislamiento pedido: "${runtime}" (sandbox.runtime) — sin Docker no se puede comprobar (${disp.error})`);
+      } else {
+        const rt = await docker.runtimeDisponible(runtime);
+        if (rt.ok) {
+          info(`Mecanismo de aislamiento: "${runtime}" (sandbox.runtime) ✓ (Docker ${disp.version})`);
+        } else {
+          aviso(`${rt.error} — el ciclo verificado no empezará (código de salida 4)`);
+          problemas++;
+        }
+      }
+    }
+  } catch (e) {
+    aviso(`Configuración del ciclo no válida: ${e instanceof Error ? e.message : e}`);
+    problemas++;
   }
 
   // ── Diagnóstico del LLM ──────────────────────────────────────────────────────

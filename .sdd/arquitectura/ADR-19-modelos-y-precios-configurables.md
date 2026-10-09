@@ -54,6 +54,8 @@ Los modelos de cada nivel y sus precios se leen de `sdd.config.yaml`, y lo que e
 - Aviso de modelo sin precio: evento `ciclo:precio_desconocido` desde `invocar` (`core/ciclo/nodos.js`).
 - «El más caro conocido» toma por separado la entrada más cara y la salida más cara de la lista incluida y de lo configurado.
 
+Caché de prompts (spec `2026-10-09-puesta-al-dia`): el gasto del ciclo cobra además la escritura (caché de 5 minutos) y la lectura de caché con `cache_escritura_5m` y `cache_lectura` de la tabla (`preciosCache`, `precioCompletoDe`). Claves opcionales en `precios:`: `<identificador>_cache_escritura` y `<identificador>_cache_lectura`. Un modelo sin ellas cobra la lectura al precio de entrada y la escritura a 1,25 veces.
+
 Pendiente: los precios de OpenAI no se contrastaron; el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla; el acumulador `SessionBudget` del modo clásico sigue usando solo la lista incluida.
 
 ## Cuándo revisitar

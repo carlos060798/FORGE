@@ -10,13 +10,13 @@ import * as path from 'path';
 import { LlmAgentAdapter } from '../agent-registry.js';
 import { OllamaProvider } from '../llm-providers/index.js';
 import { crearRecuperador } from '../recuperacion/recuperador.js';
-import { precioDe } from '../session-budget.js';
 import { GuardadorArchivos } from './checkpoint-archivos.js';
+import { leerConfigCiclo } from './config.js';
 import { Diario, claveDe, LibroDeGasto } from './diario.js';
 import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
-import { estadoDe } from './presupuesto.js';
+import { costoDe, estadoDe } from './presupuesto.js';
 import { Respaldo } from './respaldo.js';
 
 const ARCHIVO_SESION = 'sesion.json';
@@ -92,8 +92,9 @@ export function tienePuntosDeGuardado(cwd, runId, taskId) {
  * @param {import('../agent-registry.js').AgentRegistry} registry
  * @param {string|undefined} apiKey
  * @param {string} cwd
+ * @param {{ proveedor?: object }} [opciones]  `proveedor`: uno ya creado, para pruebas (por defecto, el configurado)
  */
-export function crearLlamador(registry, apiKey, cwd) {
+export function crearLlamador(registry, apiKey, cwd, opciones = {}) {
   return {
     /** @param {string} agente */
     aliasDe: (agente) => registry.get(agente)?.model ?? 'sonnet',
@@ -105,9 +106,13 @@ export function crearLlamador(registry, apiKey, cwd) {
     llamar: async ({ agente, modeloAlias, userPrompt, extraContext, proveedorLocal }) => {
       const def = registry.get(agente);
       if (!def) return { ok: false, error: `Agente desconocido: "${agente}"` };
-      const adaptador = new LlmAgentAdapter({ ...def, model: modeloAlias }, apiKey, undefined, cwd, proveedorLocal ? new OllamaProvider() : undefined);
-      const r = await adaptador.execute({ cwd, userPrompt, extraContext });
-      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, modelo: r.modelo, proveedor: r.provider, error: r.error };
+      const adaptador = new LlmAgentAdapter({ ...def, model: modeloAlias }, apiKey, undefined, cwd, proveedorLocal ? new OllamaProvider() : opciones.proveedor);
+      const r = /** @type {any} */ (await adaptador.execute({ cwd, userPrompt, extraContext }));
+      // Los tokens de caché solo viajan si el proveedor los informó: sin ellos la respuesta no cambia de forma
+      const cache = typeof r.cacheCreationTokens === 'number' || typeof r.cacheReadTokens === 'number'
+        ? { cacheCreationTokens: r.cacheCreationTokens ?? 0, cacheReadTokens: r.cacheReadTokens ?? 0 }
+        : {};
+      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error };
     },
   };
 }
@@ -130,6 +135,9 @@ export function lineasEstadoCiclo(cwd) {
     `Ciclo verificado · sesión ${sesion.runId}`,
     `  Gasto: $${gasto.usd.toFixed(4)} de $${tope.toFixed(2)} · ${gasto.llamadas} llamadas`,
   ];
+  if ('tokens_cache_escritura' in gasto) {
+    lineas.push(`  Caché de prompts: ${gasto.tokens_cache_lectura} tokens reutilizados · ${gasto.tokens_cache_escritura} guardados · ${gasto.tokens_in} a precio normal`);
+  }
   for (const t of tareas) {
     const situacion = t.revision && !t.revision.decision
       ? `espera decisión (${t.revision.motivo})`
@@ -137,6 +145,23 @@ export function lineasEstadoCiclo(cwd) {
     lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}`);
   }
   return lineas;
+}
+
+/**
+ * Línea de `forge status`: qué mecanismo de aislamiento usará el ciclo (`sandbox.runtime`).
+ * No consulta a Docker (eso lo hace `forge doctor`): solo dice lo configurado.
+ * @param {string} cwd
+ * @returns {string}
+ */
+export function lineaAislamiento(cwd) {
+  try {
+    const runtime = leerConfigCiclo(cwd).sandbox.runtime;
+    return runtime
+      ? `Aislamiento: Docker con el mecanismo "${runtime}" (sandbox.runtime)`
+      : 'Aislamiento: Docker con su mecanismo por defecto (sandbox.runtime sin indicar)';
+  } catch (e) {
+    return `Aislamiento: configuración no válida (${e instanceof Error ? e.message : e})`;
+  }
 }
 
 /** @type {Record<string, 'completada'|'en_revision'|'abortada'>} */
@@ -186,7 +211,8 @@ export class CicloVerificado {
    */
   _ajustarGasto(presupuesto) {
     const t = this.libro.total();
-    const ajustado = { ...presupuesto, gastado_usd: t.usd, llamadas: t.llamadas, tokens_in: t.tokens_in, tokens_out: t.tokens_out };
+    const cache = 'tokens_cache_escritura' in t ? { tokens_cache_escritura: t.tokens_cache_escritura, tokens_cache_lectura: t.tokens_cache_lectura } : {};
+    const ajustado = { ...presupuesto, gastado_usd: t.usd, llamadas: t.llamadas, tokens_in: t.tokens_in, tokens_out: t.tokens_out, ...cache };
     return { ...ajustado, estado: estadoDe(ajustado) };
   }
 
@@ -203,10 +229,13 @@ export class CicloVerificado {
       const r = await this.o.llamar(peticion);
       if (r.ok) {
         const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
-        const precio = precioDe(r.proveedor, r.modelo, undefined, this.o.config?.precios);
-        const usd = conConsumo ? r.inputTokens * precio.input + r.outputTokens * precio.output : 0;
+        // Cada tipo de token a su precio: entrada normal, escritura de caché, lectura de caché y salida
+        const usd = conConsumo ? costoDe(r, { precios: this.o.config?.precios }) : 0;
         // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
-        this.libro.anotar({ taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0 });
+        this.libro.anotar({
+          taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0,
+          ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
+        });
         this.diario.anotar(threadId, clave, r);
       }
       return r;

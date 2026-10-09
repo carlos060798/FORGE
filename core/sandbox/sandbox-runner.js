@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash, randomBytes } from 'crypto';
 import { DockerCli } from './docker-cli.js';
-import { argvRun, etiquetaProyecto, nombreContenedor } from './politica.js';
+import { argvRun, etiquetaProyecto, nombreContenedor, validarRuntime } from './politica.js';
 import { crearCopia, eliminarCopia } from './staging.js';
 import { DIR_TRABAJO, ErrorPreparacion, prepararImagen } from './preparar-imagen.js';
 
@@ -118,7 +118,8 @@ export class SandboxRunner {
    *   imagenBase?: string,
    *   descargarBase?: boolean,
    *   excluir?: string[],
-   * }} opciones
+   *   runtime?: string,
+   * }} opciones   `runtime`: mecanismo de aislamiento (`sandbox.runtime`); sin indicar, el de Docker por defecto
    */
   constructor(opciones) {
     this.o   = opciones;
@@ -130,6 +131,10 @@ export class SandboxRunner {
     this.proyectoId = createHash('sha256').update(path.resolve(opciones.dirMotor, '..', '..', '..')).digest('hex').slice(0, 12);
     /** @type {{ imagen: string, construida: boolean, huella: string|null } | null} */
     this.ultimaImagen = null;
+    /** Mecanismo de aislamiento pedido; '' = el de Docker por defecto. Un valor no válido lanza aquí. */
+    this.runtime = validarRuntime(opciones.runtime);
+    /** Solo se pregunta a Docker una vez por sesión, y solo se recuerda el sí */
+    this.runtimeComprobado = false;
   }
 
   /**
@@ -140,6 +145,14 @@ export class SandboxRunner {
 
     const disp = await this.cli.disponible();
     if (disp.ok === false) return resultado({ exitCode: null, stderr: disp.error, infraError: true });
+
+    // Un mecanismo de aislamiento pedido y ausente es un fallo de infraestructura: no se ejecuta
+    // nada y NUNCA se cae al de por defecto, que sería degradar el aislamiento en silencio
+    if (this.runtime && !this.runtimeComprobado) {
+      const rt = await this.cli.runtimeDisponible(this.runtime);
+      if (rt.ok === false) return resultado({ exitCode: null, stderr: rt.error, infraError: true, durationMs: Date.now() - t0 });
+      this.runtimeComprobado = true;
+    }
 
     let imagen;
     try {
@@ -179,6 +192,7 @@ export class SandboxRunner {
         dirTrabajo: DIR_TRABAJO,
         env: { ...ENTORNO, ...(ENTORNO_POR_LENGUAJE[this.o.lenguaje] ?? {}) },
         proyectoId: this.proyectoId,
+        runtime: this.runtime || undefined,
       });
       const r = await this.cli.run(argv, {
         nombre,
