@@ -635,6 +635,8 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
   const providerActivo = process.env.FORGE_LLM_PROVIDER ?? 'anthropic (default)';
   info(`Provider LLM activo: ${providerActivo}`);
   info("  Cambiar: FORGE_LLM_PROVIDER=ollama|openai|stub  o  llm.provider en sdd.config.yaml");
+  const { lineaRevision } = await import("../core/precios.js");
+  info(lineaRevision());
 
   // 1. Detectar modo de ejecución: Claude Code (hooks) vs API directa
   const enClaudeCode = !!(

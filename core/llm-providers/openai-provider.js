@@ -36,13 +36,15 @@ export class OpenAIProvider extends LlmProvider {
 
   constructor(config = {}) {
     super();
+    /** Niveles fijados en `modelos:` de sdd.config.yaml: mandan sobre los de este archivo (ADR-19) */
+    this.modelos = config.modelos ?? {};
     this.apiKey  = config.api_key  ?? process.env.OPENAI_API_KEY ?? '';
     this.baseUrl = config.base_url ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1';
     this.apiVersion = config.api_version ?? null;
   }
 
   resolveModelId(alias) {
-    return ALIASES[alias] ?? alias;
+    return this.modelos[alias] ?? ALIASES[alias] ?? alias;
   }
 
   async complete({ model, systemPrompt, userPrompt, maxTokens = 8192, signal }) {

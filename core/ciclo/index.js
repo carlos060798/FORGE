@@ -203,7 +203,7 @@ export class CicloVerificado {
       const r = await this.o.llamar(peticion);
       if (r.ok) {
         const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
-        const precio = precioDe(r.proveedor, r.modelo);
+        const precio = precioDe(r.proveedor, r.modelo, undefined, this.o.config?.precios);
         const usd = conConsumo ? r.inputTokens * precio.input + r.outputTokens * precio.output : 0;
         // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
         this.libro.anotar({ taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0 });

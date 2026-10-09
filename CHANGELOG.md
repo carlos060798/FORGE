@@ -25,6 +25,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 **Probado con un modelo de pago el 2026-10-09** en ocho tareas pequeñas de JavaScript y Python (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`). **Sigue sin probarse en Linux con Docker real:** no publicar sin el job `aislamiento` de CI.
 
+**Modelos y precios configurables, con lista fechada** (ADR-19):
+
+- La lista de precios pasa a `core/precios.js`, con la fecha de su última revisión (2026-10-09) y la página oficial de la que se copió. `forge status` y `forge doctor` muestran esa fecha.
+- **Cambia el gasto calculado.** La lista anterior no coincidía con la tarifa oficial: `claude-opus-4-8` se cobraba a 15/75 USD por millón de tokens y cuesta 5/25; `claude-haiku-4-5-20251001` se cobraba a 0,80/4 (el precio de Haiku 3.5) y cuesta 1/5. `claude-sonnet-4-6` no cambia (3/15). Se añaden los modelos vigentes (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5 y anteriores aún activos). Los niveles por defecto (`opus`, `sonnet`, `haiku`) siguen apuntando a los mismos identificadores.
+- Un modelo sin precio se cobra al más alto conocido, que ahora es 10/50 (antes 15/75), y deja en el registro un evento `ciclo:precio_desconocido` con su nombre.
+- Secciones nuevas en `sdd.config.yaml`: `modelos:` (identificador de cada nivel) y `precios:` (`<identificador>_entrada` y `<identificador>_salida`, en USD por millón de tokens). Lo indicado manda sobre la lista incluida. Un precio no numérico, negativo o sin su pareja, o un nivel desconocido, impide empezar con un mensaje que nombra la clave.
+- El lector de configuración acepta claves con guiones y puntos, y claves entre comillas.
+- Los precios de OpenAI de la lista siguen sin contrastar con su tarifa oficial.
+
 **Correcciones nacidas de esas ejecuciones:**
 
 - Un proyecto Python que declara `pytest` en `requirements*.txt`, `setup.cfg`, `tox.ini` o tiene `conftest.py` se prueba con pytest. Antes solo se miraban `pytest.ini` y `pyproject.toml`, se elegía `unittest discover` y no se encontraba ninguna prueba.

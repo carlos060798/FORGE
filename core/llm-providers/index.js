@@ -24,6 +24,10 @@
  *     api_key: sk-...
  *     model: gpt-4o
  *     base_url: https://models.inference.ai.azure.com   # GitHub Models
+ *
+ * Los niveles opus/sonnet/haiku se pueden fijar por proyecto (ADR-19):
+ *   modelos:
+ *     sonnet: claude-sonnet-5-5
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -33,6 +37,7 @@ import { AnthropicProvider } from './anthropic-provider.js';
 import { OpenAIProvider }    from './openai-provider.js';
 import { OllamaProvider }    from './ollama-provider.js';
 import { StubProvider }      from './stub-provider.js';
+import { leerModelosDe }     from '../ciclo/config.js';
 
 /** Lee la sección llm: de sdd.config.yaml de forma simple (sin parser YAML completo) */
 function leerConfigLlm(cwd) {
@@ -76,7 +81,10 @@ function detectarProvider() {
 export function crearProvider(opts = {}) {
   const cwd        = opts.cwd ?? process.cwd();
   const configYaml = leerConfigLlm(cwd);
-  const config     = { ...configYaml, ...opts.config };
+  // ADR-19: los niveles (opus/sonnet/haiku) que indique `modelos:` del proyecto mandan
+  // sobre los que trae cada proveedor
+  const modelos    = { ...leerModelosDe(cwd), ...opts.config?.modelos };
+  const config     = { ...configYaml, ...opts.config, modelos };
 
   const nombreProvider = (
     process.env.FORGE_LLM_PROVIDER ??

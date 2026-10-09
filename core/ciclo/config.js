@@ -3,6 +3,10 @@
  *
  * Lectura simple por líneas, igual que la sección llm: en core/llm-providers/index.js
  * (el proyecto no depende de un parser YAML). Solo claves escalares de un nivel.
+ *
+ * También las secciones modelos y precios (ADR-19). Como el lector no entiende
+ * anidamiento, los precios son claves planas `<identificador>_entrada` y
+ * `<identificador>_salida`, en USD por millón de tokens.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -32,6 +36,9 @@ export const POR_DEFECTO = {
     umbral_degradacion_usd: 1.5,
     degradar_a: 'escalon',      // escalon | local
   },
+  // ADR-19: vacíos por defecto, es decir, la lista incluida (core/precios.js)
+  modelos: /** @type {{ opus?: string, sonnet?: string, haiku?: string }} */ ({}),
+  precios: /** @type {Record<string, { input: number, output: number }>} */ ({}),   // USD por token
 };
 
 const MODOS = ['clasico', 'ciclo'];
@@ -55,10 +62,95 @@ export function leerSeccion(yaml, nombre) {
     if (dentro && /^\S/.test(linea) && !/^#/.test(linea)) dentro = false;
     if (!dentro) continue;
 
-    const m = linea.match(/^\s{2}(\w+)\s*:\s*([^#]+?)\s*(?:#.*)?$/);
-    if (m) seccion[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    // La clave admite guiones y puntos (identificadores de modelo: claude-sonnet-4-6, gpt-4.1).
+    // Si lleva dos puntos (qwen2.5-coder:7b) tiene que ir entre comillas.
+    const m = linea.match(/^\s{2}("[^"]+"|'[^']+'|[\w.-]+)\s*:\s*([^#]+?)\s*(?:#.*)?$/);
+    if (m) seccion[m[1].replace(/^["']|["']$/g, '')] = m[2].replace(/^["']|["']$/g, '');
   }
   return seccion;
+}
+
+/**
+ * Sección `modelos:`: identificador de modelo de cada nivel. Un nivel sin indicar
+ * conserva el que trae cada proveedor.
+ * @param {string} yaml
+ * @returns {{ opus?: string, sonnet?: string, haiku?: string }}
+ */
+export function leerModelos(yaml) {
+  const leido = leerSeccion(yaml, 'modelos');
+  for (const clave of Object.keys(leido)) {
+    if (!NIVELES.includes(clave)) {
+      throw new Error(`modelos.${clave} no es un nivel de modelo en .sdd/sdd.config.yaml. Niveles válidos: ${NIVELES.join(', ')}`);
+    }
+  }
+  return leido;
+}
+
+/**
+ * Sección `modelos:` del proyecto, para los proveedores.
+ * @param {string} cwd
+ */
+export function leerModelosDe(cwd) {
+  const ruta = join(cwd, '.sdd', 'sdd.config.yaml');
+  return existsSync(ruta) ? leerModelos(readFileSync(ruta, 'utf8')) : {};
+}
+
+const SUFIJOS_PRECIO = { _entrada: 'input', _salida: 'output' };
+
+/**
+ * Sección `precios:`: claves planas `<identificador>_entrada` y `<identificador>_salida`
+ * en USD por millón de tokens. Un precio no numérico, negativo, vacío o sin su pareja lanza
+ * un error que nombra la clave: con un precio mal escrito el tope de gasto no significaría nada.
+ * @param {string} yaml
+ * @returns {Record<string, { input: number, output: number }>}  USD por token
+ */
+export function leerPrecios(yaml) {
+  /** @type {Record<string, { input?: number, output?: number }>} */
+  const precios = {};
+  const leido = leerSeccion(yaml, 'precios');
+  // El lector ignora una clave sin valor; aquí no puede pasar inadvertida
+  for (const clave of clavesSinValor(yaml, 'precios')) leido[clave] ??= '';
+
+  for (const [clave, texto] of Object.entries(leido)) {
+    const sufijo = Object.keys(SUFIJOS_PRECIO).find((s) => clave.endsWith(s) && clave.length > s.length);
+    if (!sufijo) {
+      throw new Error(`precios.${clave} no se entiende en .sdd/sdd.config.yaml: cada clave debe ser <identificador del modelo>_entrada o <identificador del modelo>_salida`);
+    }
+    const valor = texto.trim() === '' ? NaN : Number(texto);
+    if (!Number.isFinite(valor) || valor < 0) {
+      throw new Error(`precios.${clave} no es válido en .sdd/sdd.config.yaml: "${texto}". Debe ser un número mayor o igual que 0 (USD por millón de tokens)`);
+    }
+    const id = clave.slice(0, -sufijo.length);
+    (precios[id] ??= {})[SUFIJOS_PRECIO[sufijo]] = valor / 1_000_000;
+  }
+  for (const [id, p] of Object.entries(precios)) {
+    for (const [sufijo, campo] of Object.entries(SUFIJOS_PRECIO)) {
+      if (typeof p[campo] !== 'number') {
+        throw new Error(`Falta precios.${id}${sufijo} en .sdd/sdd.config.yaml: un modelo necesita precio de entrada y de salida`);
+      }
+    }
+  }
+  return /** @type {Record<string, { input: number, output: number }>} */ (precios);
+}
+
+/**
+ * Claves de una sección escritas sin valor (`clave:` y nada más).
+ * @param {string} yaml
+ * @param {string} nombre
+ * @returns {string[]}
+ */
+function clavesSinValor(yaml, nombre) {
+  const claves = [];
+  let dentro = false;
+  const inicio = new RegExp(`^${nombre}\\s*:`);
+  for (const linea of yaml.split(/\r?\n/)) {
+    if (inicio.test(linea)) { dentro = true; continue; }
+    if (dentro && /^\S/.test(linea) && !/^#/.test(linea)) dentro = false;
+    if (!dentro) continue;
+    const m = linea.match(/^\s{2}("[^"]+"|'[^']+'|[\w.-]+)\s*:\s*(?:#.*)?$/);
+    if (m) claves.push(m[1].replace(/^["']|["']$/g, ''));
+  }
+  return claves;
 }
 
 /** Convierte el texto leído al tipo del valor por defecto. */
@@ -135,6 +227,10 @@ export function leerConfigCiclo(cwd, overrides = {}) {
       if (clave in leido) config[nombre][clave] = convertir(leido[clave], valor);
     }
   }
+
+  // ADR-19: lo que indique el proyecto manda sobre la lista incluida (core/precios.js)
+  config.modelos = leerModelos(yaml);
+  config.precios = leerPrecios(yaml);
 
   if (overrides.motor) config.motor.modo = overrides.motor;
   if (process.env.FORGE_MOTOR_GRAFO) config.motor.grafo = process.env.FORGE_MOTOR_GRAFO;

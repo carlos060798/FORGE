@@ -430,3 +430,21 @@ presupuesto:
   tope_usd: 2.00                # al alcanzarlo no se inicia ninguna llamada más
   umbral_degradacion_usd: 1.50  # a partir de aquí se usa un modelo más barato
   degradar_a: escalon           # escalon (opus → sonnet → haiku) | local
+
+# Modelos y precios (ADR-19). Opcional: sin estas secciones se usa la lista incluida
+# (core/precios.js), cuya fecha de revisión muestran `forge status` y `forge doctor`.
+# Lo que indiques aquí manda sobre la lista incluida.
+#
+# modelos:                        # identificador de modelo de cada nivel (solo opus, sonnet, haiku)
+#   opus: claude-opus-5-5
+#   sonnet: claude-sonnet-5-5
+#   haiku: claude-haiku-5-5
+#
+# precios:                        # USD por millón de tokens; claves planas <identificador>_entrada y _salida
+#   claude-sonnet-5-5_entrada: 2
+#   claude-sonnet-5-5_salida: 10
+#   "qwen2.5-coder:7b_entrada": 0 # un identificador con dos puntos va entre comillas
+#   "qwen2.5-coder:7b_salida": 0
+#
+# Un precio no numérico, negativo o sin su pareja impide empezar. Un modelo sin precio
+# se cobra al más alto conocido y deja un aviso con su nombre en el registro.
