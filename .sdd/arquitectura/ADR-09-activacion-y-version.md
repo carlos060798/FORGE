@@ -14,7 +14,7 @@ Los documentos de partida llaman "FORGE v2" a este trabajo, pero el paquete est�
 - El programa se llama **"FORGE Motor Agéntico"**; la primera spec, **"Ciclo Verificado"**. Se deja de usar "v2".
 - El ciclo se entrega en **4.3.0** como opt-in: `motor.modo: clasico | ciclo` en la configuración, o `--motor ciclo`. El valor por defecto es `clasico`.
 - Con el ciclo activo, `forge run` exige que la etapa sea `code`, salvo `--force true`, y las tareas de código se ejecutan en secuencia.
-- **5.0.0** queda para cuando el ciclo sea el modo por defecto y se retire Node 18.
+- **5.0.0** queda para cuando el ciclo sea el modo por defecto y se retire Node 18. **Hecho el 2026-10-09 en ADR-17**: el ciclo es el modo por defecto y Node ≥20 el mínimo; este ADR queda reemplazado en esos dos puntos.
 
 ## Alternativas consideradas
 

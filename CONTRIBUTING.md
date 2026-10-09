@@ -6,7 +6,7 @@ Gracias por tu interés en mejorar FORGE. Esta guía explica cómo añadir un ag
 
 ## Requisitos previos
 
-- Node.js >= 18
+- Node.js >= 20
 - Claude Code CLI instalado (`npm install -g @anthropic-ai/claude-code`)
 - Fork del repositorio en GitHub
 
@@ -88,7 +88,7 @@ Usa la plantilla: [Propuesta de Agente](.github/ISSUE_TEMPLATE/agent_proposal.md
 ## Estilo de código
 
 - ESM puro (`import`/`export`), sin CommonJS.
-- Node >= 18, sin dependencias externas en hooks (solo `node:fs`, `node:path`, `node:os`, `node:child_process`).
+- Node >= 20, sin dependencias externas en hooks (solo `node:fs`, `node:path`, `node:os`, `node:child_process`).
 - Las dependencias npm permitidas actualmente: `acorn` (AST), `js-yaml` (config).
 - Tests con `node:test` nativo, sin Jest ni Mocha.
 - Sin comentarios que expliquen QUÉ hace el código — solo los WHY no obvios.

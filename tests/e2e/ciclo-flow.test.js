@@ -162,9 +162,9 @@ describe("CLI — forge run / resume con el ciclo", () => {
     assert.match(r.stderr, /Decisión no válida/);
   });
 
-  test("CA-008-01: sin --motor, forge run se comporta como antes", () => {
+  test("CA-008-01: con --motor clasico, forge run se comporta como en 4.x", () => {
     const dir = proyecto({ pipeline_step: "plan" });
-    const r = forge(dir, "run", "--tasks", "tareas.json");
+    const r = forge(dir, "run", "--tasks", "tareas.json", "--motor", "clasico");
     assert.ok(!(r.stdout + r.stderr).includes("ciclo verificado"), r.stdout + r.stderr);
     assert.ok(!existsSync(join(dir, ".sdd", "motor")));
   });

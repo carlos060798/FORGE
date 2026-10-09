@@ -54,6 +54,9 @@ const c = {
 const ok   = (msg) => console.log(`${c.verde('✓')} ${msg}`);
 const warn = (msg) => console.log(`${c.amarillo('⚠')}  ${msg}`);
 const err  = (msg) => { console.error(`${c.rojo('✗')} ${msg}`); process.exit(1); };
+
+/** Desde 5.0.0 el ciclo verificado es el modo por defecto: quien no pueda usarlo debe saber cómo salir de él. */
+const SALIDA_CLASICA = 'Para ejecutar sin el ciclo, en tu equipo y sin aislamiento: --motor clasico (o motor.modo: clasico en sdd.config.yaml).';
 const info = (msg) => console.log(`${c.azul('❯')} ${msg}`);
 const dim  = (msg) => console.log(c.gris(msg));
 
@@ -113,11 +116,11 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
   const etapa = deps.fsm.currentStep();
   const avanza = etapa === 'tasks' && deps.fsm.availableTransitions().includes('code');
   if (etapa !== 'code' && !avanza && flags['force'] !== 'true') {
-    err(`El ciclo verificado solo se ejecuta en la etapa "code" (etapa actual: "${etapa}"). Avanza con "forge step code" o añade --force.`);
+    err(`El ciclo verificado solo se ejecuta en la etapa "code" (etapa actual: "${etapa}"). Avanza con "forge step code" o añade --force. ${SALIDA_CLASICA}`);
   }
 
   const problema = comprobarProyecto(cwd, deps.stack.lenguaje);
-  if (problema) err(problema);
+  if (problema) err(`${problema} ${SALIDA_CLASICA}`);
 
   const cli  = new DockerCli();
   const disp = await cli.disponible();
@@ -125,6 +128,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     console.error(`${c.rojo('✗')} ${disp.error}`);
     console.error('  El ciclo verificado no ejecuta código generado fuera del entorno aislado.');
     console.error('  Arranca Docker y vuelve a intentarlo.');
+    console.error('  ' + SALIDA_CLASICA);
     process.exit(SALIDA.SIN_AISLAMIENTO);
   }
 

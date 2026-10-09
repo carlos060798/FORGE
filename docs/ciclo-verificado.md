@@ -1,6 +1,6 @@
 # Ciclo verificado
 
-> Disponible desde la versión en desarrollo posterior a 4.2.0. **Desactivado por defecto.**
+> Desde la versión 5.0.0 es el modo por defecto de `forge run`. En 4.3.0 (no publicada) era opt-in.
 > Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-11`.
 
 Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola vez: la corrige hasta que sus pruebas pasan, ejecutando el código generado en un contenedor Docker sin red, sin superar un tope de gasto y pidiéndote una decisión cuando no puede terminar solo.
@@ -8,24 +8,24 @@ Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola v
 ## Requisitos
 
 - **Docker** instalado y en marcha. Sin Docker, el ciclo no arranca (código de salida 4): nunca ejecuta código generado en tu equipo.
-- **Node ≥18.** LangGraph.js, que ejecuta el grafo cuando está instalado, exige Node ≥20; en Node 18 se usa el motor propio, que hace lo mismo.
+- **Node ≥20** (desde 5.0.0). El grafo lo ejecuta LangGraph.js si está instalado (dependencia opcional) o, si no, el motor propio, que hace lo mismo.
 - Un proveedor de modelos que informe del consumo de cada llamada (Anthropic u OpenAI con clave, u Ollama).
 - El proyecto debe estar en la etapa de tareas generadas o de construcción. Desde "tareas generadas" se avanza solo; en cualquier otra etapa hace falta `--force`.
 - Proyectos en **JavaScript/TypeScript, Python o Go**. Con otro lenguaje, `forge run --motor ciclo` se niega a empezar y lo explica, antes de gastar nada. En Python, las dependencias deben estar en `requirements.txt`: un proyecto que las declara solo en `pyproject.toml` se rechaza con ese mensaje. En Go hace falta `go.mod` en la raíz (y `go.sum` si hay dependencias); el comando de pruebas es `go test ./...`. **La primera ejecución de un proyecto Go prepara una imagen (alrededor de 90 segundos, con red)**: descarga los módulos y compila de antemano la biblioteca estándar; las siguientes la reutilizan.
 
 ## Cómo activarlo
 
-Por ejecución:
+Es el modo por defecto desde 5.0.0. Para usar el modo de 4.x, que ejecuta las pruebas en tu equipo sin aislamiento, por ejecución:
 
 ```bash
-forge run --motor ciclo
+forge run --motor clasico
 ```
 
 O de forma permanente en `.sdd/sdd.config.yaml`:
 
 ```yaml
 motor:
-  modo: ciclo              # clasico (por defecto) | ciclo
+  modo: ciclo              # ciclo (por defecto) | clasico
   grafo: auto              # auto | langgraph | propio
   recuperador: archivos    # fuente de contexto de los agentes
   max_iteraciones: 5
@@ -135,7 +135,7 @@ El estado se guarda tras cada paso en `.sdd/motor/<sesión>/checkpoints/`. Si el
 
 Un punto de guardado dañado se detecta por su huella y se usa el anterior válido. Un punto de otra sesión o de otro proyecto no se obedece. Dos procesos no pueden trabajar a la vez en la misma tarea ni en el mismo proyecto (candados con enlace duro; la retirada de un candado huérfano exige una reclamación aparte). Probado con 2 y con 3 procesos. Un candado de más de 6 horas se considera abandonado aunque su proceso siga vivo, y en sistemas de archivos sin enlaces duros el candado falla en modo seguro (no arranca).
 
-Si una tarea tiene puntos de guardado del ciclo, `forge resume` la reanuda con el ciclo aunque no lo pidas: relanzarla en modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Por la misma razón, `forge run` sin `--motor ciclo` se niega a ejecutar sobre una sesión del ciclo sin terminar; `--force` lo permite bajo tu responsabilidad.
+Si una tarea tiene puntos de guardado del ciclo, `forge resume` la reanuda con el ciclo aunque no lo pidas: relanzarla en modo clásico ejecutaría en tu equipo, sin aislamiento, código que escribió un modelo. Por la misma razón, `forge run --motor clasico` se niega a ejecutar sobre una sesión del ciclo sin terminar; `--force` lo permite bajo tu responsabilidad.
 
 `forge status` muestra la sesión, el gasto y la situación de cada tarea.
 
@@ -189,4 +189,4 @@ Activar el ciclo no cambia nada, pero las correcciones previas (spec `2026-10-03
 - Un `motor.modo`, `motor.grafo` o `motor.embeddings` no válido en `sdd.config.yaml` hace fallar también el modo clásico. Un `motor.recuperador` no válido solo falla al empezar un ciclo.
 - Los agentes leen el `sdd.config.yaml` del proyecto indicado con `--cwd`, no el del directorio actual; el circuit breaker escribe en ese proyecto.
 - La etapa del proyecto se entiende también si la escribieron los comandos `/sdd.*` (`fase_actual`).
-- `forge run` sin `--motor ciclo` se niega a ejecutar sobre una sesión del ciclo sin terminar.
+- `forge run --motor clasico` se niega a ejecutar sobre una sesión del ciclo sin terminar.

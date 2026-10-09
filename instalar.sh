@@ -13,8 +13,14 @@ PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if ! command -v node &> /dev/null; then
   echo "✗ Node.js no está instalado." >&2
-  echo "  SDD-ES necesita Node >=18 para instalarse." >&2
+  echo "  SDD-ES necesita Node >=20 para instalarse." >&2
   echo "  Instala Node desde https://nodejs.org y reintenta." >&2
+  exit 1
+fi
+
+if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)'; then
+  echo "✗ Tu Node.js es $(node -v) y SDD-ES necesita Node >=20 (desde la versión 5.0.0)." >&2
+  echo "  Actualiza Node desde https://nodejs.org y reintenta." >&2
   exit 1
 fi
 

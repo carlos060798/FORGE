@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 export const POR_DEFECTO = {
   motor: {
-    modo: 'clasico',            // clasico | ciclo
+    modo: 'ciclo',              // ciclo (por defecto desde 5.0.0) | clasico
     grafo: 'auto',              // auto | langgraph | propio
     recuperador: 'archivos',    // fuente de contexto de los agentes: archivos | semantico
     embeddings: 'hash',         // con recuperador semantico: hash (local, léxico) | ollama

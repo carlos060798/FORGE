@@ -66,10 +66,10 @@ describe("T003 — EstadoCiclo", () => {
 });
 
 describe("T004 — configuración del ciclo", () => {
-  test("sin archivo de configuración, el modo es clasico", () => {
+  test("sin archivo de configuración, el modo es ciclo (por defecto desde 5.0.0)", () => {
     const c = leerConfigCiclo(proyecto());
     assert.deepEqual(c, POR_DEFECTO);
-    assert.equal(c.motor.modo, "clasico");
+    assert.equal(c.motor.modo, "ciclo");
   });
 
   test("lee las tres secciones y convierte los números", () => {
@@ -115,9 +115,9 @@ describe("T004 — configuración del ciclo", () => {
     assert.deepEqual(leerSeccion("motor:\r\n  modo: ciclo\r\notra:\r\n  x: 1\r\n", "motor"), { modo: "ciclo" });
   });
 
-  test("la configuración de ejemplo declara las tres secciones con el modo clasico", () => {
+  test("la configuración de ejemplo declara las tres secciones con el modo ciclo", () => {
     const yaml = readFileSync(join(ROOT, "configuracion-ejemplo", "sdd.config.yaml"), "utf8");
-    assert.equal(leerSeccion(yaml, "motor").modo, "clasico");
+    assert.equal(leerSeccion(yaml, "motor").modo, "ciclo");
     assert.equal(leerSeccion(yaml, "sandbox").timeout_s, "120");
     assert.equal(leerSeccion(yaml, "presupuesto").tope_usd, "2.00");
   });

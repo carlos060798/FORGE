@@ -405,11 +405,11 @@ compresion:
     - irreversible
 
 # ─── Motor Agéntico (ciclo verificado) ───────────────────────────────────────
-# Opt-in. Con modo "ciclo", forge run corrige cada tarea de código hasta que
-# sus pruebas pasan, ejecutándola en un contenedor Docker sin red.
+# Desde 5.0.0 el ciclo es el modo por defecto: forge run corrige cada tarea de código hasta que
+# sus pruebas pasan, ejecutándola en un contenedor Docker sin red (exige Docker). "clasico" ejecuta en tu equipo.
 # Ver .sdd/especificaciones/2026-10-03-ciclo-verificado/ y ADR-01 a ADR-11.
 motor:
-  modo: clasico                 # clasico | ciclo
+  modo: ciclo                   # ciclo | clasico
   grafo: auto                   # auto (LangGraph.js si está instalado) | langgraph | propio
   recuperador: archivos         # fuente de contexto de los agentes: archivos | semantico (añade trozos parecidos del repositorio)
   embeddings: hash              # con semantico: hash (local, sin red; léxico, no semántico) | ollama (servidor local, vectores semánticos)

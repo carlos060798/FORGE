@@ -1,6 +1,6 @@
 {
   "name": "forja-mvp",
-  "version": "4.3.0",
+  "version": "5.0.0",
   "description": "Tu equipo técnico completo en Claude Code. Di tu idea — FORGE la especifica, construye, prueba y verifica. Sin escribir código. 14 agentes especializados, 39 comandos, 31 skills, pipeline SDD+TDD.",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "prepublishOnly": "npm test"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "files": [
     "cli/",
@@ -67,6 +67,7 @@
     "url": "https://github.com/carlos060798/FORGE.git"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "acorn": "^8.17.0"
   },

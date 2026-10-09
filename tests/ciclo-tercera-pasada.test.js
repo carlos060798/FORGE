@@ -268,7 +268,7 @@ describe("NUEVO-1 y N8 — el modo clásico no ejecuta código del modelo; las d
     writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "run-nueva-2", modo: "ciclo", creada: "2026-01-02T00:00:00Z" }));
 
     assert.deepEqual(tareasSinTerminarEnElProyecto(dir), ["T1"]);
-    const r = forge(dir, ["run", "--tasks", "tareas.json"]);
+    const r = forge(dir, ["run", "--motor", "clasico", "--tasks", "tareas.json"]);
     assert.equal(r.status, 1, r.stdout + r.stderr);
     assert.match(r.stderr, /sin terminar \(T1\)/);
     assert.ok(!existsSync(join(dir, "PWNED_HOST.txt")), "no se ejecutó npm test en el anfitrión");

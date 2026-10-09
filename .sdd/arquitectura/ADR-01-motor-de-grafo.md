@@ -43,6 +43,8 @@ Razones:
 
 Coste asumido: mantener dos motores y su suite cruzada. Si en la FASE 5 solo se usa uno, se elimina el otro (5.2).
 
+**Actualización (2026-10-09, ADR-17):** Node 18 se retira en la 5.0.0, así que LangGraph.js ya no tiene el obstáculo de la versión. Se mantienen los dos motores: quitar uno se decide con datos de un modelo real.
+
 ## Consecuencias
 
 ### Positivas

@@ -41,7 +41,7 @@ Mejora incremental, opt-in. Detalle y límites en [PLAN-MOTOR-AGENTICO.md](../PL
 ## En desarrollo activo
 
 - **Memoria semántica** (FASE 3 de `PLAN-MOTOR-AGENTICO.md`): un recuperador con embeddings reales (LanceDB, opcional, Node ≥22) tras el puerto `Recuperador` del ciclo. No empezada.
-- **Ciclo por defecto** (FASE 5, 5.0.0): `motor.modo: ciclo` por defecto y retirar Node 18. Pendiente de probar el ciclo con un modelo de pago.
+- **Ciclo por defecto** (FASE 5, 5.0.0): hecho en el código (`motor.modo: ciclo` por defecto, Node ≥20). **Sin publicar hasta probar el ciclo con un modelo de pago y ejecutar el job de CI `aislamiento`.**
 
 Estas funcionalidades tienen trabajo iniciado pero no están disponibles en la versión publicada:
 

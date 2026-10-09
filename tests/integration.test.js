@@ -29,9 +29,9 @@ function toFileUrl(absPath) {
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
 describe("CLI — forge --version", () => {
-  test("reporta versión 4.3.0", () => {
+  test("reporta versión 5.0.0", () => {
     const out = execSync(`node ${join(ROOT, "cli", "index.js")} --version`, { encoding: "utf8" }).trim();
-    assert.equal(out, "4.3.0");
+    assert.equal(out, "5.0.0");
   });
 
   test("--help menciona 'forge ui'", () => {
@@ -175,8 +175,8 @@ describe("package.json — manifiesto del paquete", () => {
     assert.equal(pkg.name, "forja-mvp");
   });
 
-  test("version es 4.3.0", () => {
-    assert.equal(pkg.version, "4.3.0");
+  test("version es 5.0.0", () => {
+    assert.equal(pkg.version, "5.0.0");
   });
 
   test("bin incluye 'forge'", () => {
@@ -197,8 +197,8 @@ describe("package.json — manifiesto del paquete", () => {
       "claude-hooks/ no está en package.json#files");
   });
 
-  test("engines.node >= 18", () => {
-    assert.ok(pkg.engines?.node?.includes("18"),
-      "engines.node no especifica >= 18");
+  test("engines.node >= 20", () => {
+    assert.ok(pkg.engines?.node?.includes("20"),
+      "engines.node no especifica >= 20");
   });
 });

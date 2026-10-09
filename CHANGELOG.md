@@ -5,7 +5,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
-## [4.3.0] — Sin publicar
+## [5.0.0] — Sin publicar
+
+### Guía de migración desde 4.2.0
+
+**Cambios que rompen compatibilidad:**
+
+1. **`forge run` y `forge resume` usan por defecto el ciclo verificado** (`motor.modo: ciclo`). Ejecuta el código generado en un contenedor Docker sin red y exige Docker en marcha; sin él sale con código 4 y no ejecuta nada. Solo corre en la etapa `code` (desde `tasks` avanza solo) y con proyectos JavaScript/TypeScript, Python o Go.
+2. **Node ≥20** (antes ≥18). El CI prueba 20 y 22. `instalar.sh`, `instalar.ps1` y `forge doctor` lo comprueban.
+3. **`@anthropic-ai/sdk` pasa a `dependencies`.** Antes, sin el SDK instalado, el proveedor de Anthropic devolvía en silencio un texto de relleno.
+
+**Cómo seguir como en 4.x:** `forge run --motor clasico`, o `motor.modo: clasico` en `sdd.config.yaml`. El modo clásico **ejecuta las pruebas en tu equipo, sin aislamiento**, igual que en 4.2.0, con los cambios del saneamiento descritos abajo.
+
+**LangGraph.js sigue siendo opcional** (ADR-01, ADR-17): con Node ≥20 `motor.grafo: auto` lo usa si está instalado y, si no, el motor propio. Los dos se mantienen.
+
+**Este cambio de modo por defecto no se ha probado con un modelo de pago ni en Linux con Docker real.** No publicar sin `forge probar-modelo` y el job `aislamiento` de CI.
+
+Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
+
+## [4.3.0] — No publicada
 
 Dos trabajos, cada uno con su spec en `.sdd/especificaciones/`: el saneamiento previo (`2026-10-03-saneamiento`) y el Ciclo Verificado (`2026-10-03-ciclo-verificado`). Ver `PLAN-MOTOR-AGENTICO.md`.
 
@@ -17,9 +35,9 @@ El ciclo puede añadir al contexto los trozos del repositorio más parecidos a l
 - Incremental, respeta el tope de bytes y las rutas vetadas; si la búsqueda falla, el ciclo sigue y lo anota
 - Autoevaluada, sin revisión independiente
 
-### Ciclo verificado — opt-in
+### Ciclo verificado
 
-`forge run --motor ciclo` corrige cada tarea de código hasta que sus pruebas pasan, en un contenedor Docker sin red, con tope de gasto y revisión humana. **Desactivado por defecto.** Guía y límites: `docs/ciclo-verificado.md`.
+`forge run` corrige cada tarea de código hasta que sus pruebas pasan, en un contenedor Docker sin red, con tope de gasto y revisión humana. **Es el modo por defecto desde 5.0.0** (en 4.3.0 era opt-in con `--motor ciclo`). Guía y límites: `docs/ciclo-verificado.md`.
 
 Probado con respuestas guionizadas y con Docker real en Windows, en proyectos JavaScript y Python; la suite también pasa en Node 18 y 20 dentro de contenedores. **No probado con un proveedor de modelos de pago.**
 

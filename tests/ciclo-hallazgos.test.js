@@ -555,6 +555,15 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
     assert.match(r.stderr, /no ejecuta código generado fuera del entorno aislado/);
   });
 
+  test("5.0.0: sin --motor el ciclo es el modo por defecto; sin Docker sale con 4 y explica cómo usar el clásico", () => {
+    const dir = proyecto({ tareas: [T("T1")] });
+    const r = forge(dir, ["run"]);
+    assert.equal(r.status, 4, r.stdout + r.stderr);
+    assert.match(r.stderr, /Docker no está disponible/);
+    assert.match(r.stderr, /--motor clasico/);
+    assert.ok(!existsSync(join(dir, ".sdd", "events.jsonl")), "no se ejecutó ninguna tarea");
+  });
+
   test("14: sin Docker, la etapa del proyecto no llega a avanzar de tasks a code", () => {
     const dir = proyecto({ estado: { pipeline_step: "tasks" }, tareas: [T("T1")] });
     forge(dir, ["run", "--motor", "ciclo"]);
@@ -567,7 +576,7 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
       eventos: [["task_started", "T1"], ["task_failed", "T1", { error: "falló" }]],
       sesion: { runId: "run-antigua-1", modo: "ciclo", creada: "2026-01-01T00:00:00Z" },
     });
-    const r = forge(dir, ["resume"]);
+    const r = forge(dir, ["resume", "--motor", "clasico"]);
     assert.notEqual(r.status, 4, "no debe exigir Docker: " + r.stdout + r.stderr);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.ok(!(r.stdout + r.stderr).includes("ciclo verificado"));
@@ -578,7 +587,7 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
       tareas: [T("T1"), T("T2")],
       eventos: [["task_started", "T1"], ["task_failed", "T1", { error: "falló" }], ["task_started", "T2"], ["task_paused", "T2", { motivo: "presupuesto" }]],
     });
-    const r = forge(dir, ["resume"]);
+    const r = forge(dir, ["resume", "--motor", "clasico"]);
     assert.equal(r.status, 3, r.stdout + r.stderr);
     assert.match(r.stdout, /Relanzando 1 tarea/);
     assert.match(r.stdout, /T2: se alcanzó el tope de gasto/);
@@ -604,11 +613,11 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
     g.guardar(`${runId}:T1`, { nodo: "coder", siguiente: "revision_humana", estado: { ...e, resultado: "revision_pendiente", revision: { motivo: "iteraciones", reanudarEn: "coder" } } });
     writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" }));
 
-    const r = forge(dir, ["run"]);
+    const r = forge(dir, ["run", "--motor", "clasico"]);
     assert.equal(r.status, 1, r.stdout + r.stderr);
     assert.match(r.stderr, /tareas del ciclo verificado sin terminar \(T1\)/);
 
-    assert.equal(forge(dir, ["run", "--force", "true"]).status, 0, "con --force el usuario lo asume");
+    assert.equal(forge(dir, ["run", "--motor", "clasico", "--force", "true"]).status, 0, "con --force el usuario lo asume");
   });
 
   test("M4: relanzar en clásico una tarea con puntos de guardado del ciclo se rechaza", () => {
@@ -625,9 +634,9 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
     assert.equal(forge(dir, ["resume"]).status, 4);
   });
 
-  test("CA-008-01: sin --motor, forge run completa las tareas como siempre y no toca .sdd/motor", () => {
+  test("CA-008-01: con --motor clasico, forge run completa las tareas como en 4.x y no toca .sdd/motor", () => {
     const dir = proyecto({ tareas: [T("T1"), { ...T("T2"), dependencias: ["T1"] }] });
-    const r = forge(dir, ["run"]);
+    const r = forge(dir, ["run", "--motor", "clasico"]);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /Pipeline completado: 2 tareas/);
     assert.ok(!existsSync(join(dir, ".sdd", "motor")));

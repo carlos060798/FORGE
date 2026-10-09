@@ -23,7 +23,7 @@ TODOs diferidos:
 
 # Constitución del Proyecto: FORGE
 
-> **Versión:** 1.0.0 | **Ratificada:** pendiente de ratificación por el dueño | **Última enmienda:** 2026-10-03
+> **Versión:** 1.1.0 | **Ratificada:** pendiente de ratificación por el dueño | **Última enmienda:** 2026-10-09 (Node ≥20, ADR-17)
 
 ## Propósito y Misión
 
@@ -40,7 +40,7 @@ FORGE convierte una idea en software especificado, construido y verificado, sigu
 | Build/Bundler | ninguno (`npm run build` es un `echo`) |
 | Despliegue | npm (`forja-mvp`) y plugin de Claude Code |
 
-Runtime: Node ≥18. Los componentes opcionales pueden exigir una versión mayor si se cargan de forma perezosa y existe una alternativa que funcione en la versión mínima.
+Runtime: Node ≥20. Los componentes opcionales pueden exigir una versión mayor si se cargan de forma perezosa y existe una alternativa que funcione en la versión mínima.
 
 > Cualquier cambio de stack requiere un ADR en `.sdd/arquitectura/`.
 

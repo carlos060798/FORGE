@@ -6,9 +6,9 @@
 
 *De una idea en lenguaje natural a producción — un comando a la vez.*
 
-[![Versión](https://img.shields.io/badge/versión-4.3.0-blue)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-5.0.0-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](package.json)
 [![Tests](https://img.shields.io/badge/tests-1405%20pasando-brightgreen)](tests/)
 
 </div>
@@ -169,7 +169,7 @@ El dashboard recibe actualizaciones por SSE en tiempo real — estado del pipeli
 
 Los hooks funcionan en proyectos de cualquier stack — no solo Node.js:
 
-- **Con Node ≥18:** ejecuta el `.js` original (lógica completa: SQLite, 8 fuentes de memoria, regex)
+- **Con Node ≥20:** ejecuta el `.js` original (lógica completa: SQLite, 8 fuentes de memoria, regex)
 - **Sin Node:** ejecuta el `.sh` equivalente (lógica mínima en Bash: bloqueos críticos + Markdown)
 
 Esto permite usar FORGE en proyectos Python, Go, Rust, PHP o cualquier lenguaje sin dependencia de Node en el proyecto destino.
@@ -215,18 +215,19 @@ O manualmente: añade archivos `.md` a `commands/`, `agents/` o `skills/` y reg�
 
 ---
 
-## Motor agéntico (opt-in)
+## Motor agéntico (por defecto desde 5.0.0)
 
 Para tareas de código, FORGE puede corregirlas solo hasta que sus pruebas pasan, **ejecutando el código generado en un contenedor Docker sin red** (nunca en tu equipo), con un tope de gasto y una persona que decide cuando el ciclo no basta:
 
 ```bash
-npx forge run --motor ciclo     # el ciclo verificado (necesita Docker)
+npx forge run                   # el ciclo verificado (necesita Docker)
+npx forge run --motor clasico   # el modo de 4.x: ejecuta en tu equipo, sin aislamiento
 npx forge probar-modelo         # prueba mínima con un modelo real, gasta como máximo 0,50 USD
 npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer y escribir con las mismas reglas
 npx forge api                   # API HTTP local con secreto
 ```
 
-Es opt-in: sin `--motor ciclo` FORGE funciona como siempre. **Todavía no se ha probado con un modelo de pago**; los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
+Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Guía de migración en el [CHANGELOG](CHANGELOG.md). **Todavía no se ha probado con un modelo de pago**; los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
 
 ---
 

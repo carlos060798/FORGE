@@ -188,11 +188,13 @@ Detalle: `.sdd/especificaciones/2026-10-03-ciclo-verificado/` (spec, checklist, 
 
 **Objetivo:** activar el ciclo por defecto y simplificar.
 
-- **5.1** `motor.modo: ciclo` por defecto.
-- **5.2** Retirar Node 18; decidir si queda un solo motor (ADR-01).
-- **5.3** Declarar el SDK del proveedor en `dependencies`.
+- **5.1** `motor.modo: ciclo` por defecto. **Hecho (2026-10-09, ADR-17)**; los errores del ciclo explican cómo volver al clásico.
+- **5.2** Retirar Node 18; decidir si queda un solo motor (ADR-01). **Hecho en parte**: `engines`, CI (20 y 22), instaladores y `forge doctor` piden Node ≥20; **se mantienen los dos motores** hasta tener datos de un modelo real.
+- **5.3** Declarar el SDK del proveedor en `dependencies`. **Hecho** (`@anthropic-ai/sdk`).
 
-**Verificación:** matriz de CI en verde sin Node 18; guía de migración en `CHANGELOG.md`.
+**Verificación:** matriz de CI en verde sin Node 18 (**pendiente: la rama no está subida**); guía de migración en `CHANGELOG.md` (**hecha**).
+
+> **Estado:** implementada en el código y sin publicar. No se ha probado el ciclo con un modelo de pago ni ejecutado el job `aislamiento` de CI; la lista de publicación lo exige.
 
 ---
 

@@ -785,10 +785,10 @@ async function cmdDoctor() {
 
   // Node
   const nodeMajor = Number(process.versions.node.split(".")[0]);
-  if (nodeMajor >= 18) {
-    info(`Node ${process.versions.node} (>=18 requerido) ✓`);
+  if (nodeMajor >= 20) {
+    info(`Node ${process.versions.node} (>=20 requerido) ✓`);
   } else {
-    aviso(`Node ${process.versions.node} es < 18. Actualiza Node.`);
+    aviso(`Node ${process.versions.node} es < 20. Actualiza Node.`);
     problemas++;
   }
 

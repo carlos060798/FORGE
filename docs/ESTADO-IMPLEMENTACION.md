@@ -41,7 +41,7 @@ FORGE 4.3.0 (sin publicar; la 4.2.0 es la última publicada) tiene un núcleo s�
 | AST Indexer con limpiarTypeScript() | 18/18 ✅ | Beta | Decoradores, genéricos, JSX, satisfies, union types |
 | Templates de inicio | ✅ (3) | Beta | `api-rest`, `cli-tool`, `saas-mvp` — flujo verificado |
 | Integraciones MCP (Vercel/GitHub) | Parcial | Beta | Flujo básico probado, sin E2E automatizado |
-| Ciclo verificado (`--motor ciclo`) | ✅ | Opt-in | Docker real en Windows; **sin probar con un modelo de pago**; aislamiento en Linux sin probar. Ver `docs/ciclo-verificado.md` |
+| Ciclo verificado (`forge run`) | ✅ | Por defecto desde 5.0.0 (`--motor clasico` para el modo de 4.x) | Docker real en Windows; **sin probar con un modelo de pago**; aislamiento en Linux sin probar. Ver `docs/ciclo-verificado.md` |
 | Servidor MCP propio (`forge mcp`) | ✅ | Opt-in | Verificado de forma independiente (con observaciones); sin probar con Claude Code |
 | API HTTP local (`forge api`) | ✅ | Opt-in | Verificada de forma independiente (con observaciones) |
 

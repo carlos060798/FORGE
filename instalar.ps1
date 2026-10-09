@@ -23,8 +23,15 @@ $PluginDir = $PSScriptRoot
 $node = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $node) {
     Write-Host "✗ Node.js no está instalado." -ForegroundColor Red
-    Write-Host "  SDD-ES necesita Node >=18 para instalarse."
+    Write-Host "  SDD-ES necesita Node >=20 para instalarse."
     Write-Host "  Instala Node desde https://nodejs.org y reintenta."
+    exit 1
+}
+
+$nodeMajor = [int](& node -e "process.stdout.write(process.versions.node.split('.')[0])")
+if ($nodeMajor -lt 20) {
+    Write-Host "✗ Tu Node.js es $(& node -v) y SDD-ES necesita Node >=20 (desde la versión 5.0.0)." -ForegroundColor Red
+    Write-Host "  Actualiza Node desde https://nodejs.org y reintenta."
     exit 1
 }
 

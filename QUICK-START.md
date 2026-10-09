@@ -6,7 +6,7 @@ FORGE es un framework SDD (Spec-Driven Development) para Claude Code. Convierte 
 
 ## Prerequisitos
 
-- Node.js ≥18.0.0 (recomendado ≥22.5 para SQLite nativo)
+- Node.js ≥20.0.0 (recomendado ≥22.5 para SQLite nativo)
 - Claude Code CLI instalado y configurado con API key
 - Git
 
