@@ -416,6 +416,7 @@ motor:
   embeddings_modelo: nomic-embed-text   # modelo de Ollama para los vectores
   nivel_maximo: opus            # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5            # ejecuciones fallidas antes de pedir revisión humana
+  sin_progreso: 3               # ejecuciones fallidas seguidas con la misma salida antes de pedir revisión (0 lo desactiva)
   contexto_max_bytes: 65536     # tope del contexto entregado a cada agente
 
 sandbox:

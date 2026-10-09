@@ -33,6 +33,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - Al corregir, el implementador recibe su versión anterior además del fallo. Antes corregía a ciegas.
 - Los contratos piden al implementador no devolver las pruebas y al agente de pruebas no escribir la implementación (se rechazaban igual, pero se pagaban).
 - Nuevo `motor.nivel_maximo` (`opus` | `sonnet` | `haiku`, o `FORGE_NIVEL_MAXIMO`): limita el nivel de modelo de todos los agentes sin editarlos. Por defecto `opus`, que no limita nada.
+- Detección de «sin progreso» (hallazgo H8): si las últimas 3 ejecuciones fallan con la misma salida (sin contar duraciones, marcas de tiempo ni direcciones de memoria), la tarea se pausa con el motivo nuevo `sin_progreso` en lugar de repetir hasta el tope de iteraciones. `continuar` hace que el agente de pruebas las reescriba, y recibe las pruebas anteriores y la salida que se repitió; si ya no quedan iteraciones hay que añadirlas con `--iteraciones-extra`. Nuevo `motor.sin_progreso` (entero ≥ 0, por defecto 3; 0 lo desactiva). **Cambia cuándo se pide revisión**: una tarea que antes llegaba a la quinta ejecución puede pausarse en la tercera. Una ejecución sin salida no cuenta. Probado con respuestas guionizadas (`tests/ciclo-sin-progreso.test.js`), no con un modelo real.
 
 Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 

@@ -30,6 +30,7 @@ motor:
   recuperador: archivos    # fuente de contexto de los agentes
   nivel_maximo: opus       # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5
+  sin_progreso: 3          # fallos seguidos con la misma salida antes de preguntarte; 0 lo desactiva
   contexto_max_bytes: 65536
 
 sandbox:
@@ -44,7 +45,7 @@ presupuesto:
   degradar_a: escalon
 ```
 
-`FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
+`motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
 
 ## Qué hace con cada tarea
 
@@ -108,7 +109,7 @@ El tope es **por sesión** (un `forge run` y sus reanudaciones), no por tarea. E
 
 ## Cuando te pregunta
 
-El ciclo se pausa y `forge run` termina con código 3 en seis casos:
+El ciclo se pausa y `forge run` termina con código 3 en siete casos:
 
 | Motivo | Qué pasó |
 |---|---|
@@ -118,6 +119,7 @@ El ciclo se pausa y `forge run` termina con código 3 en seis casos:
 | `dependencias` | El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola |
 | `salida_invalida` | Un agente no devolvió el formato pedido, tras un reintento |
 | `exito_sospechoso` | Las pruebas pasan (código 0), pero la salida no muestra pruebas ejecutadas, informa de menos pruebas de las que escribió el agente de pruebas, o el código escrito corta el proceso. Si el resultado es correcto, `aceptar` |
+| `sin_progreso` | Las últimas 3 ejecuciones (`motor.sin_progreso`) fallaron con la misma salida aunque la implementación cambió: puede que las pruebas estén rotas por sí mismas. `continuar` hace que el agente de pruebas las reescriba; `aceptar` da la tarea por buena; `abortar` restaura los archivos |
 
 `forge resume` sin más muestra el motivo y **no gasta nada**. Si además hay tareas fallidas, las relanza y te avisa de las pausadas. Para decidir:
 
@@ -162,7 +164,7 @@ Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pru
 ## Límites conocidos
 
 - **Probado con un modelo real solo en ocho tareas pequeñas.** El 2026-10-09 se ejecutó con un proveedor de pago: ocho ejecuciones de una tarea cada una (JavaScript y Python), casi todas con el nivel de modelo económico. Las respuestas se interpretaron siempre al primer intento y el bucle de corrección convergió en la única tarea que lo necesitó. Esas ejecuciones destaparon cuatro defectos, ya corregidos, y dejan cosas sin probar: Go, tareas sobre un proyecto con código existente, tareas de varios archivos y la comparación del gasto calculado con el facturado. Detalle en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`.
-- **Unas pruebas rotas por sí mismas gastan todas las iteraciones.** Si el agente de pruebas escribe un archivo que no carga (por ejemplo, con un sistema de módulos equivocado), el implementador no puede arreglarlo, porque no puede tocar las pruebas, y el ciclo repite hasta el tope. Desde el 2026-10-09 los agentes reciben el tipo de módulos del proyecto, que era la causa observada, pero no hay una detección general de «sin progreso».
+- **Unas pruebas rotas por sí mismas se detectan solo si la salida se repite.** Si el agente de pruebas escribe un archivo que no carga (por ejemplo, con un sistema de módulos equivocado), el implementador no puede arreglarlo, porque no puede tocar las pruebas. El ciclo compara la salida de cada ejecución fallida con las anteriores (sin duraciones, marcas de tiempo ni direcciones de memoria) y, si es idéntica 3 veces seguidas (`motor.sin_progreso`), se pausa con el motivo `sin_progreso` en lugar de seguir hasta el tope. Es una comparación de igualdad, no un diagnóstico: no sabe si la culpa es de las pruebas o de un implementador que repite el mismo error, así que decides tú. No se detecta si la salida cambia en cada ejecución (valores aleatorios, rutas temporales, orden no determinista), si las ejecuciones no imprimen nada, ni los fallos por tiempo agotado; en esos casos el ciclo sigue hasta el tope de iteraciones. Las dos primeras ejecuciones repetidas se pagan igual. Tras `continuar`, si las pruebas reescritas vuelven a dar la misma salida, la tarea se pausa de nuevo en la primera ejecución. Comprobado con pruebas automáticas, no con un modelo real.
 - **Python sin pytest declarado usa `unittest discover`**, que no encuentra pruebas en `tests/` sin `__init__.py`. El ciclo lo detecta por el código de salida 5, no gasta iteraciones y te lo explica; declara `pytest` en `requirements.txt` o añade un `pytest.ini` para evitarlo.
 - **El ciclo no mide la calidad de las pruebas, y un implementador decidido puede falsear el resultado.** Aprueba por código de salida, pero **un código 0 solo se da por bueno si la salida muestra al menos una prueba pasada y el código escrito no corta el proceso al cargarse** (`process.exit`, `sys.exit`… al comienzo de línea). Además se compara cuántas pruebas escribió el agente de pruebas con cuántas informa el ejecutor (node:test, jest, unittest, pytest, mocha): si informa menos, se pausa aunque el corte esté escondido. Si no, la tarea se pausa con el motivo `exito_sospechoso` y tú decides (`aceptar` si es correcto). Es una mitigación: un implementador que falsee el resumen, o un ejecutor sin cuenta legible (`go test` sin `-v`), no se detecta, y unas pruebas triviales que sí imprimen un resumen tampoco. Se cierran los nombres de prueba y la configuración del ejecutor, pero no esta vía. Si las pruebas recién escritas ya pasan sin implementación, queda un aviso en el registro, pero no se bloquea. **Revisa el diff y ejecuta las pruebas tú antes de dar una tarea por buena.**
 - **Lista de archivos de configuración incompleta.** Se exige revisión humana para los que conocemos (`conftest.py`, `jest.config.*`, `.husky/`, `.github/`…), no para otros que alguna herramienta también interpreta (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`, `tsconfig.json`, `scripts/*.sh`, `Procfile`…). Si no está en la lista, se escribirá.

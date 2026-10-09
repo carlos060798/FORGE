@@ -21,10 +21,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
+import { huellaDeSalida } from './huella.js';
 import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar } from './presupuesto.js';
 import { aplicarArchivos, extraerBloque, huellasAlteradas } from './protocolo-archivos.js';
-import { clasificar, detalleSinPruebas, sinPruebasEjecutadas } from './router.js';
+import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
 
@@ -172,6 +174,23 @@ function seccionImplementacionActual(estado, yaEnContexto) {
   return partes.length ? `\n\n## Tu implementación actual (la que produjo el resultado de abajo)\n${partes.join('\n\n')}` : '';
 }
 
+/**
+ * Cuando el agente de pruebas reescribe tras una pausa por «sin progreso», necesita saber qué
+ * escribió y qué salida se repitió: con el mismo prompt devolvería las mismas pruebas (hallazgo H8).
+ * @param {EstadoCiclo} estado
+ */
+function seccionPruebasAnteriores(estado, deps) {
+  const n = deps.config.motor?.sin_progreso ?? POR_DEFECTO.motor.sin_progreso;
+  if (estado.pruebas.archivos.length === 0 || !sinProgreso(estado, n)) return '';
+  const ultima = estado.ejecuciones[estado.ejecuciones.length - 1];
+  return `\n\n## Tus pruebas anteriores no dejaron avanzar`
+    + `\nLas últimas ${n} ejecuciones fallaron con la misma salida aunque la implementación cambió. `
+    + 'Puede que las pruebas estén rotas por sí mismas (no cargan, importan algo que no existe, usan otro sistema de módulos). '
+    + 'Reescríbelas de modo que una implementación correcta pueda pasarlas.'
+    + `\n${leerPruebas(estado)}`
+    + `\n### Salida que se repitió\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+}
+
 // ── planner ──────────────────────────────────────────────────────────────────
 
 /** @param {EstadoCiclo} estado */
@@ -213,7 +232,8 @@ export async function qa(estado, deps) {
   const userPrompt = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : '')
     + seccionProyecto(estado.cwd)
-    + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
+    + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`
+    + seccionPruebasAnteriores(estado, deps);
 
   const r = await generarArchivos(estado, deps, 'qa', { agente: 'tester', userPrompt, contrato: CONTRATO_QA, rol: 'qa', pruebas: [] });
   if ('fallo' in r) return r.fallo;
@@ -311,6 +331,8 @@ export async function sandbox(estado, deps) {
     iteracion, categoria,
     exitCode: r.exitCode ?? null, timedOut: Boolean(r.timedOut), oomKilled: Boolean(r.oomKilled),
     durationMs: r.durationMs ?? 0, stdoutCola: cola(r.stdout), stderrCola: cola(r.stderr),
+    // Para detectar que varias ejecuciones seguidas fallan igual (router.sinProgreso)
+    huellaSalida: huellaDeSalida(r.stdout, r.stderr),
   };
   // Un pase solo se da por bueno si la salida lo confirma y el codigo escrito no corta el proceso al cargarse
   if (categoria === 'pass') {
@@ -360,6 +382,10 @@ export async function revisionHumana(estado, deps, decision) {
     // ampliar solo el presupuesto no puede regalar una iteración más
     if (estado.revision.reanudarEn === 'coder' && estado.iteracion >= maxIteraciones) {
       throw new Error('No quedan iteraciones: indica cuántas añadir con --iteraciones-extra <N>.');
+    }
+    // Reescribir las pruebas acaba en otra llamada al implementador y otra ejecución: tampoco se regala
+    if (estado.revision.motivo === 'sin_progreso' && estado.iteracion >= maxIteraciones) {
+      throw new Error('No quedan iteraciones para probar las pruebas reescritas: indica cuántas añadir con --iteraciones-extra <N>.');
     }
   }
 

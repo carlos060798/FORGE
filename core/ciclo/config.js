@@ -17,6 +17,7 @@ export const POR_DEFECTO = {
     embeddings_modelo: 'nomic-embed-text',
     nivel_maximo: 'opus',       // nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
     max_iteraciones: 5,
+    sin_progreso: 3,            // ejecuciones fallidas seguidas con la misma salida antes de pedir revisión; 0 lo desactiva
     contexto_max_bytes: 65536,
   },
   sandbox: {
@@ -125,8 +126,10 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   const yaml = existsSync(ruta) ? readFileSync(ruta, 'utf8') : '';
 
   const config = /** @type {any} */ ({});
+  /** @type {Record<string, Record<string, string>>} */
+  const leidos = {};
   for (const [nombre, defectos] of Object.entries(POR_DEFECTO)) {
-    const leido = leerSeccion(yaml, nombre);
+    const leido = leidos[nombre] = leerSeccion(yaml, nombre);
     config[nombre] = { ...defectos };
     for (const [clave, valor] of Object.entries(defectos)) {
       if (clave in leido) config[nombre][clave] = convertir(leido[clave], valor);
@@ -141,6 +144,11 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   if (process.env.FORGE_NIVEL_MAXIMO) config.motor.nivel_maximo = process.env.FORGE_NIVEL_MAXIMO;
   if (!NIVELES.includes(config.motor.nivel_maximo)) {
     throw new Error(`motor.nivel_maximo desconocido: "${config.motor.nivel_maximo}". Valores válidos: ${NIVELES.join(', ')}`);
+  }
+  // Se mira el texto leído: un valor no numérico no debe convertirse en silencio en el de por defecto
+  const sinProgreso = leidos.motor.sin_progreso;
+  if ((sinProgreso !== undefined && !/^\d+$/.test(sinProgreso)) || !Number.isInteger(config.motor.sin_progreso) || config.motor.sin_progreso < 0) {
+    throw new Error(`motor.sin_progreso no válido: "${sinProgreso ?? config.motor.sin_progreso}". Debe ser un entero ≥ 0 (0 desactiva la detección).`);
   }
   if (process.env.FORGE_BUDGET_USD) {
     const tope = Number(process.env.FORGE_BUDGET_USD);

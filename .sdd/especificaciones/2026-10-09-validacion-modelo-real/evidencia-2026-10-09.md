@@ -52,10 +52,10 @@ Gasto calculado total de las ocho ejecuciones de ciclo: 0,80 USD. **No está com
 | H5 | Los precios de la tabla no están contrastados con lo facturado. | `core/session-budget.js:7-11` | **Abierto** (ADR-19, CA-003-02) |
 | H6 | Los agentes no sabían qué sistema de módulos usa el proyecto. El agente de pruebas escribió `require` en un proyecto de módulos ES: el archivo de pruebas no cargaba y ninguna implementación podía pasar. | Ejecución 7 | **Corregido**: sección «Proyecto» en los prompts (`seccionProyecto`). Comprobado con la ejecución 8 |
 | H7 | Al corregir, el implementador no recibía su propia versión anterior: solo el fallo. Reescribía a ciegas. | Ejecución 7: contexto vacío, tokens de entrada idénticos en cuatro iteraciones | **Corregido**: sección «Tu implementación actual» |
-| H8 | Unas pruebas rotas por sí mismas gastan todas las iteraciones: el implementador no puede tocarlas y no hay detección de «sin progreso». | Ejecución 7 | **Abierto.** Cambia cuándo se pide revisión, así que necesita decisión del dueño. Candidato para la spec `2026-10-09-pruebas-confiables` |
+| H8 | Unas pruebas rotas por sí mismas gastan todas las iteraciones: el implementador no puede tocarlas y no hay detección de «sin progreso». | Ejecución 7 | **Corregido** (`core/ciclo/huella.js`, `router.js`, `grafo.js`, `nodos.js`): tres ejecuciones fallidas seguidas con la misma salida pausan la tarea con el motivo `sin_progreso`, y `continuar` vuelve al agente de pruebas. Configurable con `motor.sin_progreso` (0 lo desactiva). Cambia cuándo se pide revisión. Comprobado con pruebas automáticas (`tests/ciclo-sin-progreso.test.js`); falta repetir la ejecución 7 con un modelo real |
 | H9 | El planificador devolvió `archivosObjetivo` vacío, de modo que el recuperador no aportó ningún contexto. | Ejecución 7 | **Abierto.** Lo compensa H7 para el implementador, no para el agente de pruebas |
 
-Regresión: `tests/validacion-modelo-real.test.js` (20 pruebas).
+Regresión: `tests/validacion-modelo-real.test.js` (20 pruebas) y, para H8, `tests/ciclo-sin-progreso.test.js` (32 pruebas).
 
 ## Lo que no demuestra
 

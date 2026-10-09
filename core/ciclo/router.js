@@ -2,8 +2,11 @@
  * router.js — Decisiones deterministas del ciclo verificado (ADR-05)
  *
  * Funciones puras. La decisión depende del código de salida y del estado de
- * control, nunca del texto de la salida ni de un modelo.
+ * control, nunca del texto de la salida ni de un modelo. De la salida solo se
+ * compara su huella con la de las ejecuciones anteriores (igual o distinta).
  */
+
+import { POR_DEFECTO } from './config.js';
 
 /** Códigos con los que el runtime de contenedores indica que no pudo ejecutar. */
 const CODIGOS_INFRA = new Set([125, 126, 127]);
@@ -47,13 +50,38 @@ export const detalleSinPruebas = (comando) =>
   + 'Si continúas, el agente de pruebas las vuelve a escribir.';
 
 /**
+ * ¿Las últimas `n` ejecuciones fallaron con la misma salida? Si el implementador cambia el
+ * código y la salida no cambia, lo más probable es que el fallo no esté en su mano: unas
+ * pruebas que no cargan, por ejemplo, que él no puede tocar (hallazgo H8).
+ * Una huella vacía (ejecución sin salida) no cuenta: no hay nada que comparar.
+ *
+ * @param {import('./estado.js').EstadoCiclo} estado
+ * @param {number} n  0 desactiva la detección
+ */
+export function sinProgreso(estado, n) {
+  if (!Number.isInteger(n) || n < 1 || estado.ejecuciones.length < n) return false;
+  const ultimas = estado.ejecuciones.slice(-n);
+  const huella  = ultimas[0].huellaSalida;
+  if (typeof huella !== 'string' || huella === '') return false;
+  return ultimas.every((e) => e.categoria === 'fail' && e.huellaSalida === huella);
+}
+
+/** @param {number} n */
+export const detalleSinProgreso = (n) =>
+  `La salida de las pruebas fue idéntica ${n} veces seguidas aunque la implementación cambió: `
+  + 'puede que las pruebas estén rotas por sí mismas (no cargan, o piden algo imposible) y el implementador no puede tocarlas. '
+  + '«continuar» hace que el agente de pruebas las reescriba; «aceptar» da la tarea por buena tal como está; '
+  + '«abortar» restaura los archivos.';
+
+/**
  * Siguiente paso tras ejecutar las pruebas. El éxito se evalúa antes que los
  * topes: un pase en la última iteración permitida es un éxito.
  *
  * @param {import('./estado.js').EstadoCiclo} estado
- * @returns {{ ruta: 'fin_exito' } | { ruta: 'coder' } | { ruta: 'revision_humana', motivo: 'infraestructura'|'presupuesto'|'iteraciones'|'exito_sospechoso' }}
+ * @param {{ sinProgreso?: number }} [opciones]  `sinProgreso`: motor.sin_progreso (0 lo desactiva)
+ * @returns {{ ruta: 'fin_exito' } | { ruta: 'coder' } | { ruta: 'revision_humana', motivo: 'infraestructura'|'presupuesto'|'iteraciones'|'exito_sospechoso'|'sin_progreso' }}
  */
-export function decidirRuta(estado) {
+export function decidirRuta(estado, opciones = {}) {
   const ultima = estado.ejecuciones[estado.ejecuciones.length - 1];
   if (!ultima) throw new Error('decidirRuta: no hay ninguna ejecución registrada');
 
@@ -61,6 +89,8 @@ export function decidirRuta(estado) {
   if (ultima.categoria === 'pass' && ultima.sospecha?.length) return { ruta: 'revision_humana', motivo: 'exito_sospechoso' };
   if (ultima.categoria === 'pass')                 return { ruta: 'fin_exito' };
   if (estado.presupuesto.estado === 'agotado')     return { ruta: 'revision_humana', motivo: 'presupuesto' };
+  // Antes que el tope de iteraciones: si coinciden, esta es la causa que la persona necesita conocer
+  if (sinProgreso(estado, opciones.sinProgreso ?? POR_DEFECTO.motor.sin_progreso)) return { ruta: 'revision_humana', motivo: 'sin_progreso' };
   if (estado.iteracion >= estado.maxIteraciones)   return { ruta: 'revision_humana', motivo: 'iteraciones' };
   return { ruta: 'coder' };
 }

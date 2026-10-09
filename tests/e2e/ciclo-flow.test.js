@@ -36,6 +36,7 @@ function montar({ fallan = [], conCiclo = true } = {}) {
   let actual = "";
   let enCurso = 0;
   let maxSimultaneas = 0;
+  let numeroEjecucion = 0;
 
   const ciclo = new CicloVerificado({
     cwd, runId: "r1", config: { ...POR_DEFECTO, motor: { ...POR_DEFECTO.motor, grafo: process.env.FORGE_MOTOR_GRAFO ?? "propio" } }, log, testCmd: "npm test",
@@ -54,7 +55,8 @@ function montar({ fallan = [], conCiclo = true } = {}) {
         const falla = fallan.includes(actual);
         const hayImpl = existsSync(join(cwd, "src", `${actual}.js`));
         if (hayImpl && !falla) enCurso--;
-        return { exitCode: hayImpl && !falla ? 0 : 1, stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1 };
+        // Cada ejecución lleva su número: varias salidas fallidas idénticas se pausarían por «sin progreso» (H8)
+        return { exitCode: hayImpl && !falla ? 0 : 1, stdout: `# pass 1\n# ejecución ${++numeroEjecucion}\n`, stderr: "", timedOut: false, infraError: false, durationMs: 1 };
       },
     },
   });

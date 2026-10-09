@@ -5,7 +5,7 @@
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
 
@@ -18,6 +18,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {boolean} oomKilled
  * @property {number} durationMs
  * @property {string[]} [sospecha]  motivos por los que un `pass` no se da por bueno (core/ciclo/sospecha.js)
+ * @property {string} [huellaSalida]  sha256 de la salida normalizada (core/ciclo/huella.js); vacía si no hubo salida
  * @property {string} stdoutCola
  * @property {string} stderrCola
  */
@@ -126,6 +127,8 @@ export function validarEstado(estado) {
   if (!Array.isArray(e.ejecuciones)) errores.push('ejecuciones debe ser una lista');
   else for (const ej of e.ejecuciones) {
     if (!CATEGORIAS.includes(ej?.categoria)) errores.push(`categoría de ejecución desconocida: ${ej?.categoria}`);
+    // Opcional: los puntos de guardado anteriores a la detección de «sin progreso» no la llevan
+    if (ej?.huellaSalida !== undefined && typeof ej.huellaSalida !== 'string') errores.push('huellaSalida de una ejecución debe ser un texto');
   }
   if (!Number.isInteger(e.iteracion) || e.iteracion < 0) errores.push('iteracion debe ser un entero ≥ 0');
   if (!Number.isInteger(e.maxIteraciones) || e.maxIteraciones < 1) errores.push('maxIteraciones debe ser un entero ≥ 1');

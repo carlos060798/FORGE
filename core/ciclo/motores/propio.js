@@ -45,7 +45,7 @@ export async function ejecutarGrafo(entrada) {
     if (nodo === REVISION) decision = undefined;   // una decisión vale para una sola revisión
     estado = aplicar(estado, parcial);
 
-    const t = transicion(nodo, estado);
+    const t = transicion(nodo, estado, { sinProgreso: deps.config?.motor?.sin_progreso });
     estado  = aplicar(estado, t.parcial);
 
     guardador.guardar(estado.threadId, { nodo, siguiente: t.siguiente, estado });

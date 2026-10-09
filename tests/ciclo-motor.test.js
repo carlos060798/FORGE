@@ -66,7 +66,8 @@ function entorno(o = {}) {
         ejecutadas++;
         const r = ejecuciones.shift();
         if (r === undefined) throw new Error("guion de ejecuciones agotado");
-        return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+        // Cada ejecución lleva su número: varias salidas fallidas idénticas se pausarían por «sin progreso» (H8)
+        return { stdout: `# pass 1\n# ejecución ${ejecutadas}\n`, stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
       },
     },
     testCmd: "npm test",

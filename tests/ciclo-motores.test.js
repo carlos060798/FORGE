@@ -29,6 +29,7 @@ function entorno(grafo, ejecuciones) {
   const eventos = [];
   let llamadas = 0;
   let version = 0;
+  let numeroEjecucion = 0;
   const cola = [...ejecuciones];
   const opciones = {
     cwd, runId: "r1", testCmd: "npm test",
@@ -45,7 +46,8 @@ function entorno(grafo, ejecuciones) {
     runner: { test: async () => {
       const r = cola.shift();
       if (r === undefined) throw new Error("guion de ejecuciones agotado");
-      return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+      // Cada ejecución lleva su número: varias salidas fallidas idénticas se pausarían por «sin progreso» (H8)
+      return { stdout: `# pass 1\n# ejecución ${++numeroEjecucion}\n`, stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
     } },
   };
   return { cwd, opciones, eventos, cola, llamadas: () => llamadas, ciclo: () => new CicloVerificado(opciones) };

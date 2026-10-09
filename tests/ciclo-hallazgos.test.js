@@ -318,6 +318,7 @@ function entorno({ salidas = {}, ejecuciones = [], config = {}, uso = USO } = {}
   escribir(cwd, "src/suma.js", "// original");
   const guion = { arquitecto: [PLAN, PLAN], tester: [PRUEBAS, PRUEBAS], "desarrollador-backend": [], ...salidas };
   const cola = [...ejecuciones];
+  let numeroEjecucion = 0;
   const llamadas = [];
   const eventos = [];
   const opciones = {
@@ -334,7 +335,8 @@ function entorno({ salidas = {}, ejecuciones = [], config = {}, uso = USO } = {}
     runner: { test: async () => {
       const r = cola.shift();
       if (r === undefined) throw new Error("guion de ejecuciones agotado");
-      return { stdout: "# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
+      // Cada ejecución lleva su número: varias salidas fallidas idénticas se pausarían por «sin progreso» (H8)
+      return { stdout: `# pass 1\n# ejecución ${++numeroEjecucion}\n`, stderr: "", timedOut: false, infraError: false, durationMs: 1, ...r };
     } },
   };
   return { cwd, opciones, llamadas, eventos, cola, ciclo: () => new CicloVerificado(opciones) };
