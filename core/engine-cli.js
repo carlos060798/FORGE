@@ -32,7 +32,7 @@ import { lineaRevision } from './precios.js';
 import { circuitBreaker } from './execution-context.js';
 import { cargarTareas, specActiva } from './tareas.js';
 import { leerConfigCiclo, leerRutasProtegidas } from './ciclo/config.js';
-import { CicloVerificado, crearLlamador, dirMotorBase, lineasEstadoCiclo, nuevaSesion, sesionActual, tareasSinTerminarEnElProyecto, tienePuntosDeGuardado } from './ciclo/index.js';
+import { CicloVerificado, crearLlamador, dirMotorBase, lineaAislamiento, lineasEstadoCiclo, nuevaSesion, sesionActual, tareasSinTerminarEnElProyecto, tienePuntosDeGuardado } from './ciclo/index.js';
 import { adquirir, ErrorBloqueado } from './ciclo/candado.js';
 import { DockerCli } from './sandbox/docker-cli.js';
 import { SandboxRunner } from './sandbox/sandbox-runner.js';
@@ -141,6 +141,18 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     process.exit(SALIDA.SIN_AISLAMIENTO);
   }
 
+  // Un mecanismo de aislamiento pedido que Docker no tiene: mismo desenlace que «sin aislamiento».
+  // Nunca se usa el de por defecto en su lugar.
+  if (config.sandbox.runtime) {
+    const rt = await cli.runtimeDisponible(config.sandbox.runtime);
+    if (rt.ok === false) {
+      console.error(`${c.rojo('✗')} ${rt.error}`);
+      console.error('  El ciclo verificado no empieza con un aislamiento distinto del que pediste.');
+      console.error('  Instala ese mecanismo en Docker, o quita sandbox.runtime de .sdd/sdd.config.yaml para usar el de Docker por defecto.');
+      process.exit(SALIDA.SIN_AISLAMIENTO);
+    }
+  }
+
   // Un solo ciclo por proyecto: dos a la vez compartirían la copia, el gasto y el barrido de contenedores
   let liberar;
   try {
@@ -163,6 +175,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     limites: { cpus: config.sandbox.cpus, memoria: config.sandbox.memoria, pids: config.sandbox.pids },
     timeoutMs: config.sandbox.timeout_s * 1000,
     salidaMaxBytes: config.sandbox.salida_max_bytes,
+    runtime: config.sandbox.runtime,
   });
   const barridos = await sandbox.barrerHuerfanos();
   if (barridos > 0) warn(`Se eliminaron ${barridos} contenedor(es) de una ejecución anterior.`);
@@ -177,7 +190,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     vetadas: leerRutasProtegidas(cwd),
     specPath: spec ? path.join(cwd, '.sdd', 'especificaciones', String(spec), 'spec.md') : undefined,
   });
-  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${(ciclo.libro.tope() ?? config.presupuesto.tope_usd).toFixed(2)} · Docker ${disp.version}`);
+  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${(ciclo.libro.tope() ?? config.presupuesto.tope_usd).toFixed(2)} · Docker ${disp.version} · aislamiento: ${config.sandbox.runtime || 'el de Docker por defecto'}`);
   return { ciclo, config, dirMotor };
 }
 
@@ -243,6 +256,7 @@ async function cmdStatus(cwd) {
   console.log(`\n💰 Presupuesto sesión: ${sessionBudget.resumen()}`);
   console.log(`   ${lineaRevision()}`);
   console.log(`🔒 Circuit breaker:   ${circuitBreaker.nivel}`);
+  console.log(`📦 ${lineaAislamiento(cwd)}`);
 
   const lineas = lineasEstadoCiclo(cwd);
   if (lineas.length > 0) console.log('\n' + lineas.join('\n'));

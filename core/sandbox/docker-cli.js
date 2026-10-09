@@ -83,6 +83,34 @@ export class DockerCli {
   }
 
   /**
+   * ¿Conoce Docker este mecanismo de aislamiento (runtime)? Se pregunta al daemon por los
+   * que tiene registrados. Si no se puede saber, la respuesta es NO: nunca se da por bueno.
+   * @param {string} runtime
+   * @returns {Promise<{ ok: true, conocidos: string[] } | { ok: false, error: string, conocidos: string[] }>}
+   */
+  async runtimeDisponible(runtime) {
+    const r = await this.ejecutar(['info', '--format', '{{json .Runtimes}}'], { timeoutMs: 15_000 });
+    /** @type {string[]} */
+    let conocidos = [];
+    let leido = false;
+    if (r.code === 0) {
+      try {
+        const mapa = JSON.parse(r.stdout.trim());
+        if (mapa && typeof mapa === 'object' && !Array.isArray(mapa)) { conocidos = Object.keys(mapa).sort(); leido = true; }
+      } catch { /* salida que no es JSON: no se pudo saber */ }
+    }
+    if (!leido) {
+      const detalle = r.error ?? (r.timedOut ? 'el daemon no respondió a tiempo' : r.stderr.trim().split('\n').pop() || 'respuesta ilegible');
+      return { ok: false, conocidos, error: `No se pudo comprobar si Docker tiene el mecanismo de aislamiento "${runtime}" (sandbox.runtime): ${detalle}` };
+    }
+    if (conocidos.includes(runtime)) return { ok: true, conocidos };
+    return {
+      ok: false, conocidos,
+      error: `El mecanismo de aislamiento "${runtime}" (sandbox.runtime) no está disponible en Docker. Los que conoce: ${conocidos.join(', ') || 'ninguno'}`,
+    };
+  }
+
+  /**
    * Ejecuta un contenedor. Si supera el tiempo, lo mata por nombre y lo elimina.
    *
    * @param {string[]} argv     argumentos de `docker run` (ver politica.js)

@@ -19,6 +19,26 @@ export const DIR_TRABAJO = '/work';
 
 export const LIMITES_POR_DEFECTO = { cpus: 1, memoria: '512m', pids: 256 };
 
+/**
+ * Nombre de un mecanismo de aislamiento (`sandbox.runtime`, lo que Docker llama runtime):
+ * solo letras, cifras, guion bajo, punto y guion, y sin empezar por guion. Cualquier otra
+ * cosa podría leerse como una opción de docker o como más de un argumento.
+ */
+const RUNTIME_VALIDO = /^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$/;
+
+/**
+ * Valida `sandbox.runtime`. Vacío (o sin indicar) significa «el de Docker por defecto».
+ * @param {unknown} valor
+ * @returns {string} el nombre, o '' si no se indicó ninguno
+ */
+export function validarRuntime(valor) {
+  if (valor === undefined || valor === null || valor === '') return '';
+  if (typeof valor !== 'string' || !RUNTIME_VALIDO.test(valor)) {
+    throw new Error(`sandbox.runtime no válido: "${valor}". Solo admite letras, cifras, "_", "." y "-", y no puede empezar por "-".`);
+  }
+  return valor;
+}
+
 /** Un valor que empieza por "-" se interpretaría como una opción de docker. */
 function sinGuion(nombre, valor) {
   if (typeof valor !== 'string' || valor === '' || valor.startsWith('-')) {
@@ -40,6 +60,8 @@ export function nombreContenedor(runId, n) {
  * - `comando`: ejecutable y argumentos; el primero sustituye al ENTRYPOINT de la imagen.
  * - `dirTrabajo`: dónde se monta la copia dentro del contenedor.
  * - `tmpfsMb`: tamaño de /tmp (memoria del contenedor; 64 por defecto, entre 16 y 512).
+ * - `runtime`: mecanismo de aislamiento (`--runtime`). Sin indicar, el de Docker por defecto.
+ *   Solo AÑADE un argumento: todas las demás restricciones se mantienen con cualquier runtime.
  *
  * @param {{
  *   imagen: string,
@@ -51,6 +73,7 @@ export function nombreContenedor(runId, n) {
  *   env?: Record<string, string>,
  *   proyectoId?: string,
  *   tmpfsMb?: number,
+ *   runtime?: string,
  * }} opciones
  * @returns {string[]} argumentos para `docker`
  */
@@ -74,12 +97,14 @@ export function argvRun(opciones) {
   if (/[,\r\n]/.test(copia)) throw new Error('politica: la ruta de la copia no puede contener comas ni saltos de línea');
   if (!Array.isArray(comando) || comando.length === 0) throw new Error('politica: comando vacío');
   sinGuion('comando', comando[0]);
+  const runtime = validarRuntime(opciones.runtime);
 
   return [
     'run', '--rm',
     '--name', nombre,
     '--label', ETIQUETA,
     ...(opciones.proyectoId ? ['--label', etiquetaProyecto(opciones.proyectoId)] : []),
+    ...(runtime ? ['--runtime', runtime] : []),
     '--network', 'none',
     '--user', USUARIO,
     '--cap-drop', 'ALL',

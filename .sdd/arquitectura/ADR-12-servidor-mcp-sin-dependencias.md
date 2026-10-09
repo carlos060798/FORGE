@@ -36,6 +36,10 @@ Las tres herramientas reutilizan el código del ciclo: `validarRuta` y `aplicarA
 ### Neutrales
 - Si más adelante hace falta HTTP, un transporte nuevo puede reutilizar `ServidorMcp`: toma entrada y salida como flujos.
 
+## Adenda 2026-10-09: revisión sin estado del protocolo
+
+Spec `2026-10-09-puesta-al-dia` (HU-002). La condición de revisita «si el protocolo añade capacidades obligatorias» se cumplió: la revisión `2026-07-28` elimina el saludo y hace obligatorio `server/discover`. Se implementó en el mismo `ServidorMcp`, sin dependencias, atendiendo a la vez a los clientes con saludo. La decisión de no usar el SDK se mantiene; lo que no se pudo hacer sin él es probar con el cliente oficial en la revisión nueva. Informe: `.sdd/especificaciones/2026-10-09-puesta-al-dia/spikes/mcp-revision-vigente.md`.
+
 ## Cuándo revisitar
 
 - Si el protocolo añade capacidades obligatorias para servidores de herramientas.

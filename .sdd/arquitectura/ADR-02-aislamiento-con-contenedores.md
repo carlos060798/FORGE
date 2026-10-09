@@ -48,6 +48,10 @@ Se monta una copia desechable del proyecto, nunca el proyecto real. Si Docker no
 ### Neutrales
 - La afirmación comercial "ningún código malicioso puede afectar el sistema host" debe matizarse: un contenedor reduce el riesgo, no lo elimina.
 
+## Adenda 2026-10-09: mecanismo de aislamiento elegible
+
+Spec `2026-10-09-puesta-al-dia` (HU-004). `sandbox.runtime` añade `--runtime <valor>` a la orden, sin quitar ninguna otra restricción. El valor se valida (`validarRuntime` en `core/sandbox/politica.js`) y antes de ejecutar se pregunta a Docker si lo conoce (`docker info --format '{{json .Runtimes}}'`); si no, es un fallo de infraestructura y no se usa el de por defecto. No se construye ni se instala ningún mecanismo. Sin probar con uno distinto del de por defecto.
+
 ## Cuándo revisitar
 
 - Si el spike T002 muestra que los montajes no son fiables en Windows: usar `docker create` + `docker cp` + `docker start -a`.

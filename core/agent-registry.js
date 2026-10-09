@@ -128,10 +128,14 @@ export class LlmAgentAdapter {
 
   async execute(ctx) {
     const start = Date.now();
+    // Orden pensado para la caché de prompts (prefijo exacto): primero lo que se repite idéntico
+    // entre llamadas (instrucciones del agente, objetivo y contrato de salida) y al final lo que
+    // cambia (el estado). Un byte distinto al principio invalidaría todo lo que viene detrás.
     const systemParts = [this.definition.systemPrompt];
     if (this.definition.goal) systemParts.push(`\n## Objetivo\n${this.definition.goal}`);
-    if (ctx.forgeState)       systemParts.push(`\n## Estado FORGE actual\n\`\`\`json\n${ctx.forgeState}\n\`\`\``);
     if (ctx.extraContext)     systemParts.push(`\n## Contexto adicional\n${ctx.extraContext}`);
+    const systemFijo = systemParts.join('\n');
+    if (ctx.forgeState)       systemParts.push(`\n## Estado FORGE actual\n\`\`\`json\n${ctx.forgeState}\n\`\`\``);
     const systemPrompt = systemParts.join('\n');
 
     const modelAlias = this.definition.model ?? 'sonnet';
@@ -146,6 +150,9 @@ export class LlmAgentAdapter {
         () => this._provider.complete({
           model:        modelAlias,
           systemPrompt,
+          // Parte fija del prompt de sistema (siempre un prefijo de systemPrompt): el proveedor
+          // que tenga caché de prompts marca hasta aquí; los demás lo ignoran
+          systemFijo,
           userPrompt:   ctx.userPrompt,
           maxTokens:    8192,
           signal:       controller.signal,
@@ -159,6 +166,10 @@ export class LlmAgentAdapter {
         output:       result.output,
         inputTokens:  result.inputTokens,
         outputTokens: result.outputTokens,
+        // Solo con un proveedor que informa de la caché de prompts
+        ...(typeof result.cacheCreationTokens === 'number' || typeof result.cacheReadTokens === 'number'
+          ? { cacheCreationTokens: result.cacheCreationTokens ?? 0, cacheReadTokens: result.cacheReadTokens ?? 0 }
+          : {}),
         durationMs:   Date.now() - start,
         modelo:       modelId,
         provider:     this._provider.nombre,
@@ -210,7 +221,12 @@ LlmAgentAdapter.prototype.conversar = async function conversar(ctx) {
       }),
       { maxAttempts: 3, backoffMs: 1000 },
     );
-    return { ok: true, ...base, contenido: result.contenido, stopReason: result.stopReason, inputTokens: result.inputTokens, outputTokens: result.outputTokens, durationMs: Date.now() - start };
+    return {
+      ok: true, ...base, contenido: result.contenido, stopReason: result.stopReason,
+      inputTokens: result.inputTokens, outputTokens: result.outputTokens,
+      cacheCreationTokens: result.cacheCreationTokens, cacheReadTokens: result.cacheReadTokens,
+      durationMs: Date.now() - start,
+    };
   } catch (err) {
     return { ok: false, ...base, contenido: [], durationMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
   } finally {

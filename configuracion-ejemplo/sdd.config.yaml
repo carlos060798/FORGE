@@ -50,6 +50,7 @@ idioma: español
 llm:
   provider: anthropic
   model: sonnet
+  cache: true                   # caché de prompts (solo Anthropic): las instrucciones repetidas se cobran reducidas; false la desactiva
 
 # PERFIL — cómo se conduce el flujo con el usuario
 #   guiado  → (POR DEFECTO) no programa: el sistema decide lo técnico, explica
@@ -434,6 +435,8 @@ sandbox:
   pids: 256
   timeout_s: 120
   salida_max_bytes: 1048576
+  # runtime: runsc              # mecanismo de aislamiento de Docker (--runtime). Sin indicar, el de Docker por defecto.
+  #                             # Si se indica y Docker no lo tiene, el ciclo no empieza (código de salida 4).
 
 presupuesto:
   tope_usd: 2.00                # al alcanzarlo no se inicia ninguna llamada más
@@ -454,6 +457,9 @@ presupuesto:
 #   claude-sonnet-5-5_salida: 10
 #   "qwen2.5-coder:7b_entrada": 0 # un identificador con dos puntos va entre comillas
 #   "qwen2.5-coder:7b_salida": 0
+#
+#   claude-sonnet-5-5_cache_escritura: 2.5   # opcionales: caché de prompts (guardar y reutilizar).
+#   claude-sonnet-5-5_cache_lectura: 0.1     # Sin ellos: lista incluida o, si no, el precio de entrada
 #
 # Un precio no numérico, negativo o sin su pareja impide empezar. Un modelo sin precio
 # se cobra al más alto conocido y deja un aviso con su nombre en el registro.

@@ -5,8 +5,8 @@
 ## Estadísticas
 - Total: 9
 - Completadas: 0
-- En progreso: 7
-- En borrador: 2
+- En progreso: 9
+- En borrador: 0
 
 ## Especificaciones
 
@@ -18,10 +18,10 @@
 | 2026-10-03-api-http | API HTTP local del ciclo verificado | en_implementacion (5 de 5 tareas; verificación y revisión de seguridad independientes: aprobada con observaciones, corregidas sin revisar) | mediano | ✅ | ✅ | ✅ | ⚠️ aprobada con observaciones | 2026-10-03 |
 | 2026-10-04-memoria-semantica | Memoria semántica del repositorio | en_implementacion (autoevaluada; sin revisión independiente) | pequeño | ✅ | — | — | ⚠️ autoevaluación | 2026-10-04 |
 
-| 2026-10-09-validacion-modelo-real | Validación con un modelo real y gasto bien calculado | borrador (sin aprobar) | pequeño | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-validacion-modelo-real | Validación con un modelo real y gasto bien calculado | en_implementacion (aprobada por delegación del dueño; más de 20 ejecuciones reales registradas; una revisión independiente RECHAZADA y corregida, sin segunda revisión; falta comparar el gasto con lo facturado) | pequeño | ✅ | — | — | ⚠️ evidencia y revisión en la carpeta | 2026-10-09 |
 | 2026-10-09-implementador-con-herramientas | Implementador que lee, busca y edita por pasos | en_implementacion (aprobada por delegación del dueño; modo opcional; probada con respuestas guionizadas, sin modelo real ni revisión independiente) | grande | ✅ | — | — | ⚠️ autoevaluación (21 de 24 criterios; costo sin medir) | 2026-10-09 |
 | 2026-10-09-pruebas-confiables | Pruebas confiables | en_implementacion (aprobada por delegación del dueño; implementada sin plan ni tareas formales; autoevaluada, sin revisión independiente ni modelo real) | mediano | ✅ | — | — | ⚠️ autoevaluación (20 de 20 criterios con test) | 2026-10-09 |
-| 2026-10-09-puesta-al-dia | Puesta al día | borrador (sin aprobar) | mediano | ✅ | — | — | — | 2026-10-09 |
+| 2026-10-09-puesta-al-dia | Puesta al día | en_implementacion (aprobada por delegación del dueño; autoevaluada, sin revisión independiente; ahorro de la caché sin medir y revisión nueva del protocolo sin probar con un cliente real) | mediano | ✅ | — | — | ⚠️ autoevaluación (17 de 19 criterios con prueba) | 2026-10-09 |
 
 ## Previstas (sin especificar todavía)
 

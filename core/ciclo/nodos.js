@@ -70,7 +70,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
 
   let siguiente;
   try {
-    siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens }, { precios: deps.config.precios });
+    siguiente = registrar(presupuesto, { proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.inputTokens, outputTokens: r.outputTokens, cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens }, { precios: deps.config.precios });
   } catch (e) {
     if (!(e instanceof ErrorConsumo)) throw e;
     return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, cola(String(e.message), 600)) } };

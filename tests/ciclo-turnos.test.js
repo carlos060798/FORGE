@@ -668,7 +668,7 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
       ],
       usage: { input_tokens: 321, output_tokens: 45 },
     });
-    const p = new AnthropicProvider({ api_key: "", clienteSdk: cliente });
+    const p = new AnthropicProvider({ api_key: "", clienteSdk: cliente, cache: false });
     assert.equal(p.admiteHerramientas, true);
     const señal = new AbortController().signal;
     const r = await p.conversar({
@@ -698,14 +698,41 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
         { tipo: "texto", texto: "Voy a leerlo." },
         { tipo: "uso_herramienta", id: "toolu_2", nombre: "leer_archivo", entrada: { ruta: "b.js" } },
       ],
-      stopReason: "herramientas", inputTokens: 321, outputTokens: 45,
+      stopReason: "herramientas", inputTokens: 321, outputTokens: 45, cacheCreationTokens: 0, cacheReadTokens: 0,
     });
+  });
+
+  test("Anthropic: con la caché activa, el sistema y el final de la conversación llevan la marca, y los tokens de caché se devuelven", async () => {
+    const peticiones = [];
+    const cliente = { messages: { create: async (params) => { peticiones.push(params); return { stop_reason: "end_turn", content: [{ type: "text", text: "listo" }], usage: { input_tokens: 10, output_tokens: 2, cache_creation_input_tokens: 300, cache_read_input_tokens: 5000 } }; } } };
+    const mensajes = [
+      { rol: "usuario", contenido: "tarea" },
+      { rol: "asistente", contenido: [{ tipo: "uso_herramienta", id: "u1", nombre: "listar", entrada: {} }] },
+      { rol: "usuario", contenido: [{ tipo: "resultado_herramienta", idUso: "u1", contenido: "a.js" }] },
+    ];
+    const r = await new AnthropicProvider({ api_key: "", clienteSdk: cliente }).conversar({ model: "haiku", systemPrompt: "sistema", herramientas: [], mensajes });
+    const p = peticiones[0];
+    assert.deepEqual(p.system, [{ type: "text", text: "sistema", cache_control: { type: "ephemeral" } }]);
+    assert.deepEqual(p.messages[2].content[0].cache_control, { type: "ephemeral" }, "el último bloque del último mensaje");
+    assert.equal(p.messages[0].content, "tarea", "los mensajes anteriores no se tocan");
+    assert.equal(JSON.stringify(p.messages.slice(0, 2)).includes("cache_control"), false);
+    assert.equal(r.cacheCreationTokens, 300);
+    assert.equal(r.cacheReadTokens, 5000);
+    assert.equal(mensajes[2].contenido[0].cache_control, undefined, "no se altera lo recibido");
+
+    // Con un solo mensaje de texto, el texto se convierte en bloque para llevar la marca
+    await new AnthropicProvider({ api_key: "", clienteSdk: cliente }).conversar({ model: "haiku", systemPrompt: "s", herramientas: [], mensajes: [{ rol: "usuario", contenido: "hola" }] });
+    assert.deepEqual(peticiones[1].messages[0].content, [{ type: "text", text: "hola", cache_control: { type: "ephemeral" } }]);
+
+    // Con la caché desactivada, ni una marca
+    await new AnthropicProvider({ api_key: "", clienteSdk: cliente, cache: false }).conversar({ model: "haiku", systemPrompt: "s", herramientas: [], mensajes });
+    assert.equal(JSON.stringify(peticiones[2]).includes("cache_control"), false);
   });
 
   test("Anthropic: motivos de parada, y un resultado correcto no lleva is_error", async () => {
     for (const [api, neutro] of [["end_turn", "fin"], ["max_tokens", "max_tokens"], ["refusal", "rechazo"], ["pause_turn", "otro"], ["tool_use", "herramientas"]]) {
       const cliente = clienteFalso({ stop_reason: api, content: [], usage: { input_tokens: 1, output_tokens: 1 } });
-      const r = await new AnthropicProvider({ api_key: "", clienteSdk: cliente }).conversar({
+      const r = await new AnthropicProvider({ api_key: "", clienteSdk: cliente, cache: false }).conversar({
         model: "haiku", systemPrompt: "s", herramientas: [],
         mensajes: [{ rol: "usuario", contenido: [{ tipo: "resultado_herramienta", idUso: "t", contenido: "ok", esError: false }] }],
       });

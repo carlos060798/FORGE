@@ -132,6 +132,8 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 - **9.3** `AGENTS.md` en la raíz del repo y en lo que instala `forge init`, generado a partir de la constitución.
 - **9.4** `sandbox.runtime` opcional: si se configura y no está instalado, el ciclo se niega a empezar y lo explica.
 
+**Estado (2026-10-09):** implementadas las cuatro partes; detalle y límites en `.sdd/especificaciones/2026-10-09-puesta-al-dia/verificacion.md`. Sin medir: el ahorro real de la caché (hace falta un modelo de pago). Sin probar: la revisión nueva de MCP con el cliente oficial, y un mecanismo de aislamiento distinto del de por defecto.
+
 **Reuso:** `core/llm-providers/`, `core/mcp/protocolo.js`, `core/sandbox/politica.js`, `cli/index.js` (`copiarNucleo`).
 
 **Verificación:** con caché, la segunda iteración de una tarea gasta menos tokens de entrada facturados que la primera y el libro de gasto coincide; el cliente oficial de MCP se conecta en la revisión antigua y en la nueva; un runtime inexistente termina con el código de «aislamiento no disponible».

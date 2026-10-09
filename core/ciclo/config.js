@@ -11,6 +11,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { validarRuntime } from '../sandbox/politica.js';
 
 export const POR_DEFECTO = {
   motor: {
@@ -37,6 +38,7 @@ export const POR_DEFECTO = {
     pids: 256,
     timeout_s: 120,
     salida_max_bytes: 1048576,
+    runtime: '',                // mecanismo de aislamiento de Docker (--runtime); vacío = el de Docker por defecto
   },
   presupuesto: {
     tope_usd: 2.0,
@@ -106,6 +108,9 @@ export function leerModelosDe(cwd) {
 }
 
 const SUFIJOS_PRECIO = { _entrada: 'input', _salida: 'output' };
+/** Opcionales (caché de prompts): sin ellos se cobra al precio de entrada, ver `precioCompletoDe`. */
+const SUFIJOS_PRECIO_CACHE = { _cache_escritura: 'cacheWrite', _cache_lectura: 'cacheRead' };
+const SUFIJOS_TODOS = { ...SUFIJOS_PRECIO_CACHE, ...SUFIJOS_PRECIO };
 
 /**
  * Sección `precios:`: claves planas `<identificador>_entrada` y `<identificador>_salida`
@@ -115,23 +120,23 @@ const SUFIJOS_PRECIO = { _entrada: 'input', _salida: 'output' };
  * @returns {Record<string, { input: number, output: number }>}  USD por token
  */
 export function leerPrecios(yaml) {
-  /** @type {Record<string, { input?: number, output?: number }>} */
+  /** @type {Record<string, { input?: number, output?: number, cacheWrite?: number, cacheRead?: number }>} */
   const precios = {};
   const leido = leerSeccion(yaml, 'precios');
   // El lector ignora una clave sin valor; aquí no puede pasar inadvertida
   for (const clave of clavesSinValor(yaml, 'precios')) leido[clave] ??= '';
 
   for (const [clave, texto] of Object.entries(leido)) {
-    const sufijo = Object.keys(SUFIJOS_PRECIO).find((s) => clave.endsWith(s) && clave.length > s.length);
+    const sufijo = Object.keys(SUFIJOS_TODOS).find((s) => clave.endsWith(s) && clave.length > s.length);
     if (!sufijo) {
-      throw new Error(`precios.${clave} no se entiende en .sdd/sdd.config.yaml: cada clave debe ser <identificador del modelo>_entrada o <identificador del modelo>_salida`);
+      throw new Error(`precios.${clave} no se entiende en .sdd/sdd.config.yaml: cada clave debe ser <identificador del modelo>_entrada o <identificador del modelo>_salida (y, opcionales, _cache_escritura y _cache_lectura)`);
     }
     const valor = texto.trim() === '' ? NaN : Number(texto);
     if (!Number.isFinite(valor) || valor < 0) {
       throw new Error(`precios.${clave} no es válido en .sdd/sdd.config.yaml: "${texto}". Debe ser un número mayor o igual que 0 (USD por millón de tokens)`);
     }
     const id = clave.slice(0, -sufijo.length);
-    (precios[id] ??= {})[SUFIJOS_PRECIO[sufijo]] = valor / 1_000_000;
+    (precios[id] ??= {})[SUFIJOS_TODOS[sufijo]] = valor / 1_000_000;
   }
   for (const [id, p] of Object.entries(precios)) {
     for (const [sufijo, campo] of Object.entries(SUFIJOS_PRECIO)) {
@@ -286,6 +291,9 @@ export function leerConfigCiclo(cwd, overrides = {}) {
     const tope = Number(process.env.FORGE_BUDGET_USD);
     if (Number.isFinite(tope) && tope >= 0) config.presupuesto.tope_usd = tope;
   }
+
+  // Un valor que pudiera leerse como una opción de docker se rechaza aquí, antes de empezar nada
+  config.sandbox.runtime = validarRuntime(config.sandbox.runtime);
 
   if (!EMBEDDINGS.includes(config.motor.embeddings)) {
     throw new Error(`motor.embeddings desconocido: "${config.motor.embeddings}". Valores válidos: ${EMBEDDINGS.join(', ')}`);

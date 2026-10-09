@@ -45,6 +45,7 @@ sandbox:
   memoria: 512m
   pids: 256
   timeout_s: 120
+  # runtime: runsc         # mecanismo de aislamiento de Docker; sin indicar, el de Docker por defecto
 
 presupuesto:
   tope_usd: 2.00
@@ -74,10 +75,27 @@ precios:                         # USD por millón de tokens
 - **Un precio no numérico, negativo, vacío o sin su pareja, o un nivel desconocido en `modelos:`, impide empezar** (`forge run` y `forge resume`, en los dos modos), con un mensaje que nombra la clave.
 - **Un modelo sin precio** (ni en tu configuración ni en la lista incluida) **se cobra al precio más alto conocido** y deja en el registro un evento `ciclo:precio_desconocido` con su nombre. El tope se alcanzará antes de lo real: añade su precio.
 - Los proveedores locales (`ollama`) y el de pruebas siguen costando 0 aunque les pongas precio.
-- El gasto solo cuenta tokens de entrada y de salida. No contempla la caché de prompts ni el tramo caro de Claude Haiku 5.5 (peticiones de más de 100 000 tokens de entrada, 5 veces más caras).
+- El gasto cuenta cuatro tipos de token, cada uno a su precio: entrada, salida y, con la caché de prompts, lo guardado y lo reutilizado (ver abajo). No contempla el tramo caro de Claude Haiku 5.5 (peticiones de más de 100 000 tokens de entrada, 5 veces más caras).
 - Un precio más bajo que el real hace que el ciclo gaste más de lo que cree: el tope es tan bueno como los precios.
 
 `motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. Lo mismo con `motor.mutacion` (solo `no`, `informar` o `exigir`), `motor.mutacion_minima` (un número entre 0 y 1) y `motor.mutacion_max` y `motor.mutacion_timeout_s` (enteros mayores o iguales que 1): un valor mal escrito impide empezar, con un mensaje que nombra la clave. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
+
+### Caché de prompts
+
+En cada iteración de una tarea, el ciclo envía al modelo las mismas instrucciones: las del agente y el contrato de salida. Con el proveedor de Anthropic, esa **parte fija** se marca como reutilizable (`cache_control: { type: "ephemeral" }` sobre el prompt de sistema, caché de 5 minutos). La primera llamada la guarda y las siguientes, si llegan antes de 5 minutos, la reutilizan a precio reducido. Fuente: <https://platform.claude.com/docs/en/build-with-claude/prompt-caching>.
+
+```yaml
+llm:
+  provider: anthropic
+  cache: true              # por defecto; con false no se envía la marca y la petición es la de antes
+```
+
+- **Cómo se cobra.** El proveedor informa de tres cantidades de entrada que no se solapan: a precio normal, guardada (1,25 veces el precio de entrada) y reutilizada (0,1 veces o menos, según el modelo). El ciclo cobra cada una al precio de `core/precios.js` y las anota por separado en `.sdd/motor/<sesión>/gasto.jsonl` (`inputTokens`, `cacheCreationTokens`, `cacheReadTokens`). `forge status` muestra los totales cuando los hay. El tope de gasto se calcula con esos precios.
+- **Un modelo sin precios de caché** (ni en la lista ni en tu configuración) cobra lo reutilizado al precio de entrada normal y lo guardado a 1,25 veces: nunca por debajo de lo que cobra el proveedor. Puedes fijarlos en `precios:` con `<identificador>_cache_escritura` y `<identificador>_cache_lectura` (opcionales, en USD por millón).
+- **Guardar cuesta más que no guardar.** Una tarea que se resuelve en una sola llamada paga ese 25 % de más por la parte fija y no reutiliza nada. Compensa a partir de la segunda llamada con las mismas instrucciones dentro de los 5 minutos.
+- **Tamaño mínimo.** El proveedor no guarda un prefijo demasiado corto, y no da error: los dos contadores llegan a cero y se cobra como siempre. El mínimo depende del modelo: 512 tokens en los modelos más recientes (Opus 5.5, Sonnet 5.5, Haiku 5.5…), 1024 en Opus 4.8 y Sonnet 4.6, 4096 en Haiku 4.5. Los niveles por defecto de FORGE apuntan hoy a Opus 4.8, Sonnet 4.6 y Haiku 4.5: con Haiku 4.5, unas instrucciones de menos de 4096 tokens no se guardan.
+- **Los demás proveedores no cambian**: ni la petición ni el gasto.
+- **El ahorro real no está medido.** Las pruebas usan un cliente falso: comprueban la marca, los precios y el libro de gasto, no lo que el proveedor guarda de verdad. Para medirlo con un modelo de pago, ejecuta una tarea que necesite varias iteraciones y mira en `gasto.jsonl` las líneas del implementador: la primera debe traer `cacheCreationTokens` mayor que cero y `cacheReadTokens` a cero; las siguientes, `cacheReadTokens` mayor que cero. Si todas traen ceros, el prefijo no llega al mínimo del modelo o pasaron más de 5 minutos. El gasto de entrada de una llamada es `inputTokens × entrada + cacheCreationTokens × escritura + cacheReadTokens × lectura`; compáralo con `(inputTokens + cacheCreationTokens + cacheReadTokens) × entrada`, que es lo que habría costado sin caché, y repite la misma tarea con `cache: false` para contrastarlo con lo facturado.
 
 ## Qué hace con cada tarea
 
@@ -160,6 +178,24 @@ Cada ejecución lanza un contenedor con:
 El contenedor no ve tu proyecto, sino una **copia desechable**. La copia no lleva `.git` ni ningún repositorio anidado, `.sdd`, `.claude`, `node_modules`, ni nada que parezca un secreto (`.env*`, `.npmrc`, `.netrc`, claves SSH, certificados, `*.tfstate`, `*credentials*`, `*secret*`…), a cualquier profundidad. Lo que el código escribe en ella se descarta. Cada ejecución usa su propia carpeta, con un nombre único por proceso; si el código de pruebas deja algo que Windows no puede borrar (enlaces, por ejemplo), no impide las siguientes, pero la copia queda en `.sdd/motor/<sesión>/staging/`. Al arrancar el ciclo se intenta borrar las copias anteriores y se avisa de las que no se pudieron borrar para que las borres a mano.
 
 Las dependencias declaradas en `package.json`, `requirements.txt` o `go.mod`/`go.sum` se instalan una vez, con red, en una imagen `forge-sbx:<huella>` construida solo a partir de esos manifiestos. En JavaScript, sin ejecutar scripts de instalación; en Python, `pip` sí puede ejecutar el `setup.py` de paquetes sin rueda. El código generado corre después sobre esa imagen, sin red.
+
+### Elegir el mecanismo de aislamiento
+
+Docker puede lanzar los contenedores con distintos mecanismos (lo que Docker llama *runtime*). Si tu equipo tiene uno más estricto que el de por defecto, indícalo:
+
+```yaml
+sandbox:
+  runtime: runsc           # el nombre con el que está registrado en Docker
+```
+
+- Sin indicarlo, se usa el de Docker por defecto, como siempre.
+- **Solo se elige uno ya instalado**: FORGE no instala ni configura ninguno. Los que conoce tu Docker salen en `docker info`.
+- **Si el indicado no está disponible, el ciclo no empieza**: lo explica, nombra el mecanismo y termina con el código 4. Nunca usa el de por defecto en su lugar.
+- **Todas las restricciones de arriba se mantienen** con cualquier mecanismo: solo se añade `--runtime <valor>` a la orden.
+- El valor solo admite letras, cifras, `_`, `.` y `-`, y no puede empezar por `-`. Con otro valor, el ciclo no arranca.
+- `forge status` muestra el mecanismo configurado y `forge doctor` comprueba además que Docker lo conoce.
+- Se aplica a la ejecución de las pruebas (también a `ejecutar_pruebas` del servidor MCP), **no a la construcción de la imagen** con las dependencias, que usa el constructor de Docker.
+- **Probado solo con `runc`**, que es el de por defecto, y con un nombre inexistente. Ningún mecanismo más estricto (gVisor, Kata…) se ha probado: no hay ninguno instalado en el equipo de desarrollo.
 
 **Un contenedor reduce el riesgo; no lo elimina.** Comparte el núcleo del sistema con tu equipo, y un fallo de Docker o del propio núcleo podría romper el aislamiento. No hay cuota de disco para la copia de trabajo: el único límite es el tiempo máximo y los 100 MB por archivo.
 
@@ -296,7 +332,7 @@ Para probar el implementador por turnos, la misma orden con `FORGE_IMPLEMENTADOR
 | 0 | Todas las tareas completadas, o la tarea se abortó por decisión humana (no es un fallo) |
 | 1 | Fallo, o no se puede empezar (etapa, lenguaje, ciclo ya en marcha, decisión no válida) |
 | 3 | Hay tareas que esperan tu decisión |
-| 4 | Docker no está disponible |
+| 4 | Docker no está disponible, o no tiene el mecanismo de aislamiento pedido en `sandbox.runtime` |
 
 ## Límites conocidos
 

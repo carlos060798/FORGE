@@ -158,11 +158,13 @@ export class Orchestrator {
     const agent = new LlmAgentAdapter(def, apiKey, undefined, this.options.cwd);
     this.log.append('agent_invoked', { agente: task.agente, taskId: task.id }, { taskId: task.id, agent: task.agente });
 
-    const agentResult = await agent.execute(ctx);
+    const agentResult = /** @type {any} */ (await agent.execute(ctx));
     this.log.append('agent_result', { taskId: task.id, ok: agentResult.ok, inputTokens: agentResult.inputTokens, outputTokens: agentResult.outputTokens }, { taskId: task.id, agent: task.agente });
     await bus.emit('agent:result', {
       agente: task.agente, taskId: task.id,
       tokens_input: agentResult.inputTokens ?? 0, tokens_output: agentResult.outputTokens ?? 0,
+      // Caché de prompts: tokens guardados y reutilizados, que tokens_input NO incluye
+      tokens_cache_escritura: agentResult.cacheCreationTokens ?? 0, tokens_cache_lectura: agentResult.cacheReadTokens ?? 0,
       modelo: agentResult.modelo ?? 'claude-sonnet-4-6', durationMs: agentResult.durationMs ?? 0,
       ok: agentResult.ok,
     });

@@ -87,13 +87,25 @@ export class LibroDeGasto {
     this.extra   = path.join(dirMotor, 'tope.json');
   }
 
-  anotar({ taskId, usd, inputTokens, outputTokens }) {
+  /**
+   * `cacheCreationTokens` y `cacheReadTokens` solo se escriben si el proveedor los informó
+   * (caché de prompts): `inputTokens` NO los incluye, son tres cantidades aparte.
+   * @param {{ taskId: string, usd: number, inputTokens: number, outputTokens: number, cacheCreationTokens?: number, cacheReadTokens?: number }} llamada
+   */
+  anotar({ taskId, usd, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens }) {
     fs.mkdirSync(path.dirname(this.archivo), { recursive: true });
-    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, usd, inputTokens, outputTokens }) + '\n', 'utf8');
+    const cache = typeof cacheCreationTokens === 'number' || typeof cacheReadTokens === 'number'
+      ? { cacheCreationTokens: cacheCreationTokens ?? 0, cacheReadTokens: cacheReadTokens ?? 0 }
+      : {};
+    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, usd, inputTokens, outputTokens, ...cache }) + '\n', 'utf8');
   }
 
-  /** @returns {{ usd: number, llamadas: number, tokens_in: number, tokens_out: number }} */
+  /**
+   * Los totales de caché solo aparecen si alguna llamada de la sesión los anotó.
+   * @returns {{ usd: number, llamadas: number, tokens_in: number, tokens_out: number, tokens_cache_escritura?: number, tokens_cache_lectura?: number }}
+   */
   total() {
+    /** @type {{ usd: number, llamadas: number, tokens_in: number, tokens_out: number, tokens_cache_escritura?: number, tokens_cache_lectura?: number }} */
     const t = { usd: 0, llamadas: 0, tokens_in: 0, tokens_out: 0 };
     let texto = '';
     try { texto = fs.readFileSync(this.archivo, 'utf8'); } catch { return t; }
@@ -105,6 +117,10 @@ export class LibroDeGasto {
         t.llamadas++;
         t.tokens_in += Number(e.inputTokens) || 0;
         t.tokens_out += Number(e.outputTokens) || 0;
+        if ('cacheCreationTokens' in e || 'cacheReadTokens' in e) {
+          t.tokens_cache_escritura = (t.tokens_cache_escritura ?? 0) + (Number(e.cacheCreationTokens) || 0);
+          t.tokens_cache_lectura   = (t.tokens_cache_lectura ?? 0) + (Number(e.cacheReadTokens) || 0);
+        }
       } catch { /* línea cortada */ }
     }
     return t;

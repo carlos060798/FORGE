@@ -2,7 +2,7 @@
 id: 2026-10-09-puesta-al-dia
 titulo: "Puesta al día: costo por repetición, protocolo de herramientas, instrucciones para agentes y aislamiento elegible"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-09
 actualizada: 2026-10-09
 autor: humano  # humano | importado
@@ -37,11 +37,11 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 **Para** gastar menos en tareas con varias iteraciones
 
 **Criterios de aceptación:**
-- [ ] **CA-001-01**: Con un proveedor que lo permite, la parte fija de cada llamada se marca como reutilizable. (P1)
-- [ ] **CA-001-02**: El gasto registrado distingue lo cobrado a precio normal, lo guardado para reutilizar y lo reutilizado, cada uno a su precio. (P1)
-- [ ] **CA-001-03**: El tope de gasto se calcula con esos precios; nunca se registra menos de lo que el proveedor cobra. (P1)
-- [ ] **CA-001-04**: Con un proveedor que no lo permite, nada cambia. (P1)
-- [ ] **CA-001-05**: La reutilización se puede desactivar en la configuración. (P2)
+- [x] **CA-001-01**: Con un proveedor que lo permite, la parte fija de cada llamada se marca como reutilizable. (P1)
+- [x] **CA-001-02**: El gasto registrado distingue lo cobrado a precio normal, lo guardado para reutilizar y lo reutilizado, cada uno a su precio. (P1)
+- [x] **CA-001-03**: El tope de gasto se calcula con esos precios; nunca se registra menos de lo que el proveedor cobra. (P1)
+- [x] **CA-001-04**: Con un proveedor que no lo permite, nada cambia. (P1)
+- [x] **CA-001-05**: La reutilización se puede desactivar en la configuración. (P2)
 
 ### HU-002: Herramientas que hablan la revisión vigente
 **Como** agente externo
@@ -49,11 +49,11 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 **Para** no quedar excluido por ser más nuevo ni por ser más antiguo
 
 **Criterios de aceptación:**
-- [ ] **CA-002-01**: Existe un informe, basado en la especificación oficial del protocolo, que dice cuál es la revisión vigente y qué cambia para un servidor por entrada y salida estándar. (P1)
-- [ ] **CA-002-02**: Si el informe confirma una revisión nueva aplicable, un cliente que la habla se conecta y usa las tres herramientas. (P1)
-- [ ] **CA-002-03**: Los clientes de las revisiones hoy aceptadas siguen funcionando igual. (P1)
-- [ ] **CA-002-04**: Una revisión desconocida recibe una respuesta clara con las revisiones admitidas. (P2)
-- [ ] **CA-002-05**: Si el informe concluye que no hay nada que cambiar, la historia se cierra con el informe como evidencia. (P1)
+- [x] **CA-002-01**: Existe un informe, basado en la especificación oficial del protocolo, que dice cuál es la revisión vigente y qué cambia para un servidor por entrada y salida estándar. (P1)
+- [ ] **CA-002-02**: Si el informe confirma una revisión nueva aplicable, un cliente que la habla se conecta y usa las tres herramientas. (P1) — *parcial: comprobado con un cliente escrito para las pruebas, no con un cliente real; ver `verificacion.md`*
+- [x] **CA-002-03**: Los clientes de las revisiones hoy aceptadas siguen funcionando igual. (P1)
+- [x] **CA-002-04**: Una revisión desconocida recibe una respuesta clara con las revisiones admitidas. (P2)
+- [ ] **CA-002-05**: Si el informe concluye que no hay nada que cambiar, la historia se cierra con el informe como evidencia. (P1) — *no aplica: el informe concluyó que sí había que cambiar*
 
 ### HU-003: Reglas del proyecto donde los agentes las buscan
 **Como** agente de código ajeno
@@ -61,10 +61,10 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 **Para** respetarlas sin conocer FORGE
 
 **Criterios de aceptación:**
-- [ ] **CA-003-01**: El repositorio de FORGE tiene ese archivo, con las restricciones de su constitución, cómo ejecutar las pruebas y dónde están los artefactos. (P2)
-- [ ] **CA-003-02**: Al inicializar FORGE en un proyecto se crea ese archivo a partir de la constitución del proyecto, si no existe. (P2)
-- [ ] **CA-003-03**: Si el archivo ya existe, no se sobrescribe: se informa y se ofrece el contenido propuesto aparte. (P1)
-- [ ] **CA-003-04**: El archivo no contiene secretos ni rutas del equipo del usuario. (P1)
+- [x] **CA-003-01**: El repositorio de FORGE tiene ese archivo, con las restricciones de su constitución, cómo ejecutar las pruebas y dónde están los artefactos. (P2)
+- [x] **CA-003-02**: Al inicializar FORGE en un proyecto se crea ese archivo a partir de la constitución del proyecto, si no existe. (P2)
+- [x] **CA-003-03**: Si el archivo ya existe, no se sobrescribe: se informa y se ofrece el contenido propuesto aparte. (P1)
+- [x] **CA-003-04**: El archivo no contiene secretos ni rutas del equipo del usuario. (P1)
 
 ### HU-004: Elegir un aislamiento más estricto
 **Como** operador
@@ -72,11 +72,11 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 **Para** usar uno más estricto cuando mi equipo lo tiene
 
 **Criterios de aceptación:**
-- [ ] **CA-004-01**: El operador puede indicar un mecanismo de aislamiento en la configuración; sin indicarlo, se usa el actual. (P2)
-- [ ] **CA-004-02**: Si el mecanismo indicado no está disponible, el ciclo no empieza, lo explica y termina con el código de «aislamiento no disponible». Nunca cae al mecanismo por defecto en silencio. (P1)
-- [ ] **CA-004-03**: Todas las restricciones actuales (sin red, sin privilegios, límites de recursos) se mantienen con cualquier mecanismo. (P1)
-- [ ] **CA-004-04**: Un valor con caracteres que pudieran interpretarse como opciones se rechaza. (P1)
-- [ ] **CA-004-05**: La consulta de estado y el diagnóstico muestran qué mecanismo está en uso. (P3)
+- [x] **CA-004-01**: El operador puede indicar un mecanismo de aislamiento en la configuración; sin indicarlo, se usa el actual. (P2)
+- [x] **CA-004-02**: Si el mecanismo indicado no está disponible, el ciclo no empieza, lo explica y termina con el código de «aislamiento no disponible». Nunca cae al mecanismo por defecto en silencio. (P1)
+- [x] **CA-004-03**: Todas las restricciones actuales (sin red, sin privilegios, límites de recursos) se mantienen con cualquier mecanismo. (P1)
+- [x] **CA-004-04**: Un valor con caracteres que pudieran interpretarse como opciones se rechaza. (P1)
+- [x] **CA-004-05**: La consulta de estado y el diagnóstico muestran qué mecanismo está en uso. (P3)
 
 ## 5. Escenarios de Uso
 
@@ -128,8 +128,8 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 
 ### Asunciones
 - El proveedor por defecto informa por separado de los tokens guardados y reutilizados.
-- [NECESITA_ACLARACION]: la existencia y el contenido de una revisión nueva del protocolo vienen de fuentes secundarias; HU-002 empieza comprobándolo.
-- [NECESITA_ACLARACION]: no se ha probado ningún mecanismo de aislamiento alternativo en el equipo de desarrollo.
+- Resuelta el 2026-10-09: la revisión nueva del protocolo existe y está confirmada en la fuente oficial (`spikes/mcp-revision-vigente.md`).
+- Sigue abierta: no se ha probado ningún mecanismo de aislamiento alternativo en el equipo de desarrollo (no hay ninguno instalado). Se probó el de por defecto pedido por su nombre y uno inexistente.
 
 ## 10. Términos del Dominio
 
@@ -140,9 +140,9 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 
 ## 11. Preguntas Abiertas
 
-- [ ] [POR_DECIDIR]: ¿La reutilización se activa por defecto? Propuesta: sí, donde el proveedor la permite.
-- [ ] [POR_DECIDIR]: ¿HU-004 entra en esta entrega o espera a que alguien tenga un mecanismo alternativo con el que probarla?
-- [ ] [NECESITA_ACLARACION]: ¿El archivo de instrucciones se regenera cuando cambia la constitución, o solo se crea una vez?
+- [x] ¿La reutilización se activa por defecto? **Sí**, donde el proveedor la permite; se desactiva en la configuración. (Decidido al delegar la implementación, 2026-10-09.)
+- [x] ¿HU-004 entra en esta entrega? **Sí.** Entra sin haberse probado con un mecanismo alternativo real: queda anotado como límite en `verificacion.md` y en la documentación.
+- [x] ¿El archivo de instrucciones se regenera cuando cambia la constitución? **No: solo se crea una vez.** Un archivo que ya existe nunca se toca, lo haya escrito una persona o lo haya generado FORGE; al inicializar de nuevo, el contenido actualizado se deja aparte como propuesta. (Decisión tomada durante la implementación, a falta de respuesta del dueño: es la opción que no puede pisar el trabajo de nadie. Pendiente de que el dueño la confirme.)
 
 ## 12. Criterios de Éxito Medibles
 
@@ -161,3 +161,8 @@ El ciclo gasta menos por repetir lo mismo, las herramientas de FORGE siguen func
 
 | # | Categoría | Pregunta | Decisión | Fecha |
 |---|-----------|----------|----------|-------|
+| 1 | Aprobación | ¿Se aprueba la especificación? | Aprobada por delegación del dueño, 2026-10-09 | 2026-10-09 |
+| 2 | Alcance | ¿La reutilización se activa por defecto? | Sí; se puede desactivar en la configuración | 2026-10-09 |
+| 3 | Alcance | ¿HU-004 entra en esta entrega? | Sí, con el límite de no haberse probado con un mecanismo alternativo real | 2026-10-09 |
+| 4 | Comportamiento | ¿El archivo de instrucciones se regenera cuando cambia la constitución? | No: se crea una vez; después solo se deja una propuesta aparte. Pendiente de confirmación del dueño | 2026-10-09 |
+| 5 | Protocolo | ¿Existe una revisión nueva aplicable? | Sí, confirmada en la fuente oficial; se implementa sin dejar de aceptar las anteriores | 2026-10-09 |

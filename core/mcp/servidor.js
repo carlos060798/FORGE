@@ -54,6 +54,11 @@ async function crearRunnerDocker(cwd) {
   }
 
   const config = leerConfigCiclo(cwd);
+  // El mismo mecanismo de aislamiento que el ciclo, y la misma regla: si falta, no se ejecuta
+  if (config.sandbox.runtime) {
+    const rt = await cli.runtimeDisponible(config.sandbox.runtime);
+    if (rt.ok === false) throw new Error(`${rt.error}. Las pruebas no se ejecutan con un aislamiento distinto del pedido.`);
+  }
   const runId = `mcp-${Date.now()}`;
   return new SandboxRunner({
     runId, cli,
@@ -62,6 +67,7 @@ async function crearRunnerDocker(cwd) {
     limites: { cpus: config.sandbox.cpus, memoria: config.sandbox.memoria, pids: config.sandbox.pids },
     timeoutMs: config.sandbox.timeout_s * 1000,
     salidaMaxBytes: config.sandbox.salida_max_bytes,
+    runtime: config.sandbox.runtime,
   });
 }
 
