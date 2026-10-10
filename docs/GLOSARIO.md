@@ -187,14 +187,15 @@ Características:
 - Prompts estructurados que un agente ejecuta
 - Parte de un comando mayor
 
-FORGE incluye **30 skills** organizadas en 7 categorías:
-- Pipeline y orquestación (5)
-- Descubrimiento e interpretación (4)
-- Diseño (3)
-- Calidad y validación (4)
-- Memoria e indexación (5)
-- Observabilidad (3)
-- Compresión y despliegue (3)
+FORGE incluye **31 skills** (una carpeta con `SKILL.md` por cada una en `skills/`). El mapa de tools.md agrupa 29 de ellas en estas categorías:
+- Pipeline y orquestación
+- Descubrimiento e interpretación
+- Diseño
+- Calidad y validación
+- Memoria e indexación
+- Observabilidad
+- Compresión
+- Despliegue e integración
 
 **Ver:** [docs/tools.md](tools.md)
 

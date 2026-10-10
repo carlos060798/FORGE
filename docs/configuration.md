@@ -461,7 +461,7 @@ compresion:
   modo_agentes_internos: comprimido
 ```
 
-Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario. Activa **6 agentes** por defecto (`arquitecto`, `desarrollador-backend`, `desarrollador-frontend`, `tester`, `revisor`, `investigador`) y desactiva los más costosos (`critico`, `seguridad`, `documentador`, etc.).
+Diseñado para proyectos pequeños, prototipos rápidos o cuando el costo de tokens es prioritario. Activa **6 agentes** por defecto (`arquitecto`, `disenador-api`, `asesor-datos`, `desarrollador-backend`, `desarrollador-frontend`, `tester`) y desactiva los más costosos (`critico`, `seguridad`, `documentador`, etc.).
 
 ### `startup.yaml`
 

@@ -80,7 +80,7 @@ Cada salida significativa se escribe en disco en `.sdd/`. El IR, el diseño del 
 
 ### Dependencias externas mínimas
 
-FORGE tiene exactamente dos dependencias npm: `acorn` (parser AST de JavaScript) y `@sqlite.org/sqlite-wasm` (backend de memoria opcional). Todo lo demás usa APIs nativas de Node.js. Es una elección deliberada: cuantas menos cosas puedan romperse en la instalación, más confiablemente funciona FORGE en distintos entornos.
+FORGE tiene tres dependencias npm: `@anthropic-ai/sdk` (el proveedor de Anthropic; es dependencia desde 5.0.0), `acorn` (parser AST de JavaScript) y `@sqlite.org/sqlite-wasm` (backend de memoria opcional). Todo lo demás usa APIs nativas de Node.js. Es una elección deliberada: cuantas menos cosas puedan romperse en la instalación, más confiablemente funciona FORGE en distintos entornos.
 
 ### Hooks como gobernanza
 
@@ -104,7 +104,7 @@ FORGE está organizado en seis capas:
 |------|-----------|
 | **L0 — Modelos** | Anthropic (Opus/Sonnet/Haiku), OpenAI, Ollama, Stub — motor agnóstico auto-detectado |
 | **L1 — Memoria** | `.sdd/memoria/` — Markdown por agente o SQLite; memoria compartida entre agentes |
-| **L2 — Interfaz** | 39 comandos, 30 skills — la API del pipeline |
+| **L2 — Interfaz** | 39 comandos, 31 skills — la API del pipeline |
 | **L3 — Herramientas** | Herramientas nativas de Claude Code: Read, Write, Bash, Task |
 | **L4 — Orquestación** | 14 agentes despachados secuencialmente o en paralelo |
 | **L5 — Gobernanza** | 6 hooks (.js + .sh): pre-tool-guard, agent-memory, post-write-conventions |
