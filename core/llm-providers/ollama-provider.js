@@ -71,6 +71,7 @@ export class OllamaProvider extends LlmProvider {
       throw new Error(`Ollama error ${res.status}: ${text.slice(0, 200)}`);
     }
 
+    /** @type {{ message?: { content?: string }, prompt_eval_count?: number, eval_count?: number }} */
     const json = await res.json();
     const output = json.message?.content ?? '';
     // Ollama devuelve eval_count (tokens generados) y prompt_eval_count

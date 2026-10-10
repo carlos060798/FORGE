@@ -37,6 +37,15 @@ import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
 
+/**
+ * Lo que se le pide a un agente en una llamada.
+ * @typedef {Object} PeticionAgente
+ * @property {string} agente
+ * @property {string} userPrompt
+ * @property {string} [extraContext]
+ * @property {string} [clavePrompt]  parte del prompt que no cambia por lo que el nodo escribe en disco; el diario la usa en vez de userPrompt para reconocer una respuesta ya pagada
+ */
+
 const DECISIONES = ['continuar', 'aceptar', 'abortar'];
 
 /**
@@ -56,7 +65,7 @@ export function pedirRevision(motivo, reanudarEn, detalle) {
  * presupuesto agotado.
  * @returns {Promise<{ salida: string, presupuesto: any } | { fallo: Partial<EstadoCiclo> }>}
  */
-async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext, clavePrompt }) {
+async function invocar(estado, deps, presupuesto, nodo, /** @type {PeticionAgente} */ { agente, userPrompt, extraContext, clavePrompt }) {
   const efectivo = modeloEfectivo(limitarNivel(deps.aliasDe(agente), deps.config.motor?.nivel_maximo), presupuesto, deps.config.presupuesto.degradar_a);
   // Una respuesta ya pagada y guardada en el diario no cuesta nada: se usa aunque haya agotado el tope
   const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) }) === true;

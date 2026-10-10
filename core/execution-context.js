@@ -33,6 +33,7 @@ export const CONTEXTOS = {
   confirmado: { nivel: 'confirmado', maxDuracionMs: 300_000, permitirRed: true,  permitirEscrituraFuera: true  },
 };
 
+/** @type {ConfianzaNivel[]} */
 const ORDEN = ['sandbox', 'local', 'confirmado'];
 const HALF_OPEN_AFTER_MS = 30_000;
 
@@ -118,6 +119,7 @@ export class CircuitBreaker {
     const current = this.estadoAgente(agente);
     const failureCount = current.failureCount + 1;
     const now = Date.now();
+    /** @type {AgentCircuitState} */
     const next = failureCount >= this.maxFallos
       ? { state: 'open', failureCount, lastFailureTs: now, openedAt: now }
       : { state: 'closed', failureCount, lastFailureTs: now };

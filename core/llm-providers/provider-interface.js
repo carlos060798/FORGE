@@ -28,6 +28,7 @@
  */
 
 export class LlmProvider {
+  /** @returns {string} */
   get nombre() { throw new Error('nombre no implementado'); }
 
   /** @returns {Promise<{output: string, inputTokens?: number, outputTokens?: number, cacheCreationTokens?: number, cacheReadTokens?: number}>} */

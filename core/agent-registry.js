@@ -122,9 +122,9 @@ function isRetryable(err) {
 export class LlmAgentAdapter {
   /**
    * @param {object} definition
-   * @param {string} [apiKey]  — solo necesario para provider anthropic
+   * @param {string} [apiKey]  - solo necesario para provider anthropic
    * @param {number} [globalTimeoutMs]
-   * @param {string} [cwd]     — directorio del proyecto para leer sdd.config.yaml
+   * @param {string} [cwd]     - directorio del proyecto para leer sdd.config.yaml
    * @param {object} [provider] provider ya creado (por defecto, el configurado)
    */
   constructor(definition, apiKey, globalTimeoutMs, cwd, provider) {

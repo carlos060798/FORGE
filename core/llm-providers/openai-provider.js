@@ -76,6 +76,7 @@ export class OpenAIProvider extends LlmProvider {
       throw new Error(`OpenAI error ${res.status}: ${text.slice(0, 200)}`);
     }
 
+    /** @type {{ choices?: { message?: { content?: string } }[], usage?: { prompt_tokens?: number, completion_tokens?: number } }} */
     const json = await res.json();
     const output = json.choices?.[0]?.message?.content ?? '';
     const usage  = json.usage ?? {};
