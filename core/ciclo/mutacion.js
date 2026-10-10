@@ -20,6 +20,8 @@ import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { parse } from 'acorn';
 import { clasificar } from './router.js';
+import { redactar } from './redactar.js';
+import { validarRuta } from './protocolo-archivos.js';
 import { crearCopia, eliminarCopia } from '../sandbox/staging.js';
 
 export const OPERADORES = ['comparacion', 'constante', 'condicion', 'retorno'];
@@ -63,9 +65,13 @@ export function aplicarAlteracion(contenido, alteracion) {
   return contenido.slice(0, alteracion.inicio) + alteracion.texto + contenido.slice(alteracion.fin);
 }
 
-/** Línea `n` (desde 1) de un texto, recortada. */
+/**
+ * Línea `n` (desde 1) de un texto, sin secretos y recortada. Se redacta ANTES de recortar: un
+ * secreto partido por el recorte perdería su cabecera y pasaría (H-09). Va al registro, a la
+ * revisión y al prompt del agente de pruebas.
+ */
 function lineaDe(texto, n) {
-  const linea = (texto.split('\n')[n - 1] ?? '').replace(/\r$/, '').trim();
+  const linea = redactar((texto.split('\n')[n - 1] ?? '').replace(/\r$/, '').trim());
   return linea.length > MAX_TEXTO_LINEA ? linea.slice(0, MAX_TEXTO_LINEA) + '…' : linea;
 }
 
@@ -414,29 +420,215 @@ export function puntuar(probadas, detectadas) {
   return probadas > 0 ? detectadas / probadas : null;
 }
 
+// ── Selección por archivo ────────────────────────────────────────────────────
+
+/**
+ * Como `seleccionar`, pero reparte la muestra entre los archivos por rondas: ningún archivo puede
+ * quedarse con más de su parte, y lo que un archivo no usa pasa a los demás (H-02). Así un archivo
+ * lleno de alteraciones (cables trampa, constantes autocomprobadas) no diluye la puntuación de los
+ * demás. Dentro de cada archivo, salto uniforme. El resultado queda ordenado por ruta y posición.
+ * @template {{ ruta: string }} T
+ * @param {T[]} candidatas  ya ordenadas por archivo y posición
+ * @param {number} max
+ * @returns {T[]}
+ */
+export function seleccionarPorArchivo(candidatas, max) {
+  const tope = Math.max(0, Math.floor(max));
+  /** @type {Map<string, T[]>} */
+  const porArchivo = new Map();
+  for (const c of candidatas) {
+    const lista = porArchivo.get(c.ruta);
+    if (lista) lista.push(c); else porArchivo.set(c.ruta, [c]);
+  }
+  const rutas = [...porArchivo.keys()].sort();
+  const cuota = new Map(rutas.map((r) => [r, 0]));
+  let restante = Math.min(tope, candidatas.length);
+  while (restante > 0) {
+    let repartido = false;
+    for (const r of rutas) {
+      if (restante === 0) break;
+      if (/** @type {number} */ (cuota.get(r)) < /** @type {T[]} */ (porArchivo.get(r)).length) {
+        cuota.set(r, /** @type {number} */ (cuota.get(r)) + 1);
+        restante--;
+        repartido = true;
+      }
+    }
+    if (!repartido) break;
+  }
+  return rutas.flatMap((r) => seleccionar(/** @type {T[]} */ (porArchivo.get(r)), /** @type {number} */ (cuota.get(r))));
+}
+
+// ── ¿Qué significa un fallo de las pruebas con la alteración puesta? (H-02, H-03, H-11) ──────────
+
+/**
+ * Un código de salida distinto de cero no dice que una PRUEBA detectara el cambio: el módulo puede
+ * no haberse cargado (cable trampa, importación rota), el código puede no compilar o no parsear,
+ * o el contenedor puede haber sido matado. Esas alteraciones no son «detectadas» ni
+ * «sobrevivientes»: son no concluyentes y quedan fuera del denominador.
+ *
+ * Se reconoce por la forma de la salida del ejecutor (TAP o spec de node:test, jest, vitest,
+ * pytest, unittest, go test). Si no se reconoce ningún fallo de prueba, NO se cuenta como
+ * detectada: ante la duda, no concluyente.
+ *
+ * @typedef {'prueba'|'no_compila'|'no_carga'|'sin_senal'} SenalDeFallo
+ */
+
+const ES_ARCHIVO_JS = /\.(?:[cm]?[jt]sx?)$/i;
+
+/**
+ * @param {string} salida
+ * @returns {SenalDeFallo}
+ */
+function senalJs(salida) {
+  /** @type {string[]} */
+  const nombres = [];
+  // node:test, reporter TAP: `not ok 3 - nombre`; reporter spec: `✖ nombre (1.2ms)`
+  for (const m of salida.matchAll(/^[ \t]*not ok \d+ - (.+?)(?:[ \t]+#.*)?$/gm)) nombres.push(m[1].trim());
+  for (const m of salida.matchAll(/^[ \t]*[✖✗×] (.+?) \(\d+(?:\.\d+)?ms\)[ \t]*$/gmu)) nombres.push(m[1].trim());
+  // Un fallo de CARGA aparece como una «prueba» que se llama como el archivo: ninguna prueba llegó a ejecutarse
+  if (nombres.some((n) => !ES_ARCHIVO_JS.test(n))) return 'prueba';
+  // jest: `● suite › prueba` y `Tests: 2 failed`; vitest: `FAIL  archivo > prueba` y `Tests  2 failed`
+  if (/^[ \t]*● (?!Test suite failed to run)\S/m.test(salida)) return 'prueba';
+  if (/^[ \t]*Tests:?[ \t]+.*\b[1-9]\d* failed\b/m.test(salida)) return 'prueba';
+  if (/^[ \t]*FAIL[ \t]+\S+[ \t]+>[ \t]+\S/m.test(salida)) return 'prueba';
+  if (/error TS\d+|\bTS\d{4}:|SyntaxError|Unexpected token|Unexpected identifier/.test(salida)) return 'no_compila';
+  if (nombres.length > 0 || /Test suite failed to run|Failed Suites|Cannot find module|ERR_MODULE_NOT_FOUND|ERR_REQUIRE_ESM|Failed to (?:load|resolve)/.test(salida)) return 'no_carga';
+  return 'sin_senal';
+}
+
+/** @param {string} salida @returns {SenalDeFallo} */
+function senalPython(salida) {
+  // pytest: `FAILED tests/x.py::test - motivo`; el resumen de unittest, `FAILED (errors=1)`, no cuenta
+  if (/^FAILED[ \t]+[^\s(]/m.test(salida) ||/\b[1-9]\d* failed\b/.test(salida)) return 'prueba';
+  // unittest: `FAIL: test_x (…)` y `ERROR: test_x (…)`; un módulo que no se importa es `_FailedTest`
+  for (const m of salida.matchAll(/^(?:FAIL|ERROR): .*$/gm)) if (!/_FailedTest/.test(m[0])) return 'prueba';
+  if (/SyntaxError|IndentationError|TabError/.test(salida)) return 'no_compila';
+  if (/ImportError|ModuleNotFoundError|errors? during collection|ERROR collecting|Failed to import test module|_FailedTest/.test(salida)) return 'no_carga';
+  return 'sin_senal';
+}
+
+/** @param {string} salida @returns {SenalDeFallo} */
+function senalGo(salida) {
+  if (/^[ \t]*(?:--- FAIL:|panic:)/m.test(salida)) return 'prueba';
+  if (/\[build failed\]|\[setup failed\]|^# \S+[ \t]*$/m.test(salida)) return 'no_compila';
+  return 'sin_senal';
+}
+
+/**
+ * @param {string} salida
+ * @param {'javascript'|'typescript'|'python'|'go'|null} lenguaje
+ * @returns {SenalDeFallo}
+ */
+export function senalDeFallo(salida, lenguaje) {
+  if (lenguaje === 'python') return senalPython(salida);
+  if (lenguaje === 'go') return senalGo(salida);
+  return senalJs(salida);
+}
+
+/** Códigos de salida de un proceso matado (OOM, SIGSEGV): el entorno, no una prueba. */
+const CODIGOS_ENTORNO = new Set([137, 139]);
+
+/** @param {any} ejecucion */
+export const esMuerteDeEntorno = (ejecucion) => Boolean(ejecucion?.oomKilled) || CODIGOS_ENTORNO.has(ejecucion?.exitCode);
+
+/**
+ * @typedef {'detectada'|'sobrevive'|'no_concluyente'} Veredicto
+ * @typedef {{ veredicto: Veredicto, motivo?: string }} Juicio
+ */
+
+/**
+ * Qué dice una ejecución con la alteración puesta. `categoria` es la de `clasificar` (ni `infra_error`,
+ * que corta la medición antes de llegar aquí).
+ *
+ * Decisión sobre el tiempo agotado: cuenta como detectada solo si el ejecutor lo clasificó como
+ * tiempo agotado de las pruebas (`timedOut`, sin error de entorno). Un cambio que provoca un bucle
+ * infinito es una diferencia de comportamiento real, y la copia sin alterar ya demostró (línea
+ * base) que las pruebas terminan a tiempo con el código original.
+ *
+ * @param {any} ejecucion
+ * @param {'pass'|'fail'|'timeout'} categoria
+ * @param {'javascript'|'typescript'|'python'|'go'|null} lenguaje
+ * @returns {Juicio}
+ */
+export function juzgar(ejecucion, categoria, lenguaje) {
+  if (categoria === 'pass') return { veredicto: 'sobrevive' };
+  if (categoria === 'timeout') return { veredicto: 'detectada', motivo: 'tiempo_agotado' };
+  if (esMuerteDeEntorno(ejecucion)) return { veredicto: 'no_concluyente', motivo: 'entorno' };
+  const salida = `${ejecucion?.stdout ?? ''}\n${ejecucion?.stderr ?? ''}`;
+  const senal = senalDeFallo(salida, lenguaje);
+  return senal === 'prueba' ? { veredicto: 'detectada', motivo: 'prueba_fallida' } : { veredicto: 'no_concluyente', motivo: senal };
+}
+
+// ── Copias temporales huérfanas ──────────────────────────────────────────────
+
+/** Archivo que marca una carpeta como creada por esta medición: sin él, no se toca. */
+const MARCA_COPIA = '.forge-mutacion';
+const PATRON_COPIA = /^forge-mutacion-[A-Za-z0-9]{6}$/;
+const SEIS_HORAS = 6 * 60 * 60 * 1000;
+
+/**
+ * Borra las carpetas `forge-mutacion-*` que dejó un proceso cortado (SIGKILL, corte de luz).
+ * Solo borra carpetas con el nombre exacto que crea FORGE, que contienen su marca, que no son
+ * enlaces y que llevan más de `antiguedadMs` sin tocarse: no toca nada de otra herramienta ni
+ * la copia de una medición que siga en marcha.
+ * @param {string} [dir]  carpeta temporal (por defecto la del sistema)
+ * @param {{ antiguedadMs?: number, ahora?: () => number }} [opciones]
+ * @returns {number} carpetas borradas
+ */
+export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
+  const antiguedadMs = opciones.antiguedadMs ?? SEIS_HORAS;
+  const ahora = opciones.ahora ?? Date.now;
+  let nombres;
+  try { nombres = fs.readdirSync(dir); } catch { return 0; }
+  let borradas = 0;
+  for (const nombre of nombres) {
+    if (!PATRON_COPIA.test(nombre)) continue;
+    const abs = path.join(dir, nombre);
+    try {
+      const st = fs.lstatSync(abs);
+      if (!st.isDirectory() || st.isSymbolicLink()) continue;
+      if (!fs.existsSync(path.join(abs, MARCA_COPIA))) continue;
+      if (ahora() - st.mtimeMs < antiguedadMs) continue;
+      if (eliminarCopia(abs)) borradas++;
+    } catch { /* otro proceso la tocó a la vez: se deja */ }
+  }
+  return borradas;
+}
+
 // ── Ejecución ────────────────────────────────────────────────────────────────
 
 /**
  * @typedef {Object} ResultadoMutacion
- * @property {number} probadas
+ * @property {number} probadas              alteraciones CONCLUYENTES (detectadas + sobrevivientes): el denominador de la puntuación
  * @property {number} detectadas
- * @property {number|null} puntuacion       detectadas / probadas; null si no se llegó a probar ninguna
+ * @property {number} noConcluyentes        alteraciones que no se pueden juzgar (no compilan, no cargan, entorno): fuera del denominador
+ * @property {number|null} puntuacion       detectadas / probadas; null si no hubo ninguna concluyente
  * @property {boolean} parcial              no se probaron todas las alteraciones posibles
- * @property {'tope_alteraciones'|'tiempo'|'infraestructura'} [motivoParcial]
+ * @property {'tope_alteraciones'|'tiempo'|'infraestructura'|'linea_base'} [motivoParcial]
+ * @property {'ok'|'falla'|'infraestructura'|'no_medida'} lineaBase  la copia sin alterar: debe pasar para que la medición valga
  * @property {number} candidatas            alteraciones posibles antes de aplicar el tope
  * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
- * @property {string} [detalleInfra]        cola del error del entorno, si lo hubo
+ * @property {{ ruta: string, motivo: string }[]} [rechazadas]  rutas que no se midieron por no ser válidas
+ * @property {string} [detalleInfra]        cola del error del entorno o de la línea base, si lo hubo
+ * @property {boolean} [copiaSinBorrar]     la copia temporal no se pudo borrar del todo
+ * @property {number} [huerfanasBorradas]   copias de mediciones cortadas que se barrieron al empezar
  */
 
 /**
  * Mide cuántas alteraciones detectan las pruebas.
  *
- * Cada alteración se escribe en una copia temporal del proyecto (con los mismos vetos que la copia
- * de trabajo del entorno aislado) y se llama a `runner.test(copia)`. La copia se borra siempre.
+ * Primero se ejecuta la copia SIN alterar (línea base): si no pasa, no se mide. Después, cada
+ * alteración se escribe en la copia temporal (con los mismos vetos que la copia de trabajo del
+ * entorno aislado, y permisos privados) y se llama a `runner.test(copia)`. La copia se borra siempre.
  *
- * `archivos` son las rutas relativas de los archivos que escribió el implementador. `huellasPruebas`
- * evita reutilizar un avance medido con otras pruebas. `avance` guarda el resultado de cada
- * alteración ya probada, para no repetirla si el proceso se corta.
+ * Solo las alteraciones concluyentes cuentan: las que no compilan, las que impiden cargar el módulo
+ * y las que matan el contenedor se descartan y se sustituyen por otras de la reserva (como mucho
+ * `max` más), de forma determinista.
+ *
+ * `archivos` son las rutas relativas de los archivos que escribió el implementador; la función las
+ * valida otra vez (`validarRuta`) y descarta las que salen del proyecto o están vetadas.
+ * `huellasPruebas` evita reutilizar un avance medido con otras pruebas. `avance` guarda el
+ * resultado de cada alteración ya probada, para no repetirla si el proceso se corta.
  *
  * @param {{
  *   cwd: string,
@@ -445,8 +637,9 @@ export function puntuar(probadas, detectadas) {
  *   max?: number,
  *   timeoutMs?: number,
  *   excluir?: string[],
+ *   vetadas?: string[],
  *   huellasPruebas?: string[],
- *   alProbar?: (evento: { indice: number, total: number, alteracion: Alteracion, resultado: 'detectada'|'sobrevive'|'sin_resultado', categoria: string, durationMs: number, reutilizada: boolean }) => void,
+ *   alProbar?: (evento: { indice: number, total: number, alteracion: Alteracion, resultado: 'detectada'|'sobrevive'|'no_concluyente'|'sin_resultado', categoria: string, motivo?: string, durationMs: number, reutilizada: boolean }) => void,
  *   avance?: { leer: () => any, guardar: (dato: any) => void },
  *   ahora?: () => number,
  *   dirTemporal?: string,
@@ -458,53 +651,107 @@ export async function medirMutacion(entrada) {
   const max       = entrada.max ?? 10;
   const timeoutMs = entrada.timeoutMs ?? 300_000;
   const ahora     = entrada.ahora ?? Date.now;
+  const dirTemporal = entrada.dirTemporal ?? os.tmpdir();
 
+  // Las rutas se validan aquí, no solo en quien llama: una con «..» escribiría fuera de la copia (H-08)
   /** @type {{ ruta: string, contenido: string }[]} */
   const fuentes = [];
-  for (const ruta of [...new Set(entrada.archivos)]) {
-    if (!lenguajeDe(ruta)) continue;
+  /** @type {{ ruta: string, motivo: string }[]} */
+  const rechazadas = [];
+  const vistas = new Set();
+  for (const bruta of entrada.archivos) {
+    if (typeof bruta !== 'string' || bruta === '') continue;
+    const v = validarRuta(cwd, bruta, { vetadas: entrada.vetadas });
+    if (v.ok !== true) { rechazadas.push({ ruta: bruta, motivo: v.motivo ?? 'ruta_no_valida' }); continue; }
+    const ruta = v.rutaPosix;
+    if (vistas.has(ruta) || !lenguajeDe(ruta)) continue;
+    vistas.add(ruta);
     try { fuentes.push({ ruta, contenido: fs.readFileSync(path.resolve(cwd, ruta), 'utf8') }); } catch { /* ya no existe: no se mide */ }
   }
   const candidatas = alteracionesDe(fuentes);
   if (candidatas.length === 0) return null;
-  const elegidas = seleccionar(candidatas, max);
+  const elegidas = seleccionarPorArchivo(candidatas, max);
+  const elegidasSet = new Set(elegidas);
+  // La reserva sustituye a las no concluyentes; el orden es fijo, así que la misma entrada da la misma medición
+  const reservas = seleccionarPorArchivo(candidatas.filter((c) => !elegidasSet.has(c)), max);
+  const secuencia = [...elegidas, ...reservas];
   const contenidoDe = new Map(fuentes.map((f) => [f.ruta, f.contenido]));
+  const lenguajes = new Map(fuentes.map((f) => [f.ruta, lenguajeDe(f.ruta)]));
 
-  // Un avance guardado solo vale si se midió exactamente lo mismo: mismo código, mismas pruebas, misma muestra
+  // Un avance guardado solo vale si se midió exactamente lo mismo: mismo código, mismas pruebas, misma secuencia
   const clave = createHash('sha256').update(JSON.stringify({
+    v: 3,
     fuentes: fuentes.map((f) => [f.ruta, createHash('sha256').update(f.contenido).digest('hex')]),
     pruebas: entrada.huellasPruebas ?? [],
-    elegidas: elegidas.map((a) => [a.ruta, a.inicio, a.fin, a.texto]),
+    secuencia: secuencia.map((a) => [a.ruta, a.inicio, a.fin, a.texto]),
+    max,
   })).digest('hex');
   const guardado = entrada.avance?.leer();
-  /** @type {{ categoria: string, durationMs: number }[]} */
+  /** @type {{ categoria: string, veredicto: Veredicto, motivo?: string, durationMs: number }[]} */
   const hechas = guardado && guardado.clave === clave && Array.isArray(guardado.hechas)
-    ? guardado.hechas.filter((h) => h && (h.categoria === 'pass' || h.categoria === 'fail' || h.categoria === 'timeout')).slice(0, elegidas.length)
+    ? guardado.hechas
+      .filter((h) => h && (h.categoria === 'pass' || h.categoria === 'fail' || h.categoria === 'timeout')
+        && (h.veredicto === 'detectada' || h.veredicto === 'sobrevive' || h.veredicto === 'no_concluyente'))
+      .slice(0, secuencia.length)
     : [];
 
   /** @type {ResultadoMutacion} */
-  const r = { probadas: 0, detectadas: 0, puntuacion: null, parcial: candidatas.length > elegidas.length, candidatas: candidatas.length, sobrevivientes: [] };
-  if (r.parcial) r.motivoParcial = 'tope_alteraciones';
-
-  const anotar = (indice, categoria, durationMs, reutilizada) => {
-    const a = elegidas[indice];
-    const detectada = categoria === 'fail' || categoria === 'timeout';
-    r.probadas++;
-    if (detectada) r.detectadas++;
-    else r.sobrevivientes.push({ ruta: a.ruta, linea: a.linea, operador: a.operador, antes: a.antes, despues: a.despues });
-    entrada.alProbar?.({ indice, total: elegidas.length, alteracion: a, resultado: detectada ? 'detectada' : 'sobrevive', categoria, durationMs, reutilizada });
+  const r = {
+    probadas: 0, detectadas: 0, noConcluyentes: 0, puntuacion: null, parcial: false, lineaBase: 'no_medida',
+    candidatas: candidatas.length, sobrevivientes: [],
+    ...(rechazadas.length ? { rechazadas } : {}),
   };
 
-  hechas.forEach((h, i) => anotar(i, h.categoria, h.durationMs ?? 0, true));
+  const anotar = (indice, h, reutilizada) => {
+    const a = secuencia[indice];
+    if (h.veredicto === 'no_concluyente') {
+      r.noConcluyentes++;
+    } else {
+      r.probadas++;
+      if (h.veredicto === 'detectada') r.detectadas++;
+      else r.sobrevivientes.push({ ruta: a.ruta, linea: a.linea, operador: a.operador, antes: a.antes, despues: a.despues });
+    }
+    entrada.alProbar?.({
+      indice, total: elegidas.length, alteracion: a, resultado: h.veredicto, categoria: h.categoria,
+      ...(h.motivo ? { motivo: h.motivo } : {}), durationMs: h.durationMs ?? 0, reutilizada,
+    });
+  };
 
-  if (hechas.length < elegidas.length) {
-    const t0 = ahora();
-    const copia = fs.mkdtempSync(path.join(entrada.dirTemporal ?? os.tmpdir(), 'forge-mutacion-'));
+  hechas.forEach((h, i) => anotar(i, h, true));
+  const faltan = () => r.probadas < max && hechas.length < secuencia.length;
+
+  if (faltan()) {
+    r.huerfanasBorradas = barrerMutacionesHuerfanas(dirTemporal);
+    // La carpeta madre lleva la marca y permisos 0700 (mkdtemp); la copia va dentro, también privada (H-06)
+    const madre = fs.mkdtempSync(path.join(dirTemporal, 'forge-mutacion-'));
     try {
-      crearCopia(cwd, copia, { excluir: entrada.excluir });
-      for (let i = hechas.length; i < elegidas.length; i++) {
+      fs.writeFileSync(path.join(madre, MARCA_COPIA), `${process.pid}\n`, { mode: 0o600 });
+      const copia = path.join(madre, 'copia');
+      crearCopia(cwd, copia, { excluir: entrada.excluir, privada: true });
+      // El tiempo cuenta desde que la copia está lista: copiar un proyecto grande no gasta el presupuesto de la medición
+      const t0 = ahora();
+
+      // Línea base: la copia sin alterar tiene que pasar. Si no, «fallar» no significaría nada (H-05)
+      const base = await runner.test(copia);
+      const catBase = clasificar(base, { hayPruebas: true, pruebasIntactas: true });
+      if (catBase === 'infra_error' || esMuerteDeEntorno(base)) {
+        r.lineaBase = 'infraestructura';
+        r.parcial = true;
+        r.motivoParcial = 'infraestructura';
+        r.detalleInfra = String(base?.stderr ?? '').slice(-400);
+      } else if (catBase !== 'pass') {
+        r.lineaBase = 'falla';
+        r.parcial = true;
+        r.motivoParcial = 'linea_base';
+        r.detalleInfra = `${catBase === 'timeout' ? 'tiempo agotado' : `código ${base?.exitCode}`} sin alterar nada: ${String(base?.stdout ?? '').slice(-200)} ${String(base?.stderr ?? '').slice(-200)}`.trim();
+      } else {
+        r.lineaBase = 'ok';
+      }
+
+      while (r.lineaBase === 'ok' && faltan()) {
         if (ahora() - t0 >= timeoutMs) { r.parcial = true; r.motivoParcial = 'tiempo'; break; }
-        const a = elegidas[i];
+        const i = hechas.length;
+        const a = secuencia[i];
         const original = /** @type {string} */ (contenidoDe.get(a.ruta));
         const destino  = path.join(copia, a.ruta);
         let ejecucion;
@@ -525,15 +772,21 @@ export async function medirMutacion(entrada) {
           entrada.alProbar?.({ indice: i, total: elegidas.length, alteracion: a, resultado: 'sin_resultado', categoria, durationMs: ejecucion?.durationMs ?? 0, reutilizada: false });
           break;
         }
-        hechas.push({ categoria, durationMs: ejecucion?.durationMs ?? 0 });
+        const juicio = juzgar(ejecucion, categoria, lenguajes.get(a.ruta) ?? null);
+        const h = { categoria, veredicto: juicio.veredicto, ...(juicio.motivo ? { motivo: juicio.motivo } : {}), durationMs: ejecucion?.durationMs ?? 0 };
+        hechas.push(h);
         entrada.avance?.guardar({ clave, hechas });
-        anotar(i, categoria, ejecucion?.durationMs ?? 0, false);
+        anotar(i, h, false);
       }
     } finally {
-      eliminarCopia(copia);
+      if (!eliminarCopia(madre)) r.copiaSinBorrar = true;
     }
   }
 
+  if (!r.motivoParcial && candidatas.length > r.probadas + r.noConcluyentes) {
+    r.parcial = true;
+    r.motivoParcial = 'tope_alteraciones';
+  }
   r.puntuacion = puntuar(r.probadas, r.detectadas);
   return r;
 }

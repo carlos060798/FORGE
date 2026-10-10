@@ -14,7 +14,7 @@
  */
 
 import { pedirRevision } from './nodos.js';
-import { decidirRuta, decidirTrasMutacion, detallePruebasDebiles, detalleSinProgreso, guardiaPresupuesto } from './router.js';
+import { decidirRuta, decidirTrasMutacion, detalleMedicionInsuficiente, detallePruebasDebiles, detalleSinProgreso, guardiaPresupuesto } from './router.js';
 import { POR_DEFECTO } from './config.js';
 
 export const INICIO = 'planner';
@@ -29,8 +29,8 @@ const REANUDAR = { iteraciones: 'coder', presupuesto: 'coder', infraestructura: 
 /**
  * @param {string} nodo                                    nodo que acaba de terminar
  * @param {import('./estado.js').EstadoCiclo} estado       estado tras aplicar su resultado
- * @param {{ sinProgreso?: number, mutacion?: string, mutacionMinima?: number }} [opciones]
- *   `sinProgreso`: motor.sin_progreso; `mutacion`: motor.mutacion (no | informar | exigir); `mutacionMinima`: motor.mutacion_minima
+ * @param {{ sinProgreso?: number, mutacion?: string, mutacionMinima?: number, mutacionMinConcluyentes?: number }} [opciones]
+ *   `sinProgreso`: motor.sin_progreso; `mutacion`: motor.mutacion (no | informar | exigir); `mutacionMinima`: motor.mutacion_minima; `mutacionMinConcluyentes`: motor.mutacion_min_concluyentes
  * @returns {{ siguiente: string|null, parcial: Partial<import('./estado.js').EstadoCiclo> }}
  */
 export function transicion(nodo, estado, opciones = {}) {
@@ -69,13 +69,20 @@ export function transicion(nodo, estado, opciones = {}) {
     }
     case 'mutacion': {
       const minima = opciones.mutacionMinima ?? POR_DEFECTO.motor.mutacion_minima;
-      const r = decidirTrasMutacion(estado, { modo: opciones.mutacion, minima });
+      const minConcluyentes = opciones.mutacionMinConcluyentes ?? POR_DEFECTO.motor.mutacion_min_concluyentes;
+      const r = decidirTrasMutacion(estado, { modo: opciones.mutacion, minima, minConcluyentes });
       if (r.ruta === 'fin_exito') return { siguiente: null, parcial: { resultado: 'exito' } };
       // El refuerzo llama a un modelo: no se inicia con el presupuesto agotado
       if (r.ruta === 'refuerzo') return conGuardia(estado, 'refuerzo');
       if (r.motivo === 'infraestructura') {
+        const base = estado.mutacion?.motivoParcial === 'linea_base';
         return { siguiente: REVISION, parcial: pedirRevision('infraestructura', 'mutacion',
-          `Las pruebas pasan, pero el entorno falló al medir cuánto detectan: ${estado.mutacion?.detalleInfra || 'sin detalle'}. «continuar» repite la medición; «aceptar» da la tarea por buena sin medir.`) };
+          base
+            ? `Las pruebas pasan, pero fallan en la copia sin alterar que se usa para medir (${estado.mutacion?.detalleInfra || 'sin detalle'}): puede ser una prueba inestable o un archivo que la copia no lleva. No se midió nada. «continuar» repite la medición; «aceptar» da la tarea por buena sin medir.`
+            : `Las pruebas pasan, pero el entorno falló al medir cuánto detectan: ${estado.mutacion?.detalleInfra || 'sin detalle'}. «continuar» repite la medición; «aceptar» da la tarea por buena sin medir.`) };
+      }
+      if (r.insuficiente) {
+        return { siguiente: REVISION, parcial: pedirRevision('pruebas_debiles', 'mutacion', detalleMedicionInsuficiente(/** @type {any} */ (estado.mutacion), minConcluyentes)) };
       }
       return { siguiente: REVISION, parcial: pedirRevision(r.motivo, REANUDAR[r.motivo], detallePruebasDebiles(/** @type {any} */ (estado.mutacion), minima)) };
     }

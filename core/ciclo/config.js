@@ -29,7 +29,8 @@ export const POR_DEFECTO = {
     turnos_pruebas_max: 5,      // con implementador turnos: ejecuciones de pruebas que puede pedir el implementador por intento
     mutacion: 'informar',       // medir las pruebas por mutación tras un pase (ADR-20): no | informar | exigir
     mutacion_minima: 0.6,       // con exigir: proporción mínima de alteraciones detectadas (0 a 1)
-    mutacion_max: 10,           // alteraciones probadas por tarea, como mucho
+    mutacion_max: 10,           // alteraciones concluyentes por tarea, como mucho
+    mutacion_min_concluyentes: 3, // con exigir: alteraciones concluyentes mínimas para que la puntuación valga (H-04)
     mutacion_timeout_s: 300,    // tiempo máximo de la medición por tarea
   },
   sandbox: {
@@ -281,7 +282,7 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   if ((minima !== undefined && !/^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/.test(minima)) || typeof config.motor.mutacion_minima !== 'number' || !(config.motor.mutacion_minima >= 0 && config.motor.mutacion_minima <= 1)) {
     throw new Error(`motor.mutacion_minima no válido: "${minima ?? config.motor.mutacion_minima}". Debe ser un número entre 0 y 1 (0.6 es el 60 %).`);
   }
-  for (const clave of ['mutacion_max', 'mutacion_timeout_s']) {
+  for (const clave of ['mutacion_max', 'mutacion_min_concluyentes', 'mutacion_timeout_s']) {
     const texto = leidos.motor[clave];
     if ((texto !== undefined && !/^\d+$/.test(texto)) || !Number.isInteger(config.motor[clave]) || config.motor[clave] < 1) {
       throw new Error(`motor.${clave} no válido: "${texto ?? config.motor[clave]}". Debe ser un entero ≥ 1.`);

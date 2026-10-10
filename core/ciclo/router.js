@@ -101,21 +101,27 @@ export function decidirRuta(estado, opciones = {}) {
  * ni de un modelo (Principio VI).
  *
  *  - Solo el modo `exigir` puede cambiar la ruta; con `informar` la medición nunca cambia el resultado.
- *  - Sin puntuación porque no había nada que alterar: éxito (no se exige lo que no se puede medir).
- *  - Sin puntuación porque el entorno falló: una persona decide.
- *  - Bajo el mínimo: un refuerzo de las pruebas, una sola vez; después, una persona decide.
+ *  - Una medición que no vale NUNCA da éxito silencioso en `exigir` (H-04): sin nada que alterar,
+ *    con menos de `minConcluyentes` alteraciones concluyentes, o interrumpida por el entorno o con
+ *    una línea base que falla, pide revisión humana. El motivo es `infraestructura` si fue el
+ *    entorno (o la línea base) y `pruebas_debiles` si no se pudo medir lo bastante; `insuficiente`
+ *    distingue este último caso del de una puntuación baja.
+ *  - Bajo el mínimo con muestra suficiente: un refuerzo de las pruebas, una sola vez; después, una persona decide.
  *
  * @param {import('./estado.js').EstadoCiclo} estado
- * @param {{ modo?: string, minima?: number }} [opciones]  motor.mutacion y motor.mutacion_minima
- * @returns {{ ruta: 'fin_exito' } | { ruta: 'refuerzo' } | { ruta: 'revision_humana', motivo: 'pruebas_debiles'|'infraestructura' }}
+ * @param {{ modo?: string, minima?: number, minConcluyentes?: number }} [opciones]  motor.mutacion, motor.mutacion_minima y motor.mutacion_min_concluyentes
+ * @returns {{ ruta: 'fin_exito' } | { ruta: 'refuerzo' } | { ruta: 'revision_humana', motivo: 'pruebas_debiles'|'infraestructura', insuficiente?: boolean }}
  */
 export function decidirTrasMutacion(estado, opciones = {}) {
   const modo   = opciones.modo ?? POR_DEFECTO.motor.mutacion;
   const minima = opciones.minima ?? POR_DEFECTO.motor.mutacion_minima;
+  const minConcluyentes = opciones.minConcluyentes ?? POR_DEFECTO.motor.mutacion_min_concluyentes;
   const m = estado.mutacion;
   if (modo !== 'exigir' || !m) return { ruta: 'fin_exito' };
-  if (typeof m.puntuacion !== 'number') {
-    return m.motivoParcial === 'infraestructura' ? { ruta: 'revision_humana', motivo: 'infraestructura' } : { ruta: 'fin_exito' };
+  if (m.motivoParcial === 'infraestructura' || m.motivoParcial === 'linea_base') return { ruta: 'revision_humana', motivo: 'infraestructura' };
+  // Nada que alterar, o muy poco: una puntuación sobre una muestra vacía no demuestra nada
+  if (typeof m.puntuacion !== 'number' || (m.probadas ?? 0) < minConcluyentes) {
+    return { ruta: 'revision_humana', motivo: 'pruebas_debiles', insuficiente: true };
   }
   if (m.puntuacion >= minima) return { ruta: 'fin_exito' };
   if ((m.refuerzos ?? 0) === 0) return { ruta: 'refuerzo' };
@@ -124,6 +130,22 @@ export function decidirTrasMutacion(estado, opciones = {}) {
 
 /** @param {number} fraccion */
 export const porcentaje = (fraccion) => `${Math.round(fraccion * 100)} %`;
+
+/**
+ * Por qué la medición no basta para exigir nada: explicación para la persona que decide.
+ * @param {NonNullable<import('./estado.js').EstadoCiclo['mutacion']>} m
+ * @param {number} minConcluyentes
+ */
+export function detalleMedicionInsuficiente(m, minConcluyentes) {
+  const porque = m.omitida
+    ? `no se pudo medir nada: ${m.omitida}`
+    : `solo ${m.probadas ?? 0} alteraciones concluyentes (el mínimo es ${minConcluyentes})`
+      + `${m.noConcluyentes ? `; ${m.noConcluyentes} se descartaron por no compilar, no cargar el módulo o fallar el entorno` : ''}`
+      + `${m.motivoParcial === 'tiempo' ? '; la medición se cortó por tiempo' : ''}`;
+  return `Las pruebas pasan, pero con motor.mutacion: exigir la medición no vale: ${porque}. `
+    + 'Con tan pocas alteraciones una puntuación no demuestra que las pruebas detecten cambios, y no se da por buena en silencio. '
+    + '«continuar» repite la medición; «aceptar» da la tarea por buena tal como está; «abortar» restaura los archivos.';
+}
 
 /**
  * @param {NonNullable<import('./estado.js').EstadoCiclo['mutacion']>} m

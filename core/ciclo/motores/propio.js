@@ -46,7 +46,7 @@ export async function ejecutarGrafo(entrada) {
     estado = aplicar(estado, parcial);
 
     const motor = deps.config?.motor;
-    const t = transicion(nodo, estado, { sinProgreso: motor?.sin_progreso, mutacion: motor?.mutacion, mutacionMinima: motor?.mutacion_minima });
+    const t = transicion(nodo, estado, { sinProgreso: motor?.sin_progreso, mutacion: motor?.mutacion, mutacionMinima: motor?.mutacion_minima, mutacionMinConcluyentes: motor?.mutacion_min_concluyentes });
     estado  = aplicar(estado, t.parcial);
 
     guardador.guardar(estado.threadId, { nodo, siguiente: t.siguiente, estado });

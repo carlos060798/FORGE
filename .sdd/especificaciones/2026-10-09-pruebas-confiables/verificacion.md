@@ -112,3 +112,41 @@ Es decir, entre 4,5 y 7,5 s por cambio, lo que tarda una ejecución normal de la
 - ❌ **`skills/mutation-detector`** no se ha renombrado ni aclarado (consecuencia neutral de ADR-20).
 - ❌ **La constitución no se ha tocado.** La tensión con la letra del Principio VII (el refuerzo ocurre después de implementar) queda resuelta en la spec por delegación, no con una enmienda.
 - La pregunta abierta sobre pasar a «exigir» por defecto en la siguiente versión MAYOR sigue abierta.
+
+## Correcciones tras la revisión independiente (2026-10-09)
+
+Informe: `revision-independiente.md` (veredicto `APROBADA_CON_OBSERVACIONES`). H-01 se corrigió antes (commit `fa0f342`). Este bloque cubre H-02 a H-09. Pruebas nuevas en `tests/mutacion-revision.test.js` (35) y 5 en `tests/ciclo-mutacion.test.js`.
+
+| Hallazgo | Estado | Qué se hizo | Prueba |
+|---|---|---|---|
+| H-02 (alto) | corregido (con límites) | Fallo de carga = no concluyente (se distingue de un fallo de prueba por la forma de la salida); reparto de la muestra por archivo; reserva ordenada | «reproducción de la revisión…» (`node --test` real: antes 9/10 = 90 %, ahora 0/6 con 14 descartadas), «la muestra se reparte por archivo» |
+| H-03 (alto) | corregido; Go medido con Docker real | Una alteración que no compila (`[build failed]`, `SyntaxError`, `error TS`) no cuenta como detectada | Docker real (`FORGE_TEST_DOCKER=1`): Go del ejemplo, antes 2/6 = 33 %, ahora 0/4 con 2 no concluyentes; unitarias de salida de Go, Python y TypeScript |
+| H-04 (medio) | corregido | Mínimo `motor.mutacion_min_concluyentes` (3); `exigir` pausa con medición vacía, parcial por entorno o por tiempo, línea base en rojo; `t0` tras `crearCopia` | tabla de decisión, transición del grafo, «el tiempo se cuenta desde que la copia está lista», recorridos del ciclo |
+| H-05 (medio) | corregido | Línea base antes de alterar; 137/139 = entorno | «la copia sin alterar tiene que pasar…», «137 y 139…», recorrido del ciclo con `exigir` |
+| H-06 (medio) | corregido; permisos sin comprobar en Linux real | Carpeta 0700 con marca, copia privada 0700/0600, barrido de huérfanas antiguas; `copiaSinBorrar` se anota | barrido (con marca, nombre exacto, antigüedad, enlace), integración. **El test de permisos POSIX se omite en Windows** (donde se desarrolló) |
+| H-07 (medio) | mitigado | `forge status` muestra N de M tareas exentas y cuáles (el registro ya anotaba cada exención aplicada) | recorrido del ciclo con `lineasEstadoCiclo`. No se impide que el agente de `tasks` declare la exención |
+| H-08 (bajo) | corregido | `medirMutacion` valida con `validarRuta`; informa `rechazadas` | rutas con `..`, absolutas, vetadas |
+| H-09 (bajo) | corregido | `antes`/`despues` se redactan antes de recortar | secreto en el código y secreto en el borde del recorte |
+| H-10 (bajo) | abierto | Cambios inútiles (índices, tamaños de tipo), JSX, TS con tipos por patrones: sin cambios | — |
+| H-11 (bajo) | corregido | Ver H-03 y H-05 | — |
+| H-12 (bajo) | corregido antes (H-01) | — | — |
+
+### Decisiones de diseño
+
+- **Reconocer la salida del ejecutor**, no validar antes con `go build`/`py_compile`/`tsc`: sin contenedores ni dependencias nuevas y válido para cualquier ejecutor. Si la salida no se reconoce, la alteración es no concluyente (se pierde señal, nunca se infla). Se leen textos de salida solo para decidir qué cuenta como medición; el router sigue sin leer texto.
+- **Denominador = concluyentes.** `probadas` ahora significa «alteraciones concluyentes»; `noConcluyentes` es nuevo y opcional en el estado, así que los puntos de guardado anteriores siguen valiendo. El avance guardado con el formato anterior se descarta.
+- **Con `exigir`, «nada que alterar» ya no es éxito.** Es un cambio de comportamiento deliberado (H-04); `aceptar` desbloquea.
+- **Coste:** una ejecución más de las pruebas por medición (la línea base) y hasta `mutacion_max` más si hay muchas no concluyentes.
+
+### Tests existentes modificados en esta pasada
+
+- `tests/ciclo-mutacion.test.js`: la constante `FALLO` pasa de un resumen sin prueba fallida a un fallo TAP de una prueba con nombre (así es un fallo real de node:test); los recuentos de ejecuciones suman 1 por la línea base; el escenario «sin nada que alterar, exigir no bloquea» ahora comprueba que **sí** pausa con `pruebas_debiles` (cambio de significado legítimo, H-04); `textoMutacion` con `parcial` ahora necesita `motivoParcial`. Ninguna aserción se debilitó.
+
+### Lo que no se ha hecho o no se ha probado en esta pasada
+
+- ⚠️ **Python y TypeScript con Docker real**: solo con salidas de ejecutor sintéticas. El formato de salida de pytest/unittest/jest/vitest se reconoce por patrones escritos de memoria del formato de esas herramientas, no capturados en esta pasada.
+- ⚠️ **Permisos 0700/0600 de la copia** sin comprobar en Linux: el desarrollo es en Windows y el test se omite allí.
+- ⚠️ **`FORGE_TEST_DOCKER=1` con `tests/e2e`, `sandbox-real`, `api-http` y `mcp-e2e`**: no se volvieron a ejecutar en esta pasada (solo `ciclo-mutacion` y `mutacion-revision`).
+- ❌ **Ejecución con un modelo real** sigue pendiente.
+- ❌ **H-02 (c)**: no se descartan archivos que las pruebas no llaman (cobertura) y un implementador que detecte el entorno de medición puede sesgar la puntuación.
+- ❌ **H-10** (alteraciones inútiles) sin tocar.

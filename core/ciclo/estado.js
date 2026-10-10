@@ -40,9 +40,11 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @typedef {Object} Mutacion
  * @property {number} probadas
  * @property {number} detectadas
- * @property {number|null} puntuacion   detectadas / probadas; null si no se probó ninguna alteración
+ * @property {number} [noConcluyentes]  alteraciones que no compilan, no cargan o matan el entorno: fuera del denominador
+ * @property {'ok'|'falla'|'infraestructura'|'no_medida'} [lineaBase]  resultado de la copia sin alterar
+ * @property {number|null} puntuacion   detectadas / probadas; null si no hubo ninguna alteración concluyente
  * @property {boolean} parcial          no se probaron todas las alteraciones posibles
- * @property {'tope_alteraciones'|'tiempo'|'infraestructura'} [motivoParcial]
+ * @property {'tope_alteraciones'|'tiempo'|'infraestructura'|'linea_base'} [motivoParcial]
  * @property {number} [candidatas]      alteraciones posibles antes de aplicar el tope
  * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
  * @property {string} [omitida]         por qué no se midió (no había nada que alterar)

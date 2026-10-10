@@ -38,6 +38,19 @@ El router recibe dos motivos nuevos y una ruta nueva (`refuerzo`). Sigue decidie
 - Se guarda el avance de la medición (resultado de cada alteración probada) fuera del punto de guardado, en `.sdd/motor/<sesión>/mutacion/`, para que un corte no obligue a repetirla entera.
 - Queda sin hacer la consecuencia neutral sobre `skills/mutation-detector` (renombrar o aclarar).
 
+## Correcciones tras la revisión independiente (2026-10-09)
+
+La revisión (`.sdd/especificaciones/2026-10-09-pruebas-confiables/revision-independiente.md`) encontró que «cualquier fallo = detectada» no es una medida fiable. Decisiones:
+
+- **Alteraciones concluyentes y no concluyentes (H-02, H-03, H-11).** Cada ejecución con una alteración se juzga por la salida del ejecutor: *detectada* si informa del fallo de una prueba con nombre propio (TAP/spec de node:test donde el nombre no es un archivo, `●`/`Tests: N failed` de jest, `FAIL … >` de vitest, `FAILED`/`FAIL:` de pytest y unittest, `--- FAIL:` y `panic:` de Go) o si agotó el tiempo; *sobrevive* si pasa; *no concluyente* en cualquier otro caso (error de compilación o de sintaxis, módulo que no carga, sin señal reconocible, código 137 o 139). Las no concluyentes quedan fuera del denominador y las sustituye una reserva ordenada de hasta `mutacion_max` alteraciones más, de modo que la misma entrada da la misma medición. Se eligió reconocer la salida, y no validar antes con `go build`/`py_compile`/`tsc`, porque no añade contenedores ni dependencias y funciona igual para cualquier ejecutor; el precio es que una salida no reconocida se descarta (se pierde señal, nunca se infla). Esto lee el texto de la salida, pero solo para decidir qué *cuenta como medición*, no la ruta del ciclo: la decisión del router sigue dependiendo de números (puntuación, mínimo, concluyentes, refuerzos), sin cambio para el Principio VI.
+- **Reparto por archivo (H-02).** `seleccionarPorArchivo` reparte el tope por rondas entre los archivos y, dentro de cada uno, con salto uniforme.
+- **Mínimo de concluyentes (H-04).** Clave nueva `motor.mutacion_min_concluyentes` (3). Con `exigir`, por debajo o sin puntuación, o con entorno o línea base en rojo, se pide revisión humana (`pruebas_debiles` con `insuficiente`, o `infraestructura`); nunca éxito. Con `informar` nada cambia. Cambia el comportamiento de `exigir` ante «nada que alterar», que antes daba éxito.
+- **Línea base (H-05).** Se ejecuta la copia sin alterar; si no pasa, no se mide (`motivoParcial: linea_base`). 137 y 139 son entorno: en la línea base cortan la medición; en una alteración, la hacen no concluyente. **Tiempo agotado:** cuenta como detectado solo si el ejecutor lo clasifica como tiempo de pruebas (`timedOut` sin error de entorno); la línea base ya demostró que terminan a tiempo.
+- **Copia privada (H-06).** Carpeta madre `forge-mutacion-XXXXXX` (0700, con archivo de marca) y la copia dentro con permisos 0700/0600 (`crearCopia` con `privada`). El `SandboxRunner` hace su propia copia abierta para el contenedor, así que la nuestra no necesita permisos abiertos. Barrido al empezar de carpetas con nombre exacto, marca, sin enlace y de más de 6 horas.
+- **Rutas y secretos (H-08, H-09).** `medirMutacion` valida con `validarRuta`; `antes`/`despues` se redactan antes de recortar.
+- **Visibilidad de la exención (H-07).** `forge status` cuenta y lista las tareas con `parte_de_codigo_existente` (el registro ya anotaba cada exención aplicada). No se impide la exención: la declara quien define la tarea.
+- **Abierto.** No se descartan archivos que las pruebas no llaman (cobertura); un implementador que detecte el entorno de medición puede seguir sesgándola; Python/TypeScript no se midieron con Docker real; el reconocimiento de salida cubre node:test, jest, vitest, pytest, unittest y go test (otros ejecutores caen en «no concluyente»).
+
 ## Alternativas consideradas
 
 - **A. Integrar una herramienta de mutación por lenguaje**: rechazada. Serían tres dependencias pesadas que habría que meter en la imagen preparada de cada proyecto, contra el Principio IV y ADR-03.
@@ -55,7 +68,7 @@ El router recibe dos motivos nuevos y una ruta nueva (`refuerzo`). Sigue decidie
 
 ### Negativas
 - Cada alteración es una ejecución completa de las pruebas: hasta diez ejecuciones más por tarea.
-- Las alteraciones por patrones de texto en Python y Go son más toscas que un análisis sintáctico y pueden producir código que no carga. Una alteración que no carga cuenta como detectada, lo que infla la puntuación en esos lenguajes.
+- Las alteraciones por patrones de texto en Python y Go son más toscas que un análisis sintáctico y pueden producir código que no compila. *(Corregido en la revisión independiente: ese cambio ya no cuenta como detectado; ver «Correcciones tras la revisión independiente».)*
 - Hay alteraciones que no cambian el comportamiento y aparecerán como no detectadas. Por eso el modo por defecto solo informa.
 - El refuerzo de pruebas ocurre después de implementar. Lo hace otro rol y el implementador sigue sin poder tocarlas, pero roza la letra del Principio VII: necesita ratificación del dueño.
 - Las huellas de las pruebas (CA-002-03 del ciclo) deben volver a tomarse tras el refuerzo.
@@ -66,7 +79,7 @@ El router recibe dos motivos nuevos y una ruta nueva (`refuerzo`). Sigue decidie
 ## Cuándo revisitar
 
 - Si la medición con un proyecto real supera el tope de tiempo en más de la mitad de las tareas.
-- Si la puntuación en Python o Go resulta poco fiable: entonces se valora un análisis sintáctico propio para esos lenguajes, con su ADR.
+- Si muchas alteraciones de Python o Go resultan no concluyentes (la muestra queda corta con frecuencia): entonces se valora un análisis sintáctico propio para esos lenguajes, con su ADR.
 
 ## Referencias
 
