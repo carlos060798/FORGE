@@ -23,27 +23,30 @@ export const EXCLUIDOS_BASE = ['__pycache__', '.venv', 'venv', '.vscode', '.idea
  * @param {string} ruta
  * @param {boolean} esDirectorio
  */
-function abrirPermisos(ruta, esDirectorio) {
+function abrirPermisos(ruta, esDirectorio, privada = false) {
   if (process.platform === 'win32') return;
   try {
-    fs.chmodSync(ruta, esDirectorio ? 0o777 : (fs.statSync(ruta).mode & 0o111) | 0o666);
+    // Privada: solo el usuario que la crea (copias que lee el anfitrión, no el contenedor)
+    if (privada) fs.chmodSync(ruta, esDirectorio ? 0o700 : (fs.statSync(ruta).mode & 0o100) | 0o600);
+    else fs.chmodSync(ruta, esDirectorio ? 0o777 : (fs.statSync(ruta).mode & 0o111) | 0o666);
   } catch { /* sistema de archivos sin permisos POSIX */ }
 }
 
 /**
  * @param {string} cwd       proyecto real
  * @param {string} destino   carpeta de la copia; se vacía si ya existe
- * @param {{ excluir?: string[] }} [opciones]
+ * @param {{ excluir?: string[], privada?: boolean }} [opciones]  `privada`: permisos 0700/0600 en lugar de abiertos al contenedor
  * @returns {{ copiados: number, excluidos: string[] }}
  */
 export function crearCopia(cwd, destino, opciones = {}) {
   const raiz     = path.resolve(cwd);
   const patrones = [...EXCLUIDOS_BASE, ...(opciones.excluir ?? [])];
   const destinoAbs = path.resolve(destino);
+  const privada = opciones.privada === true;
 
   fs.rmSync(destinoAbs, { recursive: true, force: true });
   fs.mkdirSync(destinoAbs, { recursive: true });
-  abrirPermisos(destinoAbs, true);
+  abrirPermisos(destinoAbs, true, privada);
 
   let copiados = 0;
   /** @type {string[]} */
@@ -63,11 +66,11 @@ export function crearCopia(cwd, destino, opciones = {}) {
 
       if (entrada.isDirectory()) {
         fs.mkdirSync(path.join(destinoAbs, hijo), { recursive: true });
-        abrirPermisos(path.join(destinoAbs, hijo), true);
+        abrirPermisos(path.join(destinoAbs, hijo), true, privada);
         recorrer(hijo);
       } else if (entrada.isFile()) {
         fs.copyFileSync(abs, path.join(destinoAbs, hijo));
-        abrirPermisos(path.join(destinoAbs, hijo), false);
+        abrirPermisos(path.join(destinoAbs, hijo), false, privada);
         copiados++;
       }
     }

@@ -329,7 +329,8 @@ const IMPL = "export function suma(a, b) {\n  if (a < 0) {\n    return 0;\n  }\n
 const IMPL_V2 = "// v2\n" + IMPL;
 const BUENAS = [IMPL, IMPL_V2];
 const PASE  = { exitCode: 0, stdout: "# tests 1\n# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
-const FALLO = { exitCode: 1, stdout: "# tests 1\n# pass 0\n# fail 1\n", stderr: "AssertionError\n", timedOut: false, infraError: false, durationMs: 3 };
+// Un fallo real de una prueba, como lo informa node:test (TAP): una prueba con nombre propio que falla tras cargar el módulo (H-02)
+const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 - suma\n  ---\n  failureType: 'testCodeFailure'\n  ...\n1..1\n# tests 1\n# pass 0\n# fail 1\n", stderr: "AssertionError\n", timedOut: false, infraError: false, durationMs: 3 };
 
 /**
  * Ejecutor falso: decide leyendo los archivos de la carpeta que recibe, como haría una ejecución real.
@@ -381,9 +382,13 @@ describe("medirMutacion", () => {
     assert.deepEqual(Object.keys(r.sobrevivientes[0]).sort(), ["antes", "despues", "linea", "operador", "ruta"]);
     assert.equal(r.sobrevivientes[1].antes, "if (a < 0) {");
     assert.equal(r.sobrevivientes[1].despues, "if (a >= 0) {");
-    assert.equal(runner.vistas.length, 6, "una ejecución por alteración");
-    assert.equal(new Set(runner.vistas.map((v) => v.src)).size, 6, "cada ejecución vio una alteración distinta");
-    assert.ok(runner.vistas.every((v) => v.src !== IMPL), "ninguna ejecución vio el código sin alterar");
+    // H-05: la primera ejecución es la línea base (copia sin alterar); después, una por alteración
+    assert.equal(runner.vistas.length, 7, "la línea base y una ejecución por alteración");
+    assert.equal(runner.vistas[0].src, IMPL, "la línea base vio el código sin alterar");
+    assert.equal(new Set(runner.vistas.slice(1).map((v) => v.src)).size, 6, "cada ejecución vio una alteración distinta");
+    assert.ok(runner.vistas.slice(1).every((v) => v.src !== IMPL), "ninguna alteración se ejecutó con el código sin alterar");
+    assert.equal(r.lineaBase, "ok");
+    assert.equal(r.noConcluyentes, 0);
   });
 
   test("unas pruebas fuertes detectan todas; unas débiles, ninguna", async () => {
@@ -410,7 +415,7 @@ describe("medirMutacion", () => {
     assert.equal(readFileSync(join(cwd, "src/suma.js"), "utf8"), IMPL);
     assert.ok(runner.vistas.every((v) => resolve(v.dir) !== resolve(cwd)), "nunca se ejecuta sobre el proyecto real");
     assert.ok(runner.vistas.every((v) => resolve(v.dir).startsWith(resolve(dirTemporal))), "siempre sobre la copia temporal");
-    assert.deepEqual(secretos, Array(6).fill(false), "la copia respeta los vetos: los secretos no entran");
+    assert.deepEqual(secretos, Array(7).fill(false), "la copia respeta los vetos: los secretos no entran");
     assert.deepEqual(readdirSync(dirTemporal), [], "la copia se borra al terminar");
   });
 
@@ -419,14 +424,14 @@ describe("medirMutacion", () => {
     const antes = huellas(cwd);
     const dirTemporal = tmp("forge-mut-tmp-");
     let n = 0;
-    const runner = { test: async () => { if (++n === 2) throw new Error("se cayó el ejecutor"); return { ...FALLO }; } };
+    const runner = { test: async () => { if (++n === 3) throw new Error("se cayó el ejecutor"); return n === 1 ? { ...PASE } : { ...FALLO }; } };
     await assert.rejects(medirMutacion({ cwd, archivos: ["src/suma.js"], runner, dirTemporal }), /se cayó el ejecutor/);
     assert.deepEqual(readdirSync(dirTemporal), []);
     assert.deepEqual(huellas(cwd), antes);
   });
 
   test("detectada es fallo o tiempo agotado; un pase es un sobreviviente", async () => {
-    const guion = [{ ...FALLO }, { exitCode: null, timedOut: true, stdout: "", stderr: "" }, { ...PASE }, { ...FALLO, exitCode: 2 }, { ...PASE }, { ...FALLO }];
+    const guion = [{ ...PASE }, { ...FALLO }, { exitCode: null, timedOut: true, stdout: "", stderr: "" }, { ...PASE }, { ...FALLO, exitCode: 2 }, { ...PASE }, { ...FALLO }];
     const r = await medirMutacion({ cwd: proyecto(), archivos: ["src/suma.js"], runner: { test: async () => guion.shift() } });
     assert.equal(r?.probadas, 6);
     assert.equal(r?.detectadas, 4);
@@ -435,7 +440,7 @@ describe("medirMutacion", () => {
   });
 
   test("un fallo del entorno no cuenta ni a favor ni en contra: detiene la medición y la marca parcial", async () => {
-    const guion = [{ ...FALLO }, { ...PASE }, { exitCode: 125, stdout: "", stderr: "docker: no responde\n" }];
+    const guion = [{ ...PASE }, { ...FALLO }, { ...PASE }, { exitCode: 125, stdout: "", stderr: "docker: no responde\n" }];
     const eventos = [];
     const r = await medirMutacion({ cwd: proyecto(), archivos: ["src/suma.js"], runner: { test: async () => guion.shift() }, alProbar: (e) => eventos.push(e) });
     assert.equal(r?.probadas, 2);
@@ -448,6 +453,7 @@ describe("medirMutacion", () => {
     assert.deepEqual(eventos.map((e) => e.resultado), ["detectada", "sobrevive", "sin_resultado"]);
 
     const nada = await medirMutacion({ cwd: proyecto(), archivos: ["src/suma.js"], runner: { test: async () => ({ exitCode: null, infraError: true, stderr: "sin Docker" }) } });
+    assert.equal(nada?.lineaBase, "infraestructura", "el entorno falló ya en la línea base");
     assert.equal(nada?.probadas, 0);
     assert.equal(nada?.puntuacion, null, "sin ninguna alteración probada no se inventa una puntuación");
     assert.equal(nada?.parcial, true);
@@ -466,9 +472,11 @@ describe("medirMutacion", () => {
 
   test("CA-002-04: tope de tiempo → se detiene y la puntuación es parcial", async () => {
     let reloj = 0;
-    const runner = { test: async () => { reloj += 40_000; return { ...FALLO }; } };
+    let llamadas = 0;
+    // La línea base (pasa) también gasta tiempo: 40 s la base + 40 s + 40 s + 40 s = 160 s; a los 120 s ya no se empieza otra
+    const runner = { test: async () => { reloj += 40_000; return ++llamadas === 1 ? { ...PASE } : { ...FALLO }; } };
     const r = await medirMutacion({ cwd: proyecto(), archivos: ["src/suma.js"], runner, timeoutMs: 100_000, ahora: () => reloj });
-    assert.equal(r?.probadas, 3, "a los 120 s ya no se empieza otra");
+    assert.equal(r?.probadas, 2, "a los 120 s ya no se empieza otra");
     assert.equal(r?.puntuacion, 1);
     assert.equal(r?.parcial, true);
     assert.equal(r?.motivoParcial, "tiempo");
@@ -498,7 +506,7 @@ describe("medirMutacion", () => {
     // Primera pasada: el proceso «se corta» en la cuarta ejecución
     let n = 0;
     const base = ejecutorFalso();
-    const cortado = { test: async (dir) => { if (++n === 4) throw new Error("corte"); return base.test(dir); } };
+    const cortado = { test: async (dir) => { if (++n === 5) throw new Error("corte"); return base.test(dir); } };
     await assert.rejects(medirMutacion({ cwd, archivos: ["src/suma.js"], runner: cortado, avance }), /corte/);
     assert.equal(guardado.hechas.length, 3);
 
@@ -506,7 +514,7 @@ describe("medirMutacion", () => {
     const runner = ejecutorFalso();
     const eventos = [];
     const r = await medirMutacion({ cwd, archivos: ["src/suma.js"], runner, avance, alProbar: (e) => eventos.push(e) });
-    assert.equal(runner.vistas.length, 3);
+    assert.equal(runner.vistas.length, 4, "la línea base y las tres alteraciones que faltaban");
     assert.equal(r?.probadas, 6);
     assert.equal(r?.detectadas, 1);
     assert.deepEqual(eventos.map((e) => e.reutilizada), [true, true, true, false, false, false]);
@@ -522,12 +530,12 @@ describe("medirMutacion", () => {
 
     const otrasPruebas = ejecutorFalso();
     await medirMutacion({ cwd, archivos: ["src/suma.js"], runner: otrasPruebas, avance, huellasPruebas: ["t:2"] });
-    assert.equal(otrasPruebas.vistas.length, 6);
+    assert.equal(otrasPruebas.vistas.length, 7, "línea base y seis alteraciones");
 
     writeFileSync(join(cwd, "src/suma.js"), IMPL_V2);
     const otroCodigo = ejecutorFalso();
     await medirMutacion({ cwd, archivos: ["src/suma.js"], runner: otroCodigo, avance, huellasPruebas: ["t:2"] });
-    assert.equal(otroCodigo.vistas.length, 6);
+    assert.equal(otroCodigo.vistas.length, 7, "línea base y seis alteraciones");
   });
 });
 
@@ -575,8 +583,9 @@ describe("decidirTrasMutacion — tabla de verdad (CA-003-07)", () => {
     assert.deepEqual(decidirTrasMutacion(estadoCon({ puntuacion: 0, refuerzos: 2 }), exigir), { ruta: "revision_humana", motivo: "pruebas_debiles" });
   });
 
-  test("exigir: sin puntuación porque no había nada que alterar → éxito; porque falló el entorno → revisión", () => {
-    assert.deepEqual(decidirTrasMutacion(estadoCon({ probadas: 0, detectadas: 0, puntuacion: null, omitida: "nada" }), exigir), EXITO);
+  // H-04: antes «nada que alterar» daba éxito en exigir; ya no (ver tests/mutacion-revision.test.js)
+  test("exigir: sin puntuación porque no había nada que alterar → revisión por medición insuficiente; porque falló el entorno → revisión", () => {
+    assert.deepEqual(decidirTrasMutacion(estadoCon({ probadas: 0, detectadas: 0, puntuacion: null, omitida: "nada" }), exigir), { ruta: "revision_humana", motivo: "pruebas_debiles", insuficiente: true });
     assert.deepEqual(decidirTrasMutacion(estadoCon({ probadas: 0, detectadas: 0, puntuacion: null, parcial: true, motivoParcial: "infraestructura" }), exigir), { ruta: "revision_humana", motivo: "infraestructura" });
     assert.deepEqual(decidirTrasMutacion(estadoCon(null), exigir), EXITO);
   });
@@ -769,7 +778,7 @@ describe("ciclo completo — modo informar (por defecto)", () => {
     assert.equal(evento?.meta.taskId, "T1");
     const mutantes = e.eventos.filter((x) => x.type === "ciclo:mutante");
     assert.equal(mutantes.length, 6, "un evento por alteración probada");
-    assert.deepEqual(Object.keys(mutantes[0].payload).sort(), ["antes", "categoria", "despues", "durationMs", "indice", "linea", "operador", "resultado", "ruta", "total"]);
+    assert.deepEqual(Object.keys(mutantes[0].payload).sort(), ["antes", "categoria", "despues", "durationMs", "indice", "linea", "motivo", "operador", "resultado", "ruta", "total"]);
     assert.ok(mutantes.every((x) => x.payload.resultado === "detectada"));
     assert.equal(readFileSync(join(e.cwd, "src/suma.js"), "utf8"), IMPL, "el proyecto real no queda alterado");
   });
@@ -822,7 +831,7 @@ describe("ciclo completo — modo informar (por defecto)", () => {
   test("un fallo del entorno durante la medición no cambia el resultado de la tarea", async () => {
     const base = ejecutorFalso();
     let n = 0;
-    const runner = { test: async (dir) => (++n >= 4 ? { exitCode: null, infraError: true, stdout: "", stderr: "docker: no responde" } : base.test(dir)) };
+    const runner = { test: async (dir) => (++n >= 5 ? { exitCode: null, infraError: true, stdout: "", stderr: "docker: no responde" } : base.test(dir)) };
     const e = entorno({ tester: [pruebas("FUERTE")], runner });
     const r = await e.ciclo().ejecutar(TAREA);
     assert.equal(r.estado.resultado, "exito");
@@ -849,8 +858,8 @@ describe("ciclo completo — modo informar (por defecto)", () => {
     const base = ejecutorFalso();
     let cortar = true;
     let n = 0;
-    // Ejecuciones 1 y 2: la previa de qa y la del nodo sandbox. La 6 es la cuarta alteración.
-    const runner = { test: async (dir) => { if (cortar && ++n === 6) throw new Error("corte simulado"); return base.test(dir); } };
+    // Ejecuciones 1 y 2: la previa de qa y la del nodo sandbox. La 3 es la línea base de la medición. La 7 es la cuarta alteración.
+    const runner = { test: async (dir) => { if (cortar && ++n === 7) throw new Error("corte simulado"); return base.test(dir); } };
     const e = entorno({ tester: [pruebas("MEDIA")], runner });
     await assert.rejects(e.ciclo().ejecutar(TAREA), /corte simulado/);
     assert.ok(existsSync(join(e.cwd, ".sdd", "motor", "r1", "mutacion", "T1.json")));
@@ -861,7 +870,7 @@ describe("ciclo completo — modo informar (por defecto)", () => {
     assert.equal(r.estado.resultado, "exito");
     assert.equal(r.estado.mutacion?.probadas, 6);
     assert.equal(r.estado.mutacion?.detectadas, 1);
-    assert.equal(base.vistas.length - antes, 3, "solo las tres alteraciones que faltaban");
+    assert.equal(base.vistas.length - antes, 4, "la línea base y solo las tres alteraciones que faltaban");
     assert.equal(e.llamadas.length, 3, "y sin ninguna llamada más a un modelo");
   });
 });
@@ -1051,11 +1060,17 @@ describe("ciclo completo — modo exigir", () => {
     assert.equal(e.llamadas.length, 3);
   });
 
-  test("sin nada que alterar, exigir no bloquea: no se exige lo que no se puede medir", async () => {
+  // H-04: antes de la revisión, exigir daba éxito silencioso con una medición vacía. Cambia de significado a propósito.
+  test("sin nada que alterar, exigir NO da éxito en silencio: pide revisión humana con el motivo claro", async () => {
     const e = entorno({ tester: [pruebas("nada")], coder: [bloque("src/suma.js", "// sin nada que alterar\n")], motor: exigir });
     const r = await e.ciclo().ejecutar(TAREA);
-    assert.equal(r.estado.resultado, "exito");
+    assert.equal(r.status, "en_revision");
+    assert.equal(r.estado.revision?.motivo, "pruebas_debiles");
+    assert.equal(r.estado.revision?.reanudarEn, "mutacion");
+    assert.match(String(r.estado.revision?.detalle), /no se pudo medir nada/);
     assert.equal(e.eventos.filter((x) => x.type === "ciclo:mutacion_omitida").length, 1);
+    const aceptada = await e.ciclo().ejecutar(TAREA, { decision: "aceptar" });
+    assert.equal(aceptada.status, "completada");
   });
 });
 
@@ -1073,7 +1088,9 @@ describe("forge status muestra la puntuación de cada tarea medida", () => {
     assert.equal(textoMutacion(/** @type {any} */ ({ probadas: 10, detectadas: 7, puntuacion: 0.7, parcial: false })), " · mutación: 7/10 detectadas (70 %)");
     assert.equal(textoMutacion(/** @type {any} */ ({ probadas: 3, detectadas: 1, puntuacion: 1 / 3, parcial: true })), " · mutación: 1/3 detectadas (33 %, parcial)");
     assert.match(textoMutacion(/** @type {any} */ ({ probadas: 0, detectadas: 0, puntuacion: null, omitida: "x" })), /no medida \(nada que alterar\)/);
-    assert.match(textoMutacion(/** @type {any} */ ({ probadas: 0, detectadas: 0, puntuacion: null, parcial: true })), /no medida \(falló el entorno\)/);
+    assert.match(textoMutacion(/** @type {any} */ ({ probadas: 0, detectadas: 0, puntuacion: null, parcial: true, motivoParcial: "infraestructura" })), /no medida \(falló el entorno\)/);
+    assert.match(textoMutacion(/** @type {any} */ ({ probadas: 0, detectadas: 0, puntuacion: null, parcial: true, motivoParcial: "linea_base" })), /las pruebas fallan sin alterar nada/);
+    assert.match(textoMutacion(/** @type {any} */ ({ probadas: 5, detectadas: 4, noConcluyentes: 2, puntuacion: 0.8, parcial: false })), /4\/5 detectadas \(80 %, 2 descartadas por no compilar o no cargar\)/);
   });
 
   test("una tarea medida, una pausada por pruebas débiles y una sin medir", async () => {
@@ -1092,6 +1109,84 @@ describe("forge status muestra la puntuación de cada tarea medida", () => {
     sesion(n.cwd);
     await n.ciclo().ejecutar(TAREA);
     assert.ok(lineasEstadoCiclo(n.cwd).some((l) => /T1: iteración 1\/5 · exito$/.test(l)));
+  });
+});
+
+// ── Revisión independiente (H-04, H-05, H-07): recorridos completos ──────────
+
+describe("revisión independiente — recorridos del ciclo", () => {
+  const exigir = { mutacion: "exigir", mutacion_minima: 0.6 };
+
+  test("H-05 y H-04: con exigir, unas pruebas que fallan en la copia sin alterar piden revisión por infraestructura (no «todo detectado»)", async () => {
+    const base = ejecutorFalso();
+    let n = 0;
+    // 1 y 2: la previa de qa y la del nodo sandbox. La 3 es la línea base de la medición: falla (prueba inestable, OOM...)
+    const runner = { test: async (dir) => (++n === 3 ? { exitCode: 1, stdout: "", stderr: "prueba inestable", timedOut: false, infraError: false, durationMs: 1 } : base.test(dir)) };
+    const e = entorno({ tester: [pruebas("FUERTE")], motor: exigir, runner });
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.status, "en_revision");
+    assert.equal(r.estado.revision?.motivo, "infraestructura");
+    assert.equal(r.estado.revision?.reanudarEn, "mutacion");
+    assert.match(String(r.estado.revision?.detalle), /copia sin alterar/);
+    assert.equal(r.estado.mutacion?.lineaBase, "falla");
+    assert.equal(r.estado.mutacion?.puntuacion, null);
+    assert.equal(n, 3, "no se probó ninguna alteración");
+    // «continuar» repite la medición y, con la línea base en verde, termina
+    const seguido = await e.ciclo().ejecutar(TAREA, { decision: "continuar" });
+    assert.equal(seguido.estado.resultado, "exito");
+    assert.equal(seguido.estado.mutacion?.puntuacion, 1);
+  });
+
+  test("H-05 con informar: la medición queda sin puntuación y la tarea termina en éxito", async () => {
+    const base = ejecutorFalso();
+    let n = 0;
+    const runner = { test: async (dir) => (++n === 3 ? { exitCode: 1, stdout: "", stderr: "x", timedOut: false, infraError: false, durationMs: 1 } : base.test(dir)) };
+    const e = entorno({ tester: [pruebas("FUERTE")], runner });
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.estado.resultado, "exito");
+    assert.equal(r.estado.mutacion?.puntuacion, null);
+    assert.equal(r.estado.mutacion?.motivoParcial, "linea_base");
+  });
+
+  test("H-04: con exigir y un mínimo mayor que las alteraciones posibles, la puntuación no vale y se pide revisión", async () => {
+    const e = entorno({ tester: [pruebas("FUERTE")], motor: { ...exigir, mutacion_min_concluyentes: 7 } });
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.estado.revision?.motivo, "pruebas_debiles");
+    assert.match(String(r.estado.revision?.detalle), /solo 6 alteraciones concluyentes \(el mínimo es 7\)/);
+    assert.equal(r.estado.mutacion?.puntuacion, 1, "la puntuación se conserva y se muestra, pero no basta");
+    const informar = entorno({ tester: [pruebas("FUERTE")], motor: { mutacion: "informar", mutacion_min_concluyentes: 7 } });
+    assert.equal((await informar.ciclo().ejecutar(TAREA)).estado.resultado, "exito");
+  });
+
+  test("H-02: con exigir, las alteraciones no concluyentes no cuentan: pruebas que solo «detectan» por no cargar el módulo no pasan", async () => {
+    const cargaRota = { exitCode: 1, stdout: "not ok 1 - suma.test.js\n", stderr: "Error: trampa", timedOut: false, infraError: false, durationMs: 1 };
+    const base = ejecutorFalso();
+    let n = 0;
+    // Tras la línea base (llamada 3) toda alteración «falla al cargar»
+    const runner = { test: async (dir) => (++n <= 3 ? base.test(dir) : { ...cargaRota }) };
+    const e = entorno({ tester: [pruebas("nada")], motor: exigir, runner });
+    const r = await e.ciclo().ejecutar(TAREA);
+    assert.equal(r.status, "en_revision");
+    assert.equal(r.estado.revision?.motivo, "pruebas_debiles");
+    assert.equal(r.estado.mutacion?.detectadas, 0);
+    assert.equal(r.estado.mutacion?.probadas, 0);
+    assert.equal(r.estado.mutacion?.noConcluyentes, 6);
+    assert.match(String(r.estado.revision?.detalle), /6 se descartaron/);
+  });
+
+  test("H-07: forge status y el registro muestran cuántas tareas están exentas del rojo obligatorio", async () => {
+    const e = entorno({ tester: [pruebas("FUERTE")] });
+    mkdirSync(join(e.cwd, ".sdd", "motor"), { recursive: true });
+    writeFileSync(join(e.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() }));
+    await e.ciclo().ejecutar({ ...TAREA, parte_de_codigo_existente: true });
+    const lineas = lineasEstadoCiclo(e.cwd);
+    assert.ok(lineas.some((l) => /Exentas del rojo obligatorio \(parte_de_codigo_existente\): 1 de 1 · T1/.test(l)), lineas.join("\n"));
+
+    const normal = entorno({ tester: [pruebas("FUERTE")] });
+    mkdirSync(join(normal.cwd, ".sdd", "motor"), { recursive: true });
+    writeFileSync(join(normal.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() }));
+    await normal.ciclo().ejecutar(TAREA);
+    assert.ok(!lineasEstadoCiclo(normal.cwd).some((l) => /Exentas del rojo/.test(l)));
   });
 });
 

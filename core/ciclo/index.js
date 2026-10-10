@@ -161,6 +161,10 @@ export function lineasEstadoCiclo(cwd) {
     `Ciclo verificado · sesión ${sesion.runId}`,
     `  Gasto: $${gasto.usd.toFixed(4)} de $${tope.toFixed(2)} · ${gasto.llamadas} llamadas`,
   ];
+  const exentas = tareas.filter((t) => t.exentaDelRojo);
+  if (exentas.length > 0) {
+    lineas.push(`  Exentas del rojo obligatorio (parte_de_codigo_existente): ${exentas.length} de ${tareas.length} · ${exentas.map((t) => t.taskId).join(', ')} · sus pruebas pueden pasar antes de implementar; revisa que sea cierto`);
+  }
   const porTarea = ciclo.libro.porTarea();
   if ('tokens_cache_escritura' in gasto) {
     lineas.push(`  Caché de prompts: ${gasto.tokens_cache_lectura} tokens reutilizados · ${gasto.tokens_cache_escritura} guardados · ${gasto.tokens_in} a precio normal`);
@@ -184,8 +188,12 @@ export function lineasEstadoCiclo(cwd) {
  */
 export function textoMutacion(m) {
   if (!m) return '';
-  if (typeof m.puntuacion !== 'number') return m.omitida ? ' · mutación: no medida (nada que alterar)' : ' · mutación: no medida (falló el entorno)';
-  return ` · mutación: ${m.detectadas}/${m.probadas} detectadas (${Math.round(m.puntuacion * 100)} %${m.parcial ? ', parcial' : ''})`;
+  const descartadas = m.noConcluyentes ? `, ${m.noConcluyentes} descartadas por no compilar o no cargar` : '';
+  if (typeof m.puntuacion !== 'number') {
+    const porque = m.omitida ? 'nada que alterar' : m.motivoParcial === 'linea_base' ? 'las pruebas fallan sin alterar nada' : m.motivoParcial === 'infraestructura' ? 'falló el entorno' : 'ninguna alteración concluyente';
+    return ` · mutación: no medida (${porque}${descartadas})`;
+  }
+  return ` · mutación: ${m.detectadas}/${m.probadas} detectadas (${Math.round(m.puntuacion * 100)} %${m.parcial ? ', parcial' : ''}${descartadas})`;
 }
 
 /**
@@ -412,7 +420,7 @@ export class CicloVerificado {
 
   /**
    * Resumen de cada tarea de la sesión, para `forge status`.
-   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any, implementador?: string, turnos?: number, mutacion: import('./estado.js').Mutacion|null }[]}
+   * @returns {{ taskId: string, nodo: string, siguiente: string|null, iteracion: number, maxIteraciones: number, resultado: string, revision: any, presupuesto: any, implementador?: string, turnos?: number, mutacion: import('./estado.js').Mutacion|null, exentaDelRojo: boolean }[]}
    */
   resumen() {
     if (!fs.existsSync(this.guardador.dir)) return [];
@@ -426,6 +434,8 @@ export class CicloVerificado {
         // ADR-21: modo del implementador en este hilo y turnos respondidos
         ...(p.estado.implementador ? { implementador: String(p.estado.implementador), turnos: Number(p.estado.turnos ?? 0) } : {}),
         mutacion: p.estado.mutacion ?? null,
+        // H-07: la exención del rojo obligatorio la declara quien define la tarea; se muestra para que se vea
+        exentaDelRojo: p.estado.tarea?.parte_de_codigo_existente === true,
       }));
   }
 
