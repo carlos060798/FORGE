@@ -17,10 +17,11 @@
  * contenido de un archivo, la salida de las pruebas) se interpreta: es texto para el modelo.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { aplicarArchivos, validarRuta } from './protocolo-archivos.js';
-import { cola } from './redactar.js';
+import { cola, redactar } from './redactar.js';
 import { clasificar } from './router.js';
 import { MOTIVOS as MOTIVOS_RUTA } from '../mcp/herramientas.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
@@ -250,7 +251,7 @@ export function crearHerramientasCoder(opciones) {
       const aviso     = caben < tramo.length
         ? `\n[recortado: se muestran las líneas ${inicio}-${ultima} de ${total}; pide el resto con "desde": ${ultima + 1} y "hasta"]`
         : '';
-      return { texto: `${cabecera}\n${mostradas.join('\n')}${aviso}`, error: false };
+      return { texto: redactar(`${cabecera}\n${mostradas.join('\n')}${aviso}`), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -306,7 +307,7 @@ export function crearHerramientasCoder(opciones) {
       }
       if (lineas.length === 0) return { texto: `Sin coincidencias de "${texto}"${c.prefijo ? ` en "${c.prefijo}"` : ''}.`, error: false };
       const aviso = hayMas ? `\n[recortado: hay más coincidencias; se muestran las ${lineas.length} primeras. Acota con "carpeta" o con un texto más específico]` : '';
-      return { texto: `${lineas.join('\n')}${aviso}`, error: false };
+      return { texto: redactar(`${lineas.join('\n')}${aviso}`), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -331,7 +332,8 @@ export function crearHerramientasCoder(opciones) {
           if (info.size > MAX_ARCHIVO_BYTES) return escrituraRechazada(ruta, 'demasiado_grande');
           const buffer = fs.readFileSync(v.absoluta);
           if (buffer.includes(0)) return escrituraRechazada(ruta, 'no_es_texto');
-          actual = buffer.toString('utf8');
+          try { actual = new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
+          catch { return escrituraRechazada(ruta, 'no_es_texto'); }
         } catch { return escrituraRechazada(ruta, 'archivo_inexistente'); }
 
         // Un archivo con finales de línea de Windows y un fragmento escrito con "\n" son el mismo texto
@@ -416,7 +418,23 @@ export function crearHerramientasCoder(opciones) {
       if (sobran.length > 0) {
         return fallo(`"${nombre}" no acepta ${sobran.map((k) => `"${k.slice(0, 40)}"`).join(', ')}. ${Object.keys(esquema.esquema.properties).length === 0 ? 'No tiene parámetros.' : `Parámetros: ${Object.keys(esquema.esquema.properties).join(', ')}.`} No se hizo nada.`);
       }
-      return HERRAMIENTAS[nombre](datos);
+      try {
+        return await HERRAMIENTAS[nombre](datos);
+      } catch (e) {
+        // Una excepción (permisos, archivo bloqueado) no se anota nunca y haría fallar igual cada reanudación
+        return fallo(`La herramienta "${nombre}" falló: ${cola(String(e instanceof Error ? e.message : e), 300)}. No se hizo nada más.`);
+      }
+    },
+    /**
+     * Estado previo de lo que una acción va a escribir, para saber al reanudar si ya se aplicó.
+     * @returns {{ ruta: string, sha256: string } | null}  null si la acción no escribe
+     */
+    estadoDeEscritura(nombre, entrada) {
+      if (nombre !== 'editar' || !esTexto(entrada?.ruta)) return null;
+      const v = validarRuta(cwd, entrada.ruta, { vetadas: [...vetadas] });
+      if (v.ok === false) return null;
+      try { return { ruta: v.rutaPosix, sha256: createHash('sha256').update(fs.readFileSync(v.absoluta)).digest('hex') }; }
+      catch { return { ruta: v.rutaPosix, sha256: 'ausente' }; }
     },
   };
 }

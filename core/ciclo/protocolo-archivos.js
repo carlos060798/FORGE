@@ -21,12 +21,12 @@ import { coincide } from '../glob.js';
  * git trata `sub/.git/` como un repositorio y ejecuta lo que diga su `config`.
  * Un ARCHIVO llamado `.git` también cuenta (puede redirigir a otra carpeta).
  */
-export const SEGMENTOS_VETADOS = ['.git', '.sdd', '.claude', 'node_modules', '.ssh', '.aws', '.docker', '.kube', 'secrets', '.gnupg', '.m2', '.gradle', '.terraform', '.password-store'];
+export const SEGMENTOS_VETADOS = ['.git', '.sdd', '.claude', 'node_modules', '.ssh', '.aws', '.docker', '.kube', 'secrets', '.gnupg', '.m2', '.gradle', '.terraform', '.password-store', '.config', '.cargo', '.azure', '.gem', '.oci'];
 
 /** Nombres de archivo que suelen contener secretos, a cualquier profundidad. */
 export const NOMBRES_VETADOS = [
   '.env*', '.dev.vars', '*.pem', '*.key', '*.p12', '*.pfx', '*.jks', '*.keystore', '*.ppk',
-  '.npmrc', '.netrc', '.pypirc', '.git-credentials', '.htpasswd',
+  '.npmrc', '.yarnrc*', '.netrc', '.terraformrc', 'terraform.rc', '.pypirc', '.git-credentials', '.htpasswd',
   'id_rsa*', 'id_dsa*', 'id_ecdsa*', 'id_ed25519*',
   '*.env', 'wp-config*.php', '*.sqlite', '*.sqlite3', 'serviceaccount*.json', 'database.yml', 'appsettings.production.json', '.my.cnf', 'credentials', 'secrets', 'secrets.{txt,json,yml,yaml,env,cfg,ini,conf,dat,key,pem,toml,xml,properties}',
   '*.tfstate*', '*.tfvars', '*service-account*', 'key.json', '*-key.json', '*_key.json', '*.key.json',

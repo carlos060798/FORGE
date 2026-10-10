@@ -27,10 +27,10 @@
  * de la que pagó. La conversación reproducida es idéntica a la original, y el primer turno
  * que falta en el diario es el primero que se pide de verdad.
  *
- * Queda una ventana: un corte entre que una herramienta escribe y que su resultado se anota.
- * Al reanudar se ejecuta otra vez. Escribir un archivo entero da el mismo resultado; una
- * sustitución ya aplicada devuelve «el fragmento no aparece», sin cambiar nada, y el modelo
- * puede leer el archivo y seguir. Ningún caso deja un archivo a medias: la escritura es atómica.
+ * Un corte entre que una herramienta escribe y que su resultado se anota se resuelve con una
+ * intención: antes de escribir se anota la huella del archivo. Al reanudar, si el archivo ya no
+ * tiene esa huella, la acción se da por aplicada y no se repite (una sustitución que contiene su
+ * propio fragmento se duplicaría). Ningún caso deja un archivo a medias: la escritura es atómica.
  */
 
 import { CONTRATO_CODER_TURNOS } from './contratos.js';
@@ -241,9 +241,25 @@ export async function coderPorTurnos(estado, deps, ayudas) {
         if (res.pruebas) herramientas.contarPrueba();
       } else {
         // Una respuesta cortada por longitud puede traer la entrada de la herramienta a medias: no se ejecuta
-        res = cortada
-          ? { texto: `No se ejecutó: ${AVISO_CORTADA}`, error: true }
-          : await herramientas.ejecutar(uso.nombre, uso.entrada);
+        if (cortada) {
+          res = { texto: `No se ejecutó: ${AVISO_CORTADA}`, error: true };
+        } else {
+          // Si la acción escribe, antes de hacerlo se anota cómo estaba el archivo. Tras un corte entre la
+          // escritura y la anotación del resultado, un archivo distinto de como estaba quiere decir que ya se
+          // aplicó: repetirla duplicaría el cambio (una sustitución que contiene su propio fragmento).
+          const previo = herramientas.estadoDeEscritura(uso.nombre, uso.entrada);
+          const claveIntento = `${claveResultado}:i`;
+          const intento = previo ? deps.diario?.obtener(claveIntento) : null;
+          if (previo && intento && intento.sha256 !== previo.sha256) {
+            res = {
+              texto: 'Este cambio ya se había aplicado antes de que se interrumpiera el trabajo; no se repitió. Lee el archivo si necesitas comprobarlo.',
+              error: false, escritos: [{ ruta: previo.ruta, sha256: previo.sha256 }],
+            };
+          } else {
+            if (previo && !intento) deps.diario?.anotar(claveIntento, previo);
+            res = await herramientas.ejecutar(uso.nombre, uso.entrada);
+          }
+        }
         deps.diario?.anotar(claveResultado, res);
         deps.log.append('ciclo:herramienta', {
           iteracion: it, turno: n, herramienta: String(uso.nombre).slice(0, 80), ok: !res.error,

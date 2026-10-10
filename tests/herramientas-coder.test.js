@@ -539,3 +539,57 @@ describe("HU-007 — el contenido leído no manda", () => {
     );
   });
 });
+
+describe("Revisión independiente — H-02, H-03 y H-04", () => {
+  test("H-02: una excepción de una herramienta vuelve como un resultado de error, no como una excepción", async () => {
+    const e = entorno({ runner: { test: async () => { throw new Error("EPERM: operation not permitted"); } } });
+    const r = await e.usar("ejecutar_pruebas");
+    assert.equal(r.error, true);
+    assert.match(r.texto, /"ejecutar_pruebas" falló: EPERM/);
+  });
+
+  test("H-03: editar no reescribe un archivo que no es UTF-8", async () => {
+    const e = entorno();
+    writeFileSync(join(e.dir, "latin.txt"), Buffer.from("caf\xe9\nlinea dos\n", "latin1"));
+    const antes = readFileSync(join(e.dir, "latin.txt"));
+    const r = await e.usar("editar", { ruta: "latin.txt", buscar: "linea dos", reemplazar: "linea 2" });
+    assert.equal(r.error, true);
+    assert.match(r.texto, /texto|UTF/i);
+    assert.deepEqual(readFileSync(join(e.dir, "latin.txt")), antes, "el archivo quedó intacto");
+  });
+
+  test("H-04: archivos de configuración de herramientas con credenciales quedan vetados", async () => {
+    const e = entorno();
+    escribir(e.dir, ".yarnrc.yml", "npmAuthToken: abc\n");
+    escribir(e.dir, ".config/gh/hosts.yml", "github.com:\n  oauth_token: gho_xxxxxxxx\n");
+    escribir(e.dir, ".cargo/credentials.toml", "[registry]\ntoken = \"x\"\n");
+    for (const ruta of [".yarnrc.yml", ".config/gh/hosts.yml", ".cargo/credentials.toml"]) {
+      const r = await e.usar("leer_archivo", { ruta });
+      assert.equal(r.error, true, ruta);
+    }
+    const lista = (await e.usar("listar", {})).texto;
+    assert.doesNotMatch(lista, /yarnrc|\.config|\.cargo/);
+  });
+
+  test("H-04: lo que devuelven leer_archivo y buscar pasa por el limpiador de secretos", async () => {
+    const e = entorno();
+    const token = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8";
+    escribir(e.dir, "src/config.js", `const t = "${token}";\n`);
+    const leido = await e.usar("leer_archivo", { ruta: "src/config.js" });
+    assert.doesNotMatch(leido.texto, new RegExp(token));
+    const hallado = await e.usar("buscar", { texto: "const t" });
+    assert.doesNotMatch(hallado.texto, new RegExp(token));
+  });
+
+  test("H-01 (unidad): estadoDeEscritura da la huella de lo que editar va a escribir, y null para el resto", () => {
+    const e = entorno();
+    escribir(e.dir, "src/a.js", "x\n");
+    const antes = e.h.estadoDeEscritura("editar", { ruta: "src/a.js" });
+    assert.equal(antes?.ruta, "src/a.js");
+    writeFileSync(join(e.dir, "src/a.js"), "y\n");
+    assert.notEqual(e.h.estadoDeEscritura("editar", { ruta: "src/a.js" })?.sha256, antes?.sha256);
+    assert.equal(e.h.estadoDeEscritura("editar", { ruta: "src/nuevo.js" })?.sha256, "ausente");
+    assert.equal(e.h.estadoDeEscritura("editar", { ruta: "../fuera.js" }), null);
+    assert.equal(e.h.estadoDeEscritura("leer_archivo", { ruta: "src/a.js" }), null);
+  });
+});

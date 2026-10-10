@@ -389,7 +389,7 @@ describe("HU-005 — reanudar sin pagar dos veces", () => {
     const e = entorno({ turnos: [pide(SUSTITUCION), CORTE], ejecuciones: [FALLA] });
     const ciclo = e.nuevoCiclo();
     await assert.rejects(ciclo.ejecutar(TAREA), /CORTE/);
-    assert.deepEqual(ciclo.diario.claves("r1:T1"), ["turno:0:inicio", "turno:0:1", "turno:0:1:r:0"]);
+    assert.deepEqual(ciclo.diario.claves("r1:T1"), ["turno:0:inicio", "turno:0:1", "turno:0:1:r:0:i", "turno:0:1:r:0"]);
     assert.equal(claveTurno(0, 1), "turno:0:1");
     assert.equal(ciclo.diario.obtener("r1:T1", "turno:0:1").contenido[1].nombre, "editar");
     assert.deepEqual(ciclo.diario.obtener("r1:T1", "turno:0:1:r:0").escritos.map((x) => x.ruta), ["src/grande.js"]);
@@ -818,5 +818,33 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
       if (previo.p === undefined) delete process.env.FORGE_LLM_PROVIDER; else process.env.FORGE_LLM_PROVIDER = previo.p;
       if (previo.g === undefined) delete process.env.FORGE_STUB_GUION; else process.env.FORGE_STUB_GUION = previo.g;
     }
+  });
+});
+
+describe("Revisión independiente — H-01: un corte entre escribir y anotar el resultado no duplica la edición", () => {
+  test("una sustitución que contiene su propio fragmento se aplica una sola vez tras el corte", async () => {
+    const INSERTAR = uso("editar", {
+      ruta: "src/grande.js",
+      buscar: "export const v1000 = 1000;",
+      reemplazar: "export const v1000 = 1000;\nexport const INSERTADO = 1;",
+    });
+    const e = entorno({ turnos: [pide(INSERTAR), TERMINA], ejecuciones: [FALLA, PASA] });
+
+    const original = Diario.prototype.anotar;
+    let cortado = false;
+    Diario.prototype.anotar = function (hilo, clave, ...resto) {
+      if (!cortado && /:r:0$/.test(String(clave))) { cortado = true; throw new Error("CORTE"); }
+      return original.call(this, hilo, clave, ...resto);
+    };
+    try {
+      await assert.rejects(e.nuevoCiclo().ejecutar(TAREA), /CORTE/);
+    } finally { Diario.prototype.anotar = original; }
+    assert.equal(leer(e.cwd, "src/grande.js").split("INSERTADO").length - 1, 1, "la edición ya estaba en el disco");
+
+    const r = await e.nuevoCiclo().ejecutar(TAREA);
+    assert.equal(r.estado.resultado, "exito");
+    assert.equal(leer(e.cwd, "src/grande.js").split("INSERTADO").length - 1, 1, "al reanudar no se aplicó otra vez");
+    assert.match(resultadosDe(e.conversaciones[1].mensajes[2])[0].contenido, /ya se había aplicado/);
+    assert.deepEqual(r.estado.implementacion.archivos.map((a) => a.ruta), ["src/grande.js"]);
   });
 });
