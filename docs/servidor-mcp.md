@@ -59,13 +59,18 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
   - **sin estado** (no hay saludo: cada petición trae su versión en `_meta`): 2026-07-28, la vigente.
 
   El servidor atiende las dos a la vez y elige petición a petición. A un cliente que pida sin saludo una revisión que no admite le responde el error `-32022` con las que sí. Qué cambia en cada revisión y de qué página oficial sale: `.sdd/especificaciones/2026-10-09-puesta-al-dia/spikes/mcp-revision-vigente.md`.
-- Si `sandbox.runtime` está configurado, `ejecutar_pruebas` usa ese mecanismo de aislamiento; si Docker no lo tiene, devuelve un error y no ejecuta nada.
+- Si `sandbox.runtime` está configurado, `ejecutar_pruebas` usa ese mecanismo de aislamiento; si Docker no lo tiene, devuelve un error y no ejecuta nada. Un mecanismo distinto de `runc` además tiene que estar en `FORGE_RUNTIMES_PERMITIDOS` (variable de entorno del proceso `forge mcp`): el archivo del proyecto puede ser ajeno y no basta para elegirlo.
+- **Con saludo y versión desconocida o ausente**, `initialize` responde `2025-06-18`, como antes de esta fase (no la más reciente). Una versión que sí se admite se devuelve tal cual.
+- **Peticiones sin `_meta` de versión y sin saludo**: `tools/list` y `tools/call` se atienden como siempre, con la forma de las revisiones con saludo y sin `resultType` (es lo que hacía el servidor antes y lo que esperan los clientes que nunca saludan). `server/discover` y `subscriptions/listen`, que solo existen en la revisión sin estado, responden `-32602` si falta `_meta`.
+- **Suscripciones** (`subscriptions/listen`): como mucho 64 abiertas a la vez por conexión y sin ids repetidos; en otro caso `-32602`. Cancelar una libera su sitio.
 
 ## Límites conocidos
 
 - **Sin autenticación ni transporte de red**: el servidor lo lanza tu cliente como proceso hijo y confía en él. No lo expongas por otro canal.
 - **Un agente con estas herramientas puede escribir código dañino en `src/`.** Se ejecuta solo dentro del contenedor, pero queda en tu proyecto. Revisa el diff antes de hacer commit. Una configuración ejecutable que no esté en las listas de rutas se escribiría.
 - **Los respaldos se guardan, pero no hay herramienta para restaurarlos**: están en `.sdd/motor/mcp-<n>/respaldo/mcp/archivos/`.
+- **Cancelar una petición no detiene la herramienta**: sin estado, la respuesta de una petición cancelada ya no se envía, pero `ejecutar_pruebas` o `escribir_archivo` terminan y sus efectos se aplican (la especificación pide dejar de trabajar, «SHOULD»). Abierto (revisión H-09).
+- **`supported` de `-32022` lista solo `2026-07-28`**; el ejemplo oficial lista también otras. No se pudo contrastar con el esquema (revisión H-12).
 - **No hay mensajes agrupados** (retirados en la versión 2025-06-18 del protocolo); solo herramientas: ni recursos, ni prompts, ni muestreo.
 - **El resultado de las pruebas se decide por el código de salida**, con los mismos límites que el ciclo: un `process.exit(0)` en el código falsea un éxito.
 - **La revisión 2026-07-28 no se ha probado con el cliente oficial**, solo con un cliente mínimo escrito a partir de la especificación (`tests/mcp-sin-estado.test.js`). De esa revisión se implementa lo que necesita un servidor de herramientas: `server/discover`, `tools/list`, `tools/call`, la cancelación y una suscripción que no notifica nada (la lista de herramientas no cambia).

@@ -211,9 +211,9 @@ describe("CA-002-04 — una revisión desconocida recibe una respuesta clara con
     assert.equal(segundo.respuestas[0].result.tools.length, 3);
   });
 
-  test("con saludo: una versión desconocida se contesta con la más reciente de las de saludo", async () => {
+  test("con saludo: una versión desconocida se contesta con 2025-06-18 (la de antes de la fase 9)", async () => {
     const { respuestas } = await conversar([req(1, "initialize", { protocolVersion: VIGENTE, capabilities: {}, clientInfo: { name: "t", version: "1" } })]);
-    assert.equal(respuestas[0].result.protocolVersion, VERSIONES[0]);
+    assert.equal(respuestas[0].result.protocolVersion, "2025-06-18");
   });
 });
 

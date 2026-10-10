@@ -124,6 +124,30 @@ Pruebas inestables observadas durante el trabajo:
 
 `npm run typecheck` no pasa, ni antes ni después de este cambio (errores en archivos que no se tocaron); se comprobó que los archivos tocados no añaden errores nuevos, pero no se usó como criterio. No ejecutado: el job `aislamiento` de CI en Linux; nada con un modelo de pago.
 
+## Correcciones tras la revisión independiente
+
+Informe: `revision-independiente.md`. Pruebas nuevas: `tests/puesta-al-dia-revision.test.js`. Ninguna se ha probado con un modelo de pago ni con un daemon con un mecanismo distinto de `runc`.
+
+| Hallazgo | Estado | Evidencia y límites |
+|---|---|---|
+| H-01 `init` escribe por enlaces (alta) | ✅ corregido | Batería con uniones de directorio (`mklink /J`, ejecutada en Windows): 9 directorios × {hacia fuera, colgante} y 7 archivos como unión, más enlaces duros a archivos de fuera. Enlaces simbólicos a archivos: **no ejecutables en este Windows (EPERM)**; se ejecutan en Linux con Docker (12 escenarios, `FORGE_TEST_DOCKER=1`, imagen `node:22-alpine`, sin montar el proyecto del equipo). La prueba de enlaces simbólicos nativos se salta aquí y corre donde se puedan crear. Sin doble de `fs`: la lógica es `lstat` y se cubre con los casos reales |
+| H-02 limpiador | ✅ corregido, ⚠️ límites | 15 secretos y 15 rutas nuevos, 39 casos de falsos positivos (SHA-1/SHA-256, UUID, `integrity` de package-lock, identificadores `AKIA…` inocentes, rutas relativas con `Users`, URLs con `/root/`). **No es una frontera de seguridad.** Límites: con espacios en el nombre se recorta el componente completo pero una ruta a medias (`C:\Users\Juan Perez` sin más) deja `Perez`; `/c/Users/x` y `/a/Users/x` se tratan como rutas; los caracteres de ancho cero entre dos caracteres de token ASCII se eliminan de la salida (cambia ese texto, no lo destruye); las rutas solo se omiten en `AGENTS.md`, no en la salida de pruebas |
+| H-03 NaN/negativos en el tope | ✅ corregido | `registrar`, `costoDe`, `_llamador`, `_conversador` y un ciclo completo que acaba en revisión; 12 valores malos × entrada y salida. Los decimales (`1.5`) también cuentan como no informados. Un proveedor sin costo con valores rotos cuenta 0 |
+| H-04 estructura de `AGENTS.md` | ✅ corregido, ⚠️ límite | Constitución hostil con bloques y comentarios sin cerrar, `~~~`, títulos de nivel 1, `name` y `scripts.test` con saltos. **Las instrucciones en prosa («ignora lo anterior») no se detectan**: `AGENTS.md` hereda la confianza de la constitución y de `package.json` |
+| H-05 `sandbox.runtime` | ✅ mitigado | Lista de permitidos por `FORGE_RUNTIMES_PERMITIDOS`; salida 4 en CLI, error en MCP, problema en `doctor`. **Mitigado, no eliminado**: quien la define autoriza a ojos cerrados lo que ponga. No hay `~/.forge/config.yaml` (no existe el mecanismo). Sin probar con ningún mecanismo autorizado distinto de `runc` (la prueba con Docker real usa `runc` y un nombre inexistente) |
+| H-06 acumulador clásico | ✅ corregido | Caché negativa, NaN y texto no restan; respeta `precios:` si se le dan al constructor. **No hay cableado**: el acumulador global del proceso (`sessionBudget`) no recibe `precios:` del proyecto; solo se usa con `new SessionBudget(umbral, { precios })` |
+| H-07 `llm.cache` | ✅ corregido | 1 espacio, tabulación y `{}` fallan con error claro. **Cambio de comportamiento**: una configuración antigua con esa sangría en `llm:` ahora no arranca (antes ignoraba esa clave). Otras claves desconocidas de `llm:` se siguen ignorando |
+| H-08 petición sin `_meta` | ✅ decidido | Se conserva el comportamiento de época antigua para `tools/*` (no rompe a quien nunca saludó) y `-32602` para los métodos que solo existen sin estado. El campo `inicializado` sigue sin leerse |
+| H-10 suscripciones | ✅ corregido | Tope de 64 y id repetido: `-32602` |
+| H-11 `initialize` desconocido | ✅ corregido | Compara con `git show 3da91d3:core/mcp/protocolo.js`: idéntico para los casos que ya existían. **Dos pruebas anteriores se modificaron** (`mcp-protocolo` CA-004-02 y `mcp-sin-estado`) porque afirmaban la más reciente. `2025-11-25` pedida explícitamente se sigue devolviendo tal cual (el servidor antiguo no la conocía) |
+| H-09 cancelación sin detener la herramienta | ❌ abierto | Límite documentado en `docs/servidor-mcp.md` |
+| H-12 `supported` de `-32022` | ❌ abierto | Sin contrastar con `schema.json` |
+| H-13 caché de 1 hora, Haiku 5.5 > 100 000 tokens | ❌ abierto | Hoy sin efecto (FORGE no pide `ttl: 1h`) |
+
+Totales tras estas correcciones (Windows 11, Node 24, Docker Desktop): `node --test tests/*.test.js` → 1963 pruebas, 1956 pasan, 0 fallan, 7 saltadas. `FORGE_TEST_DOCKER=1 node --test tests/sandbox-runtime.test.js tests/puesta-al-dia-revision.test.js` → 198 pruebas, 197 pasan, 0 fallan, 1 saltada (los enlaces simbólicos a archivos en Windows, EPERM; los cubre el escenario de Docker en Linux, que sí se ejecutó). No se ejecutó la suite entera con `FORGE_TEST_DOCKER=1`.
+
+Fuera de lo pedido que se tocó: `core/ciclo/diario.js` (el total del libro nunca resta) y `cli/index.js` (todas las escrituras de `init`, también las que no eran las de `AGENTS.md`). **No se tocaron** `forge config set` ni `forge aprobar`, que escriben en `.sdd/` fuera de `init` con `writeFileSync`: no se revisaron frente a enlaces.
+
 ## Qué se tocó fuera de lo que pedían los criterios
 
 - `core/orchestrator.js` y `core/session-budget.js`: el acumulador del modo clásico suma los tokens de caché. Sin esto, con la caché activa habría registrado menos de lo cobrado.

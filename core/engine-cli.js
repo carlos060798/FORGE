@@ -37,6 +37,7 @@ import { adquirir, ErrorBloqueado } from './ciclo/candado.js';
 import { DockerCli } from './sandbox/docker-cli.js';
 import { SandboxRunner } from './sandbox/sandbox-runner.js';
 import { comprobarProyecto } from './sandbox/preparar-imagen.js';
+import { runtimePermitido } from './sandbox/politica.js';
 
 export const SALIDA = { OK: 0, FALLO: 1, REVISION: 3, SIN_AISLAMIENTO: 4 };
 const DECISIONES = ['continuar', 'aceptar', 'abortar'];
@@ -130,6 +131,14 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
 
   const problema = comprobarProyecto(cwd, deps.stack.lenguaje, deps.stack.test_cmd);
   if (problema) err(`${problema} ${SALIDA_CLASICA}`);
+
+  // El runtime lo escribe el archivo del proyecto: debe estar autorizado por el usuario (H-05)
+  const permitido = runtimePermitido(config.sandbox.runtime);
+  if (permitido.ok === false) {
+    console.error(`${c.rojo('✗')} ${permitido.error}`);
+    console.error('  ' + SALIDA_CLASICA);
+    process.exit(SALIDA.SIN_AISLAMIENTO);
+  }
 
   const cli  = new DockerCli();
   const disp = await cli.disponible();

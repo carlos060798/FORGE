@@ -190,6 +190,7 @@ sandbox:
 
 - Sin indicarlo, se usa el de Docker por defecto, como siempre.
 - **Solo se elige uno ya instalado**: FORGE no instala ni configura ninguno. Los que conoce tu Docker salen en `docker info`.
+- **Tienes que autorizarlo tú.** `.sdd/sdd.config.yaml` puede venir de un repositorio ajeno, y un mecanismo distinto de `runc` es código de confianza que recibe el contenedor. Por eso `runc` (y no indicar nada) siempre se acepta, y cualquier otro valor exige estar en la variable de entorno `FORGE_RUNTIMES_PERMITIDOS`, del lado de tu equipo (lista separada por comas, comparación exacta, sin comodines): `FORGE_RUNTIMES_PERMITIDOS=runsc,kata-runtime`. Si el proyecto pide uno que no autorizaste, el ciclo no empieza, el mensaje lo explica y sale con el código 4 (lo mismo hace `ejecutar_pruebas` del servidor MCP, y `forge doctor` lo cuenta como problema). No hay archivo de configuración de usuario en FORGE: solo la variable.
 - **Si el indicado no está disponible, el ciclo no empieza**: lo explica, nombra el mecanismo y termina con el código 4. Nunca usa el de por defecto en su lugar.
 - **Todas las restricciones de arriba se mantienen** con cualquier mecanismo: solo se añade `--runtime <valor>` a la orden.
 - El valor solo admite letras, cifras, `_`, `.` y `-`, y no puede empezar por `-`. Con otro valor, el ciclo no arranca.
@@ -332,7 +333,7 @@ Para probar el implementador por turnos, la misma orden con `FORGE_IMPLEMENTADOR
 | 0 | Todas las tareas completadas, o la tarea se abortó por decisión humana (no es un fallo) |
 | 1 | Fallo, o no se puede empezar (etapa, lenguaje, ciclo ya en marcha, decisión no válida) |
 | 3 | Hay tareas que esperan tu decisión |
-| 4 | Docker no está disponible, o no tiene el mecanismo de aislamiento pedido en `sandbox.runtime` |
+| 4 | Docker no está disponible, no tiene el mecanismo de aislamiento pedido en `sandbox.runtime`, o el proyecto pide uno que no autorizaste con `FORGE_RUNTIMES_PERMITIDOS` |
 
 ## Límites conocidos
 

@@ -17,6 +17,7 @@ import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
 import { costoDe, estadoDe } from './presupuesto.js';
+import { esRecuentoValido } from '../session-budget.js';
 import { Respaldo } from './respaldo.js';
 
 const ARCHIVO_SESION = 'sesion.json';
@@ -271,12 +272,12 @@ export class CicloVerificado {
 
       const r = await this.o.llamar(peticion);
       if (r.ok) {
-        const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
+        const conConsumo = esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens);
         // Cada tipo de token a su precio: entrada normal, escritura de caché, lectura de caché y salida
         const usd = conConsumo ? costoDe(r, { precios: this.o.config?.precios }) : 0;
         // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
         this.libro.anotar({
-          taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0,
+          taskId, usd, inputTokens: conConsumo ? r.inputTokens : 0, outputTokens: conConsumo ? r.outputTokens : 0,
           ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
         });
         this.diario.anotar(threadId, clave, r);
@@ -298,10 +299,10 @@ export class CicloVerificado {
 
       const r = await this.o.conversar(peticion);
       if (r.ok) {
-        const conConsumo = typeof r.inputTokens === 'number' && typeof r.outputTokens === 'number';
+        const conConsumo = esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens);
         const usd = conConsumo ? costoDe(r, { precios: this.o.config?.precios }) : 0;
         this.libro.anotar({
-          taskId, usd, inputTokens: r.inputTokens ?? 0, outputTokens: r.outputTokens ?? 0,
+          taskId, usd, inputTokens: conConsumo ? r.inputTokens : 0, outputTokens: conConsumo ? r.outputTokens : 0,
           ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
         });
         this.diario.anotar(threadId, clave, r);

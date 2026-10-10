@@ -237,7 +237,7 @@ describe("CA-004-05 — la consulta de estado y el diagnóstico muestran el meca
 
   test("`forge doctor` muestra el mecanismo de aislamiento (sin Docker en el PATH: lo dice, no se cuelga)", () => {
     const dir = conConfig("sandbox:\n  runtime: runsc\n");
-    const env = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "" };
+    const env = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "", FORGE_RUNTIMES_PERMITIDOS: "runsc" };
     for (const k of Object.keys(env)) if (/^path$/i.test(k)) delete env[k];
     env.PATH = dirname(process.execPath);
     const r = spawnSync(process.execPath, [CLI, "doctor"], { cwd: dir, encoding: "utf8", env, timeout: 120_000 });
@@ -307,7 +307,7 @@ describe("sandbox.runtime con Docker real", { skip: !activo && "requiere FORGE_T
       ".sdd/estado-tareas.json": JSON.stringify({ tareas: [{ id: "T1", agente: "arquitecto", prompt: "Tarea T1" }] }),
       "package.json": JSON.stringify({ name: "demo", scripts: { test: "node --test" } }),
     });
-    const r = spawnSync(process.execPath, [CLI, "run"], { cwd: dir, encoding: "utf8", env: { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "" }, timeout: 120_000 });
+    const r = spawnSync(process.execPath, [CLI, "run"], { cwd: dir, encoding: "utf8", env: { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "", FORGE_RUNTIMES_PERMITIDOS: "forge-runtime-que-no-existe" }, timeout: 120_000 });
     assert.equal(r.status, 4, r.stdout + r.stderr);
     assert.match(r.stderr, /forge-runtime-que-no-existe/);
     assert.match(r.stderr, /no empieza con un aislamiento distinto/);
@@ -316,7 +316,7 @@ describe("sandbox.runtime con Docker real", { skip: !activo && "requiere FORGE_T
   });
 
   test("`forge doctor` real: avisa de un runtime inexistente y acepta runc", () => {
-    const env = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "" };
+    const env = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "", FORGE_RUNTIMES_PERMITIDOS: "forge-runtime-que-no-existe" };
     const malo = spawnSync(process.execPath, [CLI, "doctor"], { cwd: conConfig("sandbox:\n  runtime: forge-runtime-que-no-existe\n"), encoding: "utf8", env, timeout: 120_000 });
     assert.match(malo.stdout, /"forge-runtime-que-no-existe" \(sandbox\.runtime\) no está disponible/, malo.stdout + malo.stderr);
     const bueno = spawnSync(process.execPath, [CLI, "doctor"], { cwd: conConfig("sandbox:\n  runtime: runc\n"), encoding: "utf8", env, timeout: 120_000 });

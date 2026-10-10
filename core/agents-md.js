@@ -30,11 +30,26 @@ const HUECO = /\[(?![ xX]\])[^\]\n]+\](?!\()/;
 /**
  * Rutas absolutas del equipo de quien escribió la constitución (carpetas personales).
  * No aportan nada a otro agente y revelan el nombre de usuario.
+ *
+ * Cubre: `C:\Users\x`, `c:\users\x`, `C:/Users/x`, `C:\\Users\\x` (JSON escapado), `/mnt/c/Users/x`
+ * (WSL), `/c/Users/x` (Git Bash), `/home/x`, `/Users/x`, `/root`, `~/`, y UNC (`\\servidor\recurso`).
+ * El nombre de usuario puede llevar espacios (`C:\Users\Juan Perez\Docs`): se recorta hasta el
+ * final de ese componente, que es el que identifica a la persona.
  */
+const SEP = String.raw`(?:\\{1,4}|/)`;
+const FIN = String.raw`[^\s\\/"'` + '`' + String.raw`<>|*?)\]]*`;                 // un componente sin espacios
+// El primero tras Users/home no puede empezar por un signo de puntuación: `/^C:\\Users/;` es código, no una ruta
+const PRIMERO = String.raw`[^\s\\/"'` + '`' + String.raw`<>|*?)\];,:(\[{}]` + FIN;
+const NOMBRE_CON_ESPACIOS = String.raw`[^\\/\r\n"'` + '`' + String.raw`<>|*?:]{1,64}(?=[\\/])`;
+const RESTO = String.raw`(?:${SEP}${FIN})*`;
 const RUTAS_LOCALES = [
-  /\b[A-Za-z]:[\\/](?:Users|Usuarios|Documents and Settings)[\\/][^\s`"')\]]*/g,
-  /(?<![\w.])\/(?:home|Users)\/[^\s`"')\]]+/g,
-  /(?<![\w.])~\/[^\s`"')\]]*/g,
+  new RegExp(String.raw`\b[A-Za-z]:${SEP}(?:Users|Usuarios|Documents and Settings)${SEP}(?:${NOMBRE_CON_ESPACIOS}|${PRIMERO})${RESTO}`, 'gi'),
+  new RegExp(String.raw`(?<![\w.\\/])/(?:mnt/[a-z]|[a-z])/(?:Users|Usuarios)/(?:${NOMBRE_CON_ESPACIOS}|${PRIMERO})${RESTO.replace(SEP, '/')}`, 'gi'),
+  new RegExp(String.raw`(?<![\w.])/(?:home|Users)/(?:${NOMBRE_CON_ESPACIOS}|${PRIMERO})(?:/${FIN})*`, 'g'),
+  new RegExp(String.raw`(?<![\w.])/root(?:/${FIN})*(?![\w-])`, 'g'),
+  new RegExp(String.raw`(?<![\w.])~/${PRIMERO}(?:/${FIN})*`, 'g'),
+  // UNC: dos o más barras invertidas (4 si vienen escapadas en JSON), servidor y recurso
+  new RegExp(String.raw`(?<![\\\w])\\{2,4}[A-Za-z0-9_.$-]{2,}\\{1,2}[A-Za-z0-9_.$-]{2,}(?:\\{1,2}${FIN})*`, 'g'),
 ];
 
 /**
@@ -45,6 +60,53 @@ export function limpiar(texto) {
   let limpio = redactar(texto);
   for (const patron of RUTAS_LOCALES) limpio = limpio.replace(patron, '[ruta local omitida]');
   return limpio;
+}
+
+/**
+ * La estructura del archivo la deciden las secciones fijas, no el texto copiado. Para que el
+ * contenido de la constitución no pueda abrir lo que no cierra (un bloque de código, un
+ * comentario HTML) ni crear encabezados de nivel 1, cada trozo copiado pasa por aquí.
+ * No juzga el sentido del texto: AGENTS.md hereda la confianza de la constitución.
+ * @param {string} texto
+ */
+export function neutralizar(texto) {
+  const lineas = texto.replace(/\r\n?/g, '\n').split('\n');
+  /** @type {{ car: string, largo: number } | null} */
+  let valla = null;
+  const salida = [];
+  for (let linea of lineas) {
+    const f = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(linea);
+    if (valla) {
+      // Cierra una valla del mismo carácter, al menos igual de larga y sin texto detrás
+      if (f && f[1][0] === valla.car && f[1].length >= valla.largo && f[2].trim() === '') valla = null;
+    } else if (f && !(f[1][0] === '`' && f[2].includes('`'))) {
+      valla = { car: f[1][0], largo: f[1].length };
+    } else {
+      // Fuera de un bloque de código: sin encabezados de nivel 1 (los de nivel 2 ya los separó leerConstitucion)
+      linea = linea.replace(/^( {0,3})#(?=\s|$)/, '$1\\#');
+    }
+    salida.push(linea);
+  }
+  // Un bloque sin cerrar se cierra aquí, con una valla más larga que la que lo abrió
+  if (valla) salida.push(valla.car.repeat(valla.largo));
+  // Comentarios HTML: los cerrados ya se descartaron; un `<!--` suelto abriría uno sin fin
+  return salida.join('\n').replaceAll('<!--', '&lt;!--').replaceAll('-->', '--&gt;');
+}
+
+/** Una sola línea: sin saltos ni caracteres de control, y sin poder abrir un comentario HTML. */
+export function unaLinea(texto) {
+  return String(texto ?? '')
+    .replace(/[\u0000-\u001F\u007F\u0085\u2028\u2029]+/g, ' ')
+    .replaceAll('<!--', '&lt;!--').replaceAll('-->', '--&gt;')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** Bloque de código para un texto de una línea: la valla es más larga que cualquier racha de ` del contenido. */
+export function bloqueDeCodigo(linea) {
+  const rachas = (linea.match(/`+/g) ?? []).map((r) => r.length);
+  const valla = '`'.repeat(Math.max(3, ...rachas.map((n) => n + 1)));
+  return `${valla}\n${linea}\n${valla}`;
 }
 
 /**
@@ -87,12 +149,13 @@ export function constitucionUtil(constitucion) {
 }
 
 /** Sección fija: dónde están los artefactos y la regla de que todo cambio empieza por una spec. */
-function seccionesFijas(pruebas) {
+function seccionesFijas(pruebasCrudo) {
+  const pruebas = unaLinea(pruebasCrudo);
   return [
     '## Cómo ejecutar las pruebas',
     '',
     pruebas
-      ? `\`\`\`\n${pruebas}\n\`\`\`\n\nEjecútalas antes de dar un cambio por terminado. Si fallan, el cambio no está terminado.`
+      ? `${bloqueDeCodigo(pruebas)}\n\nEjecútalas antes de dar un cambio por terminado. Si fallan, el cambio no está terminado.`
       : 'Usa el comando de pruebas del proyecto (míralo en su manifiesto o en su README) antes de dar un cambio por terminado. Si fallan, el cambio no está terminado.',
     '',
     '## Dónde está cada cosa',
@@ -122,7 +185,7 @@ function seccionesFijas(pruebas) {
  */
 export function desdeConstitucion({ constitucion, nombre, pruebas }) {
   const c = leerConstitucion(constitucion);
-  const titulo = c.nombre || nombre || 'este proyecto';
+  const titulo = unaLinea(c.nombre || nombre) || 'este proyecto';
   const partes = [
     `# AGENTS.md — ${titulo}`,
     '',
@@ -133,16 +196,16 @@ export function desdeConstitucion({ constitucion, nombre, pruebas }) {
     '',
   ];
 
-  const proposito = cuerpoUtil(c.secciones.get('Propósito y Misión') ?? '');
+  const proposito = neutralizar(cuerpoUtil(c.secciones.get('Propósito y Misión') ?? ''));
   if (proposito) partes.push('## Qué es este proyecto', '', proposito, '');
 
   for (const [origen, destino] of SECCIONES) {
-    const cuerpo = cuerpoUtil(c.secciones.get(origen) ?? '');
+    const cuerpo = neutralizar(cuerpoUtil(c.secciones.get(origen) ?? ''));
     if (cuerpo) partes.push(`## ${destino}`, '', cuerpo, '');
   }
 
   // De los principios, solo el enunciado: el detalle y su razón están en la constitución
-  const principios = [...(c.secciones.get('Principios Fundamentales') ?? '').matchAll(/^###\s+(.+?)\s*$/gm)].map((m) => m[1]).filter((p) => !HUECO.test(p));
+  const principios = [...(c.secciones.get('Principios Fundamentales') ?? '').matchAll(/^###\s+(.+?)\s*$/gm)].map((m) => unaLinea(m[1])).filter((p) => p !== '' && !HUECO.test(p));
   if (principios.length > 0) {
     partes.push('## Principios', '', ...principios.map((p) => `- ${p}`), '', 'El texto completo de cada uno, con su razón, está en `.sdd/memoria/constitucion.md`.', '');
   }
@@ -158,9 +221,14 @@ export function desdeConstitucion({ constitucion, nombre, pruebas }) {
  * @returns {string}
  */
 export function desdePlantilla({ plantilla, nombre, pruebas }) {
-  const texto = plantilla.replace(/\r\n/g, '\n')
-    .replaceAll('{{NOMBRE}}', nombre || 'este proyecto')
-    .replaceAll('{{PRUEBAS}}', pruebas || 'el comando de pruebas del proyecto (míralo en su manifiesto o en su README)');
+  const unaPrueba = unaLinea(pruebas) || 'el comando de pruebas del proyecto (míralo en su manifiesto o en su README)';
+  let texto = plantilla.replace(/\r\n/g, '\n');
+  // El hueco de las pruebas va dentro de un bloque de código de tres acentos: se sustituye el bloque
+  // entero, con una valla que el comando no pueda cerrar
+  texto = texto.replace(/^```[^\n]*\n\{\{PRUEBAS\}\}\n```$/m, () => bloqueDeCodigo(unaPrueba));
+  texto = texto
+    .replaceAll('{{NOMBRE}}', () => unaLinea(nombre) || 'este proyecto')
+    .replaceAll('{{PRUEBAS}}', () => unaPrueba.replaceAll('`', "'"));
   return limpiar(texto).trimEnd() + '\n';
 }
 

@@ -99,10 +99,10 @@ describe("CA-004-02 — versiones del protocolo", () => {
     });
   }
 
-  test("una versión que no soporta se contesta con la más reciente que sí", async () => {
+  test("una versión que no soporta se contesta con 2025-06-18, como antes de la fase 9 (CA-002-03)", async () => {
     for (const pedida of ["2099-01-01", "1999-01-01", undefined, 5]) {
       const { respuestas } = await conversar([req(1, "initialize", { protocolVersion: pedida })]);
-      assert.equal(respuestas[0].result.protocolVersion, VERSIONES[0]);
+      assert.equal(respuestas[0].result.protocolVersion, "2025-06-18");
     }
   });
 });

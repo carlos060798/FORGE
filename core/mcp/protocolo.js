@@ -25,6 +25,15 @@
 /** Revisiones con saludo `initialize`, de la más reciente a la más antigua. */
 export const VERSIONES = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
+/**
+ * Con `initialize` de versión desconocida o ausente se responde con esta, la que respondía el
+ * servidor antes de la fase 9 (CA-002-03: los clientes antiguos siguen igual). No es VERSIONES[0].
+ */
+export const VERSION_POR_DEFECTO = '2025-06-18';
+
+/** Tope de suscripciones (`subscriptions/listen`) abiertas a la vez en una conexión. */
+export const MAX_SUSCRIPCIONES = 64;
+
 /** Revisiones sin estado: la versión viaja en cada petición. */
 export const VERSIONES_SIN_ESTADO = ['2026-07-28'];
 
@@ -259,6 +268,8 @@ export class ServidorMcp {
         // recursos ni prompts: se acepta la suscripción con el filtro vacío, que es decirle al cliente
         // que no llegará ningún aviso. Queda abierta, sin respuesta, hasta que el cliente la cancele
         // o cierre la entrada.
+        if (this.suscripciones.has(id)) throw new ErrorProtocolo(ERR.PARAMS, `Ya hay una suscripción abierta con el id ${JSON.stringify(id)}`);
+        if (this.suscripciones.size >= MAX_SUSCRIPCIONES) throw new ErrorProtocolo(ERR.PARAMS, `Demasiadas suscripciones abiertas (máximo ${MAX_SUSCRIPCIONES}); cancela alguna antes de abrir otra`);
         this.suscripciones.add(id);
         this._enviar({ jsonrpc: '2.0', method: 'notifications/subscriptions/acknowledged', params: { _meta: { [META.SUSCRIPCION]: id }, notifications: {} } });
         return SIN_RESPUESTA;
@@ -273,7 +284,7 @@ export class ServidorMcp {
         const pedida = params?.protocolVersion;
         this.inicializado = true;
         return {
-          protocolVersion: VERSIONES.includes(pedida) ? pedida : VERSIONES[0],
+          protocolVersion: VERSIONES.includes(pedida) ? pedida : VERSION_POR_DEFECTO,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: this.o.nombre, version: this.o.version },
           ...(this.o.instrucciones ? { instructions: this.o.instrucciones } : {}),
@@ -329,7 +340,9 @@ export class ServidorMcp {
  */
 function esSinEstado(metodo, params) {
   if (metodo === 'initialize') return false;
-  if (metodo === 'server/discover') return true;
+  // Ambos existen solo en las revisiones sin estado: sin _meta es una petición mal formada (-32602),
+  // no un método desconocido. El resto de métodos sin _meta se atienden como siempre (H-08)
+  if (metodo === 'server/discover' || metodo === 'subscriptions/listen') return true;
   const meta = params && typeof params === 'object' ? params._meta : undefined;
   return Boolean(meta) && typeof meta === 'object' && META.VERSION in meta;
 }

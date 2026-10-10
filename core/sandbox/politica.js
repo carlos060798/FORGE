@@ -39,6 +39,34 @@ export function validarRuntime(valor) {
   return valor;
 }
 
+/** Variable de entorno con los mecanismos de aislamiento que el usuario autoriza, separados por comas. */
+export const VARIABLE_RUNTIMES = 'FORGE_RUNTIMES_PERMITIDOS';
+
+/** Siempre permitido: es el mecanismo estándar de Docker. Vacío (sin `sandbox.runtime`) es el de por defecto. */
+export const RUNTIMES_SIEMPRE_PERMITIDOS = Object.freeze(['runc']);
+
+/**
+ * ¿Autoriza el usuario este `sandbox.runtime`? El archivo del proyecto (`.sdd/sdd.config.yaml`)
+ * puede venir de un repositorio hostil, así que lo que el proyecto pide no basta: un mecanismo
+ * distinto de `runc` y del de Docker por defecto exige estar en la lista del lado del usuario
+ * (variable `FORGE_RUNTIMES_PERMITIDOS`, comparación exacta, sin comodines). Revisión H-05.
+ * @param {string} runtime  ya validado con `validarRuntime`; '' = el de Docker por defecto
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{ ok: true } | { ok: false, error: string }}
+ */
+export function runtimePermitido(runtime, env = process.env) {
+  if (!runtime || RUNTIMES_SIEMPRE_PERMITIDOS.includes(runtime)) return { ok: true };
+  const lista = String(env[VARIABLE_RUNTIMES] ?? '').split(',').map((r) => r.trim()).filter(Boolean);
+  if (lista.includes(runtime)) return { ok: true };
+  return {
+    ok: false,
+    error: `El proyecto pide el mecanismo de aislamiento "${runtime}" (sandbox.runtime) y tú no lo has autorizado. `
+      + `Ese archivo puede venir de un repositorio ajeno: un mecanismo distinto de "runc" es código de confianza que recibe el contenedor. `
+      + `Si lo conoces y lo quieres, autorízalo en tu equipo con ${VARIABLE_RUNTIMES}=${runtime} (varios, separados por comas); `
+      + `si no, quita sandbox.runtime de .sdd/sdd.config.yaml.`,
+  };
+}
+
 /** Un valor que empieza por "-" se interpretaría como una opción de docker. */
 function sinGuion(nombre, valor) {
   if (typeof valor !== 'string' || valor === '' || valor.startsWith('-')) {

@@ -5,7 +5,7 @@
  * gasto se guarda en cada punto de guardado y sobrevive a la reanudación.
  */
 
-import { precioCompletoDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
+import { esRecuentoValido, precioCompletoDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 
 const ESCALON = { opus: 'sonnet', sonnet: 'haiku', haiku: 'haiku' };
 export const NIVELES = ['haiku', 'sonnet', 'opus'];
@@ -59,11 +59,18 @@ const entero = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n 
  * @returns {number}
  */
 export function costoDe(llamada, opciones = {}) {
+  if (PROVEEDORES_SIN_COSTO.has(llamada.proveedor)) return 0;
+  // Entrada y salida inválidas (NaN, negativas, no finitas, decimales) son consumo no informado:
+  // fallar cerrado, porque sumarlas haría bajar el gasto o dejarlo en NaN (revisión H-03)
+  if (!esRecuentoValido(llamada.inputTokens) || !esRecuentoValido(llamada.outputTokens)) throw new ErrorConsumo(llamada.proveedor);
   const precio = precioCompletoDe(llamada.proveedor, llamada.modelo, opciones.precioDesconocido, opciones.precios);
-  return (llamada.inputTokens ?? 0) * precio.input
-    + (llamada.outputTokens ?? 0) * precio.output
+  const usd = llamada.inputTokens * precio.input
+    + llamada.outputTokens * precio.output
     + entero(llamada.cacheCreationTokens) * precio.cacheWrite
     + entero(llamada.cacheReadTokens) * precio.cacheRead;
+  // Último cerrojo: un precio roto no puede hacer que el gasto baje ni valga NaN
+  if (!Number.isFinite(usd) || usd < 0) throw new ErrorConsumo(llamada.proveedor);
+  return usd;
 }
 
 /**
@@ -78,11 +85,12 @@ export function costoDe(llamada, opciones = {}) {
  */
 export function registrar(p, llamada, opciones = {}) {
   const sinCosto = PROVEEDORES_SIN_COSTO.has(llamada.proveedor);
-  const faltaConsumo = typeof llamada.inputTokens !== 'number' || typeof llamada.outputTokens !== 'number';
+  const faltaConsumo = !esRecuentoValido(llamada.inputTokens) || !esRecuentoValido(llamada.outputTokens);
   if (faltaConsumo && !sinCosto) throw new ErrorConsumo(llamada.proveedor);
 
-  const tokensIn  = llamada.inputTokens ?? 0;
-  const tokensOut = llamada.outputTokens ?? 0;
+  // Un proveedor sin costo que informe algo inválido cuenta cero tokens: el acumulador no se corrompe
+  const tokensIn  = esRecuentoValido(llamada.inputTokens) ? llamada.inputTokens : 0;
+  const tokensOut = esRecuentoValido(llamada.outputTokens) ? llamada.outputTokens : 0;
   const cacheEscritura = entero(llamada.cacheCreationTokens);
   const cacheLectura   = entero(llamada.cacheReadTokens);
   const hayCache = cacheEscritura > 0 || cacheLectura > 0 || 'tokens_cache_escritura' in p || 'tokens_cache_lectura' in p;

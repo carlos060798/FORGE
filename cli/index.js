@@ -15,6 +15,7 @@
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -26,6 +27,7 @@ import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
 import { detectStack } from "../core/stack-detector.js";
+import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo } from "../core/escritura-segura.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,25 +52,57 @@ function error(msg) {
   process.exit(1);
 }
 
+// ─── Escritura segura (revisión independiente de la fase 9, H-01) ───────────────────
+//
+// `forge init` corre dentro de un repositorio que puede ser ajeno. Todo lo que escribe pasa por
+// core/escritura-segura.js: no sigue enlaces simbólicos ni uniones (tampoco colgantes), no sale de
+// la raíz de escritura y no sobrescribe a través de un enlace. Si el destino es un enlace, se
+// informa y no se escribe.
+
+/** Directorio fuera del cual `init` no escribe: el proyecto, o ~/.claude con --global. */
+let raizEscritura = process.cwd();
+
+/** Ejecuta una escritura; un enlace en el camino se informa y se sigue con lo demás. @returns {any} */
+function protegido(fn) {
+  try { return fn(); } catch (e) {
+    if (e instanceof ErrorEnlace) { aviso(`No se escribe: ${e.message}`); return undefined; }
+    throw e;
+  }
+}
+
+/** Crea un directorio dentro de la raíz de escritura. */
+function crearDir(dir) { return protegido(() => crearDirectorio(raizEscritura, dir)); }
+
+/** Crea un archivo que no existe (nunca sobrescribe). true si lo creó. */
+function crearNuevo(ruta, contenido) { return protegido(() => crearArchivo(raizEscritura, ruta, contenido)) === true; }
+
+/** Deja el archivo con este contenido (lo crea o lo reemplaza si es un archivo normal). true si lo escribió. */
+function escribirSeguro(ruta, contenido) { return protegido(() => { escribirArchivo(raizEscritura, ruta, contenido); return true; }) === true; }
+
 // ─── Utilidades de copia ────────────────────────────────────────────────────────
 
 /** Copia todos los .md de un directorio origen a uno destino. Devuelve cuántos. */
 function copyMd(srcDir, destDir) {
-  mkdirSync(destDir, { recursive: true });
+  if (crearDir(destDir) === undefined) return 0;
   const archivos = readdirSync(srcDir).filter((f) => f.endsWith(".md"));
+  let n = 0;
   for (const f of archivos) {
-    cpSync(join(srcDir, f), join(destDir, f));
+    if (protegido(() => { copiarArchivo(raizEscritura, join(srcDir, f), join(destDir, f)); return true; })) n++;
   }
-  return archivos.length;
+  return n;
 }
 
 /** Copia un directorio completo (recursivo). */
 function copyDir(srcDir, destDir) {
-  mkdirSync(destDir, { recursive: true });
-  cpSync(srcDir, destDir, { recursive: true });
+  const { bloqueados } = copiarArbol(raizEscritura, srcDir, destDir);
+  for (const b of bloqueados) aviso(`No se escribe: es un enlace o pasa por uno: ${b}`);
 }
 
-/** Lee la versión declarada en package.json del plugin. */
+/** Copia un archivo suelto del plugin. true si lo copió. */
+function copiarSeguro(origen, destino) {
+  return protegido(() => { copiarArchivo(raizEscritura, origen, destino); return true; }) === true;
+}
+
 function pluginVersion() {
   try {
     const pkg = JSON.parse(
@@ -123,12 +157,11 @@ function copiarNucleo(claudeDir) {
   // Skills planas (.md) + skills en formato carpeta (SKILL.md)
   const skillsSrc = join(PLUGIN_DIR, "skills");
   const skillsDest = join(claudeDir, "skills");
-  mkdirSync(skillsDest, { recursive: true });
+  crearDir(skillsDest);
   let nSk = 0;
   for (const entry of readdirSync(skillsSrc, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.endsWith(".md")) {
-      cpSync(join(skillsSrc, entry.name), join(skillsDest, entry.name));
-      nSk++;
+      if (copiarSeguro(join(skillsSrc, entry.name), join(skillsDest, entry.name))) nSk++;
     } else if (entry.isDirectory()) {
       // skill en formato carpeta (contiene SKILL.md + recursos)
       copyDir(join(skillsSrc, entry.name), join(skillsDest, entry.name));
@@ -140,14 +173,14 @@ function copiarNucleo(claudeDir) {
   titulo("Instalando hooks de Claude Code...");
   const hooksSrc = join(PLUGIN_DIR, "claude-hooks");
   const hooksDest = join(claudeDir, "hooks");
-  mkdirSync(hooksDest, { recursive: true });
+  crearDir(hooksDest);
   // Los hooks importan ./shared/config.js y los wrappers .sh delegan en los .js:
   // hay que copiar ambos, no solo los .js del primer nivel.
   for (const entry of readdirSync(hooksSrc, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       copyDir(join(hooksSrc, entry.name), join(hooksDest, entry.name));
     } else if (entry.name.endsWith(".js") || entry.name.endsWith(".sh")) {
-      cpSync(join(hooksSrc, entry.name), join(hooksDest, entry.name));
+      copiarSeguro(join(hooksSrc, entry.name), join(hooksDest, entry.name));
     }
   }
   info(`Hooks instalados (${hooksDest})`);
@@ -170,8 +203,7 @@ function copiarSettings(claudeDir) {
     // del proyecto) que es el destino real donde el instalador los deja.
     let settings = readFileSync(src, "utf8");
     settings = settings.replaceAll("claude-hooks/", ".claude/hooks/");
-    writeFileSync(dest, settings, "utf8");
-    info(`Settings de seguridad instalados (${dest})`);
+    if (crearNuevo(dest, settings)) info(`Settings de seguridad instalados (${dest})`);
   } else {
     aviso(`settings.json ya existe en ${claudeDir} — no se sobreescribe`);
     aviso(`Revisa manualmente: ${src}`);
@@ -216,7 +248,7 @@ function configurarSdd(claudeDir, overrides = {}) {
     "plantillas",
   ];
   for (const d of sub) {
-    mkdirSync(join(process.cwd(), ".sdd", d), { recursive: true });
+    crearDir(join(process.cwd(), ".sdd", d));
   }
 
   // Plantillas
@@ -226,11 +258,9 @@ function configurarSdd(claudeDir, overrides = {}) {
   // Config (no sobreescribe)
   const configDest = join(process.cwd(), ".sdd", "sdd.config.yaml");
   if (!existsSync(configDest)) {
-    cpSync(
-      join(PLUGIN_DIR, "configuracion-ejemplo", "sdd.config.yaml"),
-      configDest
-    );
-    info("Configuración por defecto copiada (.sdd/sdd.config.yaml)");
+    if (crearNuevo(configDest, readFileSync(join(PLUGIN_DIR, "configuracion-ejemplo", "sdd.config.yaml")))) {
+      info("Configuración por defecto copiada (.sdd/sdd.config.yaml)");
+    }
   } else {
     aviso("Configuración ya existe — no se sobreescribe");
   }
@@ -247,18 +277,13 @@ function configurarSdd(claudeDir, overrides = {}) {
     if (overrides.sesionModo) {
       yaml = yaml.replace(/^(\s*modo:\s*).*$/m, `$1"${overrides.sesionModo}"`);
     }
-    writeFileSync(configDest, yaml, "utf8");
-    info("Configuración personalizada aplicada (wizard --guided)");
+    if (escribirSeguro(configDest, yaml)) info("Configuración personalizada aplicada (wizard --guided)");
   }
 
   // .claudeignore (no sobreescribe — respeta personalizaciones del usuario)
   const claudeignoreDest = join(process.cwd(), ".claudeignore");
   if (!existsSync(claudeignoreDest)) {
-    cpSync(
-      join(PLUGIN_DIR, "configuracion-ejemplo", ".claudeignore"),
-      claudeignoreDest
-    );
-    info(".claudeignore creado — excluye node_modules, dist, observabilidad FORGE del contexto");
+    if (copiarSeguro(join(PLUGIN_DIR, "configuracion-ejemplo", ".claudeignore"), claudeignoreDest)) info(".claudeignore creado — excluye node_modules, dist, observabilidad FORGE del contexto");
   } else {
     aviso(".claudeignore ya existe — no se sobreescribe");
   }
@@ -266,8 +291,7 @@ function configurarSdd(claudeDir, overrides = {}) {
   // README de hooks (no sobreescribe)
   const hooksReadme = join(process.cwd(), ".sdd", "hooks", "README.md");
   if (!existsSync(hooksReadme)) {
-    writeFileSync(hooksReadme, HOOKS_README);
-    info("README de hooks creado (.sdd/hooks/README.md)");
+    if (crearNuevo(hooksReadme, HOOKS_README)) info("README de hooks creado (.sdd/hooks/README.md)");
   }
 
   // Documentación local (opcional)
@@ -328,6 +352,13 @@ const CLAUDE_MD_VERSION_TAG = `<!-- forge-version: ${CLAUDE_MD_VERSION} -->`;
 
 function integrarClaudeMd(cwd) {
   const claudeMdPath = join(cwd, "CLAUDE.md");
+  // Un enlace (a otro archivo, a una carpeta o colgante) no se sigue ni para leer ni para escribir
+  try {
+    if (lstatSync(claudeMdPath).isSymbolicLink()) {
+      aviso("CLAUDE.md es un enlace simbólico o una unión — no se modifica (no se escribe a través de enlaces)");
+      return;
+    }
+  } catch { /* no existe: se crea */ }
   const MARCADOR_INICIO = "## FORGE";
 
   const seccionCompleta = CLAUDE_MD_SECCION.trimEnd() + "\n" + CLAUDE_MD_VERSION_TAG + "\n";
@@ -344,18 +375,15 @@ function integrarClaudeMd(cwd) {
       const antes = contenido.slice(0, idx).trimEnd();
       const despues = contenido.slice(fin).replace(/^\n+/, "");
       const nuevo = antes + "\n" + seccionCompleta + (despues ? "\n" + despues : "");
-      writeFileSync(claudeMdPath, nuevo, "utf8");
-      info(`Sección FORGE en CLAUDE.md actualizada a v${CLAUDE_MD_VERSION}`);
+      if (escribirSeguro(claudeMdPath, nuevo)) info(`Sección FORGE en CLAUDE.md actualizada a v${CLAUDE_MD_VERSION}`);
       return;
     }
     // Añadir sección al final del archivo existente
     const nuevo = contenido.trimEnd() + "\n\n" + seccionCompleta;
-    writeFileSync(claudeMdPath, nuevo, "utf8");
-    info("Sección FORGE añadida a CLAUDE.md existente");
+    if (escribirSeguro(claudeMdPath, nuevo)) info("Sección FORGE añadida a CLAUDE.md existente");
   } else {
     const contenido = `# Instrucciones del proyecto\n` + seccionCompleta;
-    writeFileSync(claudeMdPath, contenido, "utf8");
-    info("CLAUDE.md creado con sección FORGE");
+    if (crearNuevo(claudeMdPath, contenido)) info("CLAUDE.md creado con sección FORGE");
   }
 }
 
@@ -383,18 +411,42 @@ function integrarAgentsMd(cwd) {
   const { contenido, origen } = generarAgentsMd({ constitucion, plantilla, nombre: typeof nombre === "string" ? nombre : undefined, pruebas });
   const de = origen === "constitucion" ? "la constitución del proyecto" : "la plantilla mínima (el proyecto aún no tiene constitución)";
 
-  if (!existsSync(destino)) {
-    writeFileSync(destino, contenido, "utf8");
-    info(`AGENTS.md creado a partir de ${de}`);
-    return "creado";
+  // Un enlace (también colgante) no se sigue: `existsSync` lo vería «no existe» y se escribiría al otro lado
+  let enlace = null;
+  for (const ruta of [destino, join(cwd, ".sdd"), join(cwd, ".sdd", "AGENTS.propuesto.md")]) {
+    try { if (lstatSync(ruta).isSymbolicLink()) { enlace = ruta; break; } } catch { /* no existe */ }
+  }
+  if (enlace) {
+    aviso(`AGENTS.md no se escribe: ${enlace} es un enlace simbólico o una unión (no se escribe a través de ellos).`);
+    return "enlace";
+  }
+
+  let existe = false;
+  try { lstatSync(destino); existe = true; } catch { /* no existe */ }
+  if (!existe) {
+    try {
+      if (crearArchivo(cwd, destino, contenido)) {
+        info(`AGENTS.md creado a partir de ${de}`);
+        return "creado";
+      }
+    } catch (e) {
+      if (!(e instanceof ErrorEnlace)) throw e;
+      aviso(`AGENTS.md no se escribe: ${e.message}`);
+      return "enlace";
+    }
   }
   if (readFileSync(destino, "utf8").replace(/\r\n/g, "\n") === contenido) {
     info("AGENTS.md ya está al día");
     return "al_dia";
   }
   const propuesta = join(cwd, ".sdd", "AGENTS.propuesto.md");
-  mkdirSync(join(cwd, ".sdd"), { recursive: true });
-  writeFileSync(propuesta, contenido, "utf8");
+  try {
+    escribirArchivo(cwd, propuesta, contenido);
+  } catch (e) {
+    if (!(e instanceof ErrorEnlace)) throw e;
+    aviso(`La propuesta de AGENTS.md no se escribe: ${e.message}`);
+    return "enlace";
+  }
   aviso("AGENTS.md ya existe — no se sobreescribe");
   aviso(`  Propuesta generada de ${de}: .sdd/AGENTS.propuesto.md (compárala y copia lo que quieras)`);
   return "propuesto";
@@ -406,6 +458,9 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
     ? join(homedir(), ".claude")
     : join(process.cwd(), ".claude");
   console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${claudeDir})`);
+  // Con --global se escribe en ~/.claude; en un proyecto, dentro del proyecto y de ningún otro sitio
+  if (global) mkdirSync(claudeDir, { recursive: true });
+  raizEscritura = global ? claudeDir : process.cwd();
   if (template) console.log(`  Template: ${template}`);
   console.log("");
 
@@ -472,7 +527,7 @@ function aplicarTemplate(template) {
     return null;
   }
   const sddDir = join(process.cwd(), ".sdd");
-  mkdirSync(sddDir, { recursive: true });
+  if (crearDir(sddDir) === undefined) return null;
 
   // Copiar ir.json
   const irSrc = join(templateSrc, "ir.json");
@@ -480,8 +535,7 @@ function aplicarTemplate(template) {
     const ir = JSON.parse(readFileSync(irSrc, "utf8"));
     ir.created_at = new Date().toISOString();
     ir.id = `ir-${template}-${Date.now()}`;
-    writeFileSync(join(sddDir, "ir.json"), JSON.stringify(ir, null, 2), "utf8");
-    info(`IR pre-generado desde template ${template}`);
+    if (escribirSeguro(join(sddDir, "ir.json"), JSON.stringify(ir, null, 2))) info(`IR pre-generado desde template ${template}`);
   }
 
   // Copiar spec.md a .sdd/especificaciones/
@@ -489,32 +543,30 @@ function aplicarTemplate(template) {
   if (existsSync(specSrc)) {
     const specId = `template-${template}`;
     const specDir = join(sddDir, "especificaciones", specId);
-    mkdirSync(specDir, { recursive: true });
+    crearDir(specDir);
     const specContent = readFileSync(specSrc, "utf8")
       .replace(/creada: TEMPLATE/g, `creada: ${new Date().toISOString().slice(0, 10)}`)
       .replace(/actualizada: TEMPLATE/g, `actualizada: ${new Date().toISOString().slice(0, 10)}`);
-    writeFileSync(join(specDir, "spec.md"), specContent, "utf8");
-    info(`Spec pre-generada desde template ${template}`);
+    if (escribirSeguro(join(specDir, "spec.md"), specContent)) info(`Spec pre-generada desde template ${template}`);
   }
 
   // Copiar sdd.config.yaml (sobreescribe el default del init)
   const configSrc = join(templateSrc, "sdd.config.yaml");
   const configDest = join(sddDir, "sdd.config.yaml");
   if (existsSync(configSrc)) {
-    cpSync(configSrc, configDest);
-    info(`Configuración del template ${template} aplicada`);
+    if (copiarSeguro(configSrc, configDest)) info(`Configuración del template ${template} aplicada`);
   }
 
   // Inicializar estado.json con schemaVersion
   const estadoDest = join(sddDir, "estado.json");
   if (!existsSync(estadoDest)) {
-    writeFileSync(estadoDest, JSON.stringify({
+    crearNuevo(estadoDest, JSON.stringify({
       schemaVersion: "1.0",
       ir_generado: true,
       ir_path: ".sdd/ir.json",
       pipeline_step: "ir",
       ultima_actualizacion: new Date().toISOString(),
-    }, null, 2), "utf8");
+    }, null, 2));
   }
 
   return template;
@@ -570,8 +622,7 @@ function aplicarPreset(preset) {
       extraContent += (nextBloque === -1 ? rest : rest.slice(0, nextBloque + 1)) + "\n";
     }
   }
-  writeFileSync(configDest, presetContent + (extraContent ? "\n" + extraContent : ""), "utf8");
-  info(`Preset "${preset}" aplicado → .sdd/sdd.config.yaml`);
+  if (escribirSeguro(configDest, presetContent + (extraContent ? "\n" + extraContent : ""))) info(`Preset "${preset}" aplicado → .sdd/sdd.config.yaml`);
 }
 
 function instalarUi() {
@@ -579,7 +630,9 @@ function instalarUi() {
   const uiSrc  = join(PLUGIN_DIR, "ui");
   const uiDest = join(process.cwd(), ".forge-ui");
   try {
-    cpSync(uiSrc, uiDest, { recursive: true });
+    const { bloqueados } = copiarArbol(raizEscritura, uiSrc, uiDest);
+    for (const b of bloqueados) aviso(`No se escribe: es un enlace o pasa por uno: ${b}`);
+    if (bloqueados.length > 0) return;
     info(`Dashboard instalado en ${uiDest}`);
     info("Usa 'forge ui' para abrirlo en tu navegador");
   } catch (e) {
@@ -1123,9 +1176,15 @@ async function cmdDoctor() {
   try {
     const { leerConfigCiclo } = await import("../core/ciclo/config.js");
     const runtime = leerConfigCiclo(process.cwd()).sandbox.runtime;
+    /** @type {{ ok: true } | { ok: false, error: string }} */
+    let permitido;
     if (!runtime) {
       // Sin mecanismo pedido no hay nada que comprobar aquí: no se consulta a Docker
       info("Mecanismo de aislamiento: el de Docker por defecto (sandbox.runtime sin indicar)");
+    } else if ((permitido = (await import("../core/sandbox/politica.js")).runtimePermitido(runtime)).ok === false) {
+      // El runtime lo escribe el archivo del proyecto: sin autorización del usuario el ciclo no empieza
+      aviso(`${permitido.error} — el ciclo verificado no empezará (código de salida 4)`);
+      problemas++;
     } else {
       // Con uno pedido, se pregunta a Docker si lo conoce: es lo que decidirá si el ciclo empieza
       const { DockerCli } = await import("../core/sandbox/docker-cli.js");

@@ -49,11 +49,22 @@ function leerConfigLlm(cwd) {
   let enSeccionLlm = false;
 
   for (const line of yaml.split('\n')) {
-    if (/^llm\s*:/.test(line)) { enSeccionLlm = true; continue; }
+    if (/^llm\s*:/.test(line)) {
+      // Estilo de flujo (`llm: { cache: false }`): este lector no lo entiende y lo ignoraría sin
+      // avisar, dejando la caché activa aunque el usuario la apagó (revisión H-07)
+      if (/^llm\s*:\s*[{\[|>]/.test(line)) throw new Error('.sdd/sdd.config.yaml: la sección "llm:" debe escribirse como un bloque (una clave por línea, con sangría de 2 o más espacios), no entre llaves ni en una línea.');
+      enSeccionLlm = true; continue;
+    }
     // Salir de la sección si encontramos otra clave de primer nivel
     if (enSeccionLlm && /^\S/.test(line) && !/^#/.test(line)) { enSeccionLlm = false; }
     if (!enSeccionLlm) continue;
 
+    if (/^\s*(?:#.*)?$/.test(line)) continue;
+    // Una sangría de un espacio o con tabulaciones no la lee este analizador: antes se ignoraba la
+    // clave en silencio; ahora se rechaza con un error claro (revisión H-07)
+    if (/^\t/.test(line) || /^ [^ \t]/.test(line) || /^ +\t/.test(line)) {
+      throw new Error(`.sdd/sdd.config.yaml: la línea "${line.trim()}" de la sección "llm:" tiene una sangría que no se admite; usa 2 o más espacios (sin tabulaciones).`);
+    }
     const m = line.match(/^\s{2,}(\w+)\s*:\s*(.+)/);
     if (m) config[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '');
   }

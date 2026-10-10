@@ -16,6 +16,20 @@ function precioParaModelo(modelo) {
 /** Proveedores que no facturan por token: modelos locales y stub de pruebas. */
 export const PROVEEDORES_SIN_COSTO = new Set(['ollama', 'stub']);
 
+/**
+ * ¿Es un recuento de tokens que se puede contabilizar? Un entero finito y no negativo. Todo lo
+ * demás (NaN, Infinity, negativos, decimales, texto) es consumo no informado: si se sumara, el
+ * gasto podría bajar o ser NaN y el tope (Principio VIII) no saltaría nunca (revisión H-03).
+ * @param {unknown} n
+ * @returns {n is number}
+ */
+export function esRecuentoValido(n) {
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0;
+}
+
+/** Recuento de tokens de caché o de un acumulador: lo inválido cuenta cero (nunca resta). */
+const recuento = (n) => (esRecuentoValido(n) ? n : 0);
+
 /** Precios de la lista incluida por proveedor y modelo, en USD por token (datos: core/precios.js). */
 export const PRECIOS_POR_PROVEEDOR = TABLA_POR_TOKEN;
 
@@ -83,8 +97,13 @@ export function precioCompletoDe(proveedor, modelo, desconocido, configurados = 
 }
 
 export class SessionBudget {
-  /** @param {number} [umbral_usd] */
-  constructor(umbral_usd = 1.0) {
+  /**
+   * @param {number} [umbral_usd]
+   * @param {{ precios?: Record<string, { input: number, output: number, cacheWrite?: number, cacheRead?: number }> }} [opciones]
+   */
+  constructor(umbral_usd = 1.0, opciones = {}) {
+    /** `precios:` del proyecto (USD por token); mandan sobre la lista incluida, como en el ciclo */
+    this.precios = opciones.precios ?? {};
     this.tokens_input = 0;
     this.tokens_output = 0;
     this.costo_usd = 0;
@@ -96,15 +115,20 @@ export class SessionBudget {
 
   _registrarListener() {
     bus.on('agent:result', async (payload) => {
-      const precio = precioParaModelo(payload.modelo);
+      // Esto es una alerta, no el tope, pero un acumulador que baja o vale NaN no avisa nunca:
+      // lo que no es un recuento válido cuenta cero
+      const entrada = recuento(payload.tokens_input);
+      const salida = recuento(payload.tokens_output);
+      const configurado = Object.hasOwn(this.precios, payload.modelo);
+      const precio = configurado ? precioCompletoDe('anthropic', payload.modelo, undefined, this.precios) : precioParaModelo(payload.modelo);
       // Con caché de prompts parte de la entrada llega aparte (guardada o reutilizada): si no se
       // contara, este acumulador registraría menos de lo que cobra el proveedor
-      const cache = preciosCache('anthropic', payload.modelo) ?? preciosCachePorDefecto(precio.input);
-      const costo = payload.tokens_input * precio.input + payload.tokens_output * precio.output
-        + (Number(payload.tokens_cache_escritura) || 0) * cache.escritura
-        + (Number(payload.tokens_cache_lectura) || 0) * cache.lectura;
-      this.tokens_input  += payload.tokens_input;
-      this.tokens_output += payload.tokens_output;
+      const cache = configurado ? { escritura: precio.cacheWrite, lectura: precio.cacheRead } : (preciosCache('anthropic', payload.modelo) ?? preciosCachePorDefecto(precio.input));
+      const costo = entrada * precio.input + salida * precio.output
+        + recuento(payload.tokens_cache_escritura) * cache.escritura
+        + recuento(payload.tokens_cache_lectura) * cache.lectura;
+      this.tokens_input  += entrada;
+      this.tokens_output += salida;
       this.costo_usd     += costo;
       this.llamadas++;
       if (this.costo_usd >= this.umbral_usd) {

@@ -113,13 +113,14 @@ export class LibroDeGasto {
       if (!linea) continue;
       try {
         const e = JSON.parse(linea);
-        t.usd += Number(e.usd) || 0;
+        // Una línea nunca resta: el gasto del libro no puede bajar (Principio VIII)
+        t.usd += Math.max(0, Number(e.usd) || 0);
         t.llamadas++;
-        t.tokens_in += Number(e.inputTokens) || 0;
-        t.tokens_out += Number(e.outputTokens) || 0;
+        t.tokens_in += Math.max(0, Number(e.inputTokens) || 0);
+        t.tokens_out += Math.max(0, Number(e.outputTokens) || 0);
         if ('cacheCreationTokens' in e || 'cacheReadTokens' in e) {
-          t.tokens_cache_escritura = (t.tokens_cache_escritura ?? 0) + (Number(e.cacheCreationTokens) || 0);
-          t.tokens_cache_lectura   = (t.tokens_cache_lectura ?? 0) + (Number(e.cacheReadTokens) || 0);
+          t.tokens_cache_escritura = (t.tokens_cache_escritura ?? 0) + Math.max(0, Number(e.cacheCreationTokens) || 0);
+          t.tokens_cache_lectura   = (t.tokens_cache_lectura ?? 0) + Math.max(0, Number(e.cacheReadTokens) || 0);
         }
       } catch { /* línea cortada */ }
     }

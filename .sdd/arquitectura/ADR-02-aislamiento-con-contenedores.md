@@ -52,6 +52,8 @@ Se monta una copia desechable del proyecto, nunca el proyecto real. Si Docker no
 
 Spec `2026-10-09-puesta-al-dia` (HU-004). `sandbox.runtime` añade `--runtime <valor>` a la orden, sin quitar ninguna otra restricción. El valor se valida (`validarRuntime` en `core/sandbox/politica.js`) y antes de ejecutar se pregunta a Docker si lo conoce (`docker info --format '{{json .Runtimes}}'`); si no, es un fallo de infraestructura y no se usa el de por defecto. No se construye ni se instala ningún mecanismo. Sin probar con uno distinto del de por defecto.
 
+**Actualización (revisión independiente de la fase 9, H-05).** El valor lo escribe `.sdd/sdd.config.yaml`, que puede venir de un repositorio ajeno, y un mecanismo registrado en el daemon es código de confianza que recibe el contenedor. La política pasa a ser: `runc` y no indicar nada se aceptan siempre; cualquier otro valor exige estar en `FORGE_RUNTIMES_PERMITIDOS` (variable de entorno del usuario, lista separada por comas, comparación exacta). Sin autorización el ciclo no empieza (código 4), igual que con un mecanismo que Docker no conoce. Se descartó un archivo `~/.forge/config.yaml` porque FORGE no tiene hoy ninguna configuración de usuario y crear una para un solo valor ampliaba la superficie; la variable se puede mover a un archivo el día que exista esa configuración.
+
 ## Cuándo revisitar
 
 - Si el spike T002 muestra que los montajes no son fiables en Windows: usar `docker create` + `docker cp` + `docker start -a`.

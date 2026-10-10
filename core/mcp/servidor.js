@@ -35,17 +35,22 @@ function versionDelPaquete() {
  * @param {string} cwd
  */
 async function crearRunnerDocker(cwd) {
-  const [{ DockerCli }, { SandboxRunner }, { comprobarProyecto }, { detectStack }, { leerConfigCiclo }] = await Promise.all([
+  const [{ DockerCli }, { SandboxRunner }, { comprobarProyecto }, { detectStack }, { leerConfigCiclo }, { runtimePermitido }] = await Promise.all([
     import('../sandbox/docker-cli.js'),
     import('../sandbox/sandbox-runner.js'),
     import('../sandbox/preparar-imagen.js'),
     import('../stack-detector.js'),
     import('../ciclo/config.js'),
+    import('../sandbox/politica.js'),
   ]);
 
   const stack = detectStack(cwd);
   const problema = comprobarProyecto(cwd, stack.lenguaje, stack.test_cmd);
   if (problema) throw new Error(problema);
+
+  const config = leerConfigCiclo(cwd);
+  const permitido = runtimePermitido(config.sandbox.runtime);
+  if (permitido.ok === false) throw new Error(`${permitido.error}. Las pruebas no se ejecutan con un aislamiento que no autorizaste.`);
 
   const cli = new DockerCli();
   const disp = await cli.disponible();
@@ -53,7 +58,6 @@ async function crearRunnerDocker(cwd) {
     throw new Error(`${disp.error}. Las pruebas no se ejecutan fuera del entorno aislado: arranca Docker y vuelve a intentarlo.`);
   }
 
-  const config = leerConfigCiclo(cwd);
   // El mismo mecanismo de aislamiento que el ciclo, y la misma regla: si falta, no se ejecuta
   if (config.sandbox.runtime) {
     const rt = await cli.runtimeDisponible(config.sandbox.runtime);
