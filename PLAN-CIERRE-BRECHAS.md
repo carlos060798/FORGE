@@ -1,6 +1,6 @@
 # Plan maestro — Cierre de brechas del Motor Agéntico (continúa `PLAN-MOTOR-AGENTICO.md`)
 
-> **Estado:** propuesta. Nada de este plan está implementado ni aprobado. Las cuatro especificaciones están en `borrador` y los tres ADR en `propuesta`.
+> **Estado (2026-10-09, cierre de la primera jornada):** implementado en la rama `feature/motor-agentico`, sin publicar. Las cuatro fases están hechas y revisadas de forma independiente; **falta verificación y tus decisiones** (ver «Estado de ejecución» y «Pendiente para las próximas sesiones»). Las cuatro especificaciones están en `en_implementacion` y los tres ADR en `aceptada`, **por delegación del dueño, pendientes de su ratificación**.
 > **Fecha:** 2026-10-09
 > **Visión:** que el ciclo verificado esté **demostrado con un modelo real**, que un «las pruebas pasan» **signifique algo**, y que el implementador trabaje **leyendo y editando por pasos** en lugar de adivinar y reescribir archivos enteros. Como mejora incremental (Principio X), sin dependencias nuevas (Principio IV).
 > **Continúa a:** `PLAN-MOTOR-AGENTICO.md` (FASES 0 a 5, implementadas y sin publicar). La numeración sigue: FASES 6 a 9, specs S6 a S9.
@@ -47,6 +47,60 @@ Lo que ya está bien y no se toca: router determinista (ADR-05), motor propio (A
 
 ---
 
+## Estado de ejecución (2026-10-09)
+
+Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del todo · ⏳ pendiente.
+
+| Brecha | Estado | Qué quedó |
+|---|---|---|
+| **C1** modelo real | ✅ | 21 ejecuciones; 10 hallazgos de la primera jornada, corregidos salvo los listados abajo |
+| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido |
+| **C3** correcciones sin revisar | ⚠️ | Cuatro revisiones independientes y una segunda pasada; la última tanda sin revisar |
+| **C4** modelos y precios | ✅ | ADR-19 implementada; falta compararla con lo facturado |
+| **C5** rojo | ✅ | Obligatorio con reintento y exención |
+| **C6** fortaleza de las pruebas | ⚠️ | Mutación propia; medida con Docker real en Go y JavaScript |
+| **C7** herramientas | ✅ | Modo por turnos; probado con un modelo real en una tarea |
+| **C8** caché | ✅ | Medida en el modo por turnos (55 %) |
+| **C9** MCP | ⚠️ | Revisión `2026-07-28` confirmada e implementada; sin cliente oficial |
+| **C10** `AGENTS.md` | ✅ | En la raíz y en `forge init` |
+| **C11** runtime | ⚠️ | Solo `runc` probado |
+| **C12** lista de riesgos | ✅ | Tabla ASI01 a ASI10 en cada revisión (nombres tomados de un resumen de terceros) |
+
+Documentos de la jornada: `evidencia-2026-10-09.md`, `revision-independiente.md` y `revision-independiente-2.md` en la carpeta de cada spec, y `verificacion.md` de cada una (con la autoevaluación honesta de cada criterio).
+
+## Pendiente para las próximas sesiones
+
+Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
+
+**Verificación (puede hacerla un agente)**
+- [ ] Resultado de la suite completa con `FORGE_TEST_DOCKER=1` sobre `437ee1b` (estaba corriendo al cerrar la sesión).
+- [ ] Tercera revisión independiente de las correcciones posteriores a la segunda pasada: mutación (`de73eb7`), `forge init` y tope de gasto (`0b096f0`).
+- [ ] Medir la mutación con Docker real en Python y TypeScript y comprobar los patrones de salida de pytest, unittest, jest y vitest.
+- [ ] Ejecutar con un modelo real: `mutacion: informar`, el refuerzo de pruebas (`exigir` con puntuación baja) y el modo por turnos tras las correcciones.
+- [ ] Medir el criterio de caché de la spec: una tarea de tres iteraciones en modo de bloque, con y sin caché.
+- [ ] Comprobar los permisos 0700 de las copias temporales y los enlaces simbólicos de archivo en Linux.
+
+**Necesita algo tuyo**
+- [ ] Abrir la solicitud de cambio `feature/motor-agentico` hacia `main` para que corra la integración continua (enlace de comparación de GitHub de este repositorio).
+- [ ] Comparar el gasto calculado con lo facturado (saldo de la consola del proveedor).
+- [ ] Ratificar las cuatro especificaciones y los ADR-19, ADR-20 y ADR-21, aprobados por delegación el 2026-10-09; y la decisión de crear `AGENTS.md` una sola vez.
+- [ ] Ratificar la tensión con el Principio VII (refuerzo de pruebas posterior a la implementación).
+- [ ] Decidir si `mutacion` pasa a `exigir` por defecto en la próxima versión MAYOR.
+- [ ] Definir `GITHUB_PERSONAL_ACCESS_TOKEN` y reiniciar la sesión para conectar el servidor MCP de GitHub (ya está en `.mcp.json`, sin confirmar); indicar la instancia de GitLab si se quiere conectar.
+- [ ] Rotar la clave de API usada en las ejecuciones reales.
+- [ ] Publicar 5.0.0 (el CHANGELOG sigue en «sin publicar»; tras la lista de publicación y con el job `aislamiento` en verde).
+
+**Abierto, sin asignar**
+- [ ] Con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
+- [ ] `forge config set` y `forge aprobar` escriben sin comprobar enlaces.
+- [ ] Los tiempos de espera repetidos no cuentan para «sin progreso».
+- [ ] El modo por turnos no usa el recuperador de contexto, solo el mapa de archivos.
+- [ ] Los precios de OpenAI no están contrastados; el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
+- [ ] `package.json` sin tope de tamaño; el mapa de archivos descarta nombres con letras no ASCII.
+- [ ] Que el ciclo use servidores MCP de GitHub o GitLab (cliente MCP): exige una especificación nueva y revisión de seguridad (ADR-12 y ADR-15 hoy lo excluyen).
+
+---
+
 ## Arquitectura objetivo
 
 ```
@@ -71,12 +125,12 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 
 **Objetivo:** convertir «implementado» en «demostrado», y dejar el gasto bien calculado. Spec `2026-10-09-validacion-modelo-real`.
 
-- **6.1** Confirmar los archivos pendientes de la rama y subirla. Ejecutar la matriz de CI (Node 20 y 22) y, por primera vez, el job `aislamiento`.
-- **6.2** Modelos y precios configurables (ADR-19): alias y precios en `sdd.config.yaml`, tabla incluida con fecha de revisión, y aviso cuando se cobra un modelo desconocido al precio más caro.
-- **6.3** `forge probar-modelo` con un proveedor de pago: la tarea mínima en JavaScript y otra en Python. Guardar el informe en `verificacion.md`.
-- **6.4** Medir en esas ejecuciones: salidas que no se pudieron interpretar, iteraciones hasta pasar, gasto real frente al calculado, revisiones pedidas y su motivo.
-- **6.5** Cuarta revisión independiente (agentes `revisor` y `seguridad`) de las correcciones sin revisar, con la lista de riesgos de agentes como guion (cierra C12).
-- **6.6** Decidir con los datos de 6.4 si S8 sube o baja de prioridad.
+- **6.1** Confirmar los archivos pendientes de la rama y subirla. Ejecutar la matriz de CI (Node 20 y 22) y, por primera vez, el job `aislamiento`. ⚠️ **Parcial:** rama subida y confirmada. La matriz de CI y el job `aislamiento` **no han corrido**: hace falta abrir la solicitud de cambio.
+- **6.2** Modelos y precios configurables (ADR-19): alias y precios en `sdd.config.yaml`, tabla incluida con fecha de revisión, y aviso cuando se cobra un modelo desconocido al precio más caro. ✅ **Hecho.** `core/precios.js` con tabla fechada contrastada con la tarifa publicada; `modelos:` y `precios:` en la configuración (ADR-19).
+- **6.3** `forge probar-modelo` con un proveedor de pago: la tarea mínima en JavaScript y otra en Python. Guardar el informe en `verificacion.md`. ✅ **Hecho.** 21 ejecuciones reales (JavaScript, Python, Go; código existente; corte y reanudación; pausa por presupuesto). Ver `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`.
+- **6.4** Medir en esas ejecuciones: salidas que no se pudieron interpretar, iteraciones hasta pasar, gasto real frente al calculado, revisiones pedidas y su motivo. ⚠️ **Parcial:** medido todo salvo el **gasto calculado frente al facturado** (necesita el saldo real del proveedor).
+- **6.5** Cuarta revisión independiente (agentes `revisor` y `seguridad`) de las correcciones sin revisar, con la lista de riesgos de agentes como guion (cierra C12). ⚠️ **Parcial:** cuatro revisiones independientes y una segunda pasada hechas, con tabla de riesgos de agentes (ASI01 a ASI10). Las correcciones de la última tanda **no tienen tercera revisión**.
+- **6.6** Decidir con los datos de 6.4 si S8 sube o baja de prioridad. ✅ **Hecho.** S8 subió de prioridad: el modo de bloque no puede cambiar una función en un archivo de 1812 líneas y el modo por turnos sí.
 
 **Reuso:** `core/probar-modelo.js`, `RELEASE-CHECKLIST.md`, `precioDe` de `core/session-budget.js`.
 
@@ -90,11 +144,11 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 
 **Objetivo:** que un pase demuestre algo. Spec `2026-10-09-pruebas-confiables`.
 
-- **7.1** Tests primero: clasificación de «rojo», operadores de mutación, puntuación, ruta nueva del router.
-- **7.2** Rojo obligatorio: si las pruebas recién escritas pasan sin implementación, el agente de pruebas lo intenta una vez más; si vuelve a pasar, revisión humana con motivo `pruebas_no_fallan`. Una tarea puede declarar que parte de código ya existente y quedar exenta.
-- **7.3** Mutación propia (ADR-20): tras un pase, se alteran los archivos que escribió el implementador (comparaciones, constantes, condiciones, valores de retorno) y se ejecutan las pruebas contra cada alteración en el entorno aislado, con un tope de alteraciones y de tiempo.
-- **7.4** Tres modos, `motor.mutacion: no | informar | exigir`. Con `informar` (por defecto) la puntuación queda en el registro. Con `exigir`, bajo el umbral se pide una ronda de refuerzo al agente de pruebas y, si no basta, revisión humana con motivo `pruebas_debiles`.
-- **7.5** Ampliar la lista de archivos que configuran al ejecutor de pruebas (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`).
+- **7.1** Tests primero: clasificación de «rojo», operadores de mutación, puntuación, ruta nueva del router. ✅ **Hecho.**
+- **7.2** Rojo obligatorio: si las pruebas recién escritas pasan sin implementación, el agente de pruebas lo intenta una vez más; si vuelve a pasar, revisión humana con motivo `pruebas_no_fallan`. Una tarea puede declarar que parte de código ya existente y quedar exenta. ✅ **Hecho.** Con exención `parte_de_codigo_existente` y sin aplicar si ya hay implementación.
+- **7.3** Mutación propia (ADR-20): tras un pase, se alteran los archivos que escribió el implementador (comparaciones, constantes, condiciones, valores de retorno) y se ejecutan las pruebas contra cada alteración en el entorno aislado, con un tope de alteraciones y de tiempo. ⚠️ **Hecho; medido con Docker real solo en Go y JavaScript.** Python y TypeScript sin ejecuciones reales de esta pasada.
+- **7.4** Tres modos, `motor.mutacion: no | informar | exigir`. Con `informar` (por defecto) la puntuación queda en el registro. Con `exigir`, bajo el umbral se pide una ronda de refuerzo al agente de pruebas y, si no basta, revisión humana con motivo `pruebas_debiles`. ✅ **Hecho.** Añadido `motor.mutacion_min_concluyentes` (3): `exigir` no pasa con una medición vacía.
+- **7.5** Ampliar la lista de archivos que configuran al ejecutor de pruebas (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`). ✅ **Hecho.**
 
 **Reuso:** `core/ciclo/sospecha.js`, `core/ciclo/router.js`, `core/sandbox/sandbox-runner.js`, `huellasAlteradas`, `acorn` (ya es dependencia).
 
@@ -108,12 +162,12 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 
 **Objetivo:** que el implementador lea, busque, edite y ejecute por pasos. Spec `2026-10-09-implementador-con-herramientas`.
 
-- **8.1** Dos spikes: llamada con herramientas en cada proveedor (cuáles la admiten y con qué forma), y reanudación a mitad de una conversación por turnos.
-- **8.2** Tests primero: confinamiento de lectura y escritura por herramienta, tope de turnos, diario por turno, vuelta al modo de bloque.
-- **8.3** Ampliar el contrato de proveedor con una llamada por turnos. Los proveedores que no la admitan lo declaran y el ciclo usa el modo de bloque.
-- **8.4** Cinco herramientas en proceso: leer archivo, listar, buscar texto, editar (reemplazo acotado o archivo nuevo) y ejecutar las pruebas. Comparten las reglas de ruta de ADR-07 y el entorno aislado con el servidor MCP.
-- **8.5** Nodo `coder` por turnos: cada turno cuenta para el presupuesto, se guarda en el diario y tiene un tope propio. La ejecución final de pruebas la sigue haciendo el nodo `sandbox`; lo que el implementador ejecute por su cuenta no decide el éxito.
-- **8.6** `motor.implementador: bloque | turnos`, con `bloque` por defecto hasta 6.0.0.
+- **8.1** Dos spikes: llamada con herramientas en cada proveedor (cuáles la admiten y con qué forma), y reanudación a mitad de una conversación por turnos. ✅ **Hecho.** `.sdd/especificaciones/2026-10-09-implementador-con-herramientas/spikes/herramientas-por-proveedor.md`.
+- **8.2** Tests primero: confinamiento de lectura y escritura por herramienta, tope de turnos, diario por turno, vuelta al modo de bloque. ✅ **Hecho.**
+- **8.3** Ampliar el contrato de proveedor con una llamada por turnos. Los proveedores que no la admitan lo declaran y el ciclo usa el modo de bloque. ⚠️ **Hecho para Anthropic y el proveedor de pruebas.** OpenAI y Ollama declaran que no admiten herramientas y el ciclo usa el modo de bloque.
+- **8.4** Cinco herramientas en proceso: leer archivo, listar, buscar texto, editar (reemplazo acotado o archivo nuevo) y ejecutar las pruebas. Comparten las reglas de ruta de ADR-07 y el entorno aislado con el servidor MCP. ✅ **Hecho.**
+- **8.5** Nodo `coder` por turnos: cada turno cuenta para el presupuesto, se guarda en el diario y tiene un tope propio. La ejecución final de pruebas la sigue haciendo el nodo `sandbox`; lo que el implementador ejecute por su cuenta no decide el éxito. ✅ **Hecho.** Con caché de prompts: la misma tarea costó 0,09 USD frente a 0,21 sin ella.
+- **8.6** `motor.implementador: bloque | turnos`, con `bloque` por defecto hasta 6.0.0. ✅ **Hecho.** `bloque` sigue por defecto.
 
 **Reuso:** `core/mcp/herramientas.js`, `validarRuta`, `aplicarArchivos`, `Respaldo`, diario de respuestas, `core/ciclo/presupuesto.js`.
 
@@ -127,10 +181,10 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 
 **Objetivo:** cerrar las brechas pequeñas. Spec `2026-10-09-puesta-al-dia`. Sus cuatro partes son independientes entre sí.
 
-- **9.1** Caché de prompts en los proveedores que la ofrecen, con los tokens de caché contados a su precio en el presupuesto.
-- **9.2** Spike: leer la especificación oficial vigente de MCP. Si confirma una revisión nueva, negociarla sin dejar de aceptar las actuales.
-- **9.3** `AGENTS.md` en la raíz del repo y en lo que instala `forge init`, generado a partir de la constitución.
-- **9.4** `sandbox.runtime` opcional: si se configura y no está instalado, el ciclo se niega a empezar y lo explica.
+- **9.1** Caché de prompts en los proveedores que la ofrecen, con los tokens de caché contados a su precio en el presupuesto. ⚠️ **Hecho; ahorro medido solo en el modo por turnos (55 %).** El criterio de la spec (30 % menos de entrada en tres iteraciones del modo de bloque) sigue sin medir.
+- **9.2** Spike: leer la especificación oficial vigente de MCP. Si confirma una revisión nueva, negociarla sin dejar de aceptar las actuales. ⚠️ **Hecho:** la revisión vigente es `2026-07-28` (confirmada en la fuente oficial) y se negocia sin dejar de aceptar las anteriores. **Sin probar con el cliente oficial.**
+- **9.3** `AGENTS.md` en la raíz del repo y en lo que instala `forge init`, generado a partir de la constitución. ✅ **Hecho.**
+- **9.4** `sandbox.runtime` opcional: si se configura y no está instalado, el ciclo se niega a empezar y lo explica. ⚠️ **Hecho; probado solo con `runc` y con un nombre inexistente.** Un runtime distinto de `runc` exige `FORGE_RUNTIMES_PERMITIDOS`.
 
 **Estado (2026-10-09):** implementadas las cuatro partes; detalle y límites en `.sdd/especificaciones/2026-10-09-puesta-al-dia/verificacion.md`. Sin medir: el ahorro real de la caché (hace falta un modelo de pago). Sin probar: la revisión nueva de MCP con el cliente oficial, y un mecanismo de aislamiento distinto del de por defecto.
 
@@ -178,17 +232,17 @@ S7 va antes que S8: dar más libertad al implementador sin endurecer antes las p
 
 ## Verificación global (end-to-end)
 
-1. S6: `forge probar-modelo` termina en `exito` con un proveedor de pago, en JavaScript y en Python.
-2. S6: el job `aislamiento` pasa en Linux y no deja contenedores.
-3. S7: una tarea con pruebas que no comprueban nada termina en revisión, no en éxito.
-4. S7: `forge status` muestra la puntuación de mutación de cada tarea terminada.
-5. S8: la misma tarea, en modo `turnos` y en modo `bloque`, termina en éxito; se comparan gasto e iteraciones.
-6. S9: dos iteraciones seguidas muestran tokens leídos de caché en el libro de gasto.
-7. Con `mutacion: no` e `implementador: bloque`, el comportamiento es el de 5.0.0.
+1. S6: `forge probar-modelo` termina en `exito` con un proveedor de pago, en JavaScript y en Python. ✅ (JavaScript y Python, niveles por defecto).
+2. S6: el job `aislamiento` pasa en Linux y no deja contenedores. ⏳ **Pendiente: nunca ha corrido.**
+3. S7: una tarea con pruebas que no comprueban nada termina en revisión, no en éxito. ⚠️ Cubierto por pruebas automáticas; sin tarea real con un modelo.
+4. S7: `forge status` muestra la puntuación de mutación de cada tarea terminada. ✅
+5. S8: la misma tarea, en modo `turnos` y en modo `bloque`, termina en éxito; se comparan gasto e iteraciones. ⚠️ Una sola tarea: el modo de bloque no pudo y el de turnos sí; no es una comparación de gasto limpia.
+6. S9: dos iteraciones seguidas muestran tokens leídos de caché en el libro de gasto. ✅ Visto en el libro de gasto con la API real.
+7. Con `mutacion: no` e `implementador: bloque`, el comportamiento es el de 5.0.0. ✅ Cubierto por la suite.
 
 ---
 
-## Qué te toca a ti
+## Qué te tocaba a ti (lista original; el estado actual está en «Pendiente para las próximas sesiones»)
 
 1. Decidir si este plan se adopta, entero o por partes.
 2. Subir la rama y aportar una clave de un proveedor de pago para S6.
