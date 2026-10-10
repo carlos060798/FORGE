@@ -120,7 +120,7 @@ export function crearLlamador(registry, apiKey, cwd, opciones = {}) {
       const cache = typeof r.cacheCreationTokens === 'number' || typeof r.cacheReadTokens === 'number'
         ? { cacheCreationTokens: r.cacheCreationTokens ?? 0, cacheReadTokens: r.cacheReadTokens ?? 0 }
         : {};
-      return { ok: r.ok, contenido: r.contenido, stopReason: r.stopReason, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error };
+      return { ok: r.ok, contenido: r.contenido, stopReason: r.stopReason, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}) };
     },
     /** @param {string} agente */
     aliasDe: (agente) => registry.get(agente)?.model ?? 'sonnet',
@@ -138,7 +138,7 @@ export function crearLlamador(registry, apiKey, cwd, opciones = {}) {
       const cache = typeof r.cacheCreationTokens === 'number' || typeof r.cacheReadTokens === 'number'
         ? { cacheCreationTokens: r.cacheCreationTokens ?? 0, cacheReadTokens: r.cacheReadTokens ?? 0 }
         : {};
-      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error };
+      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}) };
     },
   };
 }
@@ -289,9 +289,29 @@ export class CicloVerificado {
           ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
         });
         this.diario.anotar(threadId, clave, r);
+      } else {
+        this._anotarAbortada(taskId, r);
       }
       return r;
     };
+  }
+
+  /**
+   * Una llamada cancelada por tiempo pudo llegar al proveedor y cobrarse (se ha visto: la llamada
+   * siguiente leyó de la caché lo que solo pudo escribir la cancelada). El consumo real no se conoce,
+   * así que se anota una estimación de la entrada a su precio: el gasto de la sesión nunca queda
+   * por debajo de lo que el proveedor cobra como mínimo por esa petición. La salida no se puede estimar.
+   * @param {string} taskId
+   * @param {any} r
+   */
+  _anotarAbortada(taskId, r) {
+    if (r?.abortada !== true || !esRecuentoValido(r.tokensEstimados)) return;
+    const usd = costoDe({ proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.tokensEstimados, outputTokens: 0 }, { precios: this.o.config?.precios });
+    this.libro.anotar({ taskId, usd, inputTokens: r.tokensEstimados, outputTokens: 0, estimado: true });
+    this.o.log?.append('ciclo:llamada_abortada', {
+      modelo: r.modelo, proveedor: r.proveedor, tokensEstimados: r.tokensEstimados, usdEstimado: usd,
+      aviso: 'La llamada se canceló por tiempo. El proveedor pudo procesarla y cobrarla: se anotó una estimación de la entrada; la salida no se conoce.',
+    }, { taskId });
   }
 
   /**
@@ -314,6 +334,8 @@ export class CicloVerificado {
           ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
         });
         this.diario.anotar(threadId, clave, r);
+      } else {
+        this._anotarAbortada(taskId, r);
       }
       return r;
     };

@@ -14,6 +14,18 @@ import { crearProvider } from './llm-providers/index.js';
 
 const DEFAULT_GLOBAL_TIMEOUT_MS = 120_000;
 
+/** @param {number} ms */
+const mensajeCortada = (ms) => `la llamada superó el tiempo máximo (${Math.round(ms / 1000)} s) y se canceló`;
+
+/**
+ * Tokens de entrada de una petición, por lo alto (tres caracteres por token). Solo se usa cuando una
+ * llamada se cancela por tiempo: el proveedor pudo procesarla y no devolvió su consumo.
+ * @param {...unknown} textos
+ */
+export function estimarTokens(...textos) {
+  return Math.ceil(textos.reduce((n, t) => n + String(t ?? '').length, 0) / 3);
+}
+
 function parseFrontmatter(raw) {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) return { meta: {}, body: raw };
@@ -143,7 +155,8 @@ export class LlmAgentAdapter {
 
     const effectiveTimeoutMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
+    let cortada = false;
+    const timer = setTimeout(() => { cortada = true; controller.abort(); }, effectiveTimeoutMs);
 
     try {
       const result = await withRetry(
@@ -181,9 +194,11 @@ export class LlmAgentAdapter {
         agentName: this.definition.name,
         output:    '',
         durationMs: Date.now() - start,
-        error:     msg,
+        error:     cortada ? mensajeCortada(effectiveTimeoutMs) : msg,
         modelo:    modelId,
         provider:  this._provider.nombre,
+        // El proveedor pudo recibir y cobrar la petición aunque aquí se cancelara la espera
+        ...(cortada ? { abortada: true, tokensEstimados: estimarTokens(systemPrompt, ctx.userPrompt) } : {}),
       };
     } finally {
       clearTimeout(timer);
@@ -212,7 +227,9 @@ LlmAgentAdapter.prototype.conversar = async function conversar(ctx) {
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), this.definition.timeout_ms ?? this.globalTimeoutMs);
+  const limiteMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
+  let cortada = false;
+  const timer = setTimeout(() => { cortada = true; controller.abort(); }, limiteMs);
   try {
     const result = await withRetry(
       () => this._provider.conversar({
@@ -228,7 +245,11 @@ LlmAgentAdapter.prototype.conversar = async function conversar(ctx) {
       durationMs: Date.now() - start,
     };
   } catch (err) {
-    return { ok: false, ...base, contenido: [], durationMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false, ...base, contenido: [], durationMs: Date.now() - start,
+      error: cortada ? mensajeCortada(limiteMs) : (err instanceof Error ? err.message : String(err)),
+      ...(cortada ? { abortada: true, tokensEstimados: estimarTokens(systemParts.join('\n'), JSON.stringify(ctx.mensajes ?? []), JSON.stringify(ctx.herramientas ?? [])) } : {}),
+    };
   } finally {
     clearTimeout(timer);
   }

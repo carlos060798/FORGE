@@ -172,3 +172,27 @@ La misma tarea de la ronda 6 (cambiar `precioFinal` en un archivo de 1812 línea
 - Es una sola ejecución por lado, con diferencias entre ellas (el modelo hizo 9 y 10 llamadas, no idénticas). Demuestra que la contabilidad de caché funciona con la API real y que el ahorro es grande en este caso; no es una medida estadística.
 - **No mide el criterio de la spec de puesta al día** (30 % menos de entrada en una tarea de tres iteraciones del modo de bloque): esa comparación sigue pendiente.
 - Gasto calculado acumulado de las 20 ejecuciones: unos 1,85 USD.
+
+## Ronda 8 — tras las revisiones independientes (2026-10-10, commit `9180814`)
+
+Nivel económico salvo donde se indica, con la máquina cargada por otras pruebas en paralelo.
+
+| # | Qué se probó | Resultado | Llamadas | Gasto calculado |
+|---|---|---|---|---|
+| 21 | `mutacion: informar`, tarea nueva de dos funciones | éxito; mutación 10 de 10 detectadas, línea base correcta | 3 | 0,026 USD |
+| 22 | `mutacion: exigir` con mínimo 1,0 | pausa por llamada cancelada; tras `continuar`, éxito en 2 iteraciones; mutación 10 de 10 | 4 | 0,035 USD |
+| 23 | Modo por turnos tras las correcciones (archivo de 1812 líneas) | pausa por llamada cancelada; tras `continuar`, éxito en 7 turnos, 22 de 22 pruebas | 9 | 0,087 USD |
+| 24 | Modo de bloque con el nivel medio, para ver la caché | pausa por llamada cancelada; tras `continuar`, éxito en 1 iteración | 3 | 0,121 USD |
+
+Gasto calculado acumulado de las 24 ejecuciones: unos 2,4 USD. **Sigue sin compararse con lo facturado.**
+
+### Hallazgos de esta ronda
+
+| # | Hallazgo | Evidencia | Estado |
+|---|---|---|---|
+| H11 | **La medición por mutación altera el archivo entero aunque la tarea solo cambie una función.** En un archivo que ya existía, 1072 candidatas y 1 de 10 detectadas: los sobrevivientes eran funciones que la tarea no tocó. Con `exigir` pediría refuerzo por código ajeno. | Ejecución 23 | **En corrección** (limitar a las líneas que la tarea cambió) |
+| H12 | **Una llamada cancelada por tiempo se cobra y no se contabilizaba.** En tres de siete ejecuciones la primera llamada no devolvió respuesta en 120 s y el ciclo la canceló. En la ejecución 24, la llamada siguiente leyó de la caché de prompts 2393 tokens que solo pudo escribir la cancelada: el proveedor la procesó. El gasto de la sesión quedaba por debajo de lo cobrado. | Ejecución 24: primera línea de `gasto.jsonl` con `cacheReadTokens: 2393` y ninguna escritura previa | **Corregido en parte**: se anota una estimación de la entrada (tres caracteres por token) al precio del modelo, queda marcada `estimado` en el libro, hay un evento `ciclo:llamada_abortada` y la pausa lo dice. **La salida no se puede estimar** y sigue sin contarse. Regresión: `tests/llamada-abortada.test.js` |
+| H13 | **Por qué se cancelan esas llamadas no está determinado.** Llamadas directas al proveedor en el mismo momento respondieron en un segundo. Ocurrió con la máquina cargada; el día anterior no ocurrió en 21 ejecuciones. | Ejecuciones 22, 23 y 24 | **Abierto.** Además, los reintentos del adaptador no sirven tras una cancelación por tiempo: la señal ya está cancelada y el error no cuenta como reintentable |
+| H14 | **En modo de bloque la caché de prompts casi no ahorra.** Cada agente tiene su propio prompt de sistema, así que solo hay lecturas cuando el mismo agente repite en menos de cinco minutos (iteraciones de corrección). En una tarea de una iteración se paga la escritura (1,25 veces) sin lectura. Con el nivel económico por defecto no se guarda nada: su mínimo cacheable es de 4096 tokens y los prompts de sistema son más cortos. | Ejecución 24: escrituras de 3549 y 2903 tokens sin lecturas dentro de la tarea; ejecuciones 21 y 22: cero tokens de caché | **Abierto.** El criterio de la spec de puesta al día (30 % menos de entrada en tres iteraciones del modo de bloque) no está demostrado y probablemente no se cumple; el ahorro medido (55 %) es del modo por turnos |
+
+El refuerzo de pruebas (`exigir` con puntuación baja) sigue sin verse con un modelo real: en las dos ejecuciones con `exigir` las pruebas detectaron todas las alteraciones.

@@ -90,14 +90,14 @@ export class LibroDeGasto {
   /**
    * `cacheCreationTokens` y `cacheReadTokens` solo se escriben si el proveedor los informó
    * (caché de prompts): `inputTokens` NO los incluye, son tres cantidades aparte.
-   * @param {{ taskId: string, usd: number, inputTokens: number, outputTokens: number, cacheCreationTokens?: number, cacheReadTokens?: number }} llamada
+   * @param {{ taskId: string, usd: number, inputTokens: number, outputTokens: number, cacheCreationTokens?: number, cacheReadTokens?: number, estimado?: boolean }} llamada  (`estimado`: llamada cancelada por tiempo, consumo no informado)
    */
-  anotar({ taskId, usd, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens }) {
+  anotar({ taskId, usd, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, estimado }) {
     fs.mkdirSync(path.dirname(this.archivo), { recursive: true });
     const cache = typeof cacheCreationTokens === 'number' || typeof cacheReadTokens === 'number'
       ? { cacheCreationTokens: cacheCreationTokens ?? 0, cacheReadTokens: cacheReadTokens ?? 0 }
       : {};
-    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, usd, inputTokens, outputTokens, ...cache }) + '\n', 'utf8');
+    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, usd, inputTokens, outputTokens, ...cache, ...(estimado ? { estimado: true } : {}) }) + '\n', 'utf8');
   }
 
   /**

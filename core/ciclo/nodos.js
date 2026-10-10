@@ -26,7 +26,7 @@ import * as path from 'path';
 import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
-import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
+import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
 import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
@@ -65,7 +65,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
   }
   const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) });
   if (!r.ok) {
-    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}`) } };
+    return { fallo: { presupuesto: trasAbortada(presupuesto, r, { precios: deps.config.precios }), ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}.${r.abortada ? ' El proveedor pudo procesarla y cobrarla: se anotó una estimación del costo de entrada, y la salida no se conoce. Compara el gasto con tu factura si esto se repite.' : ''}`) } };
   }
 
   let siguiente;
