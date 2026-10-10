@@ -158,3 +158,17 @@ La misma tarea en los dos modos, con el nivel económico y un tope de 0,35 USD: 
 Es una sola tarea, con un solo modelo. Demuestra que el modo funciona de extremo a extremo con la API real y que resuelve un caso que el modo de bloque no puede; no demuestra que sea mejor en general.
 
 Gasto calculado acumulado de las 19 ejecuciones: unos 1,75 USD.
+
+## Ronda 7 — caché de prompts en el modo por turnos (commit `08e4fed`)
+
+La misma tarea de la ronda 6 (cambiar `precioFinal` en un archivo de 1812 líneas), modo `turnos`, nivel económico, ahora con la caché de prompts activa (por defecto).
+
+| # | Caché | Resultado | Llamadas | Entrada normal | Escritura de caché | Lectura de caché | Gasto calculado |
+|---|---|---|---|---|---|---|---|
+| 19 | sin caché | éxito, 19 de 19 | 10 | ~190 000 tokens | 0 | 0 | 0,2052 USD |
+| 20 | con caché | éxito, 22 de 22 | 9 | 27 635 | 24 468 | 116 417 | 0,0913 USD |
+
+- **El gasto bajó un 55 %** con la misma forma de trabajar y el mismo modelo. Desde el tercer turno, casi todo el prefijo de la conversación se lee de la caché.
+- Es una sola ejecución por lado, con diferencias entre ellas (el modelo hizo 9 y 10 llamadas, no idénticas). Demuestra que la contabilidad de caché funciona con la API real y que el ahorro es grande en este caso; no es una medida estadística.
+- **No mide el criterio de la spec de puesta al día** (30 % menos de entrada en una tarea de tres iteraciones del modo de bloque): esa comparación sigue pendiente.
+- Gasto calculado acumulado de las 20 ejecuciones: unos 1,85 USD.
