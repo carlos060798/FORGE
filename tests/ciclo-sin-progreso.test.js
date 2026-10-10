@@ -297,6 +297,17 @@ describe("ciclo completo — unas pruebas rotas no gastan todas las iteraciones"
     assert.doesNotMatch(peticiones[0], /require is not defined/);
   });
 
+  test("reanudar qa con la implementación ya escrita no activa el rojo obligatorio, aunque las pruebas reescritas ya pasen", async () => {
+    // Hallazgo H-01 de la revisión independiente de la fase 7: las pruebas correctas pasan contra el código existente
+    const e = entorno({ ejecuciones: [rota(1), rota(2), rota(3), rota(4), PASE, PASE] });
+    await e.ciclo.ejecutar(TAREA);
+    const r = await e.ciclo.ejecutar(TAREA, { decision: "continuar" });
+    assert.equal(r.estado.resultado, "exito");
+    assert.equal(r.estado.revision, null);
+    assert.equal(agentes(e).filter((a) => a === "tester").length, 2, "una sola reescritura, sin reintento por rojo");
+    assert.ok(e.eventos.some((ev) => ev.type === "ciclo:rojo" && ev.payload.resultado === "exenta" && /ya hay implementación/.test(ev.payload.motivo)));
+  });
+
   test("«aceptar» da la tarea por buena y «abortar» restaura", async () => {
     const a = entorno({ ejecuciones: [rota(1), rota(2), rota(3), rota(4)] });
     await a.ciclo.ejecutar(TAREA);

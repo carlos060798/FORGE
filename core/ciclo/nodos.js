@@ -363,8 +363,10 @@ export async function qa(estado, deps) {
     }
 
     deps.log.append('custom', { message: 'Aviso: las pruebas recién escritas pasan sin implementación', aviso: 'pruebas_no_fallan' }, meta);
-    if (exenta) {
-      deps.log.append('ciclo:rojo', { resultado: 'exenta', motivo: 'la tarea declara parte_de_codigo_existente: las pruebas pueden pasar antes de implementar' }, meta);
+    // Reanudar qa con la implementación ya escrita (sin_progreso) hace que unas pruebas correctas pasen: eso no es «pasan sin implementación»
+    const yaImplementado = (estado.implementacion?.archivos?.length ?? 0) > 0;
+    if (exenta || yaImplementado) {
+      deps.log.append('ciclo:rojo', { resultado: 'exenta', motivo: yaImplementado ? 'ya hay implementación: las pruebas reescritas pasan contra ella' : 'la tarea declara parte_de_codigo_existente: las pruebas pueden pasar antes de implementar' }, meta);
       return { pruebas, presupuesto, rojo: { estado: 'exenta', reintentado } };
     }
     if (reintentado) {
