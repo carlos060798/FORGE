@@ -9,6 +9,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ### Guía de migración desde 4.2.0
 
+> La lista completa de lo que cambia sin tocar la configuración, con cómo desactivar cada cosa, está en [docs/MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Los límites conocidos, en [docs/PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md).
+
 **Cambios que rompen compatibilidad:**
 
 1. **`forge run` y `forge resume` usan por defecto el ciclo verificado** (`motor.modo: ciclo`). Ejecuta el código generado en un contenedor Docker sin red y exige Docker en marcha; sin él sale con código 4 y no ejecuta nada. Solo corre en la etapa `code` (desde `tasks` avanza solo) y con proyectos JavaScript/TypeScript, Python o Go.

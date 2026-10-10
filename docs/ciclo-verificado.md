@@ -2,6 +2,7 @@
 
 > Desde la versión 5.0.0 es el modo por defecto de `forge run`. En 4.3.0 (no publicada) era opt-in.
 > Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-18`. Rojo obligatorio y medición de las pruebas: spec `2026-10-09-pruebas-confiables` y `ADR-20`.
+> Ver también: [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) (todos los límites en un solo sitio, con las frases de esta guía que han quedado desfasadas), [MIGRACION-5.0.md](MIGRACION-5.0.md) (qué cambia al actualizar desde 4.2.0) y [COBERTURA.md](COBERTURA.md).
 
 Con el ciclo verificado, `forge run` no ejecuta cada tarea de código una sola vez: la corrige hasta que sus pruebas pasan, ejecutando el código generado en un contenedor Docker sin red, sin superar un tope de gasto y pidiéndote una decisión cuando no puede terminar solo.
 

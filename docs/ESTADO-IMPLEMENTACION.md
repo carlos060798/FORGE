@@ -1,12 +1,14 @@
 # Estado de Implementación — FORGE 4.3.0 (sin publicar)
 
 > Fecha: 2026-06-27 | Propósito: clarificar qué está hecho, qué no, y qué prerequisitos necesita alguien que quiera usar FORGE hoy. Sin marketing.
+>
+> **Aviso (2026-10-10):** esta página se escribió para 4.3.0 y solo se han puesto al día sus cifras. El paquete declara ya la versión 5.0.0 (sin publicar). Lo vigente sobre el ciclo verificado está en [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md), [MIGRACION-5.0.md](MIGRACION-5.0.md) y [COBERTURA.md](COBERTURA.md).
 
 ---
 
 ## TL;DR
 
-FORGE 4.3.0 (sin publicar; la 4.2.0 es la última publicada) tiene un núcleo sólido y probado: pipeline SDD completo, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, motor de agentes agnóstico de LLM, decision store con búsqueda semántica, dashboard SSE en tiempo real, y aprobación humana obligatoria antes de planificar. **998 tests pasando, 0 fallos.**
+FORGE 4.3.0 (sin publicar; la 4.2.0 es la última publicada) tiene un núcleo sólido y probado: pipeline SDD completo, 14 agentes con enforcement real, memoria SQLite, runner CLI portable, motor de agentes agnóstico de LLM, decision store con búsqueda semántica, dashboard SSE en tiempo real, y aprobación humana obligatoria antes de planificar. La 4.2.0 se publicó con 998 tests; la suite actual está en el recuento de abajo.
 
 ---
 
@@ -45,7 +47,7 @@ FORGE 4.3.0 (sin publicar; la 4.2.0 es la última publicada) tiene un núcleo s�
 | Servidor MCP propio (`forge mcp`) | ✅ | Opt-in | Verificado de forma independiente (con observaciones); sin probar con Claude Code |
 | API HTTP local (`forge api`) | ✅ | Opt-in | Verificada de forma independiente (con observaciones) |
 
-**Total tests: 1405 pasando (suite completa, Windows con Docker), 0 fallos, 3 saltados.** (4.2.0: 998.)
+**Total tests (2026-10-10, commit `9180814`, Windows 11, Node 24.20.0, sin `FORGE_TEST_DOCKER`): `npm test` ejecuta 2055, pasan 2045, 0 fallos, 10 omitidos.** Los omitidos piden Docker, enlaces simbólicos de archivo, permisos POSIX o el cliente oficial de MCP; además se omiten bloques enteros con Docker real, cuyas pruebas no entran en el total. La suite entera con `FORGE_TEST_DOCKER=1` no se ha visto en verde en una sola pasada (ver [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md)). (4.2.0: 998.)
 
 ---
 
@@ -154,7 +156,7 @@ El motor LLM (`core/llm-providers/`) soporta Anthropic/OpenAI/Ollama/Stub. Falta
 ### Para contribuir / desarrollar FORGE
 
 - [ ] Node.js ≥22.5.0
-- [ ] `npm test` — todos los tests deben pasar, 0 fallos (con `FORGE_TEST_DOCKER=1` y Docker en marcha: 1405 en Windows)
+- [ ] `npm test` — todos los tests deben pasar, 0 fallos (más de 2000; el recuento del día está arriba y en [COBERTURA.md](COBERTURA.md))
 - [ ] No se necesita `npm run build` — `core/` es JS puro
 
 ---
