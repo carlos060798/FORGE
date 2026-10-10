@@ -123,6 +123,14 @@ describe("H2 — ninguna prueba ejecutada no es un fallo del implementador", () 
     assert.ok(!e.eventos.some((ev) => ev.type === "ciclo:ejecucion" && ev.payload.categoria === "sin_pruebas"));
   });
 
+  test("N7 — con la implementación ya escrita, un código 5 al reanudar qa es un fallo normal y no una pausa sin fin", async () => {
+    // Pruebas rojas, implementación que fuerza el 5 y, tras «continuar», qa vuelve a ejecutar con la implementación en disco
+    const e = entorno({ ejecuciones: [{ exitCode: 1 }, { exitCode: 5, stdout: "a\n" }, { exitCode: 5, stdout: "a\n" }, { exitCode: 5, stdout: "a\n" }, { exitCode: 5, stdout: "a\n" }] });
+    const r = await e.ciclo.ejecutar(TAREA);
+    assert.ok(r.estado.iteracion >= 1, "las iteraciones se consumen: el 5 de la implementación cuenta como fallo");
+    assert.ok(!e.eventos.some((ev) => ev.type === "ciclo:ejecucion" && ev.payload.categoria === "sin_pruebas"));
+  });
+
   test("R5 — al reescribir las pruebas que no se encontraron, el agente de pruebas recibe el motivo", async () => {
     const e = entorno({ ejecuciones: [{ exitCode: 5 }, { exitCode: 1 }, { exitCode: 0, stdout: "1 passed in 0.01s\n" }] });
     const pausa = await e.ciclo.ejecutar(TAREA);
@@ -362,8 +370,9 @@ describe("R1 — pytest: se elige por líneas reales y no se empieza si la image
     assert.equal(requierePytest("pytest>=8,<9\n"), true);
     assert.equal(requierePytest("pytest[testing]==8.0 ; python_version > '3.8'\n"), true);
     assert.equal(requierePytest("PyTest\n"), true);
-    assert.equal(requierePytest("pytest-cov\n"), false);
-    assert.equal(requierePytest("pytest_asyncio\n"), false);
+    assert.equal(requierePytest("pytest-cov\n"), true, "un plugin instala pytest como dependencia");
+    assert.equal(requierePytest("pytest-runner\n"), false, "pytest-runner es de setuptools y no lo instala");
+    assert.equal(requierePytest("pytest_asyncio==0.23\n"), true);
     assert.equal(requierePytest("# pytest\n"), false);
   });
 
@@ -372,7 +381,6 @@ describe("R1 — pytest: se elige por líneas reales y no se empieza si la image
       { "requirements.txt": "requests\n", "requirements-dev.txt": "pytest\n" },
       { "requirements.txt": "", "pytest.ini": "[pytest]\n" },
       { "setup.py": "", "setup.cfg": "[tool:pytest]\ntestpaths = tests\n" },
-      { "requirements.txt": "pytest-cov\n", "conftest.py": "" },
     ]) {
       const cwd = py(archivos);
       const cmd = detectStack(cwd).test_cmd;
@@ -386,6 +394,12 @@ describe("R1 — pytest: se elige por líneas reales y no se empieza si la image
     assert.equal(comprobarProyecto(con, "python", detectStack(con).test_cmd), null);
     const sin = py({ "requirements.txt": "requests\n" });
     assert.equal(comprobarProyecto(sin, "python", detectStack(sin).test_cmd), null);
+    const plugin = py({ "requirements.txt": "pytest-cov\n", "conftest.py": "" });
+    assert.equal(comprobarProyecto(plugin, "python", detectStack(plugin).test_cmd), null, "N1: un plugin trae pytest");
+    assert.equal(detectStack(py({ "requirements.txt": "pytest-cov\n" })).test_cmd, "python -m pytest", "N2");
+    const utf16 = py({ "requirements.txt": "" });
+    writeFileSync(join(utf16, "requirements.txt"), Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from("pytest==7.4.0\r\n", "utf16le")]));
+    assert.equal(instalaPytest(utf16), true, "N3: requirements.txt en UTF-16 con BOM");
     assert.equal(instalaPytest(con), true);
     assert.equal(instalaPytest(sin), false);
   });
@@ -412,7 +426,8 @@ describe("R2, R7 y R8 — la sección Proyecto no filtra ni se deja manipular", 
   test("R8: TypeScript no recibe «usa require», y un BOM no hace desaparecer la sección", () => {
     const ts = tmp("forge-vmr-r8-");
     escribir(ts, "package.json", JSON.stringify({ devDependencies: { typescript: "^5" } }));
-    assert.match(seccionProyecto(ts, []), /Proyecto TypeScript: usa import\/export/);
+    assert.match(seccionProyecto(ts, []), /Proyecto TypeScript: en los archivos .ts usa import\/export/);
+    assert.doesNotMatch(seccionProyecto(ts, []), /los archivos .js son módulos ES/, "N5: TypeScript no implica módulos ES en los .js");
     assert.doesNotMatch(seccionProyecto(ts, []), /Usa require/);
 
     const tsconfig = tmp("forge-vmr-r8-");

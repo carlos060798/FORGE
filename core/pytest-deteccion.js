@@ -19,15 +19,28 @@ const ARCHIVOS_DE_REQUISITOS = ['requirements.txt', 'requirements-dev.txt', 'req
 
 /** @param {string} cwd @param {string} f */
 function leer(cwd, f) {
-  try { return fs.readFileSync(path.join(cwd, f), 'utf8').replace(/^﻿/, ''); } catch { return ''; }
+  let b;
+  try { b = fs.readFileSync(path.join(cwd, f)); } catch { return ''; }
+  // `pip freeze > requirements.txt` en PowerShell 5.1 escribe UTF-16 con BOM
+  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return b.subarray(2).toString('utf16le');
+  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) return Buffer.from(b.subarray(2)).swap16().toString('utf16le');
+  return b.toString('utf8').replace(/^﻿/, '');
 }
 
 /** Líneas sin comentarios ni espacios alrededor. @param {string} texto */
 const lineas = (texto) => texto.split(/\r?\n/).map((l) => l.replace(/(^|\s)#.*$/, '').trim()).filter(Boolean);
 
-/** ¿Alguna línea de requisito pide el paquete `pytest` (no `pytest-cov`, no `pytest_runner`)? @param {string} texto */
+/**
+ * ¿Alguna línea de requisito pide pytest, o un plugin que lo trae como dependencia (pytest-cov,
+ * pytest-django, pytest-asyncio…)? pytest-runner no: es un complemento de setuptools que no
+ * depende de pytest. Un comentario no cuenta.
+ * @param {string} texto
+ */
 export function requierePytest(texto) {
-  return lineas(texto).some((l) => /^pytest(\s*(\[|[<>=!~;@]|$))/i.test(l));
+  return lineas(texto).some((l) => {
+    if (/^pytest[-_.]runner(\s*(\[|[<>=!~;@]|$))/i.test(l)) return false;
+    return /^pytest([-_.][a-z0-9][a-z0-9._-]*)?(\s*(\[|[<>=!~;@]|$))/i.test(l);
+  });
 }
 
 /** @param {string} cwd */

@@ -163,10 +163,10 @@ export function seccionProyecto(cwd, vetadas = []) {
       const nombres = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
         .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d));
       const esTs = nombres.includes('typescript') || fs.existsSync(path.join(cwd, 'tsconfig.json'));
-      if (esTs) lineas.push('- Proyecto TypeScript: usa import/export.');
-      else lineas.push(pkg.type === 'module'
-        ? '- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.'
-        : '- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
+      if (esTs) lineas.push('- Proyecto TypeScript: en los archivos .ts usa import/export.');
+      if (pkg.type === 'module') lineas.push('- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.');
+      else if (pkg.type === 'commonjs' || !esTs) lineas.push('- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
+      else lineas.push('- package.json no declara "type": los archivos .js siguen el estilo de los que ya hay en el proyecto.');
       if (typeof pkg.scripts?.test === 'string') lineas.push(`- Script de pruebas: ${unaLinea(pkg.scripts.test, 200)}`);
       lineas.push(nombres.length ? `- Dependencias instaladas: ${nombres.slice(0, 40).join(', ')}` : '- Sin dependencias instaladas: usa solo la biblioteca estándar.');
     } catch { /* package.json ilegible: no se dice nada */ }
@@ -345,7 +345,7 @@ export async function qa(estado, deps) {
     const pruebas = { archivos, comando: deps.testCmd };
     const previa  = await deps.runner.test(estado.cwd);
     // Si el ejecutor no encuentra las pruebas recién escritas, implementar sería pagar por nada
-    if (sinPruebasEjecutadas(previa, deps.testCmd)) {
+    if ((estado.implementacion?.archivos?.length ?? 0) === 0 && sinPruebasEjecutadas(previa, deps.testCmd)) {
       return { pruebas, presupuesto, rojo: null, ...pedirRevision('infraestructura', 'qa', detalleSinPruebas(deps.testCmd)) };
     }
     const categoria = clasificar(previa, { hayPruebas: true, pruebasIntactas: true });
