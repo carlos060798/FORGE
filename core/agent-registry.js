@@ -23,7 +23,9 @@ const mensajeCortada = (ms) => `la llamada superó el tiempo máximo (${Math.rou
  * @param {...unknown} textos
  */
 export function estimarTokens(...textos) {
-  return Math.ceil(textos.reduce((n, t) => n + String(t ?? '').length, 0) / 3);
+  let caracteres = 0;
+  for (const t of textos) caracteres += String(t ?? '').length;
+  return Math.ceil(caracteres / 3);
 }
 
 function parseFrontmatter(raw) {
