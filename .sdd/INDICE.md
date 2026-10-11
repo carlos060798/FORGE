@@ -3,10 +3,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 9
+- Total: 10
 - Completadas: 0
 - En progreso: 9
-- En borrador: 0
+- En borrador: 1
 
 ## Especificaciones
 
@@ -22,6 +22,7 @@
 | 2026-10-09-implementador-con-herramientas | Implementador que lee, busca y edita por pasos | en_implementacion (aprobada por delegación del dueño; modo opcional; probada con respuestas guionizadas, sin modelo real ni revisión independiente) | grande | ✅ | — | — | ⚠️ autoevaluación (21 de 24 criterios; costo sin medir) | 2026-10-09 |
 | 2026-10-09-pruebas-confiables | Pruebas confiables | en_implementacion (aprobada por delegación del dueño; implementada sin plan ni tareas formales; autoevaluada, sin revisión independiente ni modelo real) | mediano | ✅ | — | — | ⚠️ autoevaluación (20 de 20 criterios con test) | 2026-10-09 |
 | 2026-10-09-puesta-al-dia | Puesta al día | en_implementacion (aprobada por delegación del dueño; autoevaluada, sin revisión independiente; ahorro de la caché sin medir y revisión nueva del protocolo sin probar con un cliente real) | mediano | ✅ | — | — | ⚠️ autoevaluación (17 de 19 criterios con prueba) | 2026-10-09 |
+| 2026-10-11-integraciones-externas | Integraciones con GitHub, GitLab y Jira con el mínimo privilegio | borrador (sin aprobar; ADR-22 propuesta; tres spikes previos) | grande | ✅ | — | — | — | 2026-10-11 |
 
 ## Previstas (sin especificar todavía)
 

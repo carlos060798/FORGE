@@ -99,6 +99,7 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] Decidir cómo se publica: 5.0.0 entera, o separada (fases 6 y 9 en 5.0.0; 7 y 8 en 5.1.0), o `5.0.0-beta.1` con la etiqueta `beta` de npm. Cambiar la versión exige tocar dos pruebas que fijan `5.0.0`.
 - [ ] Definir `GITHUB_PERSONAL_ACCESS_TOKEN` y reiniciar la sesión para conectar el servidor MCP de GitHub (ya está en `.mcp.json`, sin confirmar); indicar la instancia de GitLab si se quiere conectar.
 - [ ] Rotar la clave de API usada en las ejecuciones reales.
+- [ ] Revisar y decidir sobre `2026-10-11-integraciones-externas` y ADR-22: REST directo o cliente MCP, enmienda del Principio III, Jira Cloud con token de servicio u OAuth, y quién aprueba las publicaciones.
 - [ ] Publicar (`npm publish`, etiqueta de git): solo con la integración continua en verde.
 
 **Abierto, sin asignar**
@@ -212,6 +213,24 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 **Reuso:** `core/llm-providers/`, `core/mcp/protocolo.js`, `core/sandbox/politica.js`, `cli/index.js` (`copiarNucleo`).
 
 **Verificación:** con caché, la segunda iteración de una tarea gasta menos tokens de entrada facturados que la primera y el libro de gasto coincide; el cliente oficial de MCP se conecta en la revisión antigua y en la nueva; un runtime inexistente termina con el código de «aislamiento no disponible».
+
+---
+
+## FASE 10 — Integraciones con GitHub, GitLab y Jira (S10, propuesta, sin aprobar)
+
+**Objetivo:** que una tarea nazca de una incidencia o ticket y su resultado vuelva como comentario o solicitud de cambio en borrador, sin dar al modelo ninguna herramienta de red ni credencial. Spec `2026-10-11-integraciones-externas` (borrador) y ADR-22 (propuesta).
+
+- **10.0** Tres spikes antes de construir: permisos mínimos reales por proveedor con su documentación oficial; batería de al menos 30 textos hostiles; decisión REST directo frente a cliente MCP.
+- **10.1** Puerto con tres operaciones fijas por proveedor (leer elemento, comentar, proponer cambio) y adaptadores REST sin dependencias nuevas.
+- **10.2** Configuración `integraciones:` con modo por proveedor (`apagado` por defecto), lista cerrada de destinos y tokens solo en variables de entorno; comprobaciones en `forge doctor`.
+- **10.3** Texto de la plataforma como dato no confiable: delimitado, acotado, redactado y sin autoridad sobre reglas, topes ni herramientas.
+- **10.4** Publicación con vista previa y aprobación registrada, idempotente, solo ramas nuevas con prefijo fijo y solicitudes en borrador.
+- **10.5** Auditoría, topes por sesión y apagado inmediato.
+- **10.6** Revisión independiente (`revisor` y `seguridad`) con la lista de riesgos agénticos como guion, antes de publicar.
+
+**Verificación:** con la sección ausente o apagada, 0 conexiones nuevas y suite sin cambios; la batería hostil no cambia ninguna decisión del ciclo; ningún token aparece en prompts, registros, estado ni errores.
+
+> **No lo puede hacer un agente:** aprobar la spec y el ADR (Principio II), aportar cuentas de servicio y tokens de prueba en cada plataforma, y decidir REST frente a MCP.
 
 ---
 
