@@ -1,6 +1,6 @@
 # ADR-22: Integraciones externas ejecutadas por el anfitrión, sin dar al modelo herramientas de red
 
-> Estado: propuesta  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
+> Estado: propuesta (en implementación por instrucción del dueño, 2026-10-11; pendiente de aceptación formal)  # propuesta | aceptada | obsoleta | reemplazada-por-ADR-XX
 > Fecha: 2026-10-11
 > Spec relacionada: 2026-10-11-integraciones-externas
 > Autor: Claude (pendiente de aceptación por el dueño)

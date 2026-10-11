@@ -2,7 +2,7 @@
 id: 2026-10-11-integraciones-externas
 titulo: "Integraciones con GitHub, GitLab y Jira: leer trabajo y publicar resultados con el mínimo privilegio"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-11
 actualizada: 2026-10-11
 autor: humano  # humano | importado
@@ -12,7 +12,7 @@ etiquetas: [integraciones, seguridad, github, gitlab, jira, owasp]
 
 # Especificación: Integraciones con plataformas de gestión de trabajo
 
-> **Estado: borrador, sin aprobar.** Nada de esto está implementado. Las decisiones técnicas están propuestas en ADR-22. Antes de construir hacen falta tres spikes (sección 9) y la aprobación del dueño (Principio II).
+> **Estado: en implementación por instrucción del dueño (2026-10-11), pendiente de su ratificación formal.** El plan (`plan.md`) toma como suposición la recomendación de la spec en cada pregunta abierta; si el dueño decide otra cosa, se corrige antes de la fase que la toque. Los spikes (sección 9) van primero. Las decisiones técnicas están en ADR-22.
 
 ## 1. Contexto y Motivación
 
@@ -228,3 +228,4 @@ Los nombres ASI01 a ASI10 son los del Top 10 para Aplicaciones Agénticas 2026 d
 | 1 | Alcance | ¿Qué plataformas? | GitHub, GitLab y Jira Cloud, según petición del dueño | 2026-10-11 |
 | 2 | Alcance | ¿Bases de datos? | Fuera de esta spec; spec aparte, solo lectura y con servidores existentes | 2026-10-11 |
 | 3 | Restricción | ¿Qué debe evitarse? | Que activar las integraciones cambie el modo de trabajo de quien no las use (HU-005). La frase original del dueño era ambigua en este punto: confirmar | 2026-10-11 |
+| 4 | Aprobación | ¿Se implementa? | Por instrucción del dueño el 2026-10-11 («defínelo mejor e impleméntalo»), con las suposiciones del plan sección 1; pendiente de ratificación formal. La frase original era ambigua: confirmar | 2026-10-11 |
