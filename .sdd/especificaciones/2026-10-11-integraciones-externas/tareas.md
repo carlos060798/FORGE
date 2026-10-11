@@ -11,13 +11,15 @@
 
 ## F1 — Núcleo
 
-- [ ] **F1.1** `puerto.js`: tipos y contrato. Test: un proveedor falso cumple el contrato; uno incompleto se rechaza.
-- [ ] **F1.2** `config.js`: leer y validar `integraciones_*` (claves planas). Tests: sección ausente → todo apagado y cero lecturas de entorno; modo desconocido; destino con comodín rechazado; valor que parece un token literal rechazado; host con esquema distinto de HTTPS rechazado.
-- [ ] **F1.3** `confianza.js`: texto de plataforma → dato. Tests con la batería S0.3: delimitado, acotado, sin caracteres de control ni invisibles, redactado, sin los marcadores propios, y sin forma de cerrar el delimitador desde dentro.
-- [ ] **F1.4** `http.js`: cliente mínimo. Tests contra servidor local: HTTPS obligatorio (salvo `127.0.0.1` en pruebas con interruptor interno), host fuera de la lista, redirección a otro host, respuesta enorme, tiempo agotado, reintento acotado con espera, límite de ritmo.
-- [ ] **F1.5** `auditoria.js`: eventos sin contenido, topes por sesión y proveedor, interruptor `FORGE_INTEGRACIONES=apagado`. Test: ninguna operación tras apagar, ni aprobadas.
-- [ ] **F1.6** Carga perezosa. Test: importar `cli/index.js` y ejecutar `forge run` no importa ningún módulo de `core/integraciones/`.
-- [ ] **F1.7** Prueba de aislamiento HU-005: `fetch` interceptado y suite del ciclo en verde con la integración ausente y apagada.
+- [x] **F1.1** `puerto.js`: tipos y contrato. Test: un proveedor falso cumple el contrato; uno incompleto se rechaza.
+- [x] **F1.2** `config.js`: leer y validar `integraciones_*` (claves planas). Tests: sección ausente → todo apagado y cero lecturas de entorno; modo desconocido; destino con comodín rechazado; valor que parece un token literal rechazado; host con esquema distinto de HTTPS rechazado.
+- [x] **F1.3** `confianza.js`: texto de plataforma → dato. Tests con la batería S0.3: delimitado, acotado, sin caracteres de control ni invisibles, redactado, sin los marcadores propios, y sin forma de cerrar el delimitador desde dentro.
+- [x] **F1.4** `http.js`: cliente mínimo. Tests contra servidor local: HTTPS obligatorio (salvo `127.0.0.1` en pruebas con interruptor interno), host fuera de la lista, redirección a otro host, respuesta enorme, tiempo agotado, reintento acotado con espera, límite de ritmo.
+- [x] **F1.5** `auditoria.js`: eventos sin contenido, topes por sesión y proveedor, interruptor `FORGE_INTEGRACIONES=apagado`. Test: ninguna operación tras apagar, ni aprobadas.
+- [x] **F1.6** Carga perezosa. Test: importar `cli/index.js` y ejecutar `forge run` no importa ningún módulo de `core/integraciones/`.
+- [x] **F1.7** Prueba de aislamiento HU-005: `fetch` interceptado y suite del ciclo en verde con la integración ausente y apagada.
+
+> F1 hecha (2026-10-11). Matices, con detalle en `verificacion.md`: F1.3 se probó con una batería mínima propia de 16 casos (la de S0.3 se suma sola cuando exista `tests/fixtures/integraciones/hostiles.json`); F1.4 no tiene limitador de ritmo propio, solo el reintento con `Retry-After`; F1.6 se verifica con una prueba estática y con un gancho de resolución de módulos en procesos hijos; F1.7 corre 5 archivos del ciclo, no toda la suite.
 
 ## F2 — Adaptadores
 
