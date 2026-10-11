@@ -57,7 +57,13 @@ function cargarBateria() {
     const lista = Array.isArray(datos) ? datos : (datos.casos ?? datos.hostiles ?? []);
     const casos = lista.map((x, i) => {
       const texto = typeof x === 'string' ? x : (x.cuerpo ?? x.texto ?? x.body ?? x.contenido);
-      return typeof texto === 'string' ? { nombre: typeof x === 'object' && x.nombre ? String(x.nombre) : `fixture ${i}`, texto } : null;
+      if (typeof texto !== 'string') return null;
+      const nombre = typeof x === 'object' && (x.id || x.nombre) ? String(x.id ?? x.nombre) : `fixture ${i}`;
+      // La batería real marca sus secretos de ejemplo con la categoría; sus valores contienen siempre «EJEMPLOINVENT»
+      const secretos = typeof x === 'object' && x.categoria === 'secreto_ejemplo'
+        ? [...new Set(texto.match(/[A-Za-z0-9_.\-]*EJEMPLOINVENT[A-Za-z0-9_.\-]*|clave-de-ejemplo/g) ?? [])]
+        : undefined;
+      return { nombre, texto, ...(secretos && secretos.length ? { secretos } : {}) };
     }).filter(Boolean);
     return casos.length >= 15 ? [...MINIMOS, ...casos] : MINIMOS;
   } catch {

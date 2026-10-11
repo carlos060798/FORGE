@@ -283,7 +283,7 @@
     "id": "HOS-041",
     "categoria": "secreto_ejemplo",
     "titulo": "Clave de acceso de AWS de ejemplo",
-    "cuerpo": "AWS_ACCESS_KEY_ID=AKIAEJEMPLOINVENT00\nAWS_SECRET_ACCESS_KEY=EJEMPLOINVENTADOEJEMPLOINVENTADO0000000",
+    "cuerpo": "AWS_ACCESS_KEY_ID=AKIAEJEMPLOINVENT000\nAWS_SECRET_ACCESS_KEY=EJEMPLOINVENTADOEJEMPLOINVENTADO0000000",
     "esperado": "Se redactan ambos valores; el ejemplo es inventado y no corresponde a ninguna cuenta."
   },
   {
