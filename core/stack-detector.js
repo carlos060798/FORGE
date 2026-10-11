@@ -33,6 +33,8 @@ export function detectStack(cwd = process.cwd()) {
     const pkg = read('package.json');
     let pkgJson = {};
     try { pkgJson = JSON.parse(pkg); } catch { /* ignorar */ }
+    // `null`, una lista o un texto son JSON válido pero no un manifiesto: sin esto, `null` rompía `forge run` con un TypeError
+    if (!pkgJson || typeof pkgJson !== 'object' || Array.isArray(pkgJson)) pkgJson = {};
 
     const isTS = exists('tsconfig.json') || exists('tsconfig.base.json');
     const lenguaje = isTS ? 'typescript' : 'javascript';

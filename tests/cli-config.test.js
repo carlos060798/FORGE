@@ -49,7 +49,11 @@ function runCli(args, cwd) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     encoding: "utf8",
     cwd,
-    timeout: 10000,
+    // Sin claves: con una en el entorno, `doctor` haría un ping real (de pago) al modelo, con 10 s de espera propia
+    env: { ...process.env, ANTHROPIC_API_KEY: "", CLAUDE_API_KEY: "", FORGE_LLM_PROVIDER: "stub" },
+    // Tope contra cuelgues, no una medida: `doctor` lanza varios procesos (`where claude`, `node --check` por
+    // cada hook) y con la máquina cargada 10 s no bastaban; el corte dejaba la salida a medias y el código en -1
+    timeout: 120_000,
   });
   return {
     exitCode: result.status ?? -1,

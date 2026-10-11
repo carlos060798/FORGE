@@ -137,6 +137,8 @@ function seccionPlan(estado) {
 }
 
 const MAX_BYTES_PROPIOS = 24 * 1024;
+/** Un manifiesto (package.json, go.mod) más grande que esto no es normal: no se lee para el prompt. */
+const MAX_BYTES_MANIFIESTO = 1024 * 1024;
 
 /**
  * Datos del proyecto que condicionan cómo se escribe el código y que no dependen de la tarea.
@@ -150,8 +152,15 @@ export function seccionProyecto(cwd, vetadas = []) {
   const leerManifiesto = (ruta) => {
     const v = validarRuta(cwd, ruta, { vetadas });
     if (v.ok === false && v.motivo !== 'dependencias' && v.motivo !== 'configuracion') return null;
-    try { return fs.readFileSync(path.resolve(cwd, ruta), 'utf8').replace(/^\uFEFF/, ''); } catch { return null; }
+    try {
+      const abs = path.resolve(cwd, ruta);
+      // Un manifiesto de varios MB no se lee entero (JSON.parse de decenas de MB bloquea el proceso): se avisa y no se resume
+      if (fs.statSync(abs).size > MAX_BYTES_MANIFIESTO) { demasiado.push(ruta); return null; }
+      return fs.readFileSync(abs, 'utf8').replace(/^\uFEFF/, '');
+    } catch { return null; }
   };
+  /** @type {string[]} */
+  const demasiado = [];
   /** Una sola línea, sin secretos: lo que venga del manifiesto no puede abrir secciones propias en el prompt. */
   const unaLinea = (texto, max) => redactar(String(texto)).replace(/[\s\u0000-\u001f]+/g, ' ').replace(/[#`]/g, '').trim().slice(0, max);
 
@@ -160,6 +169,7 @@ export function seccionProyecto(cwd, vetadas = []) {
   if (crudo !== null) {
     try {
       const pkg = JSON.parse(crudo);
+      if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('no es un objeto');
       const nombres = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
         .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d));
       const esTs = nombres.includes('typescript') || fs.existsSync(path.join(cwd, 'tsconfig.json'));
@@ -176,10 +186,23 @@ export function seccionProyecto(cwd, vetadas = []) {
     const mod = /^module\s+([\w./~-]{1,200})\s*$/m.exec(gomod);
     if (mod) lineas.push(`- Módulo de Go: ${mod[1]}`);
   }
+  for (const ruta of demasiado) lineas.push(`- ${ruta} es demasiado grande para leerlo (más de ${MAX_BYTES_MANIFIESTO / 1024 / 1024} MB): no se resume aquí.`);
   return lineas.length ? `\n\n## Proyecto\n${lineas.join('\n')}` : '';
 }
 
 const MAX_ARCHIVOS_MAPA = 200;
+
+/**
+ * ¿Puede esta ruta escribirse tal cual en un prompt?
+ * @param {string} ruta
+ */
+export function nombreListable(ruta) {
+  // Letras y cifras de cualquier alfabeto, marcas de acento y emoji; no control, invisibles ni separadores raros.
+  // Un nombre con acentos o en japonés es normal: descartarlo dejaba al agente sin ver parte del proyecto.
+  return ruta.length > 0 && ruta.length <= 200
+    && /^(?:[\p{L}\p{N}_@.+\-/ ()\[\]]|(?![︀-️])\p{M}|\p{Extended_Pictographic}️?)+$/u.test(ruta)
+    && !/(?:^|\/)\p{M}/u.test(ruta) && !/[ㅤᅟᅠ᠎⠀ﾠ​-‏]/u.test(ruta);
+}
 
 /**
  * Lista de archivos del proyecto, con los mismos vetos que el índice de búsqueda (secretos, rutas
@@ -194,7 +217,7 @@ export function seccionMapa(cwd, vetadas = []) {
   let rutas;
   try {
     rutas = listarArchivosIndexables(cwd, vetadas).map((a) => a.ruta)
-      .filter((r) => r.length <= 200 && /^[\w@.+\-/ ()\[\]]+$/.test(r))   // un nombre raro no entra en el prompt
+      .filter(nombreListable)   // un nombre raro no entra en el prompt
       .sort();
   } catch { return ''; }
   if (rutas.length === 0) return '';

@@ -30,7 +30,7 @@ function runHook(event, env = {}) {
     input: JSON.stringify(event),
     encoding: "utf8",
     env: { ...process.env, ...env },
-    timeout: 5000,
+    timeout: 60_000,   // es un tope contra cuelgues, no una medida: con la máquina cargada arrancar node tarda
   });
   return {
     exitCode: result.status ?? -1,
@@ -210,7 +210,7 @@ describe("pre-tool-guard — pass-through de herramientas no-Bash", () => {
     const result = spawnSync(process.execPath, [HOOK], {
       input: "esto no es JSON",
       encoding: "utf8",
-      timeout: 5000,
+      timeout: 60_000,
     });
     assert.equal(result.status, 0, "JSON inválido debe pasar sin bloquear");
   });
@@ -219,7 +219,7 @@ describe("pre-tool-guard — pass-through de herramientas no-Bash", () => {
     const result = spawnSync(process.execPath, [HOOK], {
       input: "",
       encoding: "utf8",
-      timeout: 5000,
+      timeout: 60_000,
     });
     assert.equal(result.status, 0);
   });

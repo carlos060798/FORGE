@@ -26,6 +26,30 @@ export function recortar(texto, max) {
 }
 
 /**
+ * Lee como texto el principio de un archivo: como mucho `maxBytes` (más no cabe en el contexto), de modo que
+ * uno de 50 MB no se lee entero. Devuelve null si parece binario (algún byte cero, o muchos bytes que no son UTF-8).
+ * @param {string} abs @param {number} maxBytes
+ * @returns {string|null}
+ */
+export function leerComoTexto(abs, maxBytes) {
+  const tope = Math.max(1024, maxBytes);
+  const fd = fs.openSync(abs, 'r');
+  try {
+    const buf = Buffer.alloc(tope);
+    const n = fs.readSync(fd, buf, 0, tope, 0);
+    const parte = buf.subarray(0, n);
+    if (parte.includes(0)) return null;
+    // Con el archivo cortado, el último carácter puede quedar partido: no cuenta como byte inválido
+    const texto = parte.toString('utf8').replace(/�$/, '');
+    const invalidos = (texto.match(/�/g) ?? []).length;
+    if (invalidos > 0 && invalidos / Math.max(1, texto.length) > 0.01) return null;
+    return texto;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
  * @param {{
  *   cwd: string,
  *   tarea: { archivos?: string[], cas?: string[] },
@@ -60,8 +84,10 @@ export function recuperarPorArchivos(entrada) {
 
     const abs = path.resolve(cwd, rutaPosix);
     if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return;
+    const contenido = leerComoTexto(abs, maxBytes);
+    if (contenido === null) return;   // binario: no es contexto para un modelo
     vistos.add(rutaPosix);
-    candidatos.push({ ruta: rutaPosix, origen, contenido: fs.readFileSync(abs, 'utf8') });
+    candidatos.push({ ruta: rutaPosix, origen, contenido });
   };
 
   for (const ruta of tarea.archivos ?? [])        anadirArchivo(ruta, 'tarea');
@@ -73,7 +99,9 @@ export function recuperarPorArchivos(entrada) {
     if (lineas.length > 0) candidatos.push({ ruta: 'spec.md', origen: 'spec', contenido: lineas.join('\n') });
   }
 
-  const cabecera = (c, primero) => `${primero ? '' : '\n\n'}### ${c.ruta} (${c.origen})\n`;
+  // El nombre va en el prompt: control, invisibles, cambios de dirección o saltos de línea no pueden entrar (se pone «?»)
+  const etiqueta = (ruta) => ruta.replace(/(?:[^\p{L}\p{N}\p{M}\p{Extended_Pictographic}_@.+\-/ ()[\]]|[︀-️ㅤᅟᅠ᠎⠀ﾠ])/gu, '?');
+  const cabecera = (c, primero) => `${primero ? '' : '\n\n'}### ${etiqueta(c.ruta)} (${c.origen})\n`;
 
   // Primero se intenta sin recortar nada
   const completo = candidatos.map((c, i) => cabecera(c, i === 0) + c.contenido).join('');

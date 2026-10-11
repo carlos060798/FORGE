@@ -34,6 +34,7 @@ import { cargarTareas, specActiva } from './tareas.js';
 import { leerConfigCiclo, leerRutasProtegidas } from './ciclo/config.js';
 import { CicloVerificado, crearLlamador, dirMotorBase, lineaAislamiento, lineasEstadoCiclo, nuevaSesion, sesionActual, tareasSinTerminarEnElProyecto, tienePuntosDeGuardado } from './ciclo/index.js';
 import { adquirir, ErrorBloqueado } from './ciclo/candado.js';
+import { barrerCopiasDeSesiones, barrerMutacionesDeProcesosMuertos } from './ciclo/restos.js';
 import { DockerCli } from './sandbox/docker-cli.js';
 import { SandboxRunner } from './sandbox/sandbox-runner.js';
 import { comprobarProyecto } from './sandbox/preparar-imagen.js';
@@ -101,8 +102,9 @@ function buildDeps(cwd) {
  * @param {boolean} nueva       true en `forge run` (sesión y presupuesto nuevos); false en `forge resume`
  * @param {string[]} [taskIds]  tareas que se van a lanzar: en `resume`, las que tengan puntos de guardado
  *                              del ciclo se reanudan con el ciclo aunque no se pida
+ * @param {{ cli?: DockerCli }} [opciones]  ver `main`
  */
-async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
+async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = [], opciones = {}) {
   const previa = sesionActual(cwd);
   const conPuntos = !nueva && previa?.modo === 'ciclo' && taskIds.some((id) => tienePuntosDeGuardado(cwd, previa.runId, id));
 
@@ -140,7 +142,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
     process.exit(SALIDA.SIN_AISLAMIENTO);
   }
 
-  const cli  = new DockerCli();
+  const cli  = opciones.cli ?? new DockerCli();
   const disp = await cli.disponible();
   if (disp.ok === false) {
     console.error(`${c.rojo('✗')} ${disp.error}`);
@@ -188,7 +190,11 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = []) {
   });
   const barridos = await sandbox.barrerHuerfanos();
   if (barridos > 0) warn(`Se eliminaron ${barridos} contenedor(es) de una ejecución anterior.`);
-  const copiasSinBorrar = sandbox.barrerCopias();
+  // También las de sesiones anteriores: un `forge run` tras un corte abre otra sesión, y la copia del
+  // proyecto que dejó la cortada no la barría nadie. Con el candado tomado, ninguna está en uso.
+  const copiasSinBorrar = [...new Set([...sandbox.barrerCopias(), ...barrerCopiasDeSesiones(cwd)])];
+  // Y la copia de una medición por mutación cuyo proceso murió (si no, quedaba hasta seis horas en la carpeta temporal)
+  barrerMutacionesDeProcesosMuertos();
   if (copiasSinBorrar.length > 0) warn(`No se pudieron borrar ${copiasSinBorrar.length} copia(s) de trabajo de ejecuciones anteriores; bórralas a mano: ${copiasSinBorrar.join(', ')}`);
 
   const spec  = specActiva(deps.store.read());
@@ -271,7 +277,7 @@ async function cmdStatus(cwd) {
   if (lineas.length > 0) console.log('\n' + lineas.join('\n'));
 }
 
-async function cmdResume(cwd, flags = {}) {
+async function cmdResume(cwd, flags = {}, opciones = {}) {
   const deps = buildDeps(cwd);
   const { log, fsm, store, registry, runner } = deps;
   const apiKey = process.env['ANTHROPIC_API_KEY'];
@@ -349,7 +355,7 @@ async function cmdResume(cwd, flags = {}) {
 
   console.log(`\n🔄 Relanzando ${tareasParaCorrer.length} tarea(s) fallidas/interrumpidas...`);
 
-  const motor = await prepararCiclo(cwd, flags, deps, apiKey, false, tareasParaCorrer.map((t) => t.id));
+  const motor = await prepararCiclo(cwd, flags, deps, apiKey, false, tareasParaCorrer.map((t) => t.id), opciones);
   if (!motor && flags['force'] !== 'true') {
     // Mismo riesgo que en `run`: otra tarea del ciclo pausada tiene codigo de un modelo en el proyecto
     const sinTerminar = tareasSinTerminarEnElProyecto(cwd);
@@ -386,7 +392,7 @@ async function cmdResume(cwd, flags = {}) {
   }
 }
 
-async function cmdRun(cwd, flags) {
+async function cmdRun(cwd, flags, opciones = {}) {
   const deps = buildDeps(cwd);
   const { store, log, registry, fsm, runner } = deps;
   const apiKey = process.env['ANTHROPIC_API_KEY'];
@@ -415,7 +421,7 @@ async function cmdRun(cwd, flags) {
     err('No hay tareas para ejecutar. Usa --tasks <archivo.json> o genera las tareas con /sdd.tareas.');
   }
 
-  const motor = await prepararCiclo(cwd, flags, deps, apiKey, true);
+  const motor = await prepararCiclo(cwd, flags, deps, apiKey, true, [], opciones);
   if (!motor && flags['force'] !== 'true') {
     // Una sesión del ciclo sin terminar deja código de un modelo en el proyecto: el modo clásico
     // lo ejecutaría en tu equipo, sin aislamiento
@@ -504,15 +510,20 @@ async function cmdValidate(cwd, flags) {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-async function main() {
+/**
+ * @param {{ cli?: DockerCli }} [opciones]  `cli`: un `DockerCli` ya creado. Solo lo puede pasar un programa que
+ *   importe este módulo (los tests de corte y de concurrencia, con un ejecutor falso); la orden `forge`
+ *   no lo recibe de ningún argumento, archivo ni variable de entorno: usa siempre Docker de verdad.
+ */
+async function main(opciones = {}) {
   const { command, flags } = parseArgs(process.argv);
   const cwd = path.resolve(flags['cwd'] ?? process.cwd());
   circuitBreaker.cwd = cwd;
 
   switch (command) {
     case 'status':   return cmdStatus(cwd);
-    case 'resume':   return cmdResume(cwd, flags);
-    case 'run':      return cmdRun(cwd, flags);
+    case 'resume':   return cmdResume(cwd, flags, opciones);
+    case 'run':      return cmdRun(cwd, flags, opciones);
     case 'validate': return cmdValidate(cwd, flags);
     default:
       console.log('Comandos disponibles: status | resume | run | validate');

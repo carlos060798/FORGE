@@ -49,7 +49,7 @@ function runHook(event, { agentName = "", cwd = "" } = {}) {
       ...process.env,
       ...(agentName ? { CLAUDE_AGENT_NAME: agentName } : {}),
     },
-    timeout: 5000,
+    timeout: 60_000,   // es un tope contra cuelgues, no una medida: con la máquina cargada arrancar node tarda
   });
   return {
     exitCode: result.status ?? -1,
@@ -460,7 +460,7 @@ describe("agent-memory — exit 0 para tools no-Write", () => {
     const result = spawnSync(process.execPath, [HOOK], {
       input: "no es json",
       encoding: "utf8",
-      timeout: 5000,
+      timeout: 60_000,
     });
     assert.equal(result.status, 0);
   });

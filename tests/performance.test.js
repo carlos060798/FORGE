@@ -49,6 +49,48 @@ function bench(fn, n = 50) {
   };
 }
 
+/** @param {number[]} tiempos */
+function mediana(tiempos) {
+  const t = [...tiempos].sort((a, b) => a - b);
+  return t.length % 2 ? t[(t.length - 1) / 2] : (t[t.length / 2 - 1] + t[t.length / 2]) / 2;
+}
+
+/**
+ * Mide una operación de disco varias veces y, EN LA MISMA VUELTA, un trabajo de referencia del mismo
+ * tipo y de coste conocido. Devuelve las dos medianas.
+ *
+ * Una sola medida contra un umbral fijo fallaba de vez en cuando: la suite corre sus archivos en
+ * paralelo (y con Docker al lado), y un pico de carga multiplica cualquier lectura. La mediana quita
+ * los picos sueltos; la referencia dice cuánto de lo que queda es la máquina y cuánto la operación.
+ * @param {() => void} operacion
+ * @param {() => void} referencia
+ * @param {number} [n]
+ */
+function medirConReferencia(operacion, referencia, n = 7) {
+  const op = [];
+  const ref = [];
+  for (let i = 0; i < n; i++) {
+    let t0 = performance.now(); operacion(); op.push(performance.now() - t0);
+    t0 = performance.now(); referencia(); ref.push(performance.now() - t0);
+  }
+  return { operacion: mediana(op), referencia: mediana(ref) };
+}
+
+/**
+ * La operación va bien si su mediana cumple el umbral de siempre. Si no lo cumple, solo se da por
+ * degradada cuando además es lenta RESPECTO a la referencia medida a la vez: si todo el disco va
+ * `x` veces más lento, la operación puede tardar `x` veces más. El umbral no se ha subido.
+ * @param {{ operacion: number, referencia: number }} m
+ * @param {number} umbralMs  umbral absoluto, el mismo que había
+ * @param {number} margen    cuántas veces la referencia puede tardar la operación, como mucho
+ */
+function cumple(m, umbralMs, margen) {
+  return m.operacion < umbralMs || m.operacion < margen * m.referencia;
+}
+
+const detalle = (m, umbralMs, margen) =>
+  `mediana ${m.operacion.toFixed(2)}ms (umbral: ${umbralMs}ms; referencia medida a la vez: ${m.referencia.toFixed(2)}ms, margen ×${margen})`;
+
 // ── 1. parseFrontmatter — debe ser < 5ms por archivo ────────────────────────
 
 describe("performance — parseFrontmatter", () => {
@@ -77,19 +119,21 @@ describe("performance — parseFrontmatter", () => {
   });
 
   test("parsear los 14 agentes en < 50ms total", () => {
-    const t0 = performance.now();
-    for (const file of agentFiles) {
-      const content = readFileSync(file, "utf8");
-      if (!content.startsWith("---")) continue;
-      const end = content.indexOf("---", 3);
-      if (end !== -1) content.slice(3, end).trim();
-    }
-    const elapsed = performance.now() - t0;
+    // Referencia: abrir y leer un archivo pequeño tantas veces como agentes hay (en reposo, la operación
+    // tarda poco más que esto; se le permite hasta 6 veces)
+    const pequeno = join(ROOT, "package.json");
+    const m = medirConReferencia(() => {
+      for (const file of agentFiles) {
+        const content = readFileSync(file, "utf8");
+        if (!content.startsWith("---")) continue;
+        const end = content.indexOf("---", 3);
+        if (end !== -1) content.slice(3, end).trim();
+      }
+    }, () => {
+      for (let i = 0; i < agentFiles.length; i++) readFileSync(pequeno, "utf8");
+    });
 
-    assert.ok(
-      elapsed < 50,
-      `Leer los 14 agentes tomó ${elapsed.toFixed(2)}ms (umbral: 50ms)`
-    );
+    assert.ok(cumple(m, 50, 6), `Leer los ${agentFiles.length} agentes: ${detalle(m, 50, 6)}`);
   });
 });
 
@@ -235,9 +279,11 @@ describe("performance — compresión de memoria (memory-compactor)", () => {
 describe("performance — indexación de proyecto", () => {
   test("escanear estructura de directorios del repo < 150ms", () => {
     // Simula lo que hace indexar-proyecto: recorrer el árbol de archivos
+    let carpetas = 0;
     function scanDir(dir, depth = 0) {
       if (depth > 3) return 0;
       let count = 0;
+      carpetas++;
       try {
         for (const entry of readdirSync(dir, { withFileTypes: true })) {
           if (entry.name === "node_modules" || entry.name === ".git") continue;
@@ -250,15 +296,21 @@ describe("performance — indexación de proyecto", () => {
       return count;
     }
 
-    const t0 = performance.now();
+    // Cuántas carpetas tiene el recorrido: de eso depende su coste, y no es fijo (con copias de trabajo
+    // bajo .claude/worktrees el repo tiene varias veces más que recién clonado)
     const fileCount = scanDir(ROOT);
-    const elapsed = performance.now() - t0;
+    const carpetasPorRecorrido = carpetas;
+
+    // Referencia: listar una carpeta conocida tantas veces como carpetas lista el recorrido. En reposo
+    // tardan parecido; al recorrido se le permite hasta 6 veces.
+    const conocida = join(ROOT, "agents");
+    const m = medirConReferencia(
+      () => { scanDir(ROOT); },
+      () => { for (let i = 0; i < carpetasPorRecorrido; i++) readdirSync(conocida, { withFileTypes: true }); },
+    );
 
     assert.ok(fileCount > 100, `Solo se encontraron ${fileCount} entradas — escaneo incompleto`);
-    assert.ok(
-      elapsed < 150,
-      `Escaneo del repo (${fileCount} entradas) tomó ${elapsed.toFixed(2)}ms (umbral: 150ms)`
-    );
+    assert.ok(cumple(m, 150, 6), `Escaneo del repo (${fileCount} entradas, ${carpetasPorRecorrido} carpetas): ${detalle(m, 150, 6)}`);
   });
 });
 

@@ -380,7 +380,9 @@ describe("endurecimiento tras la verificación independiente", () => {
     const { terminada } = lanzarCli(proyecto(), ["api", "--port", "0"], { timeoutMs: 400 });
     const r = await terminada;
     // En Linux `forge api` atiende SIGTERM y sale con 0; en Windows el kill la corta: lo que importa es que terminó
-    assert.ok(Date.now() - t0 < 8000, "se mató por tiempo");
+    // `forge api` no acaba nunca por sí sola: que termine ya demuestra el corte. El tope solo descarta un cuelgue,
+    // y es amplio porque con la máquina cargada lanzar y cerrar un proceso tarda mucho más que los 400 ms del corte
+    assert.ok(Date.now() - t0 < 60_000, "se mató por tiempo");
     assert.ok(r.codigo === null || typeof r.codigo === "number");
   });
 
@@ -416,7 +418,11 @@ describe("endurecimiento tras la verificación independiente", () => {
 
 describe("decisión por HTTP = decisión por CLI (Docker real)", { skip: !(process.env.FORGE_TEST_DOCKER === "1") && "requiere FORGE_TEST_DOCKER=1 y Docker en marcha" }, () => {
   const CLI = join(ROOT, "cli", "index.js");
-  const ENV = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "" };
+  // Con la suite entera en paralelo, `docker version` puede tardar más que los 15 s de producción: el ciclo
+  // salía entonces con 4 (sin aislamiento) en lugar de 3 y la comparación fallaba. Aquí se compara el
+  // resultado de una decisión, no la rapidez de Docker: se le da más tiempo.
+  const ESPERA_DOCKER = { FORGE_DOCKER_TIMEOUT_S: "60" };
+  const ENV = { ...process.env, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "", ...ESPERA_DOCKER };
 
   /** Proyecto con la tarea T1 ya pausada por salida inválida (el proveedor de pruebas no devuelve el formato). */
   async function pausado() {
@@ -439,17 +445,20 @@ describe("decisión por HTTP = decisión por CLI (Docker real)", { skip: !(proce
     const { puerto } = await api.escuchar(0);
     const antes = { ...process.env };
     process.env.FORGE_LLM_PROVIDER = "stub"; process.env.ANTHROPIC_API_KEY = "";
+    process.env.FORGE_DOCKER_TIMEOUT_S = ESPERA_DOCKER.FORGE_DOCKER_TIMEOUT_S;
     try {
       const lanzada = await pedir(puerto, { metodo: "POST", ruta: "/v1/decisiones", cuerpo: { decision } });
       assert.equal(lanzada.estado, 202, lanzada.texto);
-      for (let i = 0; i < 160; i++) {
+      // Tope por tiempo, no por número de vueltas: bajo carga cada consulta tarda y 160 vueltas no eran 80 s
+      const limite = Date.now() + 300_000;
+      while (Date.now() < limite) {
         const r = await pedir(puerto, { ruta: `/v1/ejecuciones/${lanzada.cuerpo.id}` });
         if (r.cuerpo.estado === "terminada") return { codigo: r.cuerpo.codigoSalida, tareas: (await pedir(puerto, {})).cuerpo.tareas };
         await new Promise((res) => setTimeout(res, 500));
       }
       throw new Error("la ejecución no terminó");
     } finally {
-      for (const k of ["FORGE_LLM_PROVIDER", "ANTHROPIC_API_KEY"]) { if (antes[k] === undefined) delete process.env[k]; else process.env[k] = antes[k]; }
+      for (const k of ["FORGE_LLM_PROVIDER", "ANTHROPIC_API_KEY", "FORGE_DOCKER_TIMEOUT_S"]) { if (antes[k] === undefined) delete process.env[k]; else process.env[k] = antes[k]; }
       await api.cerrar();
     }
   }

@@ -23,7 +23,7 @@ function proyecto(adrs) {
 function escribir(cwd, file_path, content) {
   const r = spawnSync(process.execPath, [HOOK], {
     cwd, input: JSON.stringify({ tool_name: "Write", tool_input: { file_path, content } }),
-    encoding: "utf8", env: { ...process.env, CLAUDE_AGENT_NAME: "" }, timeout: 5000,
+    encoding: "utf8", env: { ...process.env, CLAUDE_AGENT_NAME: "" }, timeout: 60_000,
   });
   return { codigo: r.status, stderr: r.stderr ?? "" };
 }

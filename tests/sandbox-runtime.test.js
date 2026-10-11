@@ -247,9 +247,127 @@ describe("CA-004-05 — la consulta de estado y el diagnóstico muestran el meca
   });
 });
 
+// ─── Docker lento: tiempo de espera configurable, reintento acotado y mensaje propio ───────────
+
+describe("Docker lento — la consulta falla cerrada, pero no se confunde con «no lo conoce»", () => {
+  const TARDA = { code: null, timedOut: true };
+  const runner = (f, cwd, runtime) => new SandboxRunner({ runId: "r1", dirMotor: join(cwd, ".sdd", "motor", "r1"), lenguaje: "javascript", testCmd: "npm test", cli: new DockerCli(f), runtime });
+  /** Ejecutor cuyo `info` da las respuestas indicadas, en orden (la última se repite); anota los tiempos de espera pedidos. */
+  function conInfo(...respuestas) {
+    const esperas = [];
+    let n = 0;
+    const f = ejecutorFalso({ info: () => respuestas[Math.min(n++, respuestas.length - 1)] });
+    const ejecutar = async (args, opciones) => { esperas.push(opciones?.timeoutMs); return f.ejecutar(args, opciones); };
+    return { ejecutar, llamadas: f.llamadas, esperas };
+  }
+
+  test("si Docker no contesta a tiempo, el error lo dice; si contesta y no lo conoce, dice eso otro", async () => {
+    const lento = await new DockerCli(conInfo(TARDA)).runtimeDisponible("runsc");
+    assert.equal(lento.ok, false, "falla cerrado: sin respuesta no se da por bueno");
+    assert.equal(/** @type {any} */ (lento).motivo, "tiempo");
+    assert.match(/** @type {any} */ (lento).error, /no contestó a tiempo/);
+    assert.match(/** @type {any} */ (lento).error, /"runsc"/);
+    assert.match(/** @type {any} */ (lento).error, /FORGE_DOCKER_TIMEOUT_S/, "dice cómo ampliar la espera");
+    assert.doesNotMatch(/** @type {any} */ (lento).error, /no está disponible en Docker/, "no afirma que Docker no lo conoce: no lo sabe");
+
+    const ausente = await new DockerCli(ejecutorFalso()).runtimeDisponible("kata-fc");
+    assert.equal(ausente.ok, false);
+    assert.equal(/** @type {any} */ (ausente).motivo, "desconocido");
+    assert.match(/** @type {any} */ (ausente).error, /no está disponible en Docker/);
+    assert.doesNotMatch(/** @type {any} */ (ausente).error, /no contestó a tiempo/);
+
+    const caido = await new DockerCli(ejecutorFalso({ info: { code: 1, stderr: "Cannot connect to the Docker daemon" } })).runtimeDisponible("runc");
+    assert.equal(/** @type {any} */ (caido).motivo, "sin_respuesta");
+    assert.doesNotMatch(/** @type {any} */ (caido).error, /no contestó a tiempo/);
+  });
+
+  test("un solo reintento, y solo cuando el fallo es por tiempo", async () => {
+    const seRecupera = conInfo(TARDA, { stdout: RUNTIMES + "\n" });
+    assert.deepEqual(await new DockerCli(seRecupera).runtimeDisponible("runsc"), { ok: true, conocidos: ["io.containerd.runc.v2", "runc", "runsc"] });
+    assert.equal(seRecupera.llamadas.length, 2, "la primera tardó y la segunda contestó");
+
+    const nunca = conInfo(TARDA);
+    assert.equal((await new DockerCli(nunca).runtimeDisponible("runsc")).ok, false);
+    assert.equal(nunca.llamadas.length, 2, "el reintento está acotado: no espera para siempre");
+
+    const caido = conInfo({ code: 1, stderr: "Cannot connect to the Docker daemon" });
+    assert.equal((await new DockerCli(caido).runtimeDisponible("runsc")).ok, false);
+    assert.equal(caido.llamadas.length, 1, "un daemon caído no se reintenta");
+
+    // Tras el reintento, un runtime que no existe sigue sin existir
+    const lentoYAusente = conInfo(TARDA, { stdout: RUNTIMES + "\n" });
+    const r = await new DockerCli(lentoYAusente).runtimeDisponible("kata-fc");
+    assert.equal(/** @type {any} */ (r).motivo, "desconocido");
+  });
+
+  test("el tiempo de espera es de 15 s por defecto y se puede cambiar (opción o FORGE_DOCKER_TIMEOUT_S)", async () => {
+    const previo = process.env.FORGE_DOCKER_TIMEOUT_S;
+    try {
+      delete process.env.FORGE_DOCKER_TIMEOUT_S;
+      const porDefecto = conInfo({ stdout: RUNTIMES });
+      await new DockerCli(porDefecto).runtimeDisponible("runc");
+      assert.deepEqual(porDefecto.esperas, [15_000]);
+
+      const porOpcion = conInfo({ stdout: RUNTIMES });
+      await new DockerCli({ ...porOpcion, timeoutConsultaMs: 60_000 }).runtimeDisponible("runc");
+      assert.deepEqual(porOpcion.esperas, [60_000]);
+
+      process.env.FORGE_DOCKER_TIMEOUT_S = "45";
+      const porEntorno = conInfo({ stdout: RUNTIMES });
+      const cliEntorno = new DockerCli(porEntorno);
+      await cliEntorno.runtimeDisponible("runc");
+      await cliEntorno.disponible();
+      assert.deepEqual(porEntorno.esperas, [45_000, 45_000], "vale para todas las consultas, no solo para esta");
+
+      // Un valor que no es un número de segundos razonable no deja la espera en cero ni sin límite
+      for (const [valor, esperado] of [["", 15_000], ["abc", 15_000], ["0", 15_000], ["-5", 15_000], ["0.2", 1_000], ["999999", 600_000]]) {
+        process.env.FORGE_DOCKER_TIMEOUT_S = valor;
+        const f = conInfo({ stdout: RUNTIMES });
+        await new DockerCli(f).runtimeDisponible("runc");
+        assert.deepEqual(f.esperas, [esperado], JSON.stringify(valor));
+      }
+    } finally {
+      if (previo === undefined) delete process.env.FORGE_DOCKER_TIMEOUT_S; else process.env.FORGE_DOCKER_TIMEOUT_S = previo;
+    }
+  });
+
+  test("con Docker lento el ejecutor de pruebas no lanza nada: nunca cae al mecanismo por defecto", async () => {
+    const cwd = proyecto({ "package.json": "{}" });
+    const f = conInfo(TARDA);
+    const r = await runner(f, cwd, "runsc").test(cwd);
+    assert.equal(r.infraError, true);
+    assert.equal(r.exitCode, null);
+    assert.match(r.stderr, /no contestó a tiempo/);
+    assert.deepEqual(f.llamadas.map((l) => l[0]), ["version", "info", "info"], "ni build ni run, y un solo reintento");
+    assert.equal(clasificar(r, { hayPruebas: true, pruebasIntactas: true }), "infra_error");
+  });
+
+  test("`docker version` lento: mismo reintento acotado y mismo mensaje", async () => {
+    let n = 0;
+    const seRecupera = ejecutorFalso({ version: () => (n++ === 0 ? TARDA : { stdout: "29.0.0\n" }) });
+    assert.deepEqual(await new DockerCli(seRecupera).disponible(), { ok: true, version: "29.0.0" });
+    assert.equal(seRecupera.llamadas.length, 2);
+
+    const nunca = ejecutorFalso({ version: TARDA });
+    const r = await new DockerCli(nunca).disponible();
+    assert.equal(r.ok, false);
+    assert.match(/** @type {any} */ (r).error, /Docker no está disponible: no contestó a tiempo/);
+    assert.equal(nunca.llamadas.length, 2);
+  });
+
+  test("el barrido de contenedores huérfanos no se da por hecho si `docker ps` tardó", async () => {
+    let n = 0;
+    const f = ejecutorFalso({ ps: () => (n++ === 0 ? TARDA : { stdout: "abc123\ndef456\n" }) });
+    assert.equal(await new DockerCli(f).barrerHuerfanos("forge.proyecto=x"), 2);
+    assert.deepEqual(f.llamadas.map((l) => l[0]), ["ps", "ps", "rm"]);
+  });
+});
+
 // ─── Docker real ──────────────────────────────────────────────────────────────
 
-const cli = new DockerCli();
+// Con la máquina cargada (la suite entera corre en paralelo) `docker info` puede tardar más que los 15 s
+// de producción. Estas pruebas comprueban lo que Docker contesta, no lo rápido que lo hace: esperan más.
+const cli = new DockerCli({ timeoutConsultaMs: 60_000 });
 const activo = process.env.FORGE_TEST_DOCKER === "1" && (await cli.disponible()).ok;
 
 /** Proyecto Node sin dependencias cuyo test es el script dado. */

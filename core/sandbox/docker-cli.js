@@ -68,28 +68,72 @@ export function crearEjecutor(bin = 'docker') {
   });
 }
 
+/** Variable de entorno (del usuario, no del proyecto) con los segundos que se espera cada consulta a Docker. */
+export const VARIABLE_TIMEOUT = 'FORGE_DOCKER_TIMEOUT_S';
+/** Espera por defecto de una consulta (version, info, inspect, ps, kill, rm): Docker sano contesta en menos de 1 s. */
+export const TIMEOUT_CONSULTA_MS = 15_000;
+const TIMEOUT_CONSULTA_MIN_MS = 1_000;
+const TIMEOUT_CONSULTA_MAX_MS = 600_000;
+
+/**
+ * Tiempo de espera de una consulta a Docker. Un valor que no sea un número positivo de segundos
+ * se ignora (vale el de por defecto), y nunca queda en cero ni sin límite.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {number} milisegundos
+ */
+export function timeoutConsultaMs(env = process.env) {
+  const texto = String(env[VARIABLE_TIMEOUT] ?? '').trim();
+  const s = texto === '' ? NaN : Number(texto);
+  if (!Number.isFinite(s) || s <= 0) return TIMEOUT_CONSULTA_MS;
+  return Math.min(Math.max(Math.round(s * 1000), TIMEOUT_CONSULTA_MIN_MS), TIMEOUT_CONSULTA_MAX_MS);
+}
+
 export class DockerCli {
-  /** @param {{ ejecutar?: Ejecutor }} [opciones] */
+  /**
+   * @param {{ ejecutar?: Ejecutor, timeoutConsultaMs?: number }} [opciones]
+   *   `timeoutConsultaMs`: espera de cada consulta; por defecto, `FORGE_DOCKER_TIMEOUT_S` o 15 s
+   */
   constructor(opciones = {}) {
     this.ejecutar = opciones.ejecutar ?? crearEjecutor();
+    this.timeoutConsultaMs = opciones.timeoutConsultaMs ?? timeoutConsultaMs();
+  }
+
+  /**
+   * Una consulta que no cambia nada (version, info, inspect, ps). Si Docker no contesta a tiempo se
+   * repite UNA vez: con el equipo cargado la primera respuesta puede tardar, y un solo intento
+   * convertía esa lentitud en «no hay Docker». Cualquier otro fallo no se reintenta. Acotado: como
+   * mucho dos esperas, y quien llama sigue recibiendo `timedOut` si ninguna contestó.
+   * @param {string[]} args
+   * @returns {Promise<ResultadoProceso>}
+   */
+  async _consultar(args) {
+    const r = await this.ejecutar(args, { timeoutMs: this.timeoutConsultaMs });
+    return r.timedOut ? this.ejecutar(args, { timeoutMs: this.timeoutConsultaMs }) : r;
+  }
+
+  /** Texto común de «Docker tardó»: cuánto se esperó y cómo ampliar la espera. */
+  _detalleTiempo() {
+    return `no contestó a tiempo (se esperó ${Math.round(this.timeoutConsultaMs / 1000)} s, dos veces). Si Docker está arrancando o el equipo va cargado, vuelve a intentarlo o amplía la espera con ${VARIABLE_TIMEOUT}=<segundos>`;
   }
 
   /** @returns {Promise<{ ok: true, version: string } | { ok: false, error: string }>} */
   async disponible() {
-    const r = await this.ejecutar(['version', '--format', '{{.Server.Version}}'], { timeoutMs: 15_000 });
+    const r = await this._consultar(['version', '--format', '{{.Server.Version}}']);
     if (r.code === 0 && r.stdout.trim()) return { ok: true, version: r.stdout.trim() };
-    const detalle = r.error ?? (r.timedOut ? 'el daemon no respondió a tiempo' : r.stderr.trim().split('\n').pop() ?? '');
+    const detalle = r.error ?? (r.timedOut ? this._detalleTiempo() : r.stderr.trim().split('\n').pop() ?? '');
     return { ok: false, error: `Docker no está disponible: ${detalle}` };
   }
 
   /**
    * ¿Conoce Docker este mecanismo de aislamiento (runtime)? Se pregunta al daemon por los
    * que tiene registrados. Si no se puede saber, la respuesta es NO: nunca se da por bueno.
+   * `motivo` distingue por qué es que no: `desconocido` (Docker contestó y no lo tiene), `tiempo`
+   * (Docker no contestó a tiempo: no se sabe) o `sin_respuesta` (daemon caído o respuesta ilegible).
    * @param {string} runtime
-   * @returns {Promise<{ ok: true, conocidos: string[] } | { ok: false, error: string, conocidos: string[] }>}
+   * @returns {Promise<{ ok: true, conocidos: string[] } | { ok: false, error: string, conocidos: string[], motivo: 'desconocido'|'tiempo'|'sin_respuesta' }>}
    */
   async runtimeDisponible(runtime) {
-    const r = await this.ejecutar(['info', '--format', '{{json .Runtimes}}'], { timeoutMs: 15_000 });
+    const r = await this._consultar(['info', '--format', '{{json .Runtimes}}']);
     /** @type {string[]} */
     let conocidos = [];
     let leido = false;
@@ -100,12 +144,16 @@ export class DockerCli {
       } catch { /* salida que no es JSON: no se pudo saber */ }
     }
     if (!leido) {
-      const detalle = r.error ?? (r.timedOut ? 'el daemon no respondió a tiempo' : r.stderr.trim().split('\n').pop() || 'respuesta ilegible');
-      return { ok: false, conocidos, error: `No se pudo comprobar si Docker tiene el mecanismo de aislamiento "${runtime}" (sandbox.runtime): ${detalle}` };
+      // Docker lento no es «Docker no lo conoce»: el desenlace es el mismo (no se ejecuta nada), el mensaje no
+      if (r.timedOut && !r.error) {
+        return { ok: false, conocidos, motivo: 'tiempo', error: `Docker ${this._detalleTiempo()}. No se pudo comprobar si tiene el mecanismo de aislamiento "${runtime}" (sandbox.runtime), y sin saberlo no se ejecuta nada` };
+      }
+      const detalle = r.error ?? (r.stderr.trim().split('\n').pop() || 'respuesta ilegible');
+      return { ok: false, conocidos, motivo: 'sin_respuesta', error: `No se pudo comprobar si Docker tiene el mecanismo de aislamiento "${runtime}" (sandbox.runtime): ${detalle}` };
     }
     if (conocidos.includes(runtime)) return { ok: true, conocidos };
     return {
-      ok: false, conocidos,
+      ok: false, conocidos, motivo: 'desconocido',
       error: `El mecanismo de aislamiento "${runtime}" (sandbox.runtime) no está disponible en Docker. Los que conoce: ${conocidos.join(', ') || 'ninguno'}`,
     };
   }
@@ -123,8 +171,8 @@ export class DockerCli {
 
     if (r.timedOut) {
       // El proceso cliente ya murió, pero el contenedor puede seguir vivo
-      await this.ejecutar(['kill', opciones.nombre], { timeoutMs: 15_000 });
-      await this.ejecutar(['rm', '-f', opciones.nombre], { timeoutMs: 15_000 });
+      await this.ejecutar(['kill', opciones.nombre], { timeoutMs: this.timeoutConsultaMs });
+      await this.ejecutar(['rm', '-f', opciones.nombre], { timeoutMs: this.timeoutConsultaMs });
     }
 
     return {
@@ -163,7 +211,7 @@ export class DockerCli {
 
   /** @param {string} imagen @returns {Promise<boolean>} */
   async existeImagen(imagen) {
-    const r = await this.ejecutar(['image', 'inspect', '--format', '{{.Id}}', imagen], { timeoutMs: 15_000 });
+    const r = await this._consultar(['image', 'inspect', '--format', '{{.Id}}', imagen]);
     return r.code === 0;
   }
 
@@ -175,10 +223,10 @@ export class DockerCli {
    * @returns {Promise<number>} cuántos eliminó
    */
   async barrerHuerfanos(etiqueta = ETIQUETA) {
-    const ps = await this.ejecutar(['ps', '-aq', '--filter', `label=${etiqueta}`], { timeoutMs: 15_000 });
+    const ps = await this._consultar(['ps', '-aq', '--filter', `label=${etiqueta}`]);
     const ids = ps.code === 0 ? ps.stdout.split(/\s+/).filter(Boolean) : [];
     if (ids.length === 0) return 0;
-    await this.ejecutar(['rm', '-f', ...ids], { timeoutMs: 30_000 });
+    await this.ejecutar(['rm', '-f', ...ids], { timeoutMs: Math.max(30_000, this.timeoutConsultaMs) });
     return ids.length;
   }
 }

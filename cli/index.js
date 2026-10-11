@@ -19,7 +19,6 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  writeFileSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1386,7 +1385,11 @@ function cmdConfig(args) {
       error(`No se pudo actualizar "${clave}". Verifica que la clave existe en sdd.config.yaml`);
     }
     console.log(`${c.amarillo("~")}  ${clave}: ${c.rojo(actual)} → ${c.verde(valor)}`);
-    writeFileSync(configPath, yamlNuevo, "utf8");
+    // Por escritura segura: si `.sdd` o el archivo son un enlace (o un enlace duro a otro lugar), no se escribe a través de él
+    raizEscritura = process.cwd();
+    if (!escribirSeguro(configPath, yamlNuevo)) {
+      error("No se cambió nada: el archivo de configuración o su carpeta es un enlace.");
+    }
     info(`Actualizado en .sdd/sdd.config.yaml`);
     return;
   }
@@ -1683,7 +1686,11 @@ function cmdAprobar(subArgs) {
     return;
   }
   const nuevo = { ...estado, spec_aprobado: true, ultima_actualizacion: new Date().toISOString() };
-  writeFileSync(estadoPath, JSON.stringify(nuevo, null, 2), "utf8");
+  // Por escritura segura: no se aprueba "a través" de un enlace hacia fuera del proyecto
+  raizEscritura = process.cwd();
+  if (!escribirSeguro(estadoPath, JSON.stringify(nuevo, null, 2))) {
+    error("No se aprobó nada: .sdd/estado.json o su carpeta es un enlace.");
+  }
   info("✅ Spec aprobada. Ahora puedes avanzar a la fase de planificación.");
   info("   Siguiente paso: /sdd.planificar en Claude Code");
 }

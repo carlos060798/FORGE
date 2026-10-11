@@ -55,7 +55,8 @@ describe("forge run — CLI delega a engine-cli.js", () => {
     const r = spawnSync(
       process.execPath,
       [CLI, "run", "--tasks", tareasPath],
-      { cwd: dir, encoding: "utf8", timeout: 10000 }
+      // Tope contra cuelgues, no una medida (con la máquina cargada 10 s no bastaban); sin claves ni modelo de pago
+      { cwd: dir, encoding: "utf8", timeout: 120_000, env: { ...process.env, ANTHROPIC_API_KEY: "", CLAUDE_API_KEY: "", FORGE_LLM_PROVIDER: "stub" } }
     );
 
     assert.ok(!r.stderr.includes("Comando desconocido"), r.stderr);

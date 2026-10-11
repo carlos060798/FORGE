@@ -21,7 +21,7 @@ export class ErrorBloqueado extends Error {
   }
 }
 
-function procesoVivo(pid) {
+export function procesoVivo(pid) {
   try { process.kill(pid, 0); return true; } catch (e) { return /** @type {any} */ (e).code === 'EPERM'; }
 }
 
