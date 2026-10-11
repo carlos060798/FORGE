@@ -21,7 +21,7 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { aplicarArchivos, validarRuta } from './protocolo-archivos.js';
-import { cola, redactar } from './redactar.js';
+import { cola, redactarFormatos } from './redactar.js';
 import { clasificar } from './router.js';
 import { MOTIVOS as MOTIVOS_RUTA } from '../mcp/herramientas.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
@@ -141,6 +141,32 @@ const POR_NOMBRE = new Map(ESQUEMAS_HERRAMIENTAS.map((e) => [e.nombre, e]));
 const fallo = (texto, extra = {}) => ({ texto, error: true, ...extra });
 
 const esTexto = (v) => typeof v === 'string';
+
+const sha256 = (datos) => createHash('sha256').update(datos).digest('hex');
+
+/**
+ * Resultado de sustituir un fragmento único. Pura: la usa `editar` para escribir y la intención del
+ * diario para saber, antes de escribir, cómo quedará el archivo.
+ * @param {string} actual
+ * @param {string} buscar
+ * @param {string} reemplazar
+ * @returns {{ ok: true, nuevo: string } | { ok: false, motivo: 'fragmento_no_encontrado' | 'fragmento_repetido', veces: number }}
+ */
+function calcularSustitucion(actual, buscar, reemplazar) {
+  // Un archivo con finales de línea de Windows y un fragmento escrito con salto simple son el mismo texto
+  let desde = buscar;
+  let hacia = reemplazar;
+  if (actual.includes('\r\n') && !desde.includes('\r')) {
+    desde = desde.replace(/\n/g, '\r\n');
+    hacia = hacia.replace(/\r?\n/g, '\r\n');
+  }
+  const primera = actual.indexOf(desde);
+  if (primera === -1) return { ok: false, motivo: 'fragmento_no_encontrado', veces: 0 };
+  let veces = 0;
+  for (let i = primera; i !== -1; i = actual.indexOf(desde, i + desde.length)) veces++;
+  if (veces > 1) return { ok: false, motivo: 'fragmento_repetido', veces };
+  return { ok: true, nuevo: actual.slice(0, primera) + hacia + actual.slice(primera + desde.length) };
+}
 const esLinea = (v) => v === undefined || (Number.isInteger(v) && v >= 1);
 
 /** Recorta por una frontera de línea para que el texto quepa en `maxBytes`. */
@@ -251,7 +277,7 @@ export function crearHerramientasCoder(opciones) {
       const aviso     = caben < tramo.length
         ? `\n[recortado: se muestran las líneas ${inicio}-${ultima} de ${total}; pide el resto con "desde": ${ultima + 1} y "hasta"]`
         : '';
-      return { texto: redactar(`${cabecera}\n${mostradas.join('\n')}${aviso}`), error: false };
+      return { texto: redactarFormatos(`${cabecera}\n${mostradas.join('\n')}${aviso}`), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -307,7 +333,7 @@ export function crearHerramientasCoder(opciones) {
       }
       if (lineas.length === 0) return { texto: `Sin coincidencias de "${texto}"${c.prefijo ? ` en "${c.prefijo}"` : ''}.`, error: false };
       const aviso = hayMas ? `\n[recortado: hay más coincidencias; se muestran las ${lineas.length} primeras. Acota con "carpeta" o con un texto más específico]` : '';
-      return { texto: redactar(`${lineas.join('\n')}${aviso}`), error: false };
+      return { texto: redactarFormatos(`${lineas.join('\n')}${aviso}`), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -317,6 +343,12 @@ export function crearHerramientasCoder(opciones) {
       if (sustituir && contenido !== undefined) return fallo('Usa "buscar" y "reemplazar", o "contenido": no las dos formas a la vez. No se cambió nada.');
       if (!sustituir && contenido === undefined) return fallo('Indica qué cambiar: "buscar" y "reemplazar" para sustituir un fragmento, o "contenido" para escribir el archivo entero.');
 
+      // El marcador de redacción no es código: si el modelo lo copió de un resultado, escribirlo dañaría el archivo
+      for (const t of [buscar, reemplazar, contenido]) {
+        if (esTexto(t) && t.includes('[REDACTADO')) {
+          return fallo('El texto contiene "[REDACTADO": ese marcador no es parte del archivo. Lee el archivo de nuevo y usa el texto tal cual está. No se cambió nada.');
+        }
+      }
       let nuevo = contenido;
       if (sustituir) {
         if (!esTexto(buscar) || !esTexto(reemplazar)) return fallo('"buscar" y "reemplazar" van juntos y los dos son textos. No se cambió nada.');
@@ -336,22 +368,12 @@ export function crearHerramientasCoder(opciones) {
           catch { return escrituraRechazada(ruta, 'no_es_texto'); }
         } catch { return escrituraRechazada(ruta, 'archivo_inexistente'); }
 
-        // Un archivo con finales de línea de Windows y un fragmento escrito con "\n" son el mismo texto
-        let desde = buscar;
-        let hacia = reemplazar;
-        if (actual.includes('\r\n') && !desde.includes('\r')) {
-          desde = desde.replace(/\n/g, '\r\n');
-          hacia = hacia.replace(/\r?\n/g, '\r\n');
+        const c = calcularSustitucion(actual, buscar, reemplazar);
+        if (c.ok === false) {
+          const r = escrituraRechazada(ruta, c.motivo);
+          return c.motivo === 'fragmento_repetido' ? { ...r, texto: `${r.texto} (aparece ${c.veces} veces)` } : r;
         }
-        const primera = actual.indexOf(desde);
-        if (primera === -1) return escrituraRechazada(ruta, 'fragmento_no_encontrado');
-        let veces = 0;
-        for (let i = primera; i !== -1; i = actual.indexOf(desde, i + desde.length)) veces++;
-        if (veces > 1) {
-          const r = escrituraRechazada(ruta, 'fragmento_repetido');
-          return { ...r, texto: `${r.texto} (aparece ${veces} veces)` };
-        }
-        nuevo = actual.slice(0, primera) + hacia + actual.slice(primera + desde.length);
+        nuevo = c.nuevo;
       } else if (!esTexto(contenido)) {
         return fallo('"contenido" debe ser un texto. No se cambió nada.');
       }
@@ -433,8 +455,18 @@ export function crearHerramientasCoder(opciones) {
       if (nombre !== 'editar' || !esTexto(entrada?.ruta)) return null;
       const v = validarRuta(cwd, entrada.ruta, { vetadas: [...vetadas] });
       if (v.ok === false) return null;
-      try { return { ruta: v.rutaPosix, sha256: createHash('sha256').update(fs.readFileSync(v.absoluta)).digest('hex') }; }
-      catch { return { ruta: v.rutaPosix, sha256: 'ausente' }; }
+      let buffer = null;
+      try { buffer = fs.readFileSync(v.absoluta); } catch { /* el archivo aún no existe */ }
+      // Cómo quedará el archivo si la acción se aplica: sin esto, al reanudar solo se sabría que el
+      // archivo «cambió», y un cambio ajeno (un formateador, una persona) pasaría por la edición.
+      let despues = null;
+      if (esTexto(entrada.contenido) && entrada.buscar === undefined && entrada.reemplazar === undefined) {
+        despues = sha256(entrada.contenido);
+      } else if (buffer && esTexto(entrada.buscar) && esTexto(entrada.reemplazar) && entrada.buscar !== '') {
+        const c = calcularSustitucion(buffer.toString('utf8'), entrada.buscar, entrada.reemplazar);
+        if (c.ok) despues = sha256(c.nuevo);
+      }
+      return { ruta: v.rutaPosix, sha256: buffer ? sha256(buffer) : 'ausente', despues };
     },
   };
 }

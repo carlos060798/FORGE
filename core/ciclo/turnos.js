@@ -251,10 +251,20 @@ export async function coderPorTurnos(estado, deps, ayudas) {
           const claveIntento = `${claveResultado}:i`;
           const intento = previo ? deps.diario?.obtener(claveIntento) : null;
           if (previo && intento && intento.sha256 !== previo.sha256) {
-            res = {
-              texto: 'Este cambio ya se había aplicado antes de que se interrumpiera el trabajo; no se repitió. Lee el archivo si necesitas comprobarlo.',
-              error: false, escritos: [{ ruta: previo.ruta, sha256: previo.sha256 }],
-            };
+            if (typeof intento.despues === 'string' && previo.sha256 === intento.despues) {
+              // El archivo está exactamente como lo habría dejado esta acción: ya se aplicó
+              res = {
+                texto: 'Este cambio ya se había aplicado antes de que se interrumpiera el trabajo; no se repitió. Lee el archivo si necesitas comprobarlo.',
+                error: false, escritos: [{ ruta: previo.ruta, sha256: previo.sha256 }],
+              };
+            } else {
+              // Cambió por otra causa: no se sabe si esta acción llegó a aplicarse. No se repite (podría duplicar)
+              // ni se da por hecha (podría no estar): se devuelve al modelo para que mire el archivo
+              res = {
+                texto: 'El archivo cambió mientras el trabajo estaba interrumpido y no se sabe si este cambio llegó a aplicarse, así que no se repitió. Lee el archivo y vuelve a pedir el cambio si hace falta.',
+                error: true,
+              };
+            }
           } else {
             if (previo && !intento) deps.diario?.anotar(claveIntento, previo);
             res = await herramientas.ejecutar(uso.nombre, uso.entrada);
