@@ -1,0 +1,31 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest
+situacion: pasa
+descripcion: las pruebas pasan
+version: 30.5.2 · v22.23.3
+imagen: forge-sbx:node-b0008fa8e463e016 (base node:22-alpine; sha256:2fff1e3521caf6c1831d2a5543df7af424caf1cdb1e0b6ff04dc661c0aea0c7b)
+comando: npx jest
+lenguaje: javascript
+archivo_alterado: src/calc.js
+fecha: 2026-10-10
+codigo_salida: 0
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 15606
+=====STDOUT=====
+
+=====STDERR=====
+PASS tests/calc.test.js (5.255 s)
+  calc
+    ✓ suma dos numeros (15 ms)
+    ✓ esPar reconoce los pares (4 ms)
+    ✓ formatea un numero (4 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        8.522 s
+Ran all test suites.
+
+=====FIN=====

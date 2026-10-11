@@ -1,0 +1,27 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: go-test
+situacion: excepcion-al-cargar
+descripcion: el código bajo prueba lanza una excepción al cargarse (cable trampa)
+version: go version go1.23.12 linux/amd64
+imagen: forge-sbx:go-8f8c092d878d60d7 (base golang:1.23-alpine; sha256:9dd209e07bba2a08387c0bfa422cc169513eca8242654b60cf2495014f0ff9b6)
+comando: go test ./...
+lenguaje: go
+archivo_alterado: calc.go
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 79338
+=====STDOUT=====
+panic: trampa
+
+goroutine 1 [running]:
+demo.init.0()
+	/deps/work/calc.go:9 +0x25
+FAIL	demo	0.162s
+FAIL
+
+=====STDERR=====
+
+=====FIN=====

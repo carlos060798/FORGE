@@ -1,0 +1,42 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: unittest
+situacion: importacion
+descripcion: el código bajo prueba importa un módulo que no existe
+version: Python 3.12.15
+imagen: python:3.12-slim (base python:3.12-slim; sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1)
+comando: python -m unittest discover
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 15226
+=====STDOUT=====
+
+=====STDERR=====
+E
+======================================================================
+ERROR: test_calc (unittest.loader._FailedTest.test_calc)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_calc
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/deps/work/test_calc.py", line 3, in <module>
+    from calc import suma, es_par, formatea
+  File "/deps/work/calc.py", line 1, in <module>
+    import modulo_que_no_existe
+ModuleNotFoundError: No module named 'modulo_que_no_existe'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)
+
+=====FIN=====

@@ -1,0 +1,44 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: vitest
+situacion: excepcion-al-cargar
+descripcion: el código bajo prueba lanza una excepción al cargarse (cable trampa)
+version: vitest/5.0.3 linux-x64 node-v22.23.3 · vite/8.3.4 linux-x64 node-v22.23.3
+imagen: forge-sbx:node-b4dd3f4189ae25c7 (base node:22-alpine; sha256:63876327b2003f5814ccac3c9eeca65477f20d8a6b18829b654c7824a4e1602f)
+comando: npx vitest run
+lenguaje: typescript
+archivo_alterado: src/calc.ts
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 17218
+=====STDOUT=====
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/deps/work[39m
+
+ [31m❯[39m tests/calc.test.ts [2m([22m[2m0 test[22m[2m)[22m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 23:20:23
+[2m   Duration [22m 4.02s[2m (worker 97%, environment 3%)[22m
+
+
+=====STDERR=====
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/calc.test.ts[2m [ tests/calc.test.ts ][22m
+[31m[1mError[22m: trampa[39m
+[36m [2m❯[22m src/calc.ts:[2m2:26[22m[39m
+    [90m  1|[39m const LIMITE = 11;
+    [90m  2|[39m if (LIMITE !== 10) throw new Error('trampa');
+    [90m   |[39m                          [31m^[39m
+    [90m  3|[39m
+    [90m  4|[39m export function suma(a: number, b: number): number {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+=====FIN=====

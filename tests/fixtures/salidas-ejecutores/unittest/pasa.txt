@@ -1,0 +1,25 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: unittest
+situacion: pasa
+descripcion: las pruebas pasan
+version: Python 3.12.15
+imagen: python:3.12-slim (base python:3.12-slim; sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1)
+comando: python -m unittest discover
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 0
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 12820
+=====STDOUT=====
+
+=====STDERR=====
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+OK
+
+=====FIN=====

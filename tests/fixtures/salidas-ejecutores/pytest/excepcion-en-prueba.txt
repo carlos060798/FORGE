@@ -1,0 +1,39 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: pytest
+situacion: excepcion-en-prueba
+descripcion: una prueba con nombre falla por una excepción dentro de la prueba (el código devuelve nulo)
+version: pytest 9.1.1 · Python 3.12.15
+imagen: forge-sbx:python-a39ca3c256aac881 (base python:3.12-slim; sha256:013a9123164887be7d4525130e06d1b689f614f424d4210f5ef17ef44dff1392)
+comando: python -m pytest
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 24666
+=====STDOUT=====
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /deps/work
+collected 3 items
+
+tests/test_calc.py ..F                                                   [100%]
+
+=================================== FAILURES ===================================
+________________________________ test_formatea _________________________________
+
+    def test_formatea():
+>       assert formatea(3).upper() == "N=3"
+               ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'upper'
+
+tests/test_calc.py:13: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_calc.py::test_formatea - AttributeError: 'NoneType' object has no attribute 'upper'
+========================= 1 failed, 2 passed in 6.38s ==========================
+
+=====STDERR=====
+
+=====FIN=====

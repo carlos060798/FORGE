@@ -1,0 +1,33 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: unittest
+situacion: asercion
+descripcion: una prueba con nombre falla por una aserción
+version: Python 3.12.15
+imagen: python:3.12-slim (base python:3.12-slim; sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1)
+comando: python -m unittest discover
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 9828
+=====STDOUT=====
+
+=====STDERR=====
+..F
+======================================================================
+FAIL: test_suma (test_calc.CalcTest.test_suma)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/deps/work/test_calc.py", line 8, in test_suma
+    self.assertEqual(suma(2, 2), 4)
+AssertionError: 0 != 4
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.017s
+
+FAILED (failures=1)
+
+=====FIN=====
