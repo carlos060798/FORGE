@@ -449,7 +449,7 @@ export function crearHerramientasCoder(opciones) {
     },
     /**
      * Estado previo de lo que una acción va a escribir, para saber al reanudar si ya se aplicó.
-     * @returns {{ ruta: string, sha256: string } | null}  null si la acción no escribe
+     * @returns {{ ruta: string, sha256: string, despues: string | null } | null}  null si la acción no escribe; `despues`: huella que tendrá el archivo si la acción se aplica, o null si no se puede predecir
      */
     estadoDeEscritura(nombre, entrada) {
       if (nombre !== 'editar' || !esTexto(entrada?.ruta)) return null;

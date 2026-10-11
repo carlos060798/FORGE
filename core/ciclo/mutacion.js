@@ -731,15 +731,33 @@ export function escribirMarcaCopia(madre) {
   fs.writeFileSync(path.join(madre, MARCA_COPIA), contenido + '\n', { mode: 0o600 });
 }
 
-/** ¿Tiene la carpeta una marca de FORGE: un archivo normal (no un directorio ni un enlace) con la clave y un nonce? @param {string} madre */
-function marcaValida(madre) {
+/**
+ * La marca de FORGE de una carpeta: un archivo normal (no un directorio ni un enlace) con la clave y un
+ * nonce. `null` si no la tiene o no es válida.
+ * @param {string} madre
+ * @returns {{ pid: number } | null}
+ */
+function leerMarca(madre) {
   try {
     const abs = path.join(madre, MARCA_COPIA);
     const st = fs.lstatSync(abs);
-    if (!st.isFile() || st.isSymbolicLink() || st.size > 1024) return false;
+    if (!st.isFile() || st.isSymbolicLink() || st.size > 1024) return null;
     const m = JSON.parse(fs.readFileSync(abs, 'utf8'));
-    return m !== null && typeof m === 'object' && m.forge === 'mutacion' && typeof m.nonce === 'string' && NONCE_MARCA.test(m.nonce) && Number.isInteger(m.pid);
-  } catch { return false; }
+    const ok = m !== null && typeof m === 'object' && m.forge === 'mutacion' && typeof m.nonce === 'string' && NONCE_MARCA.test(m.nonce) && Number.isInteger(m.pid);
+    return ok ? { pid: m.pid } : null;
+  } catch { return null; }
+}
+
+/**
+ * ¿Sigue vivo el proceso que creó la copia? Ante la duda, sí: no se borra la copia de una medición que
+ * pueda estar en marcha. Un pid reutilizado por otro proceso solo retrasa el barrido hasta que la copia envejezca.
+ * @param {number} pid
+ */
+function procesoVivo(pid) {
+  if (pid === process.pid) return true;
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return /** @type {any} */ (e)?.code === 'EPERM'; }
 }
 const PATRON_COPIA = /^forge-mutacion-[A-Za-z0-9]{6}$/;
 const SEIS_HORAS = 6 * 60 * 60 * 1000;
@@ -747,8 +765,9 @@ const SEIS_HORAS = 6 * 60 * 60 * 1000;
 /**
  * Borra las carpetas `forge-mutacion-*` que dejó un proceso cortado (SIGKILL, corte de luz).
  * Solo borra carpetas con el nombre exacto que crea FORGE, que contienen su marca, que no son
- * enlaces y que llevan más de `antiguedadMs` sin tocarse: no toca nada de otra herramienta ni
- * la copia de una medición que siga en marcha.
+ * enlaces y que, o bien las creó un proceso que ya no existe (el pid de la marca), o bien llevan más
+ * de `antiguedadMs` sin tocarse. No toca nada de otra herramienta ni la copia de una medición que
+ * siga en marcha, aunque sea de otro proyecto.
  * @param {string} [dir]  carpeta temporal (por defecto la del sistema)
  * @param {{ antiguedadMs?: number, ahora?: () => number }} [opciones]
  * @returns {number} carpetas borradas
@@ -765,8 +784,10 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
     try {
       const st = fs.lstatSync(abs);
       if (!st.isDirectory() || st.isSymbolicLink()) continue;
-      if (!marcaValida(abs)) continue;
-      if (ahora() - st.mtimeMs < antiguedadMs) continue;
+      const marca = leerMarca(abs);
+      if (!marca) continue;
+      // Un proceso muerto (SIGKILL, corte de luz) no va a terminar su medición: su copia sobra ya
+      if (procesoVivo(marca.pid) && ahora() - st.mtimeMs < antiguedadMs) continue;
       if (eliminarCopia(abs)) borradas++;
     } catch { /* otro proceso la tocó a la vez: se deja */ }
   }

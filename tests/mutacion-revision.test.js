@@ -51,16 +51,25 @@ const FALLO_CARGA = {
 const IMPL = "export function suma(a, b) {\n  if (a < 0) {\n    return 0;\n  }\n  return a + b;\n}\n";
 const proyecto = (extra = {}) => escribir(tmp("forge-mrev-"), { "package.json": "{\"type\":\"module\"}", "src/suma.js": IMPL, "tests/suma.test.js": "// nada\n", ...extra });
 
+/** Marca que escribe `escribirMarcaCopia`: la clave de FORGE, un nonce de 32 hexadecimales y el pid. */
+const MARCA_VALIDA = JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid: process.pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
+
 // ── H-02: un fallo al cargar el módulo no es una detección ───────────────────
 
 describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   test("node:test (TAP y spec): una prueba con nombre propio que falla es un fallo de prueba; un «fallo» llamado como el archivo es un fallo de carga", () => {
-    assert.equal(senalDeFallo("not ok 1 - suma devuelve 3\n", "javascript"), "prueba");
-    assert.equal(senalDeFallo("    not ok 2 - dentro de un describe\n", "javascript"), "prueba");
-    assert.equal(senalDeFallo("✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "prueba");
-    assert.notEqual(senalDeFallo("not ok 1 - tests/suma.test.js\n", "javascript"), "prueba");
-    assert.notEqual(senalDeFallo("✖ suma.test.js (115.6ms)\nℹ fail 1\n", "javascript"), "prueba");
-    assert.notEqual(senalDeFallo("✖ C:\\proy\\tests\\suma.test.mjs (9ms)\n", "javascript"), "prueba");
+    // Estructura real del reporter TAP (línea + bloque YAML del ejecutor) y del spec («test at» + línea ✖)
+    const tap = (nombre, sangria = "") => `${sangria}not ok 1 - ${nombre}\n${sangria}  ---\n${sangria}  duration_ms: 1.2\n${sangria}  failureType: 'testCodeFailure'\n`;
+    assert.equal(senalDeFallo(tap("suma devuelve 3"), "javascript"), "prueba");
+    assert.equal(senalDeFallo(tap("dentro de un describe", "    "), "javascript"), "prueba");
+    assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "prueba");
+    assert.notEqual(senalDeFallo(tap("tests/suma.test.js"), "javascript"), "prueba");
+    assert.notEqual(senalDeFallo("test at tests/suma.test.js:1:1\n✖ suma.test.js (115.6ms)\nℹ fail 1\n", "javascript"), "prueba");
+    assert.notEqual(senalDeFallo("test at C:\\proy\\tests\\suma.test.mjs:1:1\n✖ C:\\proy\\tests\\suma.test.mjs (9ms)\n", "javascript"), "prueba");
+    // N-09: un módulo que imprime el prefijo con console.log NO es una prueba fallida
+    assert.notEqual(senalDeFallo("not ok 1 - suma devuelve 3\n", "javascript"), "prueba");
+    assert.notEqual(senalDeFallo("    not ok 2 - dentro de un describe\n", "javascript"), "prueba");
+    assert.notEqual(senalDeFallo("✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "prueba");
     // Sin ningún marcador reconocible: no se adivina
     assert.equal(senalDeFallo("algo falló\n", "javascript"), "sin_senal");
     assert.equal(senalDeFallo("", "javascript"), "sin_senal");
@@ -372,7 +381,7 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
     const dir = join(base, nombre);
     mkdirSync(join(dir, "copia"), { recursive: true });
     writeFileSync(join(dir, "copia", "a.js"), "x");
-    if (marca) writeFileSync(join(dir, ".forge-mutacion"), "1\n");
+    if (marca) writeFileSync(join(dir, ".forge-mutacion"), MARCA_VALIDA);
     if (antigua) utimesSync(dir, HACE_UN_DIA(), HACE_UN_DIA());
     return dir;
   }
@@ -393,10 +402,32 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
     assert.equal(barrerMutacionesHuerfanas(join(base, "no-existe")), 0, "una carpeta que no existe no es un error");
   });
 
+  test("la copia de un proceso que ya no existe se borra sin esperar a que envejezca; la de uno vivo no", async () => {
+    const { spawnSync } = await import("node:child_process");
+    const base = tmp("forge-mrev-barrer-");
+    // Un pid que acaba de terminar: el proceso hijo ya no existe
+    const muerto = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+    const pidMuerto = Number(muerto.stdout);
+    assert.ok(Number.isInteger(pidMuerto) && pidMuerto > 0);
+
+    const marcaDe = (pid) => JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
+    const crear = (nombre, pid) => {
+      const dir = join(base, nombre);
+      mkdirSync(join(dir, "copia"), { recursive: true });
+      writeFileSync(join(dir, ".forge-mutacion"), marcaDe(pid));
+      return dir;
+    };
+    const deMuerto = crear("forge-mutacion-mue123", pidMuerto);
+    const deVivo = crear("forge-mutacion-viv123", process.pid);
+    assert.equal(barrerMutacionesHuerfanas(base), 1, "ambas son recientes: solo cae la del proceso muerto");
+    assert.equal(existsSync(deMuerto), false);
+    assert.equal(existsSync(deVivo), true);
+  });
+
   test("un enlace con nombre de copia no se sigue ni se borra", () => {
     const base = tmp("forge-mrev-barrer-");
     const fuera = tmp("forge-mrev-fuera-");
-    writeFileSync(join(fuera, ".forge-mutacion"), "1\n");
+    writeFileSync(join(fuera, ".forge-mutacion"), MARCA_VALIDA);
     writeFileSync(join(fuera, "importante.txt"), "no borrar");
     try { symlinkSync(fuera, join(base, "forge-mutacion-lnk123"), "junction"); } catch { return; /* sin permiso para enlaces */ }
     assert.equal(barrerMutacionesHuerfanas(base, { antiguedadMs: 0 }), 0);
