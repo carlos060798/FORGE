@@ -4,10 +4,10 @@
 
 ## S0 — Spikes (antes de escribir adaptadores)
 
-- [ ] **S0.1** Permisos mínimos por proveedor, desde la documentación oficial vigente: GitHub (permisos de grano fino de un token: leer incidencias, comentar, crear rama, abrir solicitud en borrador), GitLab (ámbitos de un token de proyecto y rol mínimo), Jira Cloud (permisos de un usuario de servicio y esquema de autenticación con token de API). Rutas REST exactas de las tres operaciones. Salida: `spikes/permisos-minimos.md` con URL de cada dato y «sin confirmar» donde no se pudo.
-- [ ] **S0.2** Cómo comprobar el alcance de un token sin escribir, por proveedor, o que no se puede. Salida: sección en el mismo informe.
-- [ ] **S0.3** Batería de al menos 30 textos hostiles como datos de prueba (`tests/fixtures/integraciones/hostiles.json`): órdenes directas, falsas cabeceras del sistema, enlaces e imágenes, bloques de código con órdenes, caracteres invisibles y de control, volumen extremo, marcadores propios de FORGE (`[REDACTADO]`, `## Contexto`), formatos de secretos, y texto en varios alfabetos.
-- [ ] **S0.4** Contratos de respuesta (forma de la incidencia, del comentario creado, de la rama y de la solicitud) de las tres plataformas, para los servidores falsos.
+- [x] **S0.1** Permisos mínimos por proveedor, desde la documentación oficial vigente: GitHub (permisos de grano fino de un token: leer incidencias, comentar, crear rama, abrir solicitud en borrador), GitLab (ámbitos de un token de proyecto y rol mínimo), Jira Cloud (permisos de un usuario de servicio y esquema de autenticación con token de API). Rutas REST exactas de las tres operaciones. Salida: `spikes/permisos-minimos.md` con URL de cada dato y «sin confirmar» donde no se pudo.
+- [x] **S0.2** Cómo comprobar el alcance de un token sin escribir, por proveedor, o que no se puede. Salida: sección en el mismo informe.
+- [x] **S0.3** Batería de al menos 30 textos hostiles como datos de prueba (`tests/fixtures/integraciones/hostiles.json`): órdenes directas, falsas cabeceras del sistema, enlaces e imágenes, bloques de código con órdenes, caracteres invisibles y de control, volumen extremo, marcadores propios de FORGE (`[REDACTADO]`, `## Contexto`), formatos de secretos, y texto en varios alfabetos.
+- [x] **S0.4** Contratos de respuesta (forma de la incidencia, del comentario creado, de la rama y de la solicitud) de las tres plataformas, para los servidores falsos.
 
 ## F1 — Núcleo
 
@@ -24,6 +24,10 @@
 - [ ] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente.
 - [ ] **F2.2** GitLab (host configurable): igual.
 - [ ] **F2.3** Jira Cloud: lectura de ticket y comentario. `proponerCambio` no existe en Jira: la operación se rechaza con un mensaje claro y el modo `proponer` en Jira se trata como `comentar`.
+- [ ] **F2.3a** Jira: conversor mínimo ADF→texto y texto→ADF, sin dependencias. Tests: documento con nodos desconocidos, anidamiento profundo, enlaces y menciones, texto hostil dentro del documento, y tamaño extremo.
+- [ ] **F2.3b** Jira: solo token sin ámbitos contra `<sitio>.atlassian.net`; con ámbitos, `doctor` avisa del límite.
+- [ ] **F2.5** GitLab: filtrar notas de sistema (`system: true`); solicitud con prefijo `Draft:`; ámbitos comprobables con token personal.
+- [ ] **F2.6** Idempotencia local: marcador oculto y búsqueda previa, en los tres.
 - [ ] **F2.4** Prueba de contrato común: las tres respuestas normalizadas al mismo tipo de elemento, sin campos de más.
 
 ## F3 — Publicación
@@ -36,7 +40,7 @@
 ## F4 — CLI y diagnóstico
 
 - [ ] **F4.1** `cli/integraciones.js` con `leer`, `publicar`, `aprobar`, `estado`, `apagar`.
-- [ ] **F4.2** `doctor`: variable definida, host permitido, HTTPS, alcance si se puede comprobar, modo de escritura bloqueado si el alcance excede; sin imprimir tokens.
+- [ ] **F4.2** `doctor`: variable definida, host permitido y HTTPS; alcance solo donde se puede (GitLab con token personal) y «no comprobable» en GitHub y Jira con el alcance declarado a la vista; escritura bloqueada si el alcance excede; sin imprimir tokens.
 - [ ] **F4.3** `forge status` muestra pendientes y operaciones por proveedor.
 
 ## F5 — Seguridad y cierre

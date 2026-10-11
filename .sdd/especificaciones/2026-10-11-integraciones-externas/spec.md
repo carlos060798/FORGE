@@ -78,7 +78,7 @@ Que una tarea pueda **nacer de una incidencia o ticket** y que su resultado pued
 
 **Criterios de aceptación:**
 - [ ] **CA-004-01**: La sección `integraciones:` de `sdd.config.yaml` nombra la **variable de entorno** que contiene cada token; el valor nunca se guarda en un archivo del proyecto. Un valor que parezca un token literal impide empezar. (P1)
-- [ ] **CA-004-02**: `forge doctor` comprueba para cada proveedor: variable definida, host en la lista, esquema HTTPS, y (donde el proveedor lo permita) que el token no tenga más alcance del necesario; informa sin imprimir el token. (P1)
+- [ ] **CA-004-02**: `forge doctor` comprueba para cada proveedor: variable definida, host en la lista y esquema HTTPS. Comprueba el alcance del token **solo donde la plataforma lo permite** (GitLab con token personal); en GitHub y Jira **no se puede** (los spikes no encontraron ningún endpoint que lo informe), y `doctor` lo dice y muestra el alcance que el proyecto declaró en `<proveedor>_alcance` para que una persona lo revise. Nunca imprime el token. (P1)
 - [ ] **CA-004-03**: La lista de destinos permitidos es obligatoria: sin ella, la integración no arranca (no hay «todos»). (P1)
 - [ ] **CA-004-04**: El modo de cada proveedor es uno de `apagado` (por defecto), `solo_lectura`, `comentar` o `proponer`, y el modo por defecto al activarlo es `solo_lectura`. (P1)
 - [ ] **CA-004-05**: El token no aparece en el prompt de ningún agente, en `events.jsonl`, en los puntos de guardado, en el diario de respuestas ni en los mensajes de error. (P1)
@@ -118,9 +118,13 @@ Que una tarea pueda **nacer de una incidencia o ticket** y que su resultado pued
 **Entonces** el texto aparece delimitado como dato, el agente sigue sin poder leer `.env`, y el comentario propuesto no lo contiene ni habría podido contenerlo
 
 ### Escenario 3: Token con demasiado alcance
-**Dado** un token de GitHub con permiso de administración de la organización
+**Dado** un token personal de GitLab con el ámbito `api` y el proveedor en modo `solo_lectura`
 **Cuando** se ejecuta `forge doctor`
-**Entonces** avisa de que el alcance excede lo necesario y no activa el modo de escritura hasta que se corrija
+**Entonces** avisa de que el ámbito excede lo necesario (`read_api`) y no activa ninguna escritura hasta que se corrija
+
+**Dado** un token de GitHub o de Jira
+**Cuando** se ejecuta `forge doctor`
+**Entonces** dice que no puede comprobar su alcance, muestra el declarado en la configuración y recuerda revisarlo en la plataforma
 
 ### Escenario 4: La plataforma no responde
 **Dado** una tarea terminada y un destino caído
@@ -174,6 +178,16 @@ Que una tarea pueda **nacer de una incidencia o ticket** y que su resultado pued
 - El equipo dispone de una cuenta de servicio o un token de alcance mínimo por plataforma.
 - Sin confirmar: las tres plataformas mantienen sus servidores MCP y APIs con los contratos consultados el 2026-10-11 (Atlassian anuncia el retiro de v1 el 2027-03-01).
 
+### Resultados de los spikes S0 (2026-10-11)
+
+Detalle y URL de cada dato en `spikes/permisos-minimos.md` y `spikes/contratos-respuesta.md`. Lo que cambia respecto a lo supuesto:
+
+1. **No se puede comprobar el alcance de un token en GitHub ni en Jira.** Ningún endpoint documentado lo informa. En GitLab solo con token personal. CA-004-02 y el escenario 3 se corrigieron.
+2. **GitHub:** proponer un cambio exige *Contents: write* y *Pull requests: write*; los borradores en repositorios privados dependen del plan. Un permiso que falta puede devolver 404 en vez de 403.
+3. **GitLab:** el parámetro `draft` de la API de solicitudes de fusión **no está confirmado**; la alternativa documentada es el prefijo `Draft:` en el título. Los tokens de proyecto no existen en GitLab.com Free. Los ámbitos por endpoint y el rol mínimo para comentar están sin confirmar.
+4. **Jira Cloud:** la descripción y los comentarios son documentos ADF, no texto: hace falta un conversor propio sin dependencias. Con ámbitos, la base de la API cambia a `api.atlassian.com/ex/jira/{cloudId}` y cómo obtener el `cloudId` está sin confirmar. `write:jira-work` es mucho más amplio que «comentar»; los ámbitos granulares figuran como Beta.
+5. **Ninguna de las tres APIs documenta clave de idempotencia:** CA-002-04 se resuelve localmente.
+6. **Cuerpos de GitLab:** las notas de sistema (`system: true`) vienen mezcladas con las de personas.
 ## 10. Capas de seguridad y riesgos de agentes (OWASP)
 
 Los nombres ASI01 a ASI10 son los del Top 10 para Aplicaciones Agénticas 2026 de OWASP, tomados de resúmenes de terceros: **la página de OWASP consultada no los lista**. Hay que confirmarlos contra el documento original antes de la revisión de seguridad.
@@ -229,3 +243,4 @@ Los nombres ASI01 a ASI10 son los del Top 10 para Aplicaciones Agénticas 2026 d
 | 2 | Alcance | ¿Bases de datos? | Fuera de esta spec; spec aparte, solo lectura y con servidores existentes | 2026-10-11 |
 | 3 | Restricción | ¿Qué debe evitarse? | Que activar las integraciones cambie el modo de trabajo de quien no las use (HU-005). La frase original del dueño era ambigua en este punto: confirmar | 2026-10-11 |
 | 4 | Aprobación | ¿Se implementa? | Por instrucción del dueño el 2026-10-11 («defínelo mejor e impleméntalo»), con las suposiciones del plan sección 1; pendiente de ratificación formal. La frase original era ambigua: confirmar | 2026-10-11 |
+| 5 | Spikes | ¿Se sostienen las suposiciones? | Casi todas; una promesa se corrigió (alcance del token) y quedan seis hallazgos que afectan al plan. Ver sección 9 | 2026-10-11 |

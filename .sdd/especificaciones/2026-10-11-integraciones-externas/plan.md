@@ -97,7 +97,7 @@ El lector de configuración existente solo entiende un nivel de claves: la lista
 
 | Fase | Contenido | Depende de | Verificación |
 |---|---|---|---|
-| **S0** Spikes | Permisos mínimos por proveedor con documentación oficial; batería de 30 textos hostiles; confirmación de las suposiciones | — | Informes en `spikes/` |
+| **S0** Spikes | ✅ Hechos el 2026-10-11: `spikes/permisos-minimos.md`, `spikes/contratos-respuesta.md` y 52 casos hostiles. Ver sección 10 | — | Informes en `spikes/` |
 | **F1** Núcleo | Puerto, configuración, `confianza.js`, `http.js`, auditoría, apagado, carga perezosa | S0 (parcial) | HU-004, HU-005, HU-006 con tests |
 | **F2** Adaptadores | GitHub, GitLab, Jira, con un servidor HTTP falso local para las pruebas | F1, S0 | HU-001 y contratos de cada uno |
 | **F3** Publicación | Cola de pendientes, vista previa, aprobación, idempotencia, comentarios y propuestas | F2 | HU-002, HU-003 |
@@ -121,3 +121,19 @@ El lector de configuración existente solo entiende un nivel de claves: la lista
 | La aprobación se vuelve mecánica | Vista previa exacta, borrador en la plataforma como segunda barrera, y el límite se documenta |
 | El texto hostil llega al registro | `confianza.js` es el único punto de entrada y tiene su batería |
 | Se rompe el modo de quien no usa esto | Carga perezosa y la prueba de aislamiento corren en cada ejecución de la suite |
+
+## 10. Consecuencias de los spikes (2026-10-11)
+
+| Hallazgo | Cambio en el plan |
+|---|---|
+| El alcance del token no se puede consultar en GitHub ni Jira | `comprobarAlcance` devuelve `no_comprobable` en esos dos y `doctor` lo dice. Nuevo valor de configuración `<proveedor>_alcance` (texto libre que se muestra en `doctor` y `estado`). El control real es el **modo** y la **lista de destinos**, no la detección del alcance |
+| GitLab: `draft` por API sin confirmar | El adaptador usa el prefijo `Draft:` en el título y la prueba contra una instancia real (opt-in) decide si también se envía `draft`. La solicitud nunca se crea sin ese marcador |
+| GitLab.com Free no tiene tokens de proyecto | Se documenta: en Free se usa un token personal de un usuario de servicio con acceso solo a los proyectos permitidos; `doctor` comprueba sus ámbitos |
+| Jira: ADF | Tarea nueva F2.3a: conversor ADF→texto y texto→ADF mínimo, propio, con batería hostil (un documento ADF es otro vector) |
+| Jira con ámbitos cambia la base de la API y el `cloudId` está sin confirmar | La primera entrega solo admite **token sin ámbitos contra `<sitio>.atlassian.net`**. Las cuentas de servicio que exigen ámbitos quedan como límite documentado |
+| Sin idempotencia en las APIs | `aprobacion.js` guarda el identificador devuelto y un marcador oculto en el texto; antes de publicar busca el marcador |
+| GitHub puede devolver 404 por falta de permiso | CA-003-04 se comprueba **leyendo** primero (rama base, permisos del repositorio) y un 404 se trata como «sin permiso o no existe», sin distinguirlo |
+| Jira no tiene equivalente a una solicitud de cambio | Ya contemplado: `proponer` se trata como `comentar` en Jira |
+| Límites de ritmo documentados | `http.js` respeta `Retry-After` y los topes por sesión quedan muy por debajo de los límites secundarios de GitHub |
+
+**Pendiente de confirmar con cuentas reales (opt-in):** `draft` en GitLab, borradores en repositorios privados de GitHub con plan gratuito, rol mínimo de GitLab para comentar y los ámbitos por endpoint.
