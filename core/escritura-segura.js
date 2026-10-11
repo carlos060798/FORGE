@@ -21,8 +21,9 @@
  */
 
 import {
-  closeSync, constants, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeSync,
+  closeSync, constants, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeSync,
 } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export class ErrorEnlace extends Error {
@@ -51,44 +52,101 @@ function lstatONulo(ruta) {
 }
 
 /**
+ * La raíz de escritura es una ruta, o `{ raiz, enlacesPermitidos }`: con lo segundo, esas rutas
+ * concretas (directorios) pueden ser un enlace o una unión que el USUARIO creó antes de que FORGE
+ * escribiera, y se sigue por decisión explícita (p. ej. `~/.claude/commands` apuntando a un
+ * repositorio de dotfiles). Cualquier otro enlace sigue prohibido, y también uno dentro del destino
+ * de uno permitido.
+ * @typedef {string | { raiz: string, enlacesPermitidos?: string[] }} Raiz
+ * @param {Raiz} r
+ * @returns {{ raiz: string, permitidos: string[] }}
+ */
+function normalizarRaiz(r) {
+  if (typeof r === 'string') return { raiz: resolve(r), permitidos: [] };
+  return { raiz: resolve(r.raiz), permitidos: (r.enlacesPermitidos ?? []).map((p) => resolve(p)) };
+}
+
+/**
  * Comprueba que escribir en `ruta` no sale de `raiz` por un enlace. No crea nada.
- * @param {string} raiz  directorio donde está permitido escribir
+ * @param {Raiz} raizArg  directorio donde está permitido escribir
  * @param {string} ruta  destino (archivo o directorio)
  * @returns {string} la ruta absoluta del destino
  */
-export function verificarRuta(raiz, ruta) {
-  const base = resolve(raiz);
+export function verificarRuta(raizArg, ruta) {
+  const { raiz, permitidos } = normalizarRaiz(raizArg);
+  const base = raiz;
   const destino = resolve(ruta);
   if (!dentro(base, destino)) throw new ErrorEnlace(destino, 'La ruta queda fuera del proyecto');
 
-  // La raíz misma se resuelve (el proyecto puede estar en un directorio con enlaces: no es asunto nuestro)
+  // La raíz misma se resuelve (el proyecto puede estar en un directorio con enlaces, o ser él mismo una unión: no es asunto nuestro)
   const baseReal = realpathSync(base);
   let actual = base;
+  /** @type {string[]} destinos reales de los enlaces permitidos que el camino cruza */
+  const cruzados = [];
   const partes = relative(base, destino).split(sep).filter(Boolean);
   for (const parte of partes) {
     actual = join(actual, parte);
     const st = lstatONulo(actual);
     if (st === null) break;                                   // lo que falta lo crearemos nosotros
-    if (st.isSymbolicLink()) throw new ErrorEnlace(actual, 'Es un enlace simbólico o una unión; no se escribe a través de ellos');
+    if (st.isSymbolicLink()) {
+      if (permitidos.some((p) => minus(p) === minus(actual))) {
+        let real;
+        try { real = realpathSync(actual); if (!statSync(real).isDirectory()) throw new Error('no es un directorio'); } catch {
+          throw new ErrorEnlace(actual, 'Es un enlace permitido, pero está roto o no apunta a un directorio');
+        }
+        cruzados.push(real);
+        continue;
+      }
+      throw new ErrorEnlace(actual, 'Es un enlace simbólico o una unión; no se escribe a través de ellos');
+    }
   }
-  // El directorio existente más profundo, ya resuelto, tiene que seguir dentro de la raíz
+  // El directorio existente más profundo, ya resuelto, tiene que seguir dentro de la raíz (o del destino de un enlace permitido)
   let existente = destino;
   while (lstatONulo(existente) === null && existente !== dirname(existente)) existente = dirname(existente);
-  if (!dentro(baseReal, realpathSync(existente))) throw new ErrorEnlace(existente, 'El directorio resuelve fuera del proyecto');
+  const real = realpathSync(existente);
+  if (!dentro(baseReal, real) && !cruzados.some((c) => dentro(c, real))) throw new ErrorEnlace(existente, 'El directorio resuelve fuera del proyecto');
   return destino;
 }
 
 /**
  * Crea un directorio (y sus padres) comprobando antes cada componente.
- * @param {string} raiz @param {string} dir
+ * @param {Raiz} raiz @param {string} dir
  */
 export function crearDirectorio(raiz, dir) {
+  const { raiz: base, permitidos } = normalizarRaiz(raiz);
   const d = verificarRuta(raiz, dir);
   mkdirSync(d, { recursive: true });
   verificarRuta(raiz, d);                                     // por si cambió mientras se creaba
   const st = lstatSync(d);
-  if (st.isSymbolicLink() || !st.isDirectory()) throw new ErrorEnlace(d, 'No es un directorio normal');
+  // La propia raíz, o un enlace permitido, puede ser una unión: se comprueba que lleva a un directorio
+  const sePermite = minus(d) === minus(base) || permitidos.some((p) => minus(p) === minus(d));
+  if (st.isSymbolicLink()) {
+    if (!sePermite || !statSync(d).isDirectory()) throw new ErrorEnlace(d, 'No es un directorio normal');
+  } else if (!st.isDirectory()) {
+    throw new ErrorEnlace(d, 'No es un directorio normal');
+  }
   return d;
+}
+
+/** Más que esto no es un archivo de configuración o de manifiesto: no se lee. */
+const MAX_LECTURA = 8 * 1024 * 1024;
+
+/**
+ * Lee un archivo de texto del proyecto con la misma política que las escrituras: ningún componente
+ * es un enlace (así el contenido de un archivo ajeno no acaba en lo que FORGE genera), no sale de la
+ * raíz y tiene que ser un archivo normal (una tubería con nombre colgaría la lectura).
+ * @param {Raiz} raiz @param {string} ruta @param {{ maxBytes?: number }} [opciones]
+ * @returns {string|null} null si no existe
+ * @throws {ErrorEnlace} si es un enlace, no es un archivo normal o es demasiado grande
+ */
+export function leerArchivo(raiz, ruta, opciones = {}) {
+  const destino = verificarRuta(raiz, ruta);
+  const st = lstatONulo(destino);
+  if (st === null) return null;
+  if (st.isSymbolicLink()) throw new ErrorEnlace(destino, 'El archivo es un enlace; no se lee a través de él');
+  if (!st.isFile()) throw new ErrorEnlace(destino, 'No es un archivo normal (carpeta, tubería o dispositivo): no se lee');
+  if (st.size > (opciones.maxBytes ?? MAX_LECTURA)) throw new ErrorEnlace(destino, 'El archivo es demasiado grande: no se lee');
+  return readFileSync(destino, 'utf8');
 }
 
 /**
@@ -143,8 +201,21 @@ export function escribirArchivo(raiz, ruta, contenido, modo) {
     if (st.isSymbolicLink()) throw new ErrorEnlace(destino, 'El destino es un enlace; no se escribe a través de él');
     if (!st.isFile()) throw new ErrorEnlace(destino, 'El destino existe y no es un archivo normal');
     const m = modo ?? (st.mode & 0o777);
-    unlinkSync(destino);
-    return crearArchivo(raiz, destino, contenido, m);
+    // Temporal exclusivo ('wx') en la misma carpeta y `rename` encima: si el proceso muere en medio, el
+    // original sigue entero o el nuevo está completo (borrar y recrear perdía el archivo en esa ventana).
+    // `rename` reemplaza la ENTRADA, no el contenido: un enlace duro hacia otro lugar no se escribe.
+    const temporal = `${destino}.forge-tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
+    crearArchivo(raiz, temporal, contenido, m);
+    try {
+      // Entre la comprobación y el reemplazo, el destino pudo cambiar a un enlace
+      const ahora = lstatONulo(destino);
+      if (ahora === null || ahora.isSymbolicLink() || !ahora.isFile()) throw new ErrorEnlace(destino, 'El destino cambió mientras se escribía; no se reemplaza');
+      renameSync(temporal, destino);
+    } catch (e) {
+      try { unlinkSync(temporal); } catch { /* ya no está */ }
+      throw e;
+    }
+    return true;
   }
   return crearArchivo(raiz, destino, contenido, modo);
 }

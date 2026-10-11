@@ -158,7 +158,10 @@ describe("H-01 — `forge init` con uniones de directorio (se ejecutan en Window
           rmSync(objetivo, { recursive: true });
         }
         const r = init(dir);
-        assert.equal(r.status, 0, r.salida);
+        // Con algo sin escribir `init` sale con 1 y no dice «instalado» (N-04); una unión que `init` ni toca (.sdd/docs que existe) sigue en 0
+        const esperado = modo === "colgante" || dirEnlazado !== ".sdd/docs" ? 1 : 0;
+        assert.equal(r.status, esperado, r.salida);
+        if (esperado === 1) { assert.match(r.salida, /NO terminó bien/); assert.doesNotMatch(r.salida, /FORGE instalado/); }
         assert.ok(esEnlace(ruta), "el enlace sigue siendo un enlace: no se reemplazó");
         if (modo === "hacia-fuera") assert.deepEqual(foto(fuera), antes, "lo de fuera quedó igual: " + r.salida);
         // `.sdd/docs` ya «existe» (la unión): init no lo toca y no tiene nada que decir
@@ -178,7 +181,9 @@ describe("H-01 — `forge init` con uniones de directorio (se ejecutan en Window
       enlazarDir(fuera, ruta);
       const antes = foto(fuera);
       const r = init(dir);
-      assert.equal(r.status, 0, r.salida);
+      // Lo que no se pudo escribir se dice y el comando no acaba en «instalado»; un destino que ni se toca (.claudeignore ya «existe») sigue en 0
+      assert.ok(r.status === 0 || (r.status === 1 && /NO terminó bien/.test(r.salida)), r.salida);
+      if (["AGENTS.md", "CLAUDE.md", ".sdd/AGENTS.propuesto.md"].includes(nombre)) assert.equal(r.status, 1, r.salida);
       assert.ok(esEnlace(ruta));
       assert.deepEqual(foto(fuera), antes, r.salida);
     });
@@ -194,7 +199,8 @@ describe("H-01 — `forge init` con uniones de directorio (se ejecutan en Window
     mkdirSync(join(dir, "otro"));
     enlazarDir(join(dir, "otro"), join(dir, ".sdd"));
     const r = init(dir);
-    assert.equal(r.status, 0, r.salida);
+    assert.equal(r.status, 1, r.salida);
+    assert.match(r.salida, /NO terminó bien/);
     assert.deepEqual(readdirSync(join(dir, "otro")), [], r.salida);
   });
 });
@@ -228,7 +234,7 @@ describe("H-01 — `forge init` con enlaces y enlaces duros a ARCHIVOS", () => {
         if (tipo === "existente-dentro") { objetivo = join(dir, "dentro.txt"); writeFileSync(objetivo, "ORIGINAL"); }
         symlinkSync(objetivo, ruta, "file");
         const r = init(dir);
-        assert.equal(r.status, 0, r.salida);
+        assert.ok(r.status === 0 || (r.status === 1 && /NO terminó bien/.test(r.salida)), r.salida);
         assert.ok(esEnlace(ruta), `${nombre}/${tipo}: sigue siendo un enlace`);
         if (tipo === "colgante-fuera") assert.ok(!existsSync(objetivo), `${nombre}: no se creó el archivo de fuera`);
         else assert.equal(readFileSync(objetivo, "utf8"), "ORIGINAL", `${nombre}/${tipo}`);

@@ -19,14 +19,15 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
 } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
 import { detectStack } from "../core/stack-detector.js";
-import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo } from "../core/escritura-segura.js";
+import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo, leerArchivo } from "../core/escritura-segura.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -58,25 +59,116 @@ function error(msg) {
 // la raíz de escritura y no sobrescribe a través de un enlace. Si el destino es un enlace, se
 // informa y no se escribe.
 
-/** Directorio fuera del cual `init` no escribe: el proyecto, o ~/.claude con --global. */
-let raizEscritura = process.cwd();
+/**
+ * Raíces de escritura. Con `--global` hay dos destinos: `~/.claude` (comandos, agentes, skills, hooks
+ * y settings) y el proyecto (`.sdd`, `.forge-ui`, ...). Cada ruta se escribe con la raíz que la contiene;
+ * una ruta fuera de las dos se rechaza. Sin `fijarRaices`, la única raíz es el directorio actual.
+ * @type {{ raiz: string, enlacesPermitidos?: string[] }[] | null}
+ */
+let raices = null;
 
-/** Ejecuta una escritura; un enlace en el camino se informa y se sigue con lo demás. @returns {any} */
-function protegido(fn) {
+/** Directorio del proyecto, con las uniones ya resueltas (se fija en `fijarRaices`). */
+let PROYECTO = process.cwd();
+
+/** Rutas que no se pudieron escribir en esta ejecución: el comando no puede acabar diciendo «listo». */
+const sinEscribir = /** @type {string[]} */ ([]);
+
+/** Subcarpetas de `~/.claude` que pueden ser una unión del usuario (p. ej. a un repositorio de dotfiles). */
+const CARPETAS_GLOBALES_ENLAZABLES = ["commands", "agents", "skills", "hooks"];
+
+/**
+ * Fija las raíces de escritura y devuelve la carpeta `.claude` de destino.
+ * @param {{ global?: boolean }} [o]
+ * @returns {string}
+ */
+function fijarRaices(o = {}) {
+  // Una raíz que es una unión (el proyecto abierto a través de una) se resuelve una sola vez y se usa esa
+  try { PROYECTO = realpathSync(process.cwd()); } catch { PROYECTO = process.cwd(); }
+  raices = [{ raiz: PROYECTO }];
+  const claudeDir = o.global ? join(homedir(), ".claude") : join(PROYECTO, ".claude");
+  if (o.global) {
+    // Decisión (N-14): `~/.claude/commands` como unión a los dotfiles del usuario es un caso común y es
+    // SUYA: solo esas cuatro subcarpetas, solo en lo global y solo si el enlace ya existía (FORGE nunca
+    // crea enlaces). En un proyecto, ningún enlace se sigue.
+    raices.push({ raiz: claudeDir, enlacesPermitidos: CARPETAS_GLOBALES_ENLAZABLES.map((d) => join(claudeDir, d)) });
+  }
+  return claudeDir;
+}
+
+/** La raíz de escritura que contiene `ruta`: la más específica. */
+function raizPara(ruta) {
+  const todas = raices ?? [{ raiz: process.cwd() }];
+  const abs = resolve(ruta);
+  const minus = (s) => (process.platform === "win32" ? s.toLowerCase() : s);
+  const contiene = (r) => { const rel = relative(minus(resolve(r.raiz)), minus(abs)); return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel)); };
+  const candidatas = todas.filter(contiene).sort((a, b) => resolve(b.raiz).length - resolve(a.raiz).length);
+  return candidatas[0] ?? todas[todas.length - 1];
+}
+
+/** Ejecuta una escritura o lectura; un enlace o un error del sistema de archivos se informa y se sigue con lo demás. @returns {any} */
+function protegido(fn, ruta = "") {
   try { return fn(); } catch (e) {
-    if (e instanceof ErrorEnlace) { aviso(`No se escribe: ${e.message}`); return undefined; }
+    const codigo = /** @type {any} */ (e)?.code;
+    if (e instanceof ErrorEnlace) {
+      aviso(`No se escribe: ${e.message}`);
+      sinEscribir.push(e.ruta);
+      return undefined;
+    }
+    // EISDIR, ENOTDIR, EBUSY, EPERM, EACCES, EEXIST...: un destino raro no tumba `init` con una traza
+    if (typeof codigo === "string" && /^E[A-Z]+$/.test(codigo)) {
+      const donde = ruta || /** @type {any} */ (e).path || "";
+      aviso(`No se escribe${donde ? ` ${donde}` : ""}: ${codigo} (${/** @type {Error} */ (e).message.split(", ")[0]})`);
+      sinEscribir.push(String(donde || codigo));
+      return undefined;
+    }
     throw e;
   }
 }
 
+/** Un paso de `init` o `update` que no puede tumbar el resto. */
+function paso(nombre, fn) {
+  try { return fn(); } catch (e) {
+    aviso(`${nombre}: ${e instanceof Error ? e.message : e}`);
+    sinEscribir.push(nombre);
+    return undefined;
+  }
+}
+
+/**
+ * Cierre de `init`/`update`: con rutas sin escribir NO se dice que quedó listo.
+ * @returns {boolean} true si todo se escribió
+ */
+function cerrarSiFalto(que) {
+  if (sinEscribir.length === 0) return true;
+  const unicas = [...new Set(sinEscribir)];
+  console.log("");
+  aviso(`${que} NO terminó bien: ${unicas.length} ruta(s) sin escribir (avisos «No se escribe» de arriba):`);
+  for (const r of unicas.slice(0, 15)) console.log(`    - ${r}`);
+  if (unicas.length > 15) console.log(`    ... y ${unicas.length - 15} más`);
+  console.log("  Cada una es un enlace, una unión o un archivo que FORGE no escribe a través de; resuélvelo y vuelve a ejecutar el comando.");
+  console.log("  Para instalar a mano, copia el contenido de commands/, agents/, skills/ y claude-hooks/ del plugin a la carpeta que no se pudo escribir.");
+  process.exitCode = 1;
+  return false;
+}
+
 /** Crea un directorio dentro de la raíz de escritura. */
-function crearDir(dir) { return protegido(() => crearDirectorio(raizEscritura, dir)); }
+function crearDir(dir) { return protegido(() => crearDirectorio(raizPara(dir), dir), dir); }
 
 /** Crea un archivo que no existe (nunca sobrescribe). true si lo creó. */
-function crearNuevo(ruta, contenido) { return protegido(() => crearArchivo(raizEscritura, ruta, contenido)) === true; }
+function crearNuevo(ruta, contenido) { return protegido(() => crearArchivo(raizPara(ruta), ruta, contenido), ruta) === true; }
 
 /** Deja el archivo con este contenido (lo crea o lo reemplaza si es un archivo normal). true si lo escribió. */
-function escribirSeguro(ruta, contenido) { return protegido(() => { escribirArchivo(raizEscritura, ruta, contenido); return true; }) === true; }
+function escribirSeguro(ruta, contenido) { return protegido(() => { escribirArchivo(raizPara(ruta), ruta, contenido); return true; }, ruta) === true; }
+
+/** Lee un archivo del proyecto sin seguir enlaces ni abrir tuberías. null si no existe o no se puede leer (con aviso). */
+function leerSeguro(ruta) {
+  try { return leerArchivo(raizPara(ruta), ruta); } catch (e) {
+    if (e instanceof ErrorEnlace) { aviso(`No se lee: ${e.message}`); return null; }
+    const codigo = /** @type {any} */ (e)?.code;
+    if (typeof codigo === "string") { aviso(`No se lee ${ruta}: ${codigo}`); return null; }
+    throw e;
+  }
+}
 
 // ─── Utilidades de copia ────────────────────────────────────────────────────────
 
@@ -86,20 +178,20 @@ function copyMd(srcDir, destDir) {
   const archivos = readdirSync(srcDir).filter((f) => f.endsWith(".md"));
   let n = 0;
   for (const f of archivos) {
-    if (protegido(() => { copiarArchivo(raizEscritura, join(srcDir, f), join(destDir, f)); return true; })) n++;
+    if (protegido(() => { copiarArchivo(raizPara(destDir), join(srcDir, f), join(destDir, f)); return true; }, join(destDir, f))) n++;
   }
   return n;
 }
 
 /** Copia un directorio completo (recursivo). */
 function copyDir(srcDir, destDir) {
-  const { bloqueados } = copiarArbol(raizEscritura, srcDir, destDir);
-  for (const b of bloqueados) aviso(`No se escribe: es un enlace o pasa por uno: ${b}`);
+  const { bloqueados } = copiarArbol(raizPara(destDir), srcDir, destDir);
+  for (const b of bloqueados) { aviso(`No se escribe: es un enlace o pasa por uno: ${b}`); sinEscribir.push(b); }
 }
 
 /** Copia un archivo suelto del plugin. true si lo copió. */
 function copiarSeguro(origen, destino) {
-  return protegido(() => { copiarArchivo(raizEscritura, origen, destino); return true; }) === true;
+  return protegido(() => { copiarArchivo(raizPara(destino), origen, destino); return true; }, destino) === true;
 }
 
 function pluginVersion() {
@@ -247,15 +339,15 @@ function configurarSdd(claudeDir, overrides = {}) {
     "plantillas",
   ];
   for (const d of sub) {
-    crearDir(join(process.cwd(), ".sdd", d));
+    crearDir(join(PROYECTO, ".sdd", d));
   }
 
   // Plantillas
-  copyMd(join(PLUGIN_DIR, "plantillas"), join(process.cwd(), ".sdd", "plantillas"));
+  copyMd(join(PLUGIN_DIR, "plantillas"), join(PROYECTO, ".sdd", "plantillas"));
   info("Plantillas copiadas a .sdd/plantillas/");
 
   // Config (no sobreescribe)
-  const configDest = join(process.cwd(), ".sdd", "sdd.config.yaml");
+  const configDest = join(PROYECTO, ".sdd", "sdd.config.yaml");
   if (!existsSync(configDest)) {
     if (crearNuevo(configDest, readFileSync(join(PLUGIN_DIR, "configuracion-ejemplo", "sdd.config.yaml")))) {
       info("Configuración por defecto copiada (.sdd/sdd.config.yaml)");
@@ -265,8 +357,9 @@ function configurarSdd(claudeDir, overrides = {}) {
   }
 
   // Aplicar overrides del wizard --guided
-  if (Object.keys(overrides).length > 0 && existsSync(configDest)) {
-    let yaml = readFileSync(configDest, "utf8");
+  const yamlActual = Object.keys(overrides).length > 0 ? leerSeguro(configDest) : null;
+  if (yamlActual !== null) {
+    let yaml = yamlActual;
     if (overrides.perfil) {
       yaml = yaml.replace(/^(\s*perfil_default:\s*).*$/m, `$1"${overrides.perfil}"`);
     }
@@ -280,7 +373,7 @@ function configurarSdd(claudeDir, overrides = {}) {
   }
 
   // .claudeignore (no sobreescribe — respeta personalizaciones del usuario)
-  const claudeignoreDest = join(process.cwd(), ".claudeignore");
+  const claudeignoreDest = join(PROYECTO, ".claudeignore");
   if (!existsSync(claudeignoreDest)) {
     if (copiarSeguro(join(PLUGIN_DIR, "configuracion-ejemplo", ".claudeignore"), claudeignoreDest)) info(".claudeignore creado — excluye node_modules, dist, observabilidad FORGE del contexto");
   } else {
@@ -288,13 +381,13 @@ function configurarSdd(claudeDir, overrides = {}) {
   }
 
   // README de hooks (no sobreescribe)
-  const hooksReadme = join(process.cwd(), ".sdd", "hooks", "README.md");
+  const hooksReadme = join(PROYECTO, ".sdd", "hooks", "README.md");
   if (!existsSync(hooksReadme)) {
     if (crearNuevo(hooksReadme, HOOKS_README)) info("README de hooks creado (.sdd/hooks/README.md)");
   }
 
   // Documentación local (opcional)
-  const docsDest = join(process.cwd(), ".sdd", "docs");
+  const docsDest = join(PROYECTO, ".sdd", "docs");
   if (!existsSync(docsDest)) {
     copyMd(join(PLUGIN_DIR, "docs"), docsDest);
     info("Documentación copiada a .sdd/docs/");
@@ -355,6 +448,7 @@ function integrarClaudeMd(cwd) {
   try {
     if (lstatSync(claudeMdPath).isSymbolicLink()) {
       aviso("CLAUDE.md es un enlace simbólico o una unión — no se modifica (no se escribe a través de enlaces)");
+      sinEscribir.push(claudeMdPath);
       return;
     }
   } catch { /* no existe: se crea */ }
@@ -362,8 +456,12 @@ function integrarClaudeMd(cwd) {
 
   const seccionCompleta = CLAUDE_MD_SECCION.trimEnd() + "\n" + CLAUDE_MD_VERSION_TAG + "\n";
 
-  if (existsSync(claudeMdPath)) {
-    const contenido = readFileSync(claudeMdPath, "utf8");
+  let existe = false;
+  try { lstatSync(claudeMdPath); existe = true; } catch { /* no existe */ }
+  if (existe) {
+    // `leerSeguro`: una carpeta o una tubería con nombre no se lee (la tubería colgaba `init`)
+    const contenido = leerSeguro(claudeMdPath);
+    if (contenido === null) { sinEscribir.push(claudeMdPath); return; }
     if (contenido.includes(MARCADOR_INICIO)) {
       // Actualizar sección existente — reemplazar desde ## FORGE hasta el tag de versión o fin del bloque
       const idx = contenido.indexOf(MARCADOR_INICIO);
@@ -398,12 +496,13 @@ function integrarClaudeMd(cwd) {
 function integrarAgentsMd(cwd) {
   const destino = join(cwd, "AGENTS.md");
   const rutaConstitucion = join(cwd, ".sdd", "memoria", "constitucion.md");
-  const constitucion = existsSync(rutaConstitucion) ? readFileSync(rutaConstitucion, "utf8") : null;
+  // Las lecturas de insumos pasan por la misma política que las escrituras: el contenido de un archivo enlazado a fuera no entra en AGENTS.md (N-07)
+  const constitucion = leerSeguro(rutaConstitucion);
   const plantilla = readFileSync(join(PLUGIN_DIR, "plantillas", "AGENTS.md"), "utf8");
 
   // Solo datos del propio proyecto y nunca su ruta: el nombre de su manifiesto y su comando de pruebas
   let nombre;
-  try { nombre = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")).name; } catch { /* sin manifiesto de Node */ }
+  try { nombre = JSON.parse(leerSeguro(join(cwd, "package.json")) ?? "").name; } catch { /* sin manifiesto de Node */ }
   let pruebas;
   try { pruebas = detectStack(cwd).test_cmd || undefined; } catch { /* sin stack reconocible */ }
 
@@ -417,6 +516,7 @@ function integrarAgentsMd(cwd) {
   }
   if (enlace) {
     aviso(`AGENTS.md no se escribe: ${enlace} es un enlace simbólico o una unión (no se escribe a través de ellos).`);
+    sinEscribir.push(enlace);
     return "enlace";
   }
 
@@ -431,10 +531,13 @@ function integrarAgentsMd(cwd) {
     } catch (e) {
       if (!(e instanceof ErrorEnlace)) throw e;
       aviso(`AGENTS.md no se escribe: ${e.message}`);
-      return "enlace";
+      aviso(`AGENTS.md no se escribe: ${e.message}`);
+      sinEscribir.push(e.ruta);
     }
   }
-  if (readFileSync(destino, "utf8").replace(/\r\n/g, "\n") === contenido) {
+  const actual = leerSeguro(destino);
+  if (actual === null) { sinEscribir.push(destino); return "enlace"; }
+  if (actual.replace(/\r\n/g, "\n") === contenido) {
     info("AGENTS.md ya está al día");
     return "al_dia";
   }
@@ -444,6 +547,7 @@ function integrarAgentsMd(cwd) {
   } catch (e) {
     if (!(e instanceof ErrorEnlace)) throw e;
     aviso(`La propuesta de AGENTS.md no se escribe: ${e.message}`);
+    sinEscribir.push(e.ruta);
     return "enlace";
   }
   aviso("AGENTS.md ya existe — no se sobreescribe");
@@ -453,49 +557,61 @@ function integrarAgentsMd(cwd) {
 
 function cmdInit(global, guided = false, withUi = false, preset = null, template = null) {
   banner();
-  const claudeDir = global
-    ? join(homedir(), ".claude")
-    : join(process.cwd(), ".claude");
+  // Cada destino con su raíz: ~/.claude para lo global, el proyecto (ya sin uniones) para lo local
+  const claudeDir = fijarRaices({ global });
   console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${claudeDir})`);
-  // Con --global se escribe en ~/.claude; en un proyecto, dentro del proyecto y de ningún otro sitio
-  if (global) mkdirSync(claudeDir, { recursive: true });
-  raizEscritura = global ? claudeDir : process.cwd();
+  if (global) paso("crear ~/.claude", () => mkdirSync(claudeDir, { recursive: true }));
   if (template) console.log(`  Template: ${template}`);
   console.log("");
 
   if (!claudeEnPath()) {
     aviso("Claude Code CLI no detectado en PATH. Los archivos se instalarán de todos modos.");
   }
+  if (global) avisarEnlacesGlobales(claudeDir);
 
-  copiarNucleo(claudeDir);
-  copiarSettings(claudeDir);
+  // Un destino raro (carpeta donde va un archivo, tubería, archivo en uso) no puede tumbar el resto
+  paso("copiar el núcleo", () => copiarNucleo(claudeDir));
+  paso("settings.json", () => copiarSettings(claudeDir));
 
   if (!global) {
     const overrides = guided ? wizardGuiado() : {};
-    configurarSdd(claudeDir, overrides);
+    paso("estructura .sdd/", () => configurarSdd(claudeDir, overrides));
   }
 
   if (template) {
-    aplicarTemplate(template);
+    paso(`template ${template}`, () => aplicarTemplate(template));
   }
 
   if (preset) {
-    aplicarPreset(preset);
+    paso(`preset ${preset}`, () => aplicarPreset(preset));
   }
 
   if (!global) {
-    integrarClaudeMd(process.cwd());
-    integrarAgentsMd(process.cwd());
+    paso("CLAUDE.md", () => integrarClaudeMd(PROYECTO));
+    paso("AGENTS.md", () => integrarAgentsMd(PROYECTO));
   }
 
   if (withUi) {
-    instalarUi();
+    paso("dashboard UI", () => instalarUi());
   }
+
+  // Con algo sin escribir no se dice «instalado»: sale con código 1 y dice qué faltó
+  if (!cerrarSiFalto("forge init")) return;
 
   if (template) {
     pasosFinalesConTemplate(template);
   } else {
     pasosFinales();
+  }
+}
+
+/** Dice, una vez, qué carpetas globales son una unión del usuario y a dónde se va a escribir. */
+function avisarEnlacesGlobales(claudeDir) {
+  for (const d of CARPETAS_GLOBALES_ENLAZABLES) {
+    const ruta = join(claudeDir, d);
+    try {
+      if (lstatSync(ruta).isSymbolicLink()) info(`${ruta} es una unión o un enlace tuyo: se escribe en su destino (${realpathSync(ruta)}) por decisión explícita.`);
+    } catch { /* no existe o está roto: lo dirá la escritura */ }
   }
 }
 
@@ -525,7 +641,7 @@ function aplicarTemplate(template) {
     aviso(`Directorio de template no encontrado: ${templateSrc}`);
     return null;
   }
-  const sddDir = join(process.cwd(), ".sdd");
+  const sddDir = join(PROYECTO, ".sdd");
   if (crearDir(sddDir) === undefined) return null;
 
   // Copiar ir.json
@@ -598,18 +714,18 @@ function aplicarPreset(preset) {
     return;
   }
   const presetSrc  = join(PLUGIN_DIR, "presets", `${preset}.yaml`);
-  const configDest = join(process.cwd(), ".sdd", "sdd.config.yaml");
+  const configDest = join(PROYECTO, ".sdd", "sdd.config.yaml");
   if (!existsSync(presetSrc)) {
     aviso(`Archivo de preset no encontrado: ${presetSrc}`);
     return;
   }
-  if (!existsSync(join(process.cwd(), ".sdd"))) {
+  if (!existsSync(join(PROYECTO, ".sdd"))) {
     aviso(".sdd/ no existe — ejecuta forge init primero");
     return;
   }
   const presetContent = readFileSync(presetSrc, "utf8");
   // Preserva los bloques de rutas, protecciones y figma del config actual
-  let current = existsSync(configDest) ? readFileSync(configDest, "utf8") : "";
+  let current = leerSeguro(configDest) ?? "";
   const bloques = ["rutas:", "protecciones:", "figma:", "mapeos:", "memoria:", "compresion:", "control_versiones:"];
   let extraContent = "";
   for (const bloque of bloques) {
@@ -627,9 +743,9 @@ function aplicarPreset(preset) {
 function instalarUi() {
   titulo("Instalando dashboard UI...");
   const uiSrc  = join(PLUGIN_DIR, "ui");
-  const uiDest = join(process.cwd(), ".forge-ui");
+  const uiDest = join(PROYECTO, ".forge-ui");
   try {
-    const { bloqueados } = copiarArbol(raizEscritura, uiSrc, uiDest);
+    const { bloqueados } = copiarArbol(raizPara(uiDest), uiSrc, uiDest);
     for (const b of bloqueados) aviso(`No se escribe: es un enlace o pasa por uno: ${b}`);
     if (bloqueados.length > 0) return;
     info(`Dashboard instalado en ${uiDest}`);
@@ -710,9 +826,9 @@ function wizardGuiado() {
 
 function cmdUpdate(global) {
   banner();
-  const claudeDir = global
-    ? join(homedir(), ".claude")
-    : join(process.cwd(), ".claude");
+  // Antes `update` no fijaba la raíz de escritura: con --global todo quedaba «fuera del proyecto» y se
+  // descartaba con decenas de avisos, y aun así imprimía «Núcleo actualizado» (N-04)
+  const claudeDir = fijarRaices({ global });
   console.log(`  Actualizando núcleo en: ${claudeDir}`);
   console.log("  (.sdd/ y settings.json del usuario NO se tocan)");
   console.log("");
@@ -720,8 +836,10 @@ function cmdUpdate(global) {
   if (!existsSync(claudeDir)) {
     error(`No existe ${claudeDir}. Ejecuta 'npx sdd-es init' primero.`);
   }
+  if (global) avisarEnlacesGlobales(claudeDir);
 
-  copiarNucleo(claudeDir);
+  paso("copiar el núcleo", () => copiarNucleo(claudeDir));
+  if (!cerrarSiFalto("forge update")) return;
   info("Núcleo actualizado. Tu .sdd/ y settings.json se conservan.");
   console.log("");
 }
@@ -1386,7 +1504,6 @@ function cmdConfig(args) {
     }
     console.log(`${c.amarillo("~")}  ${clave}: ${c.rojo(actual)} → ${c.verde(valor)}`);
     // Por escritura segura: si `.sdd` o el archivo son un enlace (o un enlace duro a otro lugar), no se escribe a través de él
-    raizEscritura = process.cwd();
     if (!escribirSeguro(configPath, yamlNuevo)) {
       error("No se cambió nada: el archivo de configuración o su carpeta es un enlace.");
     }
@@ -1687,7 +1804,6 @@ function cmdAprobar(subArgs) {
   }
   const nuevo = { ...estado, spec_aprobado: true, ultima_actualizacion: new Date().toISOString() };
   // Por escritura segura: no se aprueba "a través" de un enlace hacia fuera del proyecto
-  raizEscritura = process.cwd();
   if (!escribirSeguro(estadoPath, JSON.stringify(nuevo, null, 2))) {
     error("No se aprobó nada: .sdd/estado.json o su carpeta es un enlace.");
   }
