@@ -131,7 +131,9 @@ describe("integraciones — batería hostil (archivo)", () => {
   test("el archivo no contiene caracteres invisibles ni de control sin escapar", () => {
     // Permitidos: salto de línea y sangrado del JSON
     const prohibidos = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F­᠎​-‏‪-‮⁠-⁤⁦-⁩﻿]|[\u{E0000}-\u{E007F}]/u;
-    assert.ok(!prohibidos.test(crudo), "hay un carácter invisible o de control literal en el archivo");
+    // El retorno de carro de un final de línea CRLF (autocrlf en Windows) no es un carácter del contenido
+    const sinCrlf = crudo.replace(/\r\n/g, "\n");
+    assert.ok(!prohibidos.test(sinCrlf), "hay un carácter invisible o de control literal en el archivo");
   });
 
   test("los caracteres invisibles de los casos existen una vez leído el JSON", () => {
