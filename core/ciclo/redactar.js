@@ -12,7 +12,10 @@ const NOMBRE_SECRETO = '(?:api[_-]?key|apikey|secret|token|passw(?:or)?d|passwd|
 
 /**
  * Cada patrón: [expresión, sustitución]. El orden importa: los bloques largos primero.
- * @type {[RegExp, string][]}
+ * El tercer elemento, 'nombre', marca los que deciden por el NOMBRE de una variable: sirven para
+ * la salida de pruebas y los registros, pero no para texto que el modelo va a editar (ver
+ * `redactarFormatos`).
+ * @type {([RegExp, string] | [RegExp, string, 'nombre'])[]}
  */
 const PATRONES = [
   // Clave privada completa, o empezada y cortada (el recorte puede haber perdido el final)
@@ -21,12 +24,12 @@ const PATRONES = [
   // Credenciales dentro de una URL: https://usuario:clave@servidor
   [/(\b[a-z][a-z0-9+.-]{0,30}:\/\/)[^/\s:@]+:[^/\s@]+@/gi, '$1[REDACTADO]@'],
   // JSON: "password": "valor"
-  [new RegExp(`("[\\w.-]{0,64}${NOMBRE_SECRETO}[\\w.-]{0,64}"\\s*:\\s*)"[^"]*"`, 'gi'), '$1"[REDACTADO]"'],
+  [new RegExp(`("[\\w.-]{0,64}${NOMBRE_SECRETO}[\\w.-]{0,64}"\\s*:\\s*)"[^"]*"`, 'gi'), '$1"[REDACTADO]"', 'nombre'],
   [/\bAuthorization:\s*(?:Basic|Bearer|Token)\s+\S+/gi, 'Authorization: [REDACTADO]'],
   // clave=valor y clave: valor, también con prefijos (DB_PASSWORD, AWS_SECRET_ACCESS_KEY)
   // Valor entre comillas, con espacios: API_KEY="a b c d"
-  [new RegExp(`(${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*[:=]\\s*)(["'])[^"'\\n]{1,200}\\2`, 'gi'), '$1$2[REDACTADO]$2'],
-  [new RegExp(`(${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*[:=]\\s*)(["']?)[^\\s"',;]{4,}\\2`, 'gi'), '$1[REDACTADO]'],
+  [new RegExp(`(${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*[:=]\\s*)(["'])[^"'\\n]{1,200}\\2`, 'gi'), '$1$2[REDACTADO]$2', 'nombre'],
+  [new RegExp(`(${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*[:=]\\s*)(["']?)[^\\s"',;]{4,}\\2`, 'gi'), '$1[REDACTADO]', 'nombre'],
   [/\b_authToken\s*=\s*\S+/gi, '_authToken=[REDACTADO]'],
   [/\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*/g, 'Bearer [REDACTADO]'],
   // Formatos de token conocidos
@@ -62,6 +65,26 @@ export function redactar(texto) {
   // ASCII: no toca los emojis compuestos ni la escritura de otros alfabetos
   let limpio = texto.replace(/(?<=[A-Za-z0-9_-])[\u200B-\u200D\u2060\uFEFF\u00AD]+(?=[A-Za-z0-9_-])/g, '');
   for (const [patron, sustitucion] of PATRONES) limpio = limpio.replace(patron, sustitucion);
+  return limpio;
+}
+
+/**
+ * Para el texto de archivos que se le entrega al modelo (`leer_archivo`, `buscar`): solo formatos de
+ * secreto conocidos (claves de proveedores, JWT, URL con credenciales, bloque de clave privada completo).
+ * NO redacta por nombre de variable: `const token = jwt.sign(...)`, `auth: true` o `password=None`
+ * son código legítimo, y si el modelo ve `[REDACTADO]` donde hay código, sus ediciones
+ * `buscar/reemplazar` fallan o, peor, escribe `[REDACTADO]` en el archivo (hallazgo N-03 de la
+ * tercera revisión independiente). Tampoco recorta desde una cabecera de clave privada sin cierre.
+ * La frontera real son los vetos de nombre de archivo y el aislamiento, no esta función.
+ * @param {string} texto
+ */
+export function redactarFormatos(texto) {
+  let limpio = texto.replace(/(?<=[A-Za-z0-9_-])[\u200B-\u200D\u2060\uFEFF\u00AD]+(?=[A-Za-z0-9_-])/g, '');
+  for (const [patron, sustitucion, clase] of PATRONES) {
+    if (clase === 'nombre') continue;
+    if (patron.source.endsWith('[\\s\\S]*$')) continue;
+    limpio = limpio.replace(patron, sustitucion);
+  }
   return limpio;
 }
 
