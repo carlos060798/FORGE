@@ -1,7 +1,7 @@
 # Verificación: Integraciones con GitHub, GitLab y Jira
 
 > Spec: `spec.md` · Plan: `plan.md` · Tareas: `tareas.md`
-> Estado: **fase F1 (núcleo) verificada; F2 a F6 sin empezar.** Este documento solo afirma lo que tiene una prueba corriendo hoy. Lo demás figura como pendiente.
+> Estado: **fase F1 (núcleo) verificada; F2: solo el adaptador de GitLab (apartado 7); el resto de F2 y F3 a F6 sin empezar.** Este documento solo afirma lo que tiene una prueba corriendo hoy. Lo demás figura como pendiente.
 
 ## 1. Alcance de esta verificación
 
@@ -84,3 +84,49 @@ Dos observaciones honestas sobre el detector:
 - `npm run typecheck`: 0 errores.
 - `node --test tests/*.test.js`: 2345 pruebas, 2333 pasan, 0 fallan, 12 omitidas (las omitidas son anteriores y no son de este trabajo).
 - Pruebas nuevas: puerto 7, configuración 25, confianza 41, http 31, auditoría 16, aislamiento 11.
+- Tras F2.2/F2.5 (GitLab): `npm run typecheck` 0 errores; `node --test tests/*.test.js`: 2458 pruebas, 2446 pasan, 0 fallan, 12 omitidas (la suite opt-in de GitLab figura como omitida a propósito). Pruebas nuevas: GitLab 50. Ver el apartado 7.
+
+## 7. F2.2 y F2.5 — Adaptador de GitLab
+
+> Solo GitLab. GitHub y Jira (F2.1, F2.3) siguen sin empezar.
+
+Archivos: `core/integraciones/proveedores/gitlab.js`, `tests/integraciones-gitlab.test.js` (50 pruebas en marcha y 2 opt-in saltadas), servidor falso `tests/fixtures/integraciones/servidores/gitlab.mjs` (node:http en 127.0.0.1: ninguna llamada de red real ni credencial real; el `fetch` global se bloquea salvo hacia 127.0.0.1 durante la prueba).
+
+| Garantía | Prueba | Estado |
+|---|---|---|
+| Pasa `validarProveedor`; sin operaciones genéricas ni de fusionar, cerrar o borrar | «contrato del puerto», «no hay operación de fusionar…» | Cubierto |
+| Subgrupos anidados: `a/b/c/d` viaja como `a%2Fb%2Fc%2Fd` en cada ruta | «subgrupos anidados…» (todas las rutas comprobadas en el servidor) | Cubierto |
+| Referencia estricta `grupo/…/proyecto#N` validada contra `destinos`; fuera de la lista, cero peticiones | «referencias no válidas» (28 formas), «destino fuera de la lista» | Cubierto |
+| Notas de sistema filtradas; paginación con tope de 5 páginas × 100 y de bytes; solo se sigue `x-next-page` igual a la página siguiente | «filtra las notas de sistema», «pagina… tope», «paginación inesperada» | Cubierto |
+| Los 52 casos de `hostiles.json` como título, cuerpo y nota: devueltos byte a byte; el adaptador solo hace las 2 lecturas previstas, a rutas del proyecto | «los 52 casos hostiles…» | Cubierto |
+| Formas inesperadas (incidencia, notas, ámbitos, JSON roto) → `ErrorGitLab` con código `forma`; 401/403/404/5xx tipados sin copiar el cuerpo | «formas inesperadas», «estados HTTP de error» | Cubierto |
+| Respuesta enorme cortada por el tope de `http.js` | «una respuesta enorme…» | Cubierto |
+| `comentar` idempotente: marcador `<!-- forge:<id> -->`, búsqueda previa, una nota de sistema no cuenta, no publica si no pudo revisar todas las notas | 7 pruebas | Cubierto |
+| `proponerCambio`: rama NUEVA con prefijo `forge/`; existente → falla sin escribir; título con `Draft: ` sin duplicar variantes; todas las lecturas antes de la primera escritura; solo `POST` de rama, commit y MR; nada en la base | 19 pruebas | Cubierto |
+| Rutas maliciosas (`..`, absolutas, `.git/`, control, invisibles, duplicadas); tope de número (20) y de tamaño (256 KiB por archivo, 1 MiB total) | «rutas maliciosas», «topes…» | Cubierto |
+| Fallo tras crear la rama: no se borra y el error dice rama y etapa | «fallo a mitad» ×2 | Cubierto |
+| `comprobarAlcance`: `api`, `read_api`, ámbitos de más, 404/401 → `no_comprobable`, formas raras | 5 pruebas | Cubierto contra el servidor falso |
+| El token no aparece en errores, valores devueltos ni eventos (centinela en 9 recorridos, incluido un `http` inyectado que lo arrastra) | «el token no aparece en ningún sitio» | Cubierto |
+| Interruptor y modo `apagado`: sin peticiones | 2 pruebas | Cubierto |
+
+### Decisiones
+
+- **Firma.** La del encargo (`leerElemento(referencia)`, `comentar(referencia, texto, { marcador })`, `proponerCambio({…})`, `comprobarAlcance()`), no la del typedef `ProveedorDeTrabajo` de `puerto.js`, que describe otra. `validarProveedor` solo mira nombres, por eso pasa; el typedef debería actualizarse cuando estén los tres adaptadores.
+- **Modo.** `crearProveedorGitLab` recibe además `modo` (por defecto `solo_lectura`) y lo hace cumplir: `comentar` pide `comentar`, `proponerCambio` pide `proponer`, `apagado` rechaza todo sin red.
+- **Resultados.** `comentar` y `proponerCambio` devuelven `{ id, url?, borrador?, yaExistia }` (y `rama`); `yaExistia` no está en `ResultadoDePublicacion`. `comprobarAlcance` devuelve `{ estado, ambitos, exceso, suficiente }`; `suficiente` es un añadido (un token `read_api` en modo `comentar` no tiene exceso, pero no sirve).
+- **`exceso`.** `solo_lectura` necesita solo `read_api` (un token `api` cuenta como exceso aunque alcance); `comentar` y `proponer`, solo `api`.
+- **Auditoría.** Una operación auditada por llamada del puerto, aunque `proponerCambio` haga varias peticiones.
+- **Borrador.** La MR siempre lleva `Draft: ` en el título. Si la respuesta no trae `draft` ni `work_in_progress` verdaderos se lanza `no_borrador` en vez de devolver un éxito. `parametroBorrador` (`'draft'` o `'work_in_progress'`) está apagado por defecto.
+- **Archivos existentes.** Para elegir `create` o `update` se hace `HEAD /repository/files/:ruta?ref=<base>` de cada archivo, antes de crear la rama.
+
+### Límites y puntos «sin confirmar» (necesitan una cuenta real)
+
+- **Parámetro `draft`** al crear la MR por API: el spike no lo confirma. La prueba opt-in «instancia real» (saltada salvo `FORGE_TEST_INTEGRACIONES=1` con `FORGE_TEST_GITLAB_{HOST,TOKEN,PROYECTO}`) comprueba si basta el prefijo. Escribe de verdad una rama y una MR en borrador en el proyecto de prueba; no borra. **No se ha ejecutado.**
+- **`HEAD` sobre archivos** y la forma de la respuesta de creación de nota: no leídos en el spike. El servidor falso sigue `contratos-respuesta.md` (ejemplos inventados, no capturas): que pasen demuestra el adaptador contra ese modelo, no contra GitLab.
+- **Ámbito mínimo por endpoint** (`read_api` leer, `api` escribir): deducido, no declarado por la página de cada endpoint; el rol mínimo para comentar tampoco. Un token con menos devolverá 403 («prohibido»).
+- **`/personal_access_tokens/self` con token de proyecto o de grupo:** se asume 404/401; una instancia real puede diferir.
+- **Notas.** Pasadas 500 notas (o 4 MiB), `leerElemento` devuelve las más antiguas sin avisar en el elemento y `comentar` se niega a publicar. No hay campo `truncado` porque F2.4 pide «sin campos de más».
+- **Marcador.** Quien pueda comentar puede pegar `<!-- forge:<id> -->` y evitar la publicación; no puede falsearla. Se podría atar la búsqueda al autor con `GET /user` (sin confirmar con `read_api`).
+- **Archivos de CI.** El adaptador no distingue `.gitlab-ci.yml`: una MR en borrador que lo cambie ejecuta pipelines en la rama. Es filtro de F3.2.
+- **Auditoría opcional.** Sin `auditoria` inyectada no hay interruptor ni tope; quien lo construya (F4) debe pasarla.
+- **Parche a una prueba existente.** `tests/integraciones-aislamiento.test.js` exigía que los módulos de `core/integraciones/` importaran solo `./x.js` o cuatro internos por ruta literal; se cambió a comprobar la ruta resuelta (hermanos del paquete, también desde `proveedores/`, o los mismos cuatro internos). No se tocó ningún módulo del núcleo.

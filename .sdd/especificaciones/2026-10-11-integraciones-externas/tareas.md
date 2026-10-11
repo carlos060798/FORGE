@@ -24,13 +24,13 @@
 ## F2 — Adaptadores
 
 - [ ] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente.
-- [ ] **F2.2** GitLab (host configurable): igual.
+- [x] **F2.2** GitLab (host configurable): igual. `core/integraciones/proveedores/gitlab.js`, `tests/integraciones-gitlab.test.js`, servidor falso en `tests/fixtures/integraciones/servidores/gitlab.mjs`.
 - [ ] **F2.3** Jira Cloud: lectura de ticket y comentario. `proponerCambio` no existe en Jira: la operación se rechaza con un mensaje claro y el modo `proponer` en Jira se trata como `comentar`.
 - [ ] **F2.3a** Jira: conversor mínimo ADF→texto y texto→ADF, sin dependencias. Tests: documento con nodos desconocidos, anidamiento profundo, enlaces y menciones, texto hostil dentro del documento, y tamaño extremo.
 - [ ] **F2.3b** Jira: solo token sin ámbitos contra `<sitio>.atlassian.net`; con ámbitos, `doctor` avisa del límite.
-- [ ] **F2.5** GitLab: filtrar notas de sistema (`system: true`); solicitud con prefijo `Draft:`; ámbitos comprobables con token personal.
-- [ ] **F2.6** Idempotencia local: marcador oculto y búsqueda previa, en los tres.
-- [ ] **F2.4** Prueba de contrato común: las tres respuestas normalizadas al mismo tipo de elemento, sin campos de más.
+- [x] **F2.5** GitLab: filtrar notas de sistema (`system: true`); solicitud con prefijo `Draft:`; ámbitos comprobables con token personal. (Queda sin confirmar con cuenta real si basta el prefijo: prueba opt-in escrita y saltada.)
+- [ ] **F2.6** Idempotencia local: marcador oculto y búsqueda previa, en los tres. *(GitLab hecho en `comentar`; faltan GitHub y Jira. Al proponer, la idempotencia de GitLab es «la rama ya existe → falla sin tocarla», más el marcador en la descripción.)*
+- [ ] **F2.4** Prueba de contrato común: las tres respuestas normalizadas al mismo tipo de elemento, sin campos de más. *(GitLab devuelve exactamente `proveedor, destino, referencia, titulo, cuerpo, etiquetas, comentarios` y `url` solo si es del host configurado; falta la prueba común con los otros dos.)*
 
 ## F3 — Publicación
 

@@ -72,12 +72,16 @@ describe('F1.6 carga perezosa: prueba estática', () => {
 
   test('el propio paquete solo depende de módulos de Node y de módulos internos conocidos (sin dependencias nuevas)', () => {
     const dir = join(RAIZ, 'core', 'integraciones');
-    const internos = new Set(['../ciclo/redactar.js', '../ciclo/config.js', '../escritura-segura.js', '../event-log.js']);
+    // Módulos de core/ que el paquete puede importar, como rutas absolutas (valen desde proveedores/ también)
+    const internos = new Set(['ciclo/redactar.js', 'ciclo/config.js', 'escritura-segura.js', 'event-log.js'].map((r) => join(RAIZ, 'core', r)));
     for (const f of archivosJs(dir)) {
       const texto = readFileSync(f, 'utf8');
       for (const m of texto.matchAll(ESPECIFICADORES)) {
         const e = m[2];
-        const ok = e.startsWith('node:') || /^\.\/[\w-]+\.js$/.test(e) || internos.has(e);
+        // Hermanos del propio paquete (core/integraciones/**), también desde proveedores/
+        const destino = e.startsWith('.') ? resolve(dirname(f), e) : '';
+        const propio = destino !== '' && destino.startsWith(dir + sep) && /\.js$/.test(destino);
+        const ok = e.startsWith('node:') || propio || internos.has(destino);
         assert.ok(ok, `${relative(RAIZ, f)} importa «${e}»`);
       }
     }
