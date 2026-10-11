@@ -53,7 +53,7 @@ Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del
 
 | Brecha | Estado | Qué quedó |
 |---|---|---|
-| **C1** modelo real | ✅ | 21 ejecuciones; 10 hallazgos de la primera jornada, corregidos salvo los listados abajo |
+| **C1** modelo real | ✅ | 24 ejecuciones; 10 hallazgos de la primera jornada, corregidos salvo los listados abajo |
 | **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido |
 | **C3** correcciones sin revisar | ⚠️ | Cuatro revisiones independientes y una segunda pasada; la última tanda sin revisar |
 | **C4** modelos y precios | ✅ | ADR-19 implementada; falta compararla con lo facturado |

@@ -2,7 +2,7 @@
 
 > Fecha: 2026-10-09 · Windows 11, Docker 29.7.2, Node 24.20 · rama `feature/motor-agentico`
 > Proveedor: Anthropic por API. Autor: Claude, a petición del dueño.
-> **Alcance:** ocho ejecuciones de una tarea cada una, en tres rondas. Es una primera evidencia, no la validación completa que pide la spec: falta comparar el gasto calculado con el facturado (CA-003-01) y la revisión independiente (HU-004).
+> **Alcance de esta primera parte:** ocho ejecuciones de una tarea cada una, en tres rondas. El documento sigue más abajo con las rondas 4 a 8: en total, 24 ejecuciones hasta el 2026-10-10. Es una primera evidencia, no la validación completa que pide la spec: falta comparar el gasto calculado con el facturado (CA-003-01) y la revisión independiente (HU-004).
 
 ## Ronda 1 — sobre el código tal como estaba
 
