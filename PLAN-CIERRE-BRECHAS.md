@@ -18,7 +18,7 @@
 | **Implementador** | **Por turnos con herramientas, opt-in** (ADR-21) | El contrato de archivos completos (ADR-07) queda como modo de respaldo. ADR-15 no cambia: las herramientas se llaman en proceso, sin cliente MCP. |
 | **Versiones** | 5.0.0 se publica tras S6; S7 y S9 en 5.1.0; S8 opt-in en 5.2.0 y por defecto en 6.0.0 | Mismo patrón que ADR-09: primero opt-in, por defecto en la MAYOR siguiente. |
 
-Las cinco son tuyas. Ninguna está tomada.
+**Estado (2026-10-11):** las cinco se implementaron tomando la propuesta, por delegación del dueño el 2026-10-09, y siguen pendientes de su ratificación. La de versiones no se ha ejecutado: 5.0.0 no está publicada y falta decidir si se separa o sale como beta.
 
 ---
 
