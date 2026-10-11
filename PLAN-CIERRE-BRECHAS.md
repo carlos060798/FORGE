@@ -1,6 +1,6 @@
 # Plan maestro — Cierre de brechas del Motor Agéntico (continúa `PLAN-MOTOR-AGENTICO.md`)
 
-> **Estado (2026-10-09, cierre de la primera jornada):** implementado en la rama `feature/motor-agentico`, sin publicar. Las cuatro fases están hechas y revisadas de forma independiente; **falta verificación y tus decisiones** (ver «Estado de ejecución» y «Pendiente para las próximas sesiones»). Las cuatro especificaciones están en `en_implementacion` y los tres ADR en `aceptada`, **por delegación del dueño, pendientes de su ratificación**.
+> **Estado (actualizado 2026-10-11):** implementado en la rama `feature/motor-agentico`, sin publicar. Las cuatro fases están hechas y revisadas de forma independiente, con tres pasadas; **falta la integración continua en Linux, la comparación del gasto con lo facturado y tus decisiones** (ver «Estado de ejecución» y «Pendiente para las próximas sesiones»). Las cuatro especificaciones están en `en_implementacion` y los tres ADR en `aceptada`, **por delegación del dueño, pendientes de su ratificación**.
 > **Fecha:** 2026-10-09
 > **Visión:** que el ciclo verificado esté **demostrado con un modelo real**, que un «las pruebas pasan» **signifique algo**, y que el implementador trabaje **leyendo y editando por pasos** en lugar de adivinar y reescribir archivos enteros. Como mejora incremental (Principio X), sin dependencias nuevas (Principio IV).
 > **Continúa a:** `PLAN-MOTOR-AGENTICO.md` (FASES 0 a 5, implementadas y sin publicar). La numeración sigue: FASES 6 a 9, specs S6 a S9.
@@ -47,57 +47,78 @@ Lo que ya está bien y no se toca: router determinista (ADR-05), motor propio (A
 
 ---
 
-## Estado de ejecución (2026-10-09)
+## Estado de ejecución (actualizado 2026-10-11)
 
 Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del todo · ⏳ pendiente.
 
+**Rama `feature/motor-agentico`, subida y sin publicar.** Pruebas unitarias: 2202 pasan, 0 fallan, 12 saltadas (2214). Comprobación de tipos: 0 errores. Ejecuciones con un modelo real: 24, de unos 2,4 USD calculados (sin comparar con lo facturado). Revisiones independientes: tres fases revisadas, una segunda pasada sobre las correcciones y una tercera sobre las de la segunda; la cuarta pasada no existe.
+
 | Brecha | Estado | Qué quedó |
 |---|---|---|
-| **C1** modelo real | ✅ | 24 ejecuciones; 10 hallazgos de la primera jornada, corregidos salvo los listados abajo |
-| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido |
-| **C3** correcciones sin revisar | ⚠️ | Cuatro revisiones independientes y una segunda pasada; la última tanda sin revisar |
-| **C4** modelos y precios | ✅ | ADR-19 implementada; falta compararla con lo facturado |
-| **C5** rojo | ✅ | Obligatorio con reintento y exención |
-| **C6** fortaleza de las pruebas | ⚠️ | Mutación propia; medida con Docker real en Go y JavaScript |
-| **C7** herramientas | ✅ | Modo por turnos; probado con un modelo real en una tarea |
-| **C8** caché | ✅ | Medida en el modo por turnos (55 %) |
+| **C1** modelo real | ✅ | 24 ejecuciones (JavaScript, Python, Go; código existente; corte y reanudación; pausa por presupuesto) y 14 hallazgos, ver `evidencia-2026-10-09.md` |
+| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido. Además ese job solo ejecuta `sandbox-real`: las demás pruebas con Docker no las corre ningún job |
+| **C3** correcciones sin revisar | ⚠️ | Tres revisiones y dos pasadas hechas, con sus hallazgos altos corregidos. Lo corregido en la tercera pasada no tiene cuarta |
+| **C4** modelos y precios | ✅ | ADR-19 implementada y contrastada con la tarifa publicada; falta compararla con lo facturado |
+| **C5** rojo | ✅ | Obligatorio con reintento y exención; no se aplica si ya hay implementación |
+| **C6** fortaleza de las pruebas | ⚠️ | Mutación propia, con salidas reales capturadas de node:test, pytest, unittest, jest, vitest y Go (58 capturas), limitada a las líneas que la tarea cambió y con el barrido de copias de procesos muertos. **Abierto: N-02**, funciones trampa que el código llama inflan la puntuación porque no se filtra por cobertura |
+| **C7** herramientas | ✅ | Modo por turnos; probado con un modelo real en una tarea, tres veces |
+| **C8** caché | ⚠️ | Medida en el modo por turnos (55 %). En modo de bloque casi no ahorra y con el nivel económico no se guarda nada (H14) |
 | **C9** MCP | ⚠️ | Revisión `2026-07-28` confirmada e implementada; sin cliente oficial |
 | **C10** `AGENTS.md` | ✅ | En la raíz y en `forge init` |
-| **C11** runtime | ⚠️ | Solo `runc` probado |
+| **C11** runtime | ⚠️ | Solo `runc` probado; otro runtime exige `FORGE_RUNTIMES_PERMITIDOS` |
 | **C12** lista de riesgos | ✅ | Tabla ASI01 a ASI10 en cada revisión (nombres tomados de un resumen de terceros) |
+| **C13** llamada cancelada por tiempo | ⚠️ | Nueva. Se cobraba sin contabilizarse. Ahora se anota una estimación de la entrada; la salida no se puede estimar |
+| **C14** robustez | ⚠️ | Nueva. Cortes reales del proceso, concurrencia, proyectos hostiles y pruebas frágiles estabilizadas, con pruebas automáticas. Sin ejecución larga ni segunda plataforma |
 
-Documentos de la jornada: `evidencia-2026-10-09.md`, `revision-independiente.md` y `revision-independiente-2.md` en la carpeta de cada spec, y `verificacion.md` de cada una (con la autoevaluación honesta de cada criterio).
+Documentos: `evidencia-2026-10-09.md` y `revision-independiente.md`, `-2` y `-3` en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/`; `revision-independiente.md` y `verificacion.md` en la carpeta de cada una de las otras tres specs; `docs/PROBLEMAS-CONOCIDOS.md`, `docs/MIGRACION-5.0.md` y `docs/COBERTURA.md`.
 
 ## Pendiente para las próximas sesiones
 
 Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 
 **Verificación (puede hacerla un agente)**
-- [ ] Resultado de la suite completa con `FORGE_TEST_DOCKER=1` sobre `437ee1b` (estaba corriendo al cerrar la sesión).
-- [ ] Tercera revisión independiente de las correcciones posteriores a la segunda pasada: mutación (`de73eb7`), `forge init` y tope de gasto (`0b096f0`).
-- [ ] Medir la mutación con Docker real en Python y TypeScript y comprobar los patrones de salida de pytest, unittest, jest y vitest.
-- [ ] Ejecutar con un modelo real: `mutacion: informar`, el refuerzo de pruebas (`exigir` con puntuación baja) y el modo por turnos tras las correcciones.
-- [ ] Medir el criterio de caché de la spec: una tarea de tres iteraciones en modo de bloque, con y sin caché.
-- [ ] Comprobar los permisos 0700 de las copias temporales y los enlaces simbólicos de archivo en Linux.
+- [ ] Resultado de la suite completa con `FORGE_TEST_DOCKER=1` sobre `27ea407`: estaba corriendo al cerrar. Si falla solo por carga de la máquina, repetir aislado.
+- [ ] **N-02:** descartar de la muestra de mutación los archivos y líneas que ninguna prueba ejecuta (cobertura del ejecutor, solo si se ofrece sin dependencias), limitar los archivos por medición y documentar que `mutacion: exigir` no es una garantía frente a un implementador adversario.
+- [ ] Cuarta revisión independiente de lo corregido en la tercera pasada: intención del diario (N-01), redacción solo por formato (N-03), escritura global de `init` y `update` (N-04, N-05, N-07, N-08), barrido por pid y la mutación con salidas reales.
+- [ ] Medición por mutación con Docker real en Python y TypeScript: `tests/mutacion-docker-lenguajes.test.js` está escrito, sin resultado confirmado. Actualizar `verificacion.md` de pruebas confiables con las cifras.
+- [ ] Refuerzo de pruebas con un modelo real: en las dos ejecuciones con `exigir`, las pruebas detectaron todo y no hubo refuerzo.
+- [ ] Caché: una tarea de tres iteraciones en modo de bloque, con y sin caché, para el criterio de la spec de puesta al día (probablemente no se cumple).
+- [ ] Permisos 0700 de las copias temporales y enlaces simbólicos de archivo en Linux.
+- [ ] Un job de integración continua para las demás pruebas con Docker, y otro de tipos.
+- [ ] `forge doctor` debe comprobar Docker siempre, no solo con `sandbox.runtime`.
+- [ ] La configuración ignora en silencio una clave mal sangrada: avisar.
+- [ ] Test de consistencia que compare las cifras escritas en prosa (agentes, comandos, skills) con el disco.
+- [ ] Corregir las contradicciones entre documentos listadas en `docs/PROBLEMAS-CONOCIDOS.md`, sección 8 (índices con enlaces que no existen, nombres de paquete antiguos).
 
 **Necesita algo tuyo**
-- [ ] Abrir la solicitud de cambio `feature/motor-agentico` hacia `main` para que corra la integración continua (enlace de comparación de GitHub de este repositorio).
-- [ ] Comparar el gasto calculado con lo facturado (saldo de la consola del proveedor).
+- [ ] Abrir la solicitud de cambio `feature/motor-agentico` hacia `main` para que corra la integración continua.
+- [ ] Comparar el gasto calculado con lo facturado (saldo de la consola del proveedor, antes y después).
 - [ ] Ratificar las cuatro especificaciones y los ADR-19, ADR-20 y ADR-21, aprobados por delegación el 2026-10-09; y la decisión de crear `AGENTS.md` una sola vez.
 - [ ] Ratificar la tensión con el Principio VII (refuerzo de pruebas posterior a la implementación).
 - [ ] Decidir si `mutacion` pasa a `exigir` por defecto en la próxima versión MAYOR.
+- [ ] Decidir cómo se publica: 5.0.0 entera, o separada (fases 6 y 9 en 5.0.0; 7 y 8 en 5.1.0), o `5.0.0-beta.1` con la etiqueta `beta` de npm. Cambiar la versión exige tocar dos pruebas que fijan `5.0.0`.
 - [ ] Definir `GITHUB_PERSONAL_ACCESS_TOKEN` y reiniciar la sesión para conectar el servidor MCP de GitHub (ya está en `.mcp.json`, sin confirmar); indicar la instancia de GitLab si se quiere conectar.
 - [ ] Rotar la clave de API usada en las ejecuciones reales.
-- [ ] Publicar 5.0.0 (el CHANGELOG sigue en «sin publicar»; tras la lista de publicación y con el job `aislamiento` en verde).
+- [ ] Publicar (`npm publish`, etiqueta de git): solo con la integración continua en verde.
 
 **Abierto, sin asignar**
-- [ ] Con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
-- [ ] `forge config set` y `forge aprobar` escriben sin comprobar enlaces.
+- [ ] H13: no se sabe por qué algunas llamadas no responden en 120 s si el proveedor responde en un segundo. Los reintentos del adaptador no sirven tras una cancelación por tiempo.
+- [ ] H10: con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
+- [ ] La estimación del gasto de una llamada cancelada subcuenta el texto no ASCII, sobrecuenta un tercio en ASCII y no estima la salida (N-11).
+- [ ] Cada `continuar` tras un consumo inválido paga una llamada real con el libro en cero (N-06).
+- [ ] `initialize` con una versión desconocida superior responde `2025-06-18`, no la más reciente (N-10); `pytest \`, `#egg=pytest` y `-r base.txt` no se reconocen en requisitos (N4).
 - [ ] Los tiempos de espera repetidos no cuentan para «sin progreso».
 - [ ] El modo por turnos no usa el recuperador de contexto, solo el mapa de archivos.
 - [ ] Los precios de OpenAI no están contrastados; el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
-- [ ] `package.json` sin tope de tamaño; el mapa de archivos descarta nombres con letras no ASCII.
+- [ ] Proyectos grandes y una ejecución larga sin intervención: no se han probado.
 - [ ] Que el ciclo use servidores MCP de GitHub o GitLab (cliente MCP): exige una especificación nueva y revisión de seguridad (ADR-12 y ADR-15 hoy lo excluyen).
+
+**Cerrado en esta tanda**
+- [x] Comprobación de tipos: de 36 errores a 0.
+- [x] Tercera revisión independiente (N-01 a N-14): N-01, N-03, N-04, N-05, N-07, N-08, N-09, N-12, N-13 y N-14 corregidos; N-02 abierto arriba.
+- [x] `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
+- [x] Mutación limitada a las líneas que la tarea cambió (H11).
+- [x] Pruebas frágiles estabilizadas (`docker info`, rendimiento, doctor).
 
 ---
 
@@ -146,7 +167,7 @@ coder (S8, opt-in):  turno ─▶ herramienta ─▶ turno ─▶ … ─▶ «t
 
 - **7.1** Tests primero: clasificación de «rojo», operadores de mutación, puntuación, ruta nueva del router. ✅ **Hecho.**
 - **7.2** Rojo obligatorio: si las pruebas recién escritas pasan sin implementación, el agente de pruebas lo intenta una vez más; si vuelve a pasar, revisión humana con motivo `pruebas_no_fallan`. Una tarea puede declarar que parte de código ya existente y quedar exenta. ✅ **Hecho.** Con exención `parte_de_codigo_existente` y sin aplicar si ya hay implementación.
-- **7.3** Mutación propia (ADR-20): tras un pase, se alteran los archivos que escribió el implementador (comparaciones, constantes, condiciones, valores de retorno) y se ejecutan las pruebas contra cada alteración en el entorno aislado, con un tope de alteraciones y de tiempo. ⚠️ **Hecho; medido con Docker real solo en Go y JavaScript.** Python y TypeScript sin ejecuciones reales de esta pasada.
+- **7.3** Mutación propia (ADR-20): tras un pase, se alteran los archivos que escribió el implementador (comparaciones, constantes, condiciones, valores de retorno) y se ejecutan las pruebas contra cada alteración en el entorno aislado, con un tope de alteraciones y de tiempo. ⚠️ **Hecho; medido con Docker real en Go y JavaScript, con salidas reales capturadas de pytest, unittest, jest y vitest** (58 capturas en `tests/fixtures/salidas-ejecutores/`) y limitado a las líneas que la tarea cambió. La medición completa con Docker en Python y TypeScript tiene su prueba escrita y sin resultado confirmado; sigue abierto N-02 (funciones trampa).
 - **7.4** Tres modos, `motor.mutacion: no | informar | exigir`. Con `informar` (por defecto) la puntuación queda en el registro. Con `exigir`, bajo el umbral se pide una ronda de refuerzo al agente de pruebas y, si no basta, revisión humana con motivo `pruebas_debiles`. ✅ **Hecho.** Añadido `motor.mutacion_min_concluyentes` (3): `exigir` no pasa con una medición vacía.
 - **7.5** Ampliar la lista de archivos que configuran al ejecutor de pruebas (`jest.setup.js`, `__mocks__/`, `vitest.workspace.ts`, `karma.conf.js`). ✅ **Hecho.**
 

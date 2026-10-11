@@ -150,3 +150,14 @@ Informe: `revision-independiente.md` (veredicto `APROBADA_CON_OBSERVACIONES`). H
 - ❌ **Ejecución con un modelo real** sigue pendiente.
 - ❌ **H-02 (c)**: no se descartan archivos que las pruebas no llaman (cobertura) y un implementador que detecte el entorno de medición puede sesgar la puntuación.
 - ❌ **H-10** (alteraciones inútiles) sin tocar.
+
+## Tercera revisión independiente y cierre de la tanda (2026-10-11)
+
+La tercera pasada (`../2026-10-09-validacion-modelo-real/revision-independiente-3.md`) revisó las correcciones de esta fase y dio **aprobada con observaciones**. Lo que cambió en la medición por mutación desde entonces:
+
+- ✅ **N-09:** el reconocimiento de un fallo de prueba exige la estructura que escribe el ejecutor, no solo el prefijo: un módulo que imprime `not ok 1 - x` con `console.log` ya no cuenta como detectada. Comprobado con 58 salidas reales capturadas de node:test, pytest, unittest, jest, vitest y Go (`tests/mutacion-salidas-reales.test.js`).
+- ✅ **N-12:** el barrido de copias huérfanas exige una marca con la clave de FORGE y un nonce, y borra sin esperar a las copias de un proceso que ya no existe (el pid de la marca); una carpeta con marca falsificada, enlace o nombre ajeno no se toca.
+- ✅ **H11:** la medición se limita a las líneas que la tarea cambió cuando el archivo ya existía; antes, en un archivo de 1812 líneas, daba 1 de 10 por funciones ajenas. El evento informa de cuántas candidatas se descartaron (`fueraDeLoCambiado`).
+- ❌ **N-02 sigue abierto:** pruebas sin aserciones dan hasta 90 % si el código bajo prueba llama a funciones con `if (K !== N) throw` repartidas en muchos archivos. No se filtra por cobertura. `mutacion: exigir` no es una garantía frente a un implementador adversario.
+- ⚠️ Python y TypeScript con Docker real: `tests/mutacion-docker-lenguajes.test.js` está escrito; sin resultado confirmado al cerrar la tanda.
+
