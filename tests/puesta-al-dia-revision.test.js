@@ -249,7 +249,7 @@ describe("H-01 — los mismos casos con enlaces simbólicos reales, en Linux (Do
 set -u
 CLI=/repo/cli/index.js
 mk() { rm -rf /tmp/$1 /tmp/$1-f; mkdir -p /tmp/$1 /tmp/$1-f; cd /tmp/$1; echo '{"name":"p","scripts":{"test":"node --test"}}' > package.json; }
-run() { node $CLI init >/dev/null 2>&1; echo "exit=$?"; }
+run() { node $CLI init >/tmp/o.txt 2>&1; echo "exit=$?"; echo "trazas=$(grep -c 'node:internal\|^    at ' /tmp/o.txt)"; }
 fin() { echo "== $1"; find /tmp/$1-f -type f | sort | while read f; do echo "$f=$(cat $f)"; done; }
 mk s1; ln -s /tmp/s1-f/victima.txt AGENTS.md; run; fin s1
 mk s2; echo X > AGENTS.md; mkdir -p .sdd; ln -s /tmp/s2-f/p3.txt .sdd/AGENTS.propuesto.md; run; fin s2
@@ -277,7 +277,12 @@ for p in "s1 AGENTS.md" "s2 .sdd/AGENTS.propuesto.md" "s4 CLAUDE.md" "s5 .claude
     }
     assert.match(out, /dentro=ORIGINAL/);
     assert.ok(!/enlace-PERDIDO/.test(out), out);
-    assert.equal((out.match(/exit=0/g) ?? []).length, 12, "init termina bien en todos los casos");
+    // `init` rechaza escribir a través de un enlace y lo dice con un código de salida 1 (no «termina bien»):
+    // lo que no puede pasar es que termine con una traza, un código mayor o que se cuelgue.
+    const codigos = [...out.matchAll(/exit=(\d+)/g)].map((m) => Number(m[1]));
+    assert.equal(codigos.length, 12, "los 12 casos terminaron");
+    assert.ok(codigos.every((c) => c === 0 || c === 1), `códigos de salida inesperados: ${codigos}`);
+    assert.deepEqual([...out.matchAll(/trazas=(\d+)/g)].map((m) => Number(m[1])), Array(12).fill(0), "ningún caso termina con una traza");
   });
 });
 
