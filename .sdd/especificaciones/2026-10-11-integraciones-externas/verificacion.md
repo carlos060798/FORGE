@@ -84,3 +84,73 @@ Dos observaciones honestas sobre el detector:
 - `npm run typecheck`: 0 errores.
 - `node --test tests/*.test.js`: 2345 pruebas, 2333 pasan, 0 fallan, 12 omitidas (las omitidas son anteriores y no son de este trabajo).
 - Pruebas nuevas: puerto 7, configuración 25, confianza 41, http 31, auditoría 16, aislamiento 11.
+- (Totales de F1. Los de F2.1 están en la sección 7.)
+
+## 7. F2.1: adaptador de GitHub
+
+Archivos: `core/integraciones/proveedores/github.js`, `tests/integraciones-github.test.js`, `tests/fixtures/integraciones/servidores/github.mjs` (servidor falso de node:http, con la forma de `spikes/contratos-respuesta.md` §1). Ninguna prueba toca la red ni usa credenciales reales; el token es un centinela inventado. Único cambio en un archivo existente: la prueba de importaciones de `tests/integraciones-aislamiento.test.js` admite que `proveedores/` importe `../puerto.js`, `../http.js`, `../config.js`, `../confianza.js` y `../auditoria.js`.
+
+### Qué demuestran las pruebas (49 casos corriendo hoy, más 1 opt-in omitido)
+
+| Propiedad | Bloque |
+|---|---|
+| El objeto cumple `validarProveedor`, sin operaciones genéricas, congelado | contrato |
+| Token vacío, destinos vacíos o con comodín, `baseUrl` distinta de `https://api.github.com` o `http://127.0.0.1:<puerto>`: no se construye; el mensaje no repite la URL | contrato |
+| `comprobarAlcance` devuelve `{ estado: 'no_comprobable', motivo }` y hace 0 peticiones | contrato |
+| Destino fuera de la lista (leer, comentar, proponer): 0 peticiones; comparación exacta sin prefijos | destino |
+| 18 referencias mal formadas (recorrido de rutas, `?`, `#`, saltos, longitud, `\`, URL completa): 0 peticiones | referencia |
+| Leer sin y con comentarios; autor o cuerpo nulos; etiquetas como texto u objeto; solicitud de cambio marcada | leer |
+| Paginación por número de página (nunca el enlace `Link`, que el servidor falso apunta a otro host), tope de 10 páginas y de 2 MiB acumulados con marca `truncado`, tope de 1 MiB por respuesta | leer |
+| Forma inesperada, JSON inválido, `null`, arreglo donde va un objeto, respuesta de 3 MiB: error tipado (`respuesta_invalida`, `tamano`), nunca `undefined` | leer |
+| Los 52 casos de `hostiles.json` como título, cuerpo, etiqueta, comentario y autor: se devuelven idénticos y las 104 peticiones solo van a `/repos/org/repo/issues/N[/comments?per_page=100&page=1]` | hostil |
+| `comentar` idempotente: la segunda llamada con el mismo marcador no publica y devuelve el existente; el marcador se busca en páginas posteriores; uno citado a mitad de un comentario ajeno no cuenta; si no se pueden ver todos los comentarios, NO publica | F2.6 |
+| `proponerCambio`: rama nueva; todas las lecturas antes de la primera escritura; la referencia se crea después del commit; solicitud con `draft: true`; base intacta; nunca PATCH, PUT ni DELETE | proponer |
+| Rama existente (también en una segunda llamada idéntica): `rama_existe` y 0 escrituras | proponer |
+| 16 nombres de rama dudosos y prefijos distintos de `forge/`; 22 rutas de archivo maliciosas (`..`, absolutas, `.git`, control, `\`, `.github/workflows`, vacías, largas); límites de archivos y de tamaño: 0 peticiones | proponer |
+| Sin permiso (404 y 403) al leer y al escribir: `sin_permiso_o_no_existe`, sin distinguirlos; no queda rama ni solicitud | proponer |
+| Fallo después de crear la rama (la solicitud devuelve 422): código `parcial`, la rama sigue, el error la nombra y dice que no se borra; fallo antes (commit 500): ninguna rama | proponer |
+| Token centinela ausente de mensaje, pila, propiedades y causa de 10 errores (también cuando la plataforma lo repite en su cuerpo o en `Location`), de los resultados y de todos los archivos `.sdd/` de eventos y sesión; viaja solo en `Authorization` | CA-004-05 (GitHub) |
+| 401, 404, 410, 422, 500 y 409 → códigos tipados sin usar el cuerpo; 429 con `Retry-After` reintenta (núcleo); 403 con `Retry-After` o `x-ratelimit-remaining: 0` es `limite_ritmo` sin reintento | ritmo |
+| Con `auditoria`: un evento `integracion:<operacion>` por operación, el tope corta antes de la red, el interruptor apagado deja 0 peticiones, el evento lleva el código tipado y no el mensaje | CA-006-01 |
+
+### Criterios de la spec que esto mueve
+
+- CA-001-02 (destinos, rechazo antes de la red) y CA-001-05 (no se siguen URL ni enlaces): de parcial a **cubierto para GitHub**.
+- CA-001-06 (plataformas admitidas): GitHub hecho; GitLab y Jira pendientes.
+- CA-002-04 (idempotencia): GitHub cubierto con servidor falso; GitLab y Jira pendientes. F2.6 y F2.4 NO se marcan como hechas porque son «de los tres».
+- CA-004-05 (token ausente): cubierto en el recorrido del adaptador; el recorrido completo (prompts, puntos de guardado, diario) sigue siendo F5.1.
+
+### Decisiones propias del adaptador (revisables)
+
+- **La rama se crea la última.** Se lee, se suben blobs, árbol y commit (objetos sin rama) y solo entonces `POST git/refs` con el commit ya hecho. Un fallo de permiso o de forma no deja una rama a medias; un fallo posterior a la rama (la solicitud) la deja y lo informa. Difiere del orden «crear rama y luego commits» del encargo: es más conservador.
+- **Un archivo, un blob.** Máximo 20 archivos y 1 MiB en total, todos con modo `100644`: un archivo ejecutable existente perdería ese modo (no se lee el árbol base para conservarlo).
+- **`.github/workflows/` rechazado.** No lo pedía el encargo; cambiar CI con un agente es una escalada clásica. Se relaja quitando una condición de `motivoRutaInvalida`.
+- **`borrador` solo si GitHub lo confirma.** La respuesta de la solicitud puede no traer `draft` (sin confirmar en el spike); si no es `true`, el resultado dice `borrador: false` y quien llama debe tratarlo.
+- **El marcador se busca solo al final del cuerpo** (donde lo pone el adaptador). Un tercero que conozca el identificador y escriba un comentario que termine con él puede suprimir una publicación (denegación, no suplantación). Mitigación posible con una petición más: comparar el autor con `GET /user`. No hecha.
+- **`403` con `Retry-After` o `x-ratelimit-remaining: 0` no se reintenta** (el núcleo solo reintenta 429 y 503); se informa como `limite_ritmo`.
+- **Firma del encargo, no la del typedef del puerto:** `leerElemento(referencia)`, `comentar(referencia, texto, { marcador })`, `proponerCambio({ destino, base, rama, ... })`, `comprobarAlcance()`. `puerto.js` solo valida que existan las cuatro funciones; su typedef describe otra firma y otro `AlcanceDelToken`. Hay que unificarlos antes de F3 (propuesta de parche en el informe de F2.1).
+
+### Lo que sigue «sin confirmar» y exige una cuenta real
+
+La prueba opt-in (`FORGE_PRUEBA_GITHUB_REAL=1` con token, destino e incidencia de PRUEBA) cubre el flujo, se omite por defecto y NO se ha ejecutado:
+
+1. Los cuerpos de `POST git/blobs` (`content`, `encoding`), `git/trees` (`base_tree`, `tree[]` con `sha`), `git/commits` (`message`, `tree`, `parents`) y `git/refs` (`ref`, `sha`): el spike no los leyó; se usó la forma habitual de la API Git Data.
+2. Que la respuesta de `POST pulls` traiga `draft: true`, y qué ocurre con `draft: true` en un repositorio privado de plan gratuito (¿422 o una solicitud normal?).
+3. El código HTTP exacto (403 o 404) de un token sin permiso, y el texto «Resource not accessible by personal access token».
+4. Que `GET git/ref/heads/<rama con />` acepte los segmentos codificados uno a uno (así se envían) y que un 404 sea siempre «la rama no existe».
+5. El máximo real del cuerpo de un comentario (se usa 60 000 caracteres, conservador).
+6. Si Metadata: read hace falta además de Issues, Contents y Pull requests.
+7. Que `GET /repos/{owner}/{repo}` sea legible con solo esos tres permisos (el adaptador lo usa para comprobar que el repositorio existe antes de escribir).
+
+### Límites conocidos de este adaptador
+
+- No comprueba el alcance del token (imposible por API): `no_comprobable` es la respuesta honesta.
+- Una incidencia con más de 1 000 comentarios o 2 MiB de comentarios se devuelve truncada (`truncado: true`) y se pierden los últimos; `comentar` en ese caso se niega a publicar.
+- Repositorio renombrado o transferido: GitHub responde 301; el cliente HTTP lo rechaza (otra ruta) y el error es de red tipado, no un seguimiento.
+- Sin prueba de concurrencia: dos procesos que propongan la misma rama a la vez dependen de que GitHub rechace la segunda creación de referencia (422, `rama_existe`).
+
+### Totales de F2.1
+
+- `npm run typecheck`: 0 errores.
+- `node --test tests/*.test.js`: 2457 pruebas, 2445 pasan, 0 fallan, 12 omitidas (anteriores). Pruebas nuevas de F2.1: 49 en `integraciones-github.test.js` (más la suite opt-in, omitida).
+- Una corrida anterior bajo carga fuerte de la máquina falló `proyecto-hostil` («5000 archivos pequeños», tope de tiempo); aislada y en la corrida completa siguiente pasó. No es de este trabajo.

@@ -23,14 +23,14 @@
 
 ## F2 — Adaptadores
 
-- [ ] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente.
+- [x] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente. _(`core/integraciones/proveedores/github.js`, `tests/integraciones-github.test.js`; los cuerpos de la API Git Data y el campo `draft` de la respuesta siguen «sin confirmar»: ver `verificacion.md` §7.)_
 - [ ] **F2.2** GitLab (host configurable): igual.
 - [ ] **F2.3** Jira Cloud: lectura de ticket y comentario. `proponerCambio` no existe en Jira: la operación se rechaza con un mensaje claro y el modo `proponer` en Jira se trata como `comentar`.
 - [ ] **F2.3a** Jira: conversor mínimo ADF→texto y texto→ADF, sin dependencias. Tests: documento con nodos desconocidos, anidamiento profundo, enlaces y menciones, texto hostil dentro del documento, y tamaño extremo.
 - [ ] **F2.3b** Jira: solo token sin ámbitos contra `<sitio>.atlassian.net`; con ámbitos, `doctor` avisa del límite.
 - [ ] **F2.5** GitLab: filtrar notas de sistema (`system: true`); solicitud con prefijo `Draft:`; ámbitos comprobables con token personal.
-- [ ] **F2.6** Idempotencia local: marcador oculto y búsqueda previa, en los tres.
-- [ ] **F2.4** Prueba de contrato común: las tres respuestas normalizadas al mismo tipo de elemento, sin campos de más.
+- [ ] **F2.6** Idempotencia local: marcador oculto y búsqueda previa, en los tres. _(GitHub hecho y probado; faltan GitLab y Jira. No se marca hasta completar los tres.)_
+- [ ] **F2.4** Prueba de contrato común: las tres respuestas normalizadas al mismo tipo de elemento, sin campos de más. _(GitHub: forma probada en su propio test, con tres campos más que el tipo del puerto —`estado`, `autor`, `tipo`— y `truncado` solo si es cierto; falta la prueba común de los tres.)_
 
 ## F3 — Publicación
 

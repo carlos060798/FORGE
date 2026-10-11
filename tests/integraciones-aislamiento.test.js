@@ -77,7 +77,10 @@ describe('F1.6 carga perezosa: prueba estática', () => {
       const texto = readFileSync(f, 'utf8');
       for (const m of texto.matchAll(ESPECIFICADORES)) {
         const e = m[2];
-        const ok = e.startsWith('node:') || /^\.\/[\w-]+\.js$/.test(e) || internos.has(e);
+        // Los adaptadores de proveedores/ solo pueden usar el núcleo hermano (puerto, http, …)
+        const enProveedores = f.includes(`${sep}proveedores${sep}`);
+        const nucleo = enProveedores && /^\.\.\/(?:puerto|config|confianza|http|auditoria)\.js$/.test(e);
+        const ok = e.startsWith('node:') || /^\.\/[\w-]+\.js$/.test(e) || internos.has(e) || nucleo;
         assert.ok(ok, `${relative(RAIZ, f)} importa «${e}»`);
       }
     }
