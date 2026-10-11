@@ -29,6 +29,7 @@ import * as path from 'path';
  * @returns {RunnerResult}
  */
 export function run(cmd, cwd, timeoutMs = 120_000) {
+  /** @type {import('child_process').ExecSyncOptionsWithStringEncoding} */
   const opts = {
     cwd,
     timeout: timeoutMs,

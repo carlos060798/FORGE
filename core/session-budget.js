@@ -119,11 +119,12 @@ export class SessionBudget {
       // lo que no es un recuento válido cuenta cero
       const entrada = recuento(payload.tokens_input);
       const salida = recuento(payload.tokens_output);
-      const configurado = Object.hasOwn(this.precios, payload.modelo);
-      const precio = configurado ? precioCompletoDe('anthropic', payload.modelo, undefined, this.precios) : precioParaModelo(payload.modelo);
+      // Con precio configurado en el proyecto se usan sus cuatro precios; si no, los de la lista incluida
+      const configurado = Object.hasOwn(this.precios, payload.modelo) ? precioCompletoDe('anthropic', payload.modelo, undefined, this.precios) : null;
+      const precio = configurado ?? precioParaModelo(payload.modelo);
       // Con caché de prompts parte de la entrada llega aparte (guardada o reutilizada): si no se
       // contara, este acumulador registraría menos de lo que cobra el proveedor
-      const cache = configurado ? { escritura: precio.cacheWrite, lectura: precio.cacheRead } : (preciosCache('anthropic', payload.modelo) ?? preciosCachePorDefecto(precio.input));
+      const cache = configurado ? { escritura: configurado.cacheWrite, lectura: configurado.cacheRead } : (preciosCache('anthropic', payload.modelo) ?? preciosCachePorDefecto(precio.input));
       const costo = entrada * precio.input + salida * precio.output
         + recuento(payload.tokens_cache_escritura) * cache.escritura
         + recuento(payload.tokens_cache_lectura) * cache.lectura;

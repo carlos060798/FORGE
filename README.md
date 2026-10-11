@@ -9,7 +9,7 @@
 [![Versión](https://img.shields.io/badge/versión-5.0.0-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](package.json)
-[![Tests](https://img.shields.io/badge/tests-1405%20pasando-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-m%C3%A1s%20de%202000-brightgreen)](docs/COBERTURA.md)
 
 </div>
 
@@ -30,6 +30,54 @@ FORGE:
   ✦ Verifica contra la spec  → verificacion.json
   ✦ Despliega                → health check pasado ✓
 ```
+
+---
+
+## Estado
+
+> A fecha de **2026-10-10**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` sigue en 4.2.0. Lo que sigue describe la rama `feature/motor-agentico`.
+
+**Qué es.** Un framework de desarrollo guiado por especificaciones para Claude Code. Desde 5.0.0, las tareas de código pasan por un **ciclo verificado**:
+
+1. Un agente escribe las pruebas antes de que exista el código, y tienen que fallar.
+2. Otro agente implementa. No puede tocar las pruebas.
+3. Las pruebas se ejecutan en un contenedor Docker sin red, no en tu equipo.
+4. El resultado lo decide el código de salida de las pruebas, no un modelo.
+5. Hay un tope de gasto por sesión (2 USD por defecto).
+6. Cuando el ciclo no puede terminar solo, se detiene y decides tú.
+
+Necesita Docker en marcha y Node ≥20, y cubre proyectos en JavaScript/TypeScript, Python y Go. Sin Docker, `forge run --motor clasico` vuelve al modo de 4.x, que ejecuta en tu equipo sin aislamiento.
+
+**Qué es opcional** (no actúa si no lo activas):
+
+| Opción | Qué hace | Estado |
+|---|---|---|
+| `motor.implementador: turnos` | El implementador lee, busca y edita por pasos en vez de devolver archivos enteros | Solo con Anthropic. Probado con un modelo real en una tarea |
+| `motor.mutacion: exigir` | Pausa la tarea si las pruebas detectan pocos cambios deliberados en el código | Sin ejecutar con un modelo real. Por defecto la medición solo informa |
+| `sandbox.runtime` | Elige un mecanismo de aislamiento de Docker más estricto | Probado solo con `runc` |
+| `forge mcp`, `forge api` | Servidor MCP y API HTTP local | Ver sus guías |
+
+**Qué está probado y qué no.**
+
+| Probado | Evidencia |
+|---|---|
+| `npm test`: 2055 pruebas, 2045 pasan, 0 fallan, 10 omitidas (Windows 11, Node 24.20, sin Docker; 2026-10-10) | [docs/COBERTURA.md](docs/COBERTURA.md) |
+| Cobertura de líneas del 87,49 % de lo que cargan las pruebas de `tests/` | [docs/COBERTURA.md](docs/COBERTURA.md) |
+| El ciclo con un modelo real: unas veinte ejecuciones de tareas pequeñas en JavaScript, Python y Go, con Anthropic (2026-10-09) | [evidencia-2026-10-09.md](.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md) |
+| El aislamiento con Docker real en Windows (Docker Desktop) | `verificacion.md` de cada spec en [.sdd/especificaciones/](.sdd/especificaciones/) |
+| Cuatro revisiones independientes del 2026-10-09 y una segunda pasada de una de ellas | `revision-independiente*.md` en esas mismas carpetas |
+
+| No probado o pendiente | Dónde se explica |
+|---|---|
+| El aislamiento en Linux con Docker real: el job `aislamiento` de la integración continua no ha corrido nunca. Nada en macOS | [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md), A-1 y PL-1 |
+| El gasto calculado frente a lo que factura el proveedor | G-1 |
+| Proyectos grandes; todo se probó en proyectos de pocos archivos | C-15 |
+| Un modelo real con OpenAI u Ollama. La llamada de OpenAI no tiene ninguna prueba automática | G-3 |
+| La medición por mutación con Docker real en Python y TypeScript | P-5 |
+| Revisión independiente de las últimas correcciones | [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md) |
+| La comprobación de tipos (`npm run typecheck`): hoy da 36 errores | PL-4 |
+
+Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración desde 4.2.0](docs/MIGRACION-5.0.md) y [criterios para una beta](RELEASE-CHECKLIST.md). Las rutas de `.sdd/`, los planes y `RELEASE-CHECKLIST.md` están en el repositorio; el paquete de npm no los incluye.
 
 ---
 
@@ -232,7 +280,7 @@ npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer 
 npx forge api                   # API HTTP local con secreto
 ```
 
-Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Guía de migración en el [CHANGELOG](CHANGELOG.md). **Con un modelo de pago se ha probado en 17 ejecuciones de tareas pequeñas** (2026-10-09); los límites conocidos están en [ciclo-verificado.md](docs/ciclo-verificado.md). Guías: [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md).
+Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Qué cambia al actualizar: [MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Qué está probado y qué no: sección [Estado](#estado) y [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md). Guías: [ciclo verificado](docs/ciclo-verificado.md), [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md) y [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md).
 
 ---
 
@@ -259,7 +307,11 @@ Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` 
 
 | Documento | Descripción |
 |---|---|
-| [ESTADO-IMPLEMENTACION.md](docs/ESTADO-IMPLEMENTACION.md) | Qué funciona hoy, qué no, checklist de prerequisitos |
+| [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md) | Límites conocidos: qué pasa, a quién afecta, cómo evitarlo y dónde está la evidencia |
+| [MIGRACION-5.0.md](docs/MIGRACION-5.0.md) | Qué cambia al actualizar desde 4.2.0 sin tocar la configuración, y cómo desactivarlo |
+| [COBERTURA.md](docs/COBERTURA.md) | Cobertura de pruebas por archivo, con fecha, versión de Node y comando |
+| [ciclo-verificado.md](docs/ciclo-verificado.md) | Guía del ciclo verificado: configuración, aislamiento, presupuesto, pausas |
+| [ESTADO-IMPLEMENTACION.md](docs/ESTADO-IMPLEMENTACION.md) | Estado por área, escrito para 4.3.0 (solo sus cifras están al día) |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Errores por fase con solución paso a paso |
 | [EJEMPLO-API-REST.md](docs/EJEMPLO-API-REST.md) | Walkthrough API REST + JWT + PostgreSQL |
 | [MEMORIA-Y-OBSERVABILIDAD.md](docs/MEMORIA-Y-OBSERVABILIDAD.md) | API de memoria persistente, SQLite, compresión |

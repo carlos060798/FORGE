@@ -36,7 +36,7 @@
 import { CONTRATO_CODER_TURNOS } from './contratos.js';
 import { POR_DEFECTO } from './config.js';
 import { crearHerramientasCoder } from './herramientas-coder.js';
-import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
+import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
 import { cola } from './redactar.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -206,7 +206,7 @@ export async function coderPorTurnos(estado, deps, ayudas) {
       clave, agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal,
       extraContext: CONTRATO_CODER_TURNOS, mensajes, herramientas: herramientas.esquemas,
     });
-    if (!r.ok) { errorInfra = `El proveedor de modelos falló en el turno ${n}: ${cola(String(r.error ?? 'sin detalle'), 600)}`; break; }
+    if (!r.ok) { presupuesto = trasAbortada(presupuesto, r, { precios: deps.config.precios }); errorInfra = `El proveedor de modelos falló en el turno ${n}: ${cola(String(r.error ?? 'sin detalle'), 600)}.${r.abortada ? ' El proveedor pudo procesarla y cobrarla: se anotó una estimación del costo de entrada, y la salida no se conoce. Compara el gasto con tu factura si esto se repite.' : ''}`; break; }
 
     const cuenta = contabilizar(estado, deps, presupuesto, r);
     if ('error' in cuenta) { errorInfra = cuenta.error; break; }

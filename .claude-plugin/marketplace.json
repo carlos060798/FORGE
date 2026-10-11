@@ -12,7 +12,7 @@
     {
       "name": "forge",
       "source": "./",
-      "description": "Fábrica de software agnóstica al stack: de la idea al despliegue. 39 comandos, 14 agentes especializados, 30 skills, hooks de seguridad (JS+Bash), motor LLM agnóstico (Anthropic/OpenAI/Ollama), memoria compartida entre agentes, dashboard SSE tiempo real, aprobación humana obligatoria antes de planificar, observabilidad completa. Pipeline completo: Idea → IR → Spec → Plan → Tareas → Implementación → Verificación → Deploy.",
+      "description": "Fábrica de software agnóstica al stack: de la idea al despliegue. 39 comandos, 14 agentes especializados, 31 skills, hooks de seguridad (JS+Bash), motor LLM agnóstico (Anthropic/OpenAI/Ollama), memoria compartida entre agentes, dashboard SSE tiempo real, aprobación humana obligatoria antes de planificar, observabilidad completa. Pipeline completo: Idea → IR → Spec → Plan → Tareas → Implementación → Verificación → Deploy.",
       "version": "5.0.0",
       "author": {
         "name": "Danilo Angarita",

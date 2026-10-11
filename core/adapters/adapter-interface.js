@@ -16,19 +16,30 @@
  * @typedef {Object} TareaForge
  * @property {string} agente    — Nombre del agente que ejecuta ('arquitecto', 'main', etc.)
  * @property {string} tarea     — Descripción de la tarea a ejecutar
- * @property {object} [contexto] — Contexto adicional (artefactos .sdd/ relevantes, historial)
- * @property {'low'|'medium'|'high'} [tier] — Tier de modelo (low=Haiku, medium=Sonnet, high=Opus)
- * @property {string} [cwd]     — Directorio de trabajo (default: process.cwd())
+ * @property {object} [contexto] - Contexto adicional (artefactos .sdd/ relevantes, historial)
+ * @property {'low'|'medium'|'high'} [tier] - Tier de modelo (low=Haiku, medium=Sonnet, high=Opus)
+ * @property {string} [cwd]     - Directorio de trabajo (default: process.cwd())
+ */
+
+/**
+ * @typedef {Object} HandoffForge
+ * @property {string} agente
+ * @property {string} tarea
+ * @property {'low'|'medium'|'high'} tier
+ * @property {string} paso_actual
+ * @property {string[]} artefactosDisponibles
+ * @property {string} instruccion
  */
 
 /**
  * @typedef {Object} ResultadoForge
  * @property {boolean} ok        — true si la tarea se completó sin errores
- * @property {string}  [resultado] — Texto/resumen del resultado
- * @property {string[]} [artefactos] — Rutas de artefactos .sdd/ generados/modificados
- * @property {object}  [estado]  — Estado del pipeline después de la tarea
- * @property {string}  [error]   — Mensaje de error si ok=false
- * @property {string}  [adapter] — Nombre del adaptador que ejecutó la tarea
+ * @property {string}  [resultado] - Texto/resumen del resultado
+ * @property {string[]} [artefactos] - Rutas de artefactos .sdd/ generados/modificados
+ * @property {object}  [estado]  - Estado del pipeline después de la tarea
+ * @property {string}  [error]   - Mensaje de error si ok=false
+ * @property {string}  [adapter] - Nombre del adaptador que ejecutó la tarea
+ * @property {HandoffForge} [handoff] - Contexto preparado para que el host ejecute la tarea (lo muestra cli/dispatch.js)
  */
 
 /**

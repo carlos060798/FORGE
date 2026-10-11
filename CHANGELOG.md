@@ -9,6 +9,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ### Guía de migración desde 4.2.0
 
+> La lista completa de lo que cambia sin tocar la configuración, con cómo desactivar cada cosa, está en [docs/MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Los límites conocidos, en [docs/PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md).
+
 **Cambios que rompen compatibilidad:**
 
 1. **`forge run` y `forge resume` usan por defecto el ciclo verificado** (`motor.modo: ciclo`). Ejecuta el código generado en un contenedor Docker sin red y exige Docker en marcha; sin él sale con código 4 y no ejecuta nada. Solo corre en la etapa `code` (desde `tasks` avanza solo) y con proyectos JavaScript/TypeScript, Python o Go.
@@ -23,7 +25,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 **Diferido a propósito** (ADR-18): Java, Rust y monorepos, y LanceDB.
 
-**Probado con un modelo de pago el 2026-10-09** en ocho tareas pequeñas de JavaScript y Python (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`). **Sigue sin probarse en Linux con Docker real:** no publicar sin el job `aislamiento` de CI.
+**Probado con un modelo de pago el 2026-10-09 y el 2026-10-10** en 24 ejecuciones de tareas pequeñas de JavaScript, Python y Go (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`). **Sigue sin probarse en Linux con Docker real:** no publicar sin el job `aislamiento` de CI.
 
 **Modelos y precios configurables, con lista fechada** (ADR-19):
 
@@ -54,7 +56,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - Contrato de proveedor: método opcional `conversar` y propiedad `admiteHerramientas`. **Solo Anthropic lo implementa**; con OpenAI u Ollama el ciclo deja el evento `ciclo:implementador_sin_herramientas` y usa el modo de bloque. El proveedor de pruebas (`stub`) admite un guion de conversación.
 - Eventos nuevos: `ciclo:turno`, `ciclo:herramienta`, `ciclo:lectura_rechazada`, `ciclo:turnos_agotados`, `ciclo:implementador_sin_herramientas`. `forge status` muestra turnos y gasto de las tareas que trabajan por turnos.
 - El estado guardado de cada tarea lleva un campo nuevo, `implementador`. Los puntos de guardado anteriores siguen siendo válidos.
-- **Sin probar con un modelo real y con el costo sin medir.** Probado con respuestas guionizadas. Este modo no usa caché de prompts: cada turno reenvía toda la conversación, y el gasto total puede superar al del modo de bloque.
+- **Probado con un modelo real en una sola tarea.** En un archivo de 1812 líneas hizo un cambio que el modo de bloque no pudo hacer, con un 83 % menos de tokens de salida. Usa la caché de prompts: en esa tarea el gasto bajó de 0,21 a 0,09 USD. No hay más evidencia que esa (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`, rondas 6 a 8).
 **Pruebas confiables** (spec `2026-10-09-pruebas-confiables`, ADR-20):
 
 - **Rojo obligatorio. Cambia cuándo se pide revisión.** Si las pruebas recién escritas pasan sin que exista la implementación, el agente de pruebas las reescribe una vez sabiendo por qué (la llamada cuenta para el tope de gasto); si vuelven a pasar, la tarea se pausa con el motivo nuevo `pruebas_no_fallan` y no se llama al implementador. Antes solo quedaba un aviso. Una tarea con `"parte_de_codigo_existente": true` queda exenta, y la exención se anota en el registro. Un fallo de Docker en esa comprobación pausa por `infraestructura` y `continuar` la repite sin volver a pagar las pruebas (antes se ignoraba y se seguía).

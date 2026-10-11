@@ -26,7 +26,7 @@ import * as path from 'path';
 import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
-import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido } from './presupuesto.js';
+import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
 import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
@@ -36,6 +36,15 @@ import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, sec
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
+
+/**
+ * Lo que se le pide a un agente en una llamada.
+ * @typedef {Object} PeticionAgente
+ * @property {string} agente
+ * @property {string} userPrompt
+ * @property {string} [extraContext]
+ * @property {string} [clavePrompt]  parte del prompt que no cambia por lo que el nodo escribe en disco; el diario la usa en vez de userPrompt para reconocer una respuesta ya pagada
+ */
 
 const DECISIONES = ['continuar', 'aceptar', 'abortar'];
 
@@ -56,7 +65,7 @@ export function pedirRevision(motivo, reanudarEn, detalle) {
  * presupuesto agotado.
  * @returns {Promise<{ salida: string, presupuesto: any } | { fallo: Partial<EstadoCiclo> }>}
  */
-async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, extraContext, clavePrompt }) {
+async function invocar(estado, deps, presupuesto, nodo, /** @type {PeticionAgente} */ { agente, userPrompt, extraContext, clavePrompt }) {
   const efectivo = modeloEfectivo(limitarNivel(deps.aliasDe(agente), deps.config.motor?.nivel_maximo), presupuesto, deps.config.presupuesto.degradar_a);
   // Una respuesta ya pagada y guardada en el diario no cuesta nada: se usa aunque haya agotado el tope
   const yaPagada = deps.respondida?.({ agente, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) }) === true;
@@ -65,7 +74,7 @@ async function invocar(estado, deps, presupuesto, nodo, { agente, userPrompt, ex
   }
   const r = await deps.llamar({ agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal, userPrompt, extraContext, ...(clavePrompt ? { clavePrompt } : {}) });
   if (!r.ok) {
-    return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}`) } };
+    return { fallo: { presupuesto: trasAbortada(presupuesto, r, { precios: deps.config.precios }), ...pedirRevision('infraestructura', nodo, `El proveedor de modelos falló: ${cola(String(r.error ?? 'sin detalle'), 600)}.${r.abortada ? ' El proveedor pudo procesarla y cobrarla: se anotó una estimación del costo de entrada, y la salida no se conoce. Compara el gasto con tu factura si esto se repite.' : ''}`) } };
   }
 
   let siguiente;

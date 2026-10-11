@@ -76,9 +76,9 @@ const PAGES = {
           <tr><td><strong>Host principal</strong></td><td>Claude Code CLI (Anthropic)</td></tr>
           <tr><td><strong>Runner standalone</strong></td><td><code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code> — sin Claude Code</td></tr>
           <tr><td><strong>Distribución</strong></td><td><code>npm install -g forja-mvp</code> · o git clone desde el repo</td></tr>
-          <tr><td><strong>Dependencias runtime</strong></td><td>2 (<code>acorn</code> + <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
+          <tr><td><strong>Dependencias runtime</strong></td><td>3 (<code>@anthropic-ai/sdk</code>, <code>acorn</code> y <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
           <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
-          <tr><td><strong>Tests</strong></td><td>998/998 pasando (Node test runner nativo)</td></tr>
+          <tr><td><strong>Tests</strong></td><td>Más de 2000, con el runner nativo de Node (recuento fechado en docs/COBERTURA.md)</td></tr>
         </tbody>
       </table>
 
@@ -320,7 +320,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Análisis de Madurez",
     html: `
       <h1>Análisis de Madurez</h1>
-      <p class="lead">Estado real de cada área de FORGE v5.0.0. Basado en análisis estático del repositorio y la suite de tests (998/998 pasando).</p>
+      <p class="lead">Estado real de cada área de FORGE v5.0.0. Basado en análisis estático del repositorio y la suite de tests (más de 2000; recuento fechado en docs/COBERTURA.md).</p>
 
       <table>
         <thead><tr><th>Área</th><th>Estado</th><th>Justificación</th></tr></thead>
@@ -360,7 +360,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
     titulo: "Maturity Analysis",
     html: `
       <h1>Maturity Analysis</h1>
-      <p class="lead">Real status of each FORGE v5.0.0 area. Based on static repository analysis and test suite (998/998 passing).</p>
+      <p class="lead">Real status of each FORGE v5.0.0 area. Based on static repository analysis and test suite (over 2000 tests; dated count in docs/COBERTURA.md).</p>
 
       <table>
         <thead><tr><th>Area</th><th>Status</th><th>Justification</th></tr></thead>
@@ -1714,7 +1714,7 @@ forge ui [--port N]</code></pre>
       <p class="lead">FORGE está diseñado para ser extensible: puedes añadir agentes, skills, comandos, adaptadores de host e integraciones MCP sin tocar el núcleo.</p>
 
       <div class="callout tip">
-        <p><strong>Regla de oro:</strong> Nunca añadas dependencias npm al runtime (<code>cli/</code>, <code>claude-hooks/</code>, <code>core/</code>). FORGE es zero-deps por diseño.</p>
+        <p><strong>Regla de oro:</strong> Nunca añadas dependencias npm al runtime (<code>cli/</code>, <code>claude-hooks/</code>, <code>core/</code>). FORGE tiene tres dependencias (<code>@anthropic-ai/sdk</code>, <code>acorn</code> y <code>@sqlite.org/sqlite-wasm</code>) y cualquier otra exige un ADR.</p>
       </div>
 
       <h2>Añadir un nuevo agente</h2>
@@ -1821,7 +1821,7 @@ allowed-tools: [Read, Write, Bash]
       <p class="lead">You can add agents, skills, commands, host adapters and MCP integrations without touching the core.</p>
 
       <div class="callout tip">
-        <p><strong>Golden rule:</strong> Never add npm dependencies to the runtime. FORGE is zero-deps by design.</p>
+        <p><strong>Golden rule:</strong> Never add npm dependencies to the runtime. FORGE has three dependencies (<code>@anthropic-ai/sdk</code>, <code>acorn</code> and <code>@sqlite.org/sqlite-wasm</code>); any other one requires an ADR.</p>
       </div>
 
       <h2>Add a host adapter</h2>
@@ -1970,7 +1970,7 @@ tools: ["Read", "Glob", "Grep"]
 
       <h2>Para contribuir</h2>
       <pre><code class="bash">git checkout -b feature/mi-contribucion
-npm test           # 998/998 en verde antes de PR</code></pre>
+npm test           # 0 fallos antes de PR</code></pre>
     `
   },
   en: {

@@ -50,16 +50,13 @@ Si cambias `memoria.backend` de `markdown` a `sqlite` en un proyecto existente, 
 
 ---
 
-### Algunos tests avanzados están desactivados (.skip)
+### Parte de las pruebas se omite según el equipo
 
-En 4.3.0 (sin publicar), los 1405 tests activos de la suite completa con Docker pasan todos en Windows (0 fallos, 3 saltados). Sin embargo, hay tests desactivados con `.skip` que cubren funcionalidades aún en desarrollo:
-- `tests/agent-enforcement.test.js.skip` — enforcement de permisos por agente
-- `tests/ast-compressor.test.js.skip` — compresión AST avanzada
-- `tests/delta-encoding.test.js.skip` — delta encoding para memoria
-- `tests/episodic-memory.test.js.skip` — memoria episódica avanzada
-- `tests/hybrid-indexer.test.js.skip` — indexación híbrida
+Ya no hay archivos `.skip` en `tests/`: los cinco que se listaban aquí (`agent-enforcement`, `ast-compressor`, `delta-encoding`, `episodic-memory`, `hybrid-indexer`) son hoy archivos de prueba activos.
 
-**Impacto:** Las funcionalidades cubiertas por estos tests (.skip) no están garantizadas. Las funcionalidades principales están todas cubiertas por los tests activos.
+Lo que sí se omite depende del equipo. El 2026-10-10, en Windows 11 con Node 24.20.0 y sin `FORGE_TEST_DOCKER`, `npm test` ejecutó 2055 pruebas: 2045 pasaron, 0 fallaron y 10 se omitieron. Las omisiones de `tests/*.test.js` son 17 (8 pruebas y 9 bloques enteros, cuyas pruebas no entran en el total): 11 piden `FORGE_TEST_DOCKER=1` y Docker en marcha, 4 piden crear enlaces simbólicos de archivo (Windows lo impide sin privilegios), 1 comprueba permisos POSIX y 1 pide el cliente oficial de MCP instalado.
+
+**Impacto:** lo que solo se comprueba con Docker real, con enlaces de archivo o en un sistema POSIX no queda cubierto por un `npm test` normal en Windows. La cobertura por archivo está en [COBERTURA.md](COBERTURA.md).
 
 ---
 
@@ -158,11 +155,7 @@ Las siguientes áreas del código tienen TODOs o están marcadas como incompleta
 | Área | Estado | Impacto |
 |------|--------|---------|
 | `mcp-figma/src/` | Esquelético | Integración Figma no funcional |
-| `tests/agent-enforcement.test.js.skip` | Desactivado | Enforcement de permisos por agente |
-| `tests/ast-compressor.test.js.skip` | Desactivado | Compresión AST avanzada |
-| `tests/delta-encoding.test.js.skip` | Desactivado | Delta encoding para memoria |
-| `tests/episodic-memory.test.js.skip` | Desactivado | Memoria episódica avanzada |
-| `tests/hybrid-indexer.test.js.skip` | Desactivado | Indexación híbrida |
+| Pruebas que piden Docker, enlaces de archivo o permisos POSIX | Se omiten en Windows sin Docker (17 omisiones el 2026-10-10) | Esas rutas no las cubre un `npm test` normal: ver [COBERTURA.md](COBERTURA.md) |
 | Migración Markdown→SQLite | No implementada | Cambio de backend pierde historial |
 | `mcp-figma/src/` | Esquelético | Integración Figma no funcional |
 

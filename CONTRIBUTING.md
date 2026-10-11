@@ -62,6 +62,8 @@ allowed-tools: Read, Write, Edit, Bash  # solo los que necesita
 
 Usa la plantilla de issue en GitHub: [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md)
 
+Si el fallo es del ciclo verificado, del CLI, del servidor MCP o de la API, usa [Reporte de fallo](.github/ISSUE_TEMPLATE/fallo.md): pide además la versión de Docker, el comando y el fragmento de `.sdd/events.jsonl`, y avisa de qué revisar para no publicar secretos. Antes, mira [docs/PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md).
+
 Incluye siempre:
 - Versión de FORGE (`node cli/index.js --version`)
 - Versión de Node.js y OS

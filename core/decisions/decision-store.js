@@ -195,7 +195,7 @@ export class DecisionStore {
           return { ...row, score };
         })
         .filter(r => r.score > 0 || tokensConsulta.length === 0)
-        .sort((a, b) => b.score - a.score || new Date(b.ts) - new Date(a.ts))
+        .sort((a, b) => b.score - a.score || new Date(b.ts).getTime() - new Date(a.ts).getTime())
         .slice(0, top)
         .map(({ tokens: _t, ...resto }) => resto); // omitir tokens en output
     }

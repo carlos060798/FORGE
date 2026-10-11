@@ -36,7 +36,7 @@ Mejora incremental, opt-in. Detalle y límites en [PLAN-MOTOR-AGENTICO.md](../PL
 - **Servidor MCP** — `forge mcp`, ver [servidor-mcp.md](servidor-mcp.md)
 - **API HTTP local** — `forge api`, ver [api-http.md](api-http.md)
 - **`forge probar-modelo`** — la prueba con un modelo real, **todavía sin ejecutar con uno de pago**
-- Suite: 1405 tests pasando en Windows con Docker (3 saltados, 0 fallos)
+- Suite al cerrar 4.3.0: 1405 tests pasando en Windows con Docker (3 saltados, 0 fallos). El recuento actual está en [COBERTURA.md](COBERTURA.md)
 
 ## En desarrollo activo
 

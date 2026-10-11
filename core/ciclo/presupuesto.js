@@ -83,6 +83,21 @@ export function costoDe(llamada, opciones = {}) {
  *        `precios`: los de `precios:` del proyecto (USD por token); mandan sobre la lista incluida
  * @returns {import('./estado.js').Presupuesto}
  */
+/**
+ * Presupuesto tras una llamada cancelada por tiempo: suma la estimación de la entrada (el proveedor
+ * pudo procesarla y cobrarla). Si no hay estimación válida, el presupuesto no cambia.
+ * @param {import('./estado.js').Presupuesto} p
+ * @param {{ abortada?: boolean, tokensEstimados?: number, proveedor?: string, modelo?: string }} r
+ * @param {{ precios?: Record<string, { input: number, output: number }> }} [opciones]
+ * @returns {import('./estado.js').Presupuesto}
+ */
+export function trasAbortada(p, r, opciones = {}) {
+  if (r?.abortada !== true || !Number.isInteger(r.tokensEstimados) || Number(r.tokensEstimados) < 0) return p;
+  try {
+    return registrar(p, { proveedor: String(r.proveedor), modelo: String(r.modelo), inputTokens: r.tokensEstimados, outputTokens: 0 }, opciones);
+  } catch { return p; }
+}
+
 export function registrar(p, llamada, opciones = {}) {
   const sinCosto = PROVEEDORES_SIN_COSTO.has(llamada.proveedor);
   const faltaConsumo = !esRecuentoValido(llamada.inputTokens) || !esRecuentoValido(llamada.outputTokens);

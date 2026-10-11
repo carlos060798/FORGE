@@ -252,7 +252,7 @@ npm deprecate sdd-es@2.5.0 "Use v2.6.0+ instead"
 
 Antes de publicar, verifica:
 
-- [ ] `npm test` — 579/579 tests passing
+- [ ] `npm test` — 0 fallos (la lista completa y los criterios de una beta están en `RELEASE-CHECKLIST.md` del repositorio)
 - [ ] `package.json` — versión actualizada a X.Y.Z
 - [ ] `CHANGELOG.md` — nuevas features documentadas
 - [ ] `README.md` — ejemplos y docs sincronizados

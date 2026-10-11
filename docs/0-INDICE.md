@@ -125,13 +125,17 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 ### Nivel 4: Referencia (REFERENCIA exhaustiva)
 - 📋 [workflows.md](workflows.md) — 8 etapas del pipeline documentadas
 - 👥 [agents.md](agents.md) — 14 agentes: roles, herramientas, etapas
-- 🛠️ [tools.md](tools.md) — 30 skills: categorización, referencias
+- 🛠️ [tools.md](tools.md) — 31 skills: categorización, referencias
 - 📖 [Comandos-Referencia.md](Comandos-Referencia.md) — 39 comandos listados
 - ⚙️ [configuration.md](configuration.md) — `sdd.config.yaml` completo
 - 🔗 [api-reference.md](api-reference.md) — APIs públicas
 
 ### Nivel 5: Guías Especializadas (CÓMO hacer cosas)
 - 🚀 [getting-started.md](getting-started.md) — Instalación y primeros pasos
+- 🔁 [ciclo-verificado.md](ciclo-verificado.md) — El ciclo verificado: configuración, aislamiento, presupuesto, pausas
+- ⚠️ [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) — Límites conocidos, con cómo evitarlos y dónde está la evidencia
+- 🔀 [MIGRACION-5.0.md](MIGRACION-5.0.md) — Qué cambia al actualizar desde 4.2.0
+- 📏 [COBERTURA.md](COBERTURA.md) — Cobertura de pruebas por archivo
 - 📝 [EJEMPLO-API-REST.md](Ejemplo-API-REST.md) — Walkthrough completo
 - 🐛 [Troubleshooting.md](Troubleshooting.md) — Errores por fase
 - 🆘 [QUE-PASA-SI-FALLA.md](Que-Pasa-Si-Falla.md) — Recuperación
