@@ -84,3 +84,68 @@ Dos observaciones honestas sobre el detector:
 - `npm run typecheck`: 0 errores.
 - `node --test tests/*.test.js`: 2345 pruebas, 2333 pasan, 0 fallan, 12 omitidas (las omitidas son anteriores y no son de este trabajo).
 - Pruebas nuevas: puerto 7, configuración 25, confianza 41, http 31, auditoría 16, aislamiento 11.
+
+(Cifras de la fase F1; las del adaptador de Jira están en la sección 7.5.)
+
+## 7. Adaptador de Jira Cloud y conversor ADF (F2.3, F2.3a, F2.3b; parte de F2.4 y F2.6)
+
+> Fecha: 2026-10-11. Todo contra un servidor `node:http` local falso (`tests/fixtures/integraciones/servidores/jira.mjs`, formas tomadas de `spikes/contratos-respuesta.md`, que son ejemplos construidos a mano). **Ninguna llamada a una cuenta real de Jira**: lo que dependa de la plataforma real figura en 7.4.
+
+### 7.1 Qué hay
+
+| Módulo | Archivo | Pruebas |
+|---|---|---|
+| Adaptador | `core/integraciones/proveedores/jira.js` (`crearProveedorJira`, `ErrorJira`, `OperacionNoSoportada`) | `tests/integraciones-jira.test.js` (33) |
+| Conversor ADF | `core/integraciones/proveedores/jira-adf.js` (`adfATexto`, `textoAAdf`) | `tests/integraciones-jira-adf.test.js` (27) |
+| Servidor falso | `tests/fixtures/integraciones/servidores/jira.mjs` | (lo usan las anteriores) |
+
+Cambios en código existente: ninguno en `core/integraciones/{puerto,config,http,confianza,auditoria}.js`. Solo se amplió la lista de módulos internos admitidos en `tests/integraciones-aislamiento.test.js` (`../http.js` y `../../ciclo/redactar.js`, que los adaptadores necesitan). Sin dependencias nuevas.
+
+### 7.2 Qué demuestra cada prueba
+
+| Afirmación | Prueba |
+|---|---|
+| El adaptador pasa `validarProveedor`, sin operaciones genéricas, y no expone token, usuario ni Base64 (objeto congelado; el par vive en una clausura) | contrato y construcción |
+| `leerElemento` normaliza al tipo del puerto con exactamente 8 campos (`proveedor, destino, referencia, titulo, cuerpo, etiquetas, comentarios, url`); descripción y comentarios ADF → texto; comentarios paginados (servidor limitado a 2 por página: 3 peticiones) | leer con comentarios paginados |
+| El proyecto de la clave debe estar en `destinos`; referencias con forma rara (23 casos: traversal, `?`, `#`, salto de línea, ancho completo, tipos no string) se rechazan con **cero peticiones** | destino fuera de la lista; referencia rara |
+| La URL del elemento la construye el adaptador (`https://<sitio>/browse/CLAVE`); no se copia de la respuesta ni se sigue; un ticket cuya clave en la respuesta es otra (movido) se rechaza | leer; ticket movido |
+| `comentar` publica ADF válido con la línea final `FORGE-ID: <id>`; la segunda vez no hace POST y devuelve el id existente (`yaExistia: true`); el marcador se busca en todas las páginas; una línea que solo contiene el marcador en medio no cuenta | idempotencia |
+| El texto saliente se redacta; tope de 16 KiB sin recorte silencioso; los 52 casos hostiles como cuerpo publican solo nodos `doc`/`paragraph`/`text` sin `marks` ni `attrs` | comentar |
+| `proponerCambio` lanza `OperacionNoSoportada` (código `operacion_no_soportada`, mensaje que remite a «comentar») sin ninguna petición | proponerCambio |
+| `comprobarAlcance` devuelve `no_comprobable` sin peticiones; con `conAmbitos` o el sitio `api.atlassian.com` devuelve `no_soportado` y `leerElemento`/`comentar` no intentan nada; no se inventa un `cloudId` | alcance |
+| 401/403/404/400/413/429/5xx → códigos tipados; el cuerpo de la respuesta (con texto «INSTRUCCION…» y el token) no entra en el error; JSON inválido → `respuesta_invalida`; respuesta de 3 MiB → `tamano`; 5 formas de ticket y 4 de comentarios inesperadas → `respuesta_inesperada` | errores |
+| Token, usuario, Base64 y cabecera `Basic …` ausentes de mensaje, `stack`, `JSON.stringify` e `inspect` de cada error, también cuando el `http` inyectado lanza un error que los contiene | errores y secretos |
+| Auditoría: un evento `integracion:leer_elemento` o `integracion:comentar` con solo `{proveedor, operacion, destino, resultado, duracionMs}`; el error aporta su código; con el tope agotado no hay más peticiones | auditoría |
+| ADF: documento normal, listas anidadas (viñeta y numeradas), código (como texto, con cercas; lenguaje con forma rara descartado), cita, tabla, tareas, menciones/emoji/enlaces/tarjetas inertes (`hxxps[:]//`), adjuntos solo como nota | `adfATexto` normales |
+| ADF: nodos desconocidos conservan el texto de sus hijos; nunca lanza (9 valores no ADF, 8 formas rotas, un objeto cíclico hecho a mano); profundidad 10 000 y 200 000, y 200 000 nodos planos (< 5 s) se recortan con nota; el tope de bytes no parte caracteres | `adfATexto` hostil y topes |
+| `textoAAdf`: versión 1, tipo `doc`, un párrafo por línea, solo nodos `text`; ida y vuelta exacta; quita controles e invisibles; acotado con nota; los 52 casos hostiles (título y cuerpo) producen solo `doc`/`paragraph`/`text`, sin marcas ni atributos | `textoAAdf` |
+| Los 52 casos hostiles como texto dentro de un ADF (título, párrafo, código, cita, `href`): `adfATexto` devuelve texto y `comoDato` lo delimita con una sola apertura y un solo cierre; ningún `href` queda como URL activa | texto hostil dentro de un ADF |
+
+### 7.3 Decisiones
+
+- **Firma.** El puerto declara `leerElemento(destino, referencia)` y `comentar(destino, referencia, texto, idempotencia)`. El encargo pidió además `leerElemento(referencia)` y `comentar(referencia, texto, { marcador })`. El adaptador acepta ambas: si llegan dos argumentos strings, el destino debe coincidir con el proyecto de la referencia (si no, `destino_no_coincide`, sin red).
+- **El adaptador redacta y acota lo que publica**, además de lo que haga `publicar` (F3): la barrera no depende de quien llame. Un texto que supera 16 KiB se rechaza (`texto_demasiado_grande`), no se recorta en silencio.
+- **Idempotencia por búsqueda previa, cerrada hacia el lado seguro**: si el ticket tiene más de 1000 comentarios (10 páginas de 100) y no se encuentra el marcador, NO se publica (`idempotencia_no_verificable`).
+- **`comprobarAlcance`** devuelve, además de `estado` y `motivo`, los campos del tipo del puerto con `verificable: false` y `lectura/escritura/excede: false` (significa «no verificado», no «sin acceso»); quien los lea debe mirar `estado`/`verificable` primero.
+- **`baseUrl`** existe solo para pruebas y solo admite `http://127.0.0.1:<puerto>` o `http://localhost:<puerto>`; en producción el host es `<sitio>.atlassian.net` y el cliente HTTP exige HTTPS.
+- **Defensa en profundidad**: un error de cualquier origen que lleve el token, el usuario o el Base64 se sustituye por un `ErrorJira` limpio antes de salir del adaptador (aunque `http.js` ya enmascara).
+- **Referencias fuera de formato no pasan por la auditoría**: no hay operación que contar ni destino que registrar.
+
+### 7.4 Límites y «sin confirmar» que exigen una cuenta real
+
+- **`ADD_COMMENTS` y el permiso real del usuario de servicio**: nada del adaptador lo verifica; un 403 solo se descubre al publicar (el spike indica `mypermissions`, pero el encargo fija `no_comprobable`).
+- **El cuerpo mínimo de `POST .../comment` sin `visibility`** se acepta en el servidor falso; que Jira Cloud lo acepte es **sin confirmar por ejecución** (spike 3.3).
+- **Máximo de `maxResults` de comentarios y máximo de tamaño de un comentario**: sin confirmar. El adaptador pide 100 por página y asume que el servidor puede devolver menos (avanza por lo recibido); el tope de 16 KiB es propio y conservador.
+- **Respuesta 201 del comentario**: se exige solo `id` (cadena o número de 1 a 20 dígitos). Otros campos no se leyeron.
+- **Tickets movidos**: Jira devuelve la clave encontrada, no una redirección. El adaptador lo rechaza (clave distinta); un renombrado de proyecto provoca un error claro, no un seguimiento.
+- **Marcador plantado**: cualquiera con permiso para comentar puede escribir una línea `FORGE-ID: <id>` en el ticket y hacer que FORGE no publique. El adaptador no comprueba el autor (necesitaría `GET /myself`). Efecto: una publicación omitida, nunca una duplicada.
+- **Token con ámbitos**: no soportado hasta confirmar cómo obtener el `cloudId`; el aviso de `doctor` es F4.2.
+- **Descripción en formato antiguo (cadena)**: se acepta y se acota, pero la API v3 declarada solo documenta ADF.
+- **ADF**: los nodos no listados (`panel`, `decisionList`, `layoutSection`, extensiones…) se tratan como «ignorar el nodo, conservar el texto». Las marcas (negrita, código…) se pierden, salvo el enlace. Una tabla con celdas multilínea se aplana en una línea por fila.
+- **Truncado silencioso de comentarios al leer**: el tipo del elemento no tiene un campo «hay más»; con más de 1000 comentarios, `leerElemento` devuelve los primeros 1000 sin avisar.
+
+### 7.5 Totales
+
+- `npm run typecheck`: 0 errores.
+- `node --test tests/*.test.js`: 2468 pruebas, 2456 pasan, 0 fallan, 12 omitidas (anteriores). La última corrida completa tuvo 1 fallo (la lista de importaciones internas admitidas en la prueba estática, que no incluía `../puerto.js` de un tipo JSDoc); se corrigió y esa prueba se volvió a correr en verde por separado. Una primera corrida, con la máquina saturada por dos suites a la vez, dio 7 fallos por tiempo agotado que no se repitieron.
+- Pruebas nuevas: adaptador de Jira 33, conversor ADF 27.

@@ -72,7 +72,8 @@ describe('F1.6 carga perezosa: prueba estática', () => {
 
   test('el propio paquete solo depende de módulos de Node y de módulos internos conocidos (sin dependencias nuevas)', () => {
     const dir = join(RAIZ, 'core', 'integraciones');
-    const internos = new Set(['../ciclo/redactar.js', '../ciclo/config.js', '../escritura-segura.js', '../event-log.js']);
+    // Los adaptadores (proveedores/) importan el cliente HTTP del paquete y `redactar` del ciclo
+    const internos = new Set(['../ciclo/redactar.js', '../ciclo/config.js', '../escritura-segura.js', '../event-log.js', '../http.js', '../puerto.js', '../../ciclo/redactar.js']);
     for (const f of archivosJs(dir)) {
       const texto = readFileSync(f, 'utf8');
       for (const m of texto.matchAll(ESPECIFICADORES)) {
