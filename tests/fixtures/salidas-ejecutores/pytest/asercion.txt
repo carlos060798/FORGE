@@ -1,0 +1,40 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: pytest
+situacion: asercion
+descripcion: una prueba con nombre falla por una aserción
+version: pytest 9.1.1 · Python 3.12.15
+imagen: forge-sbx:python-a39ca3c256aac881 (base python:3.12-slim; sha256:013a9123164887be7d4525130e06d1b689f614f424d4210f5ef17ef44dff1392)
+comando: python -m pytest
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 15374
+=====STDOUT=====
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /deps/work
+collected 3 items
+
+tests/test_calc.py F..                                                   [100%]
+
+=================================== FAILURES ===================================
+__________________________________ test_suma ___________________________________
+
+    def test_suma():
+>       assert suma(2, 2) == 4
+E       assert 0 == 4
+E        +  where 0 = suma(2, 2)
+
+tests/test_calc.py:5: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_calc.py::test_suma - assert 0 == 4
+ +  where 0 = suma(2, 2)
+========================= 1 failed, 2 passed in 1.87s ==========================
+
+=====STDERR=====
+
+=====FIN=====

@@ -1,0 +1,21 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: go-test
+situacion: pasa
+descripcion: las pruebas pasan
+version: go version go1.23.12 linux/amd64
+imagen: forge-sbx:go-8f8c092d878d60d7 (base golang:1.23-alpine; sha256:9dd209e07bba2a08387c0bfa422cc169513eca8242654b60cf2495014f0ff9b6)
+comando: go test ./...
+lenguaje: go
+archivo_alterado: calc.go
+fecha: 2026-10-10
+codigo_salida: 0
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 102881
+=====STDOUT=====
+ok  	demo	0.302s
+
+=====STDERR=====
+
+=====FIN=====

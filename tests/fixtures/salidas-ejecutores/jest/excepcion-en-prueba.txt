@@ -1,0 +1,45 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest
+situacion: excepcion-en-prueba
+descripcion: una prueba con nombre falla por una excepción dentro de la prueba (el código devuelve nulo)
+version: 30.5.2 · v22.23.3
+imagen: forge-sbx:node-b0008fa8e463e016 (base node:22-alpine; sha256:2fff1e3521caf6c1831d2a5543df7af424caf1cdb1e0b6ff04dc661c0aea0c7b)
+comando: npx jest
+lenguaje: javascript
+archivo_alterado: src/calc.js
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 11777
+=====STDOUT=====
+
+=====STDERR=====
+FAIL tests/calc.test.js
+  calc
+    ✓ suma dos numeros (15 ms)
+    ✓ esPar reconoce los pares (2 ms)
+    ✕ formatea un numero (21 ms)
+
+  ● calc › formatea un numero
+
+    TypeError: Cannot read properties of null (reading 'toUpperCase')
+
+    [0m [90m  9 |[39m   })[33m;[39m
+     [90m 10 |[39m   test([32m'formatea un numero'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 11 |[39m     expect(formatea([35m3[39m)[33m.[39mtoUpperCase())[33m.[39mtoBe([32m'N=3'[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 12 |[39m   })[33m;[39m
+     [90m 13 |[39m })[33m;[39m
+     [90m 14 |[39m[0m
+
+      at Object.<anonymous> (tests/calc.test.js:11:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        4.623 s
+Ran all test suites.
+
+=====FIN=====

@@ -77,6 +77,20 @@ export class Respaldo {
   }
 
   /**
+   * Contenido que tenía `rutaPosix` antes de la tarea. Solo lectura: no cambia el respaldo.
+   * La medición por mutación lo usa para alterar únicamente lo que la tarea cambió (ADR-20).
+   * @param {string} rutaPosix  ruta relativa al proyecto, con "/"
+   * @returns {string|null}  null si el archivo no existía, si la tarea no lo ha tocado o si la copia no se puede leer
+   */
+  original(rutaPosix) {
+    const clave   = canonica(rutaPosix);
+    const entrada = this.entradas.find((e) => canonica(e.ruta) === clave);
+    if (!entrada || !entrada.existia) return null;
+    // La ruta es la del manifiesto, ya validada al cargarlo: nunca la que llega como argumento
+    try { return fs.readFileSync(path.join(this.dir, 'archivos', entrada.ruta), 'utf8'); } catch { return null; }
+  }
+
+  /**
    * Una copia que falta o un archivo que no se puede tocar no impide restaurar el resto: queda en `fallidos`
    * (que solo está presente si hubo alguno).
    * @returns {{ restaurados: string[], borrados: string[], fallidos?: string[] }}

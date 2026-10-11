@@ -69,11 +69,14 @@ export const DETALLE_PRUEBAS_NO_FALLAN =
 // ── Nodo mutacion ────────────────────────────────────────────────────────────
 
 /** Campos de una medición que se guardan cuando no se pudo medir nada. */
-const SIN_MEDIR = { probadas: 0, detectadas: 0, noConcluyentes: 0, lineaBase: 'no_medida', puntuacion: null, parcial: false, sobrevivientes: [] };
+const SIN_MEDIR = { probadas: 0, detectadas: 0, noConcluyentes: 0, lineaBase: /** @type {const} */ ('no_medida'), puntuacion: null, parcial: false, sobrevivientes: [] };
 
 /**
  * Mide cuánto detectan las pruebas. Solo altera los archivos que escribió el implementador en esta
  * tarea, siempre sobre una copia; el resultado queda en el estado y en el registro.
+ *
+ * Si un archivo ya existía antes de la tarea (el respaldo guarda su contenido previo), solo se
+ * altera lo que la tarea cambió en él: las pruebas de la tarea no responden del resto del archivo.
  * @param {EstadoCiclo} estado
  */
 export async function mutacion(estado, deps) {
@@ -84,8 +87,13 @@ export async function mutacion(estado, deps) {
   // Las rutas vienen de un punto de guardado: medirMutacion las valida otra vez con las reglas de escritura (H-08)
   const archivos = estado.implementacion.archivos.map((a) => a.ruta);
 
+  /** Alteraciones posibles que quedaron fuera por estar en código que la tarea no tocó. */
+  let fueraDeLoCambiado = 0;
+
   const r = await medirMutacion({
     cwd: estado.cwd, archivos, runner: deps.runner, vetadas: deps.vetadas,
+    originalDe: typeof deps.respaldo?.original === 'function' ? (ruta) => deps.respaldo.original(ruta) : undefined,
+    alAcotar: (a) => { fueraDeLoCambiado = a.fueraDeLoCambiado; },
     max: motor.mutacion_max, timeoutMs: typeof motor.mutacion_timeout_s === 'number' ? motor.mutacion_timeout_s * 1000 : undefined,
     huellasPruebas: estado.pruebas.archivos.map((a) => `${a.ruta}:${a.sha256}`),
     avance: deps.avanceMutacion,
@@ -99,8 +107,10 @@ export async function mutacion(estado, deps) {
   if (r === null) {
     const motivo = archivos.length === 0
       ? 'el implementador no escribió ningún archivo que se pueda alterar'
-      : 'no hay ningún cambio posible en los archivos que escribió el implementador (lenguaje no cubierto o código sin nada que alterar)';
-    deps.log.append('ciclo:mutacion_omitida', { motivo, archivos }, meta);
+      : fueraDeLoCambiado > 0
+        ? `no hay ningún cambio posible en las líneas que cambió la tarea (${fueraDeLoCambiado} cambios posibles quedan fuera, en código que ya existía y la tarea no tocó)`
+        : 'no hay ningún cambio posible en los archivos que escribió el implementador (lenguaje no cubierto o código sin nada que alterar)';
+    deps.log.append('ciclo:mutacion_omitida', { motivo, archivos, ...(fueraDeLoCambiado > 0 ? { fueraDeLoCambiado } : {}) }, meta);
     return { mutacion: { ...SIN_MEDIR, omitida: motivo, refuerzos } };
   }
 
@@ -108,6 +118,7 @@ export async function mutacion(estado, deps) {
     modo: motor.mutacion, probadas: r.probadas, detectadas: r.detectadas, noConcluyentes: r.noConcluyentes, puntuacion: r.puntuacion, parcial: r.parcial,
     lineaBase: r.lineaBase, ...(r.motivoParcial ? { motivoParcial: r.motivoParcial } : {}), candidatas: r.candidatas, sobrevivientes: r.sobrevivientes, refuerzos,
     ...(r.rechazadas ? { rechazadas: r.rechazadas } : {}), ...(r.huerfanasBorradas ? { huerfanasBorradas: r.huerfanasBorradas } : {}),
+    ...(r.fueraDeLoCambiado ? { fueraDeLoCambiado: r.fueraDeLoCambiado } : {}),
   }, meta);
   // Una copia que no se pudo borrar queda en el equipo: se deja constancia (H-06)
   if (r.copiaSinBorrar) deps.log.append('custom', { message: 'Aviso: la copia temporal de la medición por mutación no se pudo borrar del todo', aviso: 'copia_mutacion_sin_borrar' }, meta);

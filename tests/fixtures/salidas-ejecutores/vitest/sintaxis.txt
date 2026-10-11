@@ -1,0 +1,53 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: vitest
+situacion: sintaxis
+descripcion: error de sintaxis en el código bajo prueba
+version: vitest/5.0.3 linux-x64 node-v22.23.3 · vite/8.3.4 linux-x64 node-v22.23.3
+imagen: forge-sbx:node-b4dd3f4189ae25c7 (base node:22-alpine; sha256:63876327b2003f5814ccac3c9eeca65477f20d8a6b18829b654c7824a4e1602f)
+comando: npx vitest run
+lenguaje: typescript
+archivo_alterado: src/calc.ts
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 43881
+=====STDOUT=====
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/deps/work[39m
+
+ [31m❯[39m tests/calc.test.ts [2m([22m[2m0 test[22m[2m)[22m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 23:19:33
+[2m   Duration [22m 10.74s[2m (worker 99%, environment 1%)[22m
+
+
+=====STDERR=====
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/calc.test.ts[2m [ tests/calc.test.ts ][22m
+[31m[1mError[22m: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mUnexpected token
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/calc.ts:2:14 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m2 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249m [0m[38;5;249m+[0m[38;5;249m [0m;
+ [38;5;240m  │[0m              ┬  
+ [38;5;240m  │[0m              ╰── 
+[38;5;246m───╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36m/deps/work/src/calc.ts[39m
+[90m [2m❯[22m transformWithOxc ../node_modules/vite/dist/node/chunks/node.js:[2m7581:19[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform ../node_modules/vite/dist/node/chunks/node.js:[2m7653:26[22m[39m
+[90m [2m❯[22m EnvironmentPluginContainer.transform ../node_modules/vite/dist/node/chunks/node.js:[2m8545:51[22m[39m
+[90m [2m❯[22m loadAndTransform ../node_modules/vite/dist/node/chunks/node.js:[2m20184:26[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+=====FIN=====

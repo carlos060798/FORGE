@@ -1,0 +1,32 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest-ts
+situacion: pasa
+descripcion: las pruebas pasan
+version: 30.5.2 · Version 5.9.3 · v22.23.3
+nota: jest con ts-jest 29.4.14 (comprueba tipos al transformar)
+imagen: forge-sbx:node-e27daf57c9758c6c (base node:22-alpine; sha256:54860ddad1cc1e6c9142c418f6d77d357189ea5ca2cdf57ba0a08f6864c55ca4)
+comando: npx jest
+lenguaje: typescript
+archivo_alterado: src/calc.ts
+fecha: 2026-10-10
+codigo_salida: 0
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 40883
+=====STDOUT=====
+
+=====STDERR=====
+PASS tests/calc.test.ts (26.585 s)
+  calc
+    ✓ suma dos numeros (85 ms)
+    ✓ esPar reconoce los pares (14 ms)
+    ✓ formatea un numero (14 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        29.064 s
+Ran all test suites.
+
+=====FIN=====

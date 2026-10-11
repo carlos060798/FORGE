@@ -1,0 +1,42 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: pytest
+situacion: importacion
+descripcion: el código bajo prueba importa un módulo que no existe
+version: pytest 9.1.1 · Python 3.12.15
+imagen: forge-sbx:python-a39ca3c256aac881 (base python:3.12-slim; sha256:013a9123164887be7d4525130e06d1b689f614f424d4210f5ef17ef44dff1392)
+comando: python -m pytest
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 2
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 12058
+=====STDOUT=====
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /deps/work
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_calc.py ______________________
+ImportError while importing test module '/deps/work/tests/test_calc.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_calc.py:1: in <module>
+    from calc import suma, es_par, formatea
+calc.py:1: in <module>
+    import modulo_que_no_existe
+E   ModuleNotFoundError: No module named 'modulo_que_no_existe'
+=========================== short test summary info ============================
+ERROR tests/test_calc.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 1.83s ===============================
+
+=====STDERR=====
+
+=====FIN=====

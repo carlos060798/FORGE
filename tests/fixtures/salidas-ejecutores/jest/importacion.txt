@@ -1,0 +1,44 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest
+situacion: importacion
+descripcion: el código bajo prueba importa un módulo que no existe
+version: 30.5.2 · v22.23.3
+imagen: forge-sbx:node-b0008fa8e463e016 (base node:22-alpine; sha256:2fff1e3521caf6c1831d2a5543df7af424caf1cdb1e0b6ff04dc661c0aea0c7b)
+comando: npx jest
+lenguaje: javascript
+archivo_alterado: src/calc.js
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 13219
+=====STDOUT=====
+
+=====STDERR=====
+FAIL tests/calc.test.js
+  ● Test suite failed to run
+
+    Cannot find module './no-existe' from 'src/calc.js'
+
+    Require stack:
+      src/calc.js
+      tests/calc.test.js
+
+    [0m[31m[1m>[22m[39m[90m 1 |[39m [36mconst[39m { nada } [33m=[39m require([32m'./no-existe'[39m)[33m;[39m
+     [90m   |[39m                  [31m[1m^[22m[39m
+     [90m 2 |[39m [36mconst[39m copia [33m=[39m nada[33m;[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mfunction[39m suma(a[33m,[39m b) {[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/calc.js:1:18)
+      at Object.require (tests/calc.test.js:1:35)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        5.352 s
+Ran all test suites.
+
+=====FIN=====

@@ -1,0 +1,2 @@
+# Capturas byte a byte: sin conversión de finales de línea ni de codificación.
+*.txt -text

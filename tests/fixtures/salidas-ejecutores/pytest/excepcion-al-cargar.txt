@@ -1,0 +1,36 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: pytest
+situacion: excepcion-al-cargar
+descripcion: el código bajo prueba lanza una excepción al cargarse (cable trampa)
+version: pytest 9.1.1 · Python 3.12.15
+imagen: forge-sbx:python-a39ca3c256aac881 (base python:3.12-slim; sha256:013a9123164887be7d4525130e06d1b689f614f424d4210f5ef17ef44dff1392)
+comando: python -m pytest
+lenguaje: python
+archivo_alterado: calc.py
+fecha: 2026-10-10
+codigo_salida: 2
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 20235
+=====STDOUT=====
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /deps/work
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_calc.py ______________________
+tests/test_calc.py:1: in <module>
+    from calc import suma, es_par, formatea
+calc.py:3: in <module>
+    raise RuntimeError("trampa")
+E   RuntimeError: trampa
+=========================== short test summary info ============================
+ERROR tests/test_calc.py - RuntimeError: trampa
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 7.40s ===============================
+
+=====STDERR=====
+
+=====FIN=====

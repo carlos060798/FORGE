@@ -1,0 +1,48 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest
+situacion: asercion
+descripcion: una prueba con nombre falla por una aserción
+version: 30.5.2 · v22.23.3
+imagen: forge-sbx:node-b0008fa8e463e016 (base node:22-alpine; sha256:2fff1e3521caf6c1831d2a5543df7af424caf1cdb1e0b6ff04dc661c0aea0c7b)
+comando: npx jest
+lenguaje: javascript
+archivo_alterado: src/calc.js
+fecha: 2026-10-10
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 11354
+=====STDOUT=====
+
+=====STDERR=====
+FAIL tests/calc.test.js
+  calc
+    ✕ suma dos numeros (45 ms)
+    ✓ esPar reconoce los pares (4 ms)
+    ✓ formatea un numero (5 ms)
+
+  ● calc › suma dos numeros
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 4
+    Received: 0
+
+    [0m [90m 3 |[39m describe([32m'calc'[39m[33m,[39m () [33m=>[39m {
+     [90m 4 |[39m   test([32m'suma dos numeros'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 5 |[39m     expect(suma([35m2[39m[33m,[39m [35m2[39m))[33m.[39mtoBe([35m4[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 6 |[39m   })[33m;[39m
+     [90m 7 |[39m   test([32m'esPar reconoce los pares'[39m[33m,[39m () [33m=>[39m {
+     [90m 8 |[39m     expect(esPar([35m4[39m))[33m.[39mtoBe([36mtrue[39m)[33m;[39m[0m
+
+      at Object.toBe (tests/calc.test.js:5:24)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        3.196 s
+Ran all test suites.
+
+=====FIN=====

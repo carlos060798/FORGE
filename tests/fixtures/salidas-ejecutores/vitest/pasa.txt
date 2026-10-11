@@ -1,0 +1,35 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: vitest
+situacion: pasa
+descripcion: las pruebas pasan
+version: vitest/5.0.3 linux-x64 node-v22.23.3 · vite/8.3.4 linux-x64 node-v22.23.3
+imagen: forge-sbx:node-b4dd3f4189ae25c7 (base node:22-alpine; sha256:63876327b2003f5814ccac3c9eeca65477f20d8a6b18829b654c7824a4e1602f)
+comando: npx vitest run
+lenguaje: typescript
+archivo_alterado: src/calc.ts
+fecha: 2026-10-10
+codigo_salida: 0
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 31913
+=====STDOUT=====
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/deps/work[39m
+
+ [32m✓[39m tests/calc.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 117[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 23:18:13
+[2m   Duration [22m 8.88s[2m (transform 83%, import 13%, tests 2%, worker 2%)[22m
+
+[2m  Transform [22m [33mtransforming modules took 3.98s[39m[2m · 83% of tracked time, re-done on every run[22m
+[2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+[2m            [22m [2mon CI this only helps when the cache directory is persisted between runs[22m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+
+
+=====STDERR=====
+
+=====FIN=====

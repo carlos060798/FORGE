@@ -17,7 +17,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { parse } from 'acorn';
 import { clasificar } from './router.js';
 import { redactar } from './redactar.js';
@@ -420,6 +420,150 @@ export function puntuar(probadas, detectadas) {
   return probadas > 0 ? detectadas / probadas : null;
 }
 
+// ── Alcance: lo que la tarea cambió en un archivo que ya existía ─────────────
+
+/**
+ * Por encima de este número de diferencias entre dos versiones no se busca la comparación exacta:
+ * el tramo que no se pudo comparar cuenta entero como cambiado (nunca se deja de medir por esto).
+ */
+const MAX_DIFERENCIAS = 2000;
+
+/** Líneas de un texto sin el retorno de carro final: CRLF y LF son la misma línea. */
+const enLineas = (texto) => texto.split('\n').map((l) => (l.endsWith('\r') ? l.slice(0, -1) : l));
+
+/**
+ * Comparación de dos listas de líneas (algoritmo de Myers: subsecuencia común máxima), propia,
+ * determinista y sin dependencias.
+ * @param {string[]} a  versión original
+ * @param {string[]} b  versión nueva
+ * @returns {{ cambiadas: number[], borradas: number[] }}  `cambiadas`: líneas (desde 1) de `b` que no
+ *   están en `a`; `borradas`: líneas de `b` (desde 1; puede ser la siguiente a la última) justo antes
+ *   de las cuales se quitaron líneas de `a`
+ */
+function diferencia(a, b) {
+  let ini = 0;
+  while (ini < a.length && ini < b.length && a[ini] === b[ini]) ini++;
+  let finA = a.length;
+  let finB = b.length;
+  while (finA > ini && finB > ini && a[finA - 1] === b[finB - 1]) { finA--; finB--; }
+  const n = finA - ini;
+  const m = finB - ini;
+  /** @type {number[]} */
+  const cambiadas = [];
+  /** @type {number[]} */
+  const borradas = [];
+  const todoElTramo = () => { for (let j = ini; j < finB; j++) cambiadas.push(j + 1); };
+  if (n === 0) { todoElTramo(); return { cambiadas, borradas }; }
+  if (m === 0) { borradas.push(ini + 1); return { cambiadas, borradas }; }
+
+  const tope = Math.min(n + m, MAX_DIFERENCIAS);
+  const off = tope + 1;
+  const v = new Int32Array(2 * tope + 3);
+  /** @type {Int32Array[]} */
+  const pasos = [];       // pasos[d]: v[-d..d] al terminar el paso d
+  let total = -1;
+  for (let d = 0; d <= tope && total < 0; d++) {
+    for (let k = -d; k <= d; k += 2) {
+      let x = (k === -d || (k !== d && v[off + k - 1] < v[off + k + 1])) ? v[off + k + 1] : v[off + k - 1] + 1;
+      let y = x - k;
+      while (x < n && y < m && a[ini + x] === b[ini + y]) { x++; y++; }
+      v[off + k] = x;
+      if (x >= n && y >= m) { total = d; break; }
+    }
+    pasos.push(v.slice(off - d, off + d + 1));
+  }
+  if (total < 0) {
+    // Demasiadas diferencias: el tramo entero cuenta como cambiado
+    todoElTramo();
+    borradas.push(ini + 1);
+    return { cambiadas, borradas };
+  }
+
+  // Se desanda el camino: lo que se recorre en diagonal son líneas iguales
+  const igual = new Uint8Array(m);
+  let x = n;
+  let y = m;
+  for (let d = total; d > 0; d--) {
+    const previo = pasos[d - 1];
+    const en = (k) => previo[k + d - 1];
+    const k = x - y;
+    const esAlta = k === -d || (k !== d && en(k - 1) < en(k + 1));
+    const kPrevio = esAlta ? k + 1 : k - 1;
+    const xPrevio = en(kPrevio);
+    const yPrevio = xPrevio - kPrevio;
+    const xMedio = esAlta ? xPrevio : xPrevio + 1;
+    while (x > xMedio) { x--; y--; igual[y] = 1; }
+    if (!esAlta) borradas.push(ini + yPrevio + 1);
+    x = xPrevio;
+    y = yPrevio;
+  }
+  while (x > 0 && y > 0) { x--; y--; igual[y] = 1; }
+
+  for (let j = 0; j < m; j++) if (!igual[j]) cambiadas.push(ini + j + 1);
+  return { cambiadas, borradas: [...new Set(borradas)].sort((p, q) => p - q) };
+}
+
+/**
+ * Líneas (desde 1) de `nuevo` que la tarea cambió o añadió respecto de `original`. Quitar una línea
+ * no cambia ninguna de las que quedan.
+ * @param {string} original
+ * @param {string} nuevo
+ * @returns {number[]}  en orden creciente
+ */
+export function lineasCambiadas(original, nuevo) {
+  return diferencia(enLineas(original), enLineas(nuevo)).cambiadas;
+}
+
+/**
+ * Líneas de `nuevo` en las que se puede alterar cuando el archivo ya existía antes de la tarea: las
+ * que la tarea cambió o añadió y, como margen, la función que las contiene. El margen solo se
+ * aplica si `acorn` entiende el archivo (JavaScript y TypeScript sin sintaxis de tipos): es la
+ * función de varias líneas más pequeña que contiene la línea (una flecha de una sola línea no
+ * cuenta). En Python, Go y TypeScript con tipos son solo las líneas cambiadas.
+ * @param {string} ruta
+ * @param {string} original
+ * @param {string} nuevo
+ * @returns {number[]}  en orden creciente
+ */
+export function alcanceDeLaTarea(ruta, original, nuevo) {
+  const { cambiadas, borradas } = diferencia(enLineas(original), enLineas(nuevo));
+  const alcance = new Set(cambiadas);
+  const lenguaje = lenguajeDe(ruta);
+  const analizado = (cambiadas.length > 0 || borradas.length > 0) && (lenguaje === 'javascript' || lenguaje === 'typescript') ? analizar(nuevo) : null;
+  if (analizado) {
+    // Posición de cada salto de línea, para pasar de posición a número de línea
+    const saltos = [];
+    for (let i = nuevo.indexOf('\n'); i !== -1; i = nuevo.indexOf('\n', i + 1)) saltos.push(i);
+    const lineaDePos = (pos) => {
+      let lo = 0;
+      let hi = saltos.length;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (saltos[mid] < pos) lo = mid + 1; else hi = mid; }
+      return lo + 1;
+    };
+    /** @type {{ desde: number, hasta: number }[]} */
+    const funciones = [];
+    recorrer(analizado.ast, null, (nodo) => {
+      if (nodo.type !== 'FunctionDeclaration' && nodo.type !== 'FunctionExpression' && nodo.type !== 'ArrowFunctionExpression') return;
+      const desde = lineaDePos(nodo.start);
+      const hasta = lineaDePos(nodo.end - 1);
+      if (hasta > desde) funciones.push({ desde, hasta });
+    });
+    /** La función de varias líneas más pequeña que cumple la condición. */
+    const menor = (cumple) => {
+      let elegida = null;
+      for (const f of funciones) {
+        if (cumple(f) && (elegida === null || f.hasta - f.desde < elegida.hasta - elegida.desde)) elegida = f;
+      }
+      return elegida;
+    };
+    const incluir = (f) => { if (f) for (let l = f.desde; l <= f.hasta; l++) alcance.add(l); };
+    for (const l of cambiadas) incluir(menor((f) => f.desde <= l && l <= f.hasta));
+    // Una línea quitada entre la p-1 y la p: cuenta la función que abarca ese hueco
+    for (const p of borradas) incluir(menor((f) => f.desde < p && p <= f.hasta));
+  }
+  return [...alcance].sort((p, q) => p - q);
+}
+
 // ── Selección por archivo ────────────────────────────────────────────────────
 
 /**
@@ -475,6 +619,9 @@ export function seleccionarPorArchivo(candidatas, max) {
 
 const ES_ARCHIVO_JS = /\.(?:[cm]?[jt]sx?)$/i;
 
+/** Secuencias de color (SGR): vitest y jest las escriben cuando el entorno lo permite, y parten «FAIL » y «Tests ». */
+const COLOR_ANSI = /\u001b\[[0-9;]*m/g;
+
 /**
  * @param {string} salida
  * @returns {SenalDeFallo}
@@ -482,9 +629,12 @@ const ES_ARCHIVO_JS = /\.(?:[cm]?[jt]sx?)$/i;
 function senalJs(salida) {
   /** @type {string[]} */
   const nombres = [];
-  // node:test, reporter TAP: `not ok 3 - nombre`; reporter spec: `✖ nombre (1.2ms)`
-  for (const m of salida.matchAll(/^[ \t]*not ok \d+ - (.+?)(?:[ \t]+#.*)?$/gm)) nombres.push(m[1].trim());
-  for (const m of salida.matchAll(/^[ \t]*[✖✗×] (.+?) \(\d+(?:\.\d+)?ms\)[ \t]*$/gmu)) nombres.push(m[1].trim());
+  // node:test. Se exige la estructura que escribe el ejecutor, no solo el prefijo: un módulo puede imprimir
+  // `not ok 1 - x` o `✖ x (1ms)` con console.log y, sin esto, contaría como una prueba fallida (N-09).
+  //  - reporter TAP: `not ok 3 - nombre`, seguido del bloque YAML del ejecutor (`---`, y `duration_ms:` o `failureType:`)
+  //  - reporter spec: `✖ nombre (1.2ms)` en la sección final «failing tests:», que cada fallo abre con `test at archivo:línea:col`
+  for (const m of salida.matchAll(/^([ \t]*)not ok \d+ - (.+?)(?:[ \t]+#.*)?\r?\n\1[ \t]+---[ \t]*\r?\n(?:\1[ \t]+\S.*\r?\n){0,3}?\1[ \t]+(?:duration_ms|failureType):/gm)) nombres.push(m[2].trim());
+  for (const m of salida.matchAll(/^test at .+:\d+:\d+[ \t]*\r?\n[ \t]*[✖✗×] (.+?) \(\d+(?:\.\d+)?ms\)[ \t]*$/gmu)) nombres.push(m[1].trim());
   // Un fallo de CARGA aparece como una «prueba» que se llama como el archivo: ninguna prueba llegó a ejecutarse
   if (nombres.some((n) => !ES_ARCHIVO_JS.test(n))) return 'prueba';
   // jest: `● suite › prueba` y `Tests: 2 failed`; vitest: `FAIL  archivo > prueba` y `Tests  2 failed`
@@ -509,8 +659,13 @@ function senalPython(salida) {
 
 /** @param {string} salida @returns {SenalDeFallo} */
 function senalGo(salida) {
-  if (/^[ \t]*(?:--- FAIL:|panic:)/m.test(salida)) return 'prueba';
+  // Un pánico en un init o en una variable de paquete ocurre en la goroutine 1 antes de que corra ninguna
+  // prueba: es una carga que falla (cable trampa), no una prueba que detecta. Las pruebas corren en otras goroutines
+  if (/^[ \t]*--- FAIL:/m.test(salida)) return 'prueba';
+  if (/^panic:/m.test(salida)) return /^goroutine 1 \[running\]:/m.test(salida) ? 'no_carga' : 'prueba';
   if (/\[build failed\]|\[setup failed\]|^# \S+[ \t]*$/m.test(salida)) return 'no_compila';
+  // Un paquete que no existe falla al preparar la compilación, sin cabecera «# paquete»
+  if (/\bpackage \S+ is not in std\b|no required module provides package|cannot find package/.test(salida)) return 'no_compila';
   return 'sin_senal';
 }
 
@@ -520,6 +675,7 @@ function senalGo(salida) {
  * @returns {SenalDeFallo}
  */
 export function senalDeFallo(salida, lenguaje) {
+  salida = salida.replace(COLOR_ANSI, '');
   if (lenguaje === 'python') return senalPython(salida);
   if (lenguaje === 'go') return senalGo(salida);
   return senalJs(salida);
@@ -563,6 +719,28 @@ export function juzgar(ejecucion, categoria, lenguaje) {
 
 /** Archivo que marca una carpeta como creada por esta medición: sin él, no se toca. */
 const MARCA_COPIA = '.forge-mutacion';
+const NONCE_MARCA = /^[0-9a-f]{32}$/;
+
+/**
+ * Escribe la marca de una carpeta madre: un JSON con la clave de FORGE y un nonce aleatorio. Una
+ * carpeta cuyo nombre coincide por casualidad, o con una marca puesta a mano, no pasa `marcaValida` (N-12).
+ * @param {string} madre
+ */
+export function escribirMarcaCopia(madre) {
+  const contenido = JSON.stringify({ forge: 'mutacion', nonce: randomBytes(16).toString('hex'), pid: process.pid, creada: new Date().toISOString() });
+  fs.writeFileSync(path.join(madre, MARCA_COPIA), contenido + '\n', { mode: 0o600 });
+}
+
+/** ¿Tiene la carpeta una marca de FORGE: un archivo normal (no un directorio ni un enlace) con la clave y un nonce? @param {string} madre */
+function marcaValida(madre) {
+  try {
+    const abs = path.join(madre, MARCA_COPIA);
+    const st = fs.lstatSync(abs);
+    if (!st.isFile() || st.isSymbolicLink() || st.size > 1024) return false;
+    const m = JSON.parse(fs.readFileSync(abs, 'utf8'));
+    return m !== null && typeof m === 'object' && m.forge === 'mutacion' && typeof m.nonce === 'string' && NONCE_MARCA.test(m.nonce) && Number.isInteger(m.pid);
+  } catch { return false; }
+}
 const PATRON_COPIA = /^forge-mutacion-[A-Za-z0-9]{6}$/;
 const SEIS_HORAS = 6 * 60 * 60 * 1000;
 
@@ -587,7 +765,7 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
     try {
       const st = fs.lstatSync(abs);
       if (!st.isDirectory() || st.isSymbolicLink()) continue;
-      if (!fs.existsSync(path.join(abs, MARCA_COPIA))) continue;
+      if (!marcaValida(abs)) continue;
       if (ahora() - st.mtimeMs < antiguedadMs) continue;
       if (eliminarCopia(abs)) borradas++;
     } catch { /* otro proceso la tocó a la vez: se deja */ }
@@ -606,7 +784,8 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  * @property {boolean} parcial              no se probaron todas las alteraciones posibles
  * @property {'tope_alteraciones'|'tiempo'|'infraestructura'|'linea_base'} [motivoParcial]
  * @property {'ok'|'falla'|'infraestructura'|'no_medida'} lineaBase  la copia sin alterar: debe pasar para que la medición valga
- * @property {number} candidatas            alteraciones posibles antes de aplicar el tope
+ * @property {number} candidatas            alteraciones posibles antes de aplicar el tope (ya limitadas a lo que cambió la tarea)
+ * @property {number} [fueraDeLoCambiado]   alteraciones posibles descartadas por estar en código que la tarea no tocó (solo si hubo alguna)
  * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
  * @property {{ ruta: string, motivo: string }[]} [rechazadas]  rutas que no se midieron por no ser válidas
  * @property {string} [detalleInfra]        cola del error del entorno o de la línea base, si lo hubo
@@ -630,6 +809,12 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  * `huellasPruebas` evita reutilizar un avance medido con otras pruebas. `avance` guarda el
  * resultado de cada alteración ya probada, para no repetirla si el proceso se corta.
  *
+ * `originalDe` devuelve el contenido que tenía un archivo ANTES de la tarea, o null si es nuevo.
+ * Con un archivo que ya existía, solo se altera lo que la tarea cambió (`alcanceDeLaTarea`): las
+ * pruebas de una tarea no tienen por qué cubrir el resto del archivo. Sin `originalDe`, o con un
+ * archivo nuevo, se altera el archivo entero. `alAcotar` recibe cuántas alteraciones quedaron fuera
+ * (también cuando no queda ninguna dentro y la función devuelve null).
+ *
  * @param {{
  *   cwd: string,
  *   archivos: string[],
@@ -641,6 +826,8 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  *   huellasPruebas?: string[],
  *   alProbar?: (evento: { indice: number, total: number, alteracion: Alteracion, resultado: 'detectada'|'sobrevive'|'no_concluyente'|'sin_resultado', categoria: string, motivo?: string, durationMs: number, reutilizada: boolean }) => void,
  *   avance?: { leer: () => any, guardar: (dato: any) => void },
+ *   originalDe?: (ruta: string) => string|null|undefined,
+ *   alAcotar?: (dato: { candidatas: number, fueraDeLoCambiado: number, archivos: { ruta: string, lineas: number }[] }) => void,
  *   ahora?: () => number,
  *   dirTemporal?: string,
  * }} entrada
@@ -668,7 +855,22 @@ export async function medirMutacion(entrada) {
     vistas.add(ruta);
     try { fuentes.push({ ruta, contenido: fs.readFileSync(path.resolve(cwd, ruta), 'utf8') }); } catch { /* ya no existe: no se mide */ }
   }
-  const candidatas = alteracionesDe(fuentes);
+  const posibles = alteracionesDe(fuentes);
+  // En un archivo que ya existía, las pruebas de la tarea solo responden de lo que la tarea cambió
+  /** @type {Map<string, Set<number>>} */
+  const alcances = new Map();
+  if (typeof entrada.originalDe === 'function') {
+    for (const f of fuentes) {
+      let original = null;
+      try { original = entrada.originalDe(f.ruta); } catch { /* sin original legible: se altera entero, como un archivo nuevo */ }
+      if (typeof original === 'string') alcances.set(f.ruta, new Set(alcanceDeLaTarea(f.ruta, original, f.contenido)));
+    }
+  }
+  const candidatas = alcances.size === 0 ? posibles : posibles.filter((c) => alcances.get(c.ruta)?.has(c.linea) ?? true);
+  const fueraDeLoCambiado = posibles.length - candidatas.length;
+  if (alcances.size > 0) {
+    entrada.alAcotar?.({ candidatas: candidatas.length, fueraDeLoCambiado, archivos: [...alcances].map(([ruta, lineas]) => ({ ruta, lineas: lineas.size })) });
+  }
   if (candidatas.length === 0) return null;
   const elegidas = seleccionarPorArchivo(candidatas, max);
   const elegidasSet = new Set(elegidas);
@@ -699,6 +901,7 @@ export async function medirMutacion(entrada) {
   const r = {
     probadas: 0, detectadas: 0, noConcluyentes: 0, puntuacion: null, parcial: false, lineaBase: 'no_medida',
     candidatas: candidatas.length, sobrevivientes: [],
+    ...(fueraDeLoCambiado > 0 ? { fueraDeLoCambiado } : {}),
     ...(rechazadas.length ? { rechazadas } : {}),
   };
 
@@ -725,7 +928,7 @@ export async function medirMutacion(entrada) {
     // La carpeta madre lleva la marca y permisos 0700 (mkdtemp); la copia va dentro, también privada (H-06)
     const madre = fs.mkdtempSync(path.join(dirTemporal, 'forge-mutacion-'));
     try {
-      fs.writeFileSync(path.join(madre, MARCA_COPIA), `${process.pid}\n`, { mode: 0o600 });
+      escribirMarcaCopia(madre);
       const copia = path.join(madre, 'copia');
       crearCopia(cwd, copia, { excluir: entrada.excluir, privada: true });
       // El tiempo cuenta desde que la copia está lista: copiar un proyecto grande no gasta el presupuesto de la medición
