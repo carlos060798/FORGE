@@ -23,7 +23,7 @@
 
 ## F2 — Adaptadores
 
-- [ ] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente.
+- [x] **F2.1** GitHub: `leerElemento`, `comentar`, `proponerCambio`, `comprobarAlcance`, con servidor falso. Rama con prefijo `forge/`; solicitud en borrador; nunca una rama existente. _(`core/integraciones/proveedores/github.js`, `tests/integraciones-github.test.js`; los cuerpos de la API Git Data y el campo `draft` de la respuesta siguen «sin confirmar»: ver `verificacion.md` §7.)_
 - [x] **F2.2** GitLab (host configurable): igual. `core/integraciones/proveedores/gitlab.js`, `tests/integraciones-gitlab.test.js`, servidor falso en `tests/fixtures/integraciones/servidores/gitlab.mjs`.
 - [x] **F2.3** Jira Cloud: lectura de ticket y comentario. `proponerCambio` no existe en Jira: la operación se rechaza con un mensaje claro y el modo `proponer` en Jira se trata como `comentar`.
 - [x] **F2.3a** Jira: conversor mínimo ADF→texto y texto→ADF, sin dependencias. Tests: documento con nodos desconocidos, anidamiento profundo, enlaces y menciones, texto hostil dentro del documento, y tamaño extremo.
