@@ -41,6 +41,10 @@ const GENERICAS = Object.freeze([
  * @property {string[]} etiquetas
  * @property {ComentarioDeElemento[]} comentarios
  * @property {string} [url]            solo informativa: nunca se sigue
+ * @property {string} [estado]         estado de la plataforma, solo informativo
+ * @property {string} [autor]
+ * @property {'incidencia'|'solicitud_de_cambio'} [tipo]
+ * @property {boolean} [truncado]      se cortó por un tope de páginas o de bytes
  *
  * @typedef {Object} ArchivoPropuesto
  * @property {string} ruta
@@ -55,21 +59,27 @@ const GENERICAS = Object.freeze([
  * @typedef {Object} ResultadoDePublicacion
  * @property {string} id
  * @property {string} [url]
- * @property {boolean} [borrador]
+ * @property {boolean} [borrador]    solo es true si la plataforma lo confirmó en su respuesta
+ * @property {boolean} [yaExistia]    el marcador ya estaba publicado: no se escribió nada
+ * @property {string} [rama]          rama creada, en `proponerCambio`
  *
  * @typedef {Object} AlcanceDelToken
- * @property {boolean} lectura
- * @property {boolean} escritura
- * @property {boolean} excede          el token puede más de lo necesario
- * @property {boolean} verificable     false si la plataforma no permite saberlo sin escribir
+ * @property {'comprobado'|'no_comprobable'|'no_soportado'} [estado]  `no_comprobable`: la plataforma no permite saberlo (GitHub y Jira)
+ * @property {string} [motivo]
+ * @property {string[]} [ambitos]      solo con `estado: 'comprobado'` (GitLab con token personal)
+ * @property {boolean} [suficiente]
+ * @property {boolean} [lectura]
+ * @property {boolean} [escritura]
+ * @property {boolean} [excede]        el token puede más de lo necesario
+ * @property {boolean} [verificable]   false si la plataforma no permite saberlo sin escribir
  * @property {string} [detalle]        sin el valor del token
  *
  * @typedef {Object} ProveedorDeTrabajo
  * @property {string} nombre
- * @property {(destino: string, referencia: string) => Promise<ElementoDeTrabajo>} leerElemento
- * @property {(destino: string, referencia: string, texto: string, idempotencia: string) => Promise<ResultadoDePublicacion>} comentar
- * @property {(destino: string, referencia: string, propuesta: PropuestaDeCambio, idempotencia: string) => Promise<ResultadoDePublicacion>} proponerCambio
- * @property {(destino: string) => Promise<AlcanceDelToken>} comprobarAlcance
+ * @property {(referencia: string) => Promise<ElementoDeTrabajo>} leerElemento  la referencia lleva el destino (`org/repo#7`, `ABC-7`) y se valida contra la lista antes de cualquier petición
+ * @property {(referencia: string, texto: string, opciones: { marcador: string }) => Promise<ResultadoDePublicacion>} comentar  idempotente por `marcador`
+ * @property {(propuesta: PropuestaDeCambio & { destino: string, base: string, marcador: string }) => Promise<ResultadoDePublicacion>} proponerCambio  solo rama nueva `forge/` y solicitud en borrador; en Jira lanza `OperacionNoSoportada`
+ * @property {() => Promise<AlcanceDelToken>} comprobarAlcance
  */
 
 /**
