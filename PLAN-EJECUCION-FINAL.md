@@ -141,3 +141,10 @@ El proyecto está terminado para publicar cuando:
 | Una revisión encuentra un bloqueante en integraciones | La ola 2 lo corrige antes de dar por cerrada la fase |
 | Las integraciones no se prueban nunca contra una plataforma real | Se documenta como límite y se publican apagadas |
 | El límite de uso de la sesión corta a los agentes | Los trabajos quedan confirmados en su rama; se reanudan |
+
+## 6. Registro de ejecución (2026-10-13)
+
+- **Suite completa con Docker sobre la rama integrada:** 3025 pruebas, 3016 pasan, 0 fallan, 9 saltadas.
+- **Revisiones:** cuarta pasada hecha; revisión de seguridad de integraciones (F1, F2) y de publicación y CLI hechas, ambas RECHAZADAS y corregidas (R1 a R15, H1 a H12); N-02 cerrado con límite del adversario deliberado.
+- **Pruebas en proyectos independientes:** paquete instalado fuera del repo; 3 de 3 en éxito con modelo real (0,13 USD calculados). Ver `docs/PRUEBAS-INDEPENDIENTES.md`.
+- **Pendiente:** quinta pasada corta sobre la cola autenticada y la mutación por aserción; solicitud de cambio y CI en Linux; cuentas reales para integraciones; factura frente a gasto; decisiones del dueño; rotar la clave; publicar.

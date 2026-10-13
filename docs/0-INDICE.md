@@ -145,6 +145,7 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 - 📊 [EJEMPLOS-MEMORIA-API.md](EJEMPLOS-MEMORIA-API.md) — Código JS/TS
 - 🔗 [INTEGRACIONES.md](INTEGRACIONES.md) — MCP: Vercel, GitHub, Figma
 - 🔌 [integraciones-externas.md](integraciones-externas.md) — GitHub, GitLab y Jira: leer incidencias y publicar resultados con aprobación (en construcción)
+- [PRUEBAS-INDEPENDIENTES.md](PRUEBAS-INDEPENDIENTES.md): cómo comprobar FORGE instalado como paquete sobre proyectos independientes.
 - ✅ [COMPATIBILIDAD.md](COMPATIBILIDAD.md) — Contrato de hooks
 - 📦 [VERIFICACION-SQLITE-AUTODETECT.md](VERIFICACION-SQLITE-AUTODETECT.md) — Auto-detectión
 

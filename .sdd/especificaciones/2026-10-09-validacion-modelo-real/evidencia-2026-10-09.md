@@ -196,3 +196,20 @@ Gasto calculado acumulado de las 24 ejecuciones: unos 2,4 USD. **Sigue sin compa
 | H14 | **En modo de bloque la caché de prompts casi no ahorra.** Cada agente tiene su propio prompt de sistema, así que solo hay lecturas cuando el mismo agente repite en menos de cinco minutos (iteraciones de corrección). En una tarea de una iteración se paga la escritura (1,25 veces) sin lectura. Con el nivel económico por defecto no se guarda nada: su mínimo cacheable es de 4096 tokens y los prompts de sistema son más cortos. | Ejecución 24: escrituras de 3549 y 2903 tokens sin lecturas dentro de la tarea; ejecuciones 21 y 22: cero tokens de caché | **Abierto.** El criterio de la spec de puesta al día (30 % menos de entrada en tres iteraciones del modo de bloque) no está demostrado y probablemente no se cumple; el ahorro medido (55 %) es del modo por turnos |
 
 El refuerzo de pruebas (`exigir` con puntuación baja) sigue sin verse con un modelo real: en las dos ejecuciones con `exigir` las pruebas detectaron todas las alteraciones.
+
+## Ronda 9 — paquete instalado en proyectos independientes (2026-10-13)
+
+Con `scripts/pruebas-independientes.mjs`: FORGE empaquetado con `npm pack` e instalado con `npm install` en una carpeta fuera del repositorio, nivel económico, tope de 0,15 USD por proyecto. Commit de la rama: ver el registro de git de este archivo.
+
+| # | Proyecto | Resultado | Iteraciones | Llamadas | Gasto calculado | Tiempo |
+|---|---|---|---|---|---|---|
+| 25 | `js-nuevo` (JavaScript, proyecto vacío) | éxito | 2 | 5 | 0,0486 USD | 139 s |
+| 26 | `js-existente` (código existente, cambio en dos archivos sin nombrarlos) | éxito | 1 | 3 | 0,0416 USD | 219 s |
+| 27 | `py-pytest` (Python con pytest en `requirements.txt`) | éxito | 1 | 3 | 0,0366 USD | 217 s |
+
+Gasto calculado de la ronda: 0,1268 USD. Acumulado de las 27 ejecuciones: unos 2,6 USD. **Sigue sin compararse con la factura.**
+
+- **Qué demuestra:** que el paquete empaquetado se instala y funciona fuera del repositorio, y que el ciclo resuelve tareas en proyectos que no son los de sus pruebas, incluida una sobre código existente.
+- **Qué no demuestra:** `go-modulo` y `dos-tareas` no se ejecutaron con modelo real en esta ronda; los proyectos son pequeños; es una ejecución por proyecto.
+- **Modo humo (sin gasto):** los cinco proyectos terminan con `salida_invalida` en 2 a 6 s, antes de llegar al contenedor. Comprueba instalación y arranque, no el entorno aislado.
+- **Suite completa con Docker sobre la rama integrada (2026-10-13):** 3025 pruebas, 3016 pasan, 0 fallan, 9 saltadas, sola en la máquina.
