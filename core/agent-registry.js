@@ -10,22 +10,46 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { crearProvider } from './llm-providers/index.js';
+import { crearProvider, leerTimeoutLlmMs } from './llm-providers/index.js';
 
 const DEFAULT_GLOBAL_TIMEOUT_MS = 120_000;
 
-/** @param {number} ms */
-const mensajeCortada = (ms) => `la llamada superó el tiempo máximo (${Math.round(ms / 1000)} s) y se canceló`;
+/** @param {number} ms @param {number} [intentos] */
+const mensajeCortada = (ms, intentos = 1) => `la llamada superó el tiempo máximo (${Math.round(ms / 1000)} s) y se canceló${intentos > 1 ? ` (${intentos} intentos cancelados por tiempo; cada uno pudo cobrarse)` : ''}`;
 
 /**
- * Tokens de entrada de una petición, por lo alto (tres caracteres por token). Solo se usa cuando una
- * llamada se cancela por tiempo: el proveedor pudo procesarla y no devolvió su consumo.
+ * Tokens de entrada de una petición, por lo alto. Solo se usa cuando no hay consumo real (llamada
+ * cancelada por tiempo o respuesta sin consumo válido): el proveedor pudo cobrarla.
+ *
+ * ASCII: tres caracteres por token. No se baja a 3,5: el código y el JSON, con muchos símbolos,
+ * rondan 3 y una estimación que se queda corta deja el gasto por debajo de lo cobrado (Principio VIII).
+ * Fuera de ASCII (CJK, emoji, acentos): la mitad de los bytes UTF-8 del tramo, porque un carácter CJK
+ * ocupa 3 bytes y suele costar 1 o 2 tokens, y un emoji 4 bytes y 2 o 3 tokens.
  * @param {...unknown} textos
  */
 export function estimarTokens(...textos) {
-  let caracteres = 0;
-  for (const t of textos) caracteres += String(t ?? '').length;
-  return Math.ceil(caracteres / 3);
+  let ascii = 0;
+  let bytesNoAscii = 0;
+  for (const t of textos) {
+    const s = String(t ?? '');
+    const resto = s.replace(/[\x00-\x7f]/g, '');
+    ascii += s.length - resto.length;
+    if (resto.length > 0) bytesNoAscii += Buffer.byteLength(resto, 'utf8');
+  }
+  return Math.ceil(ascii / 3) + Math.ceil(bytesNoAscii / 2);
+}
+
+/** Por encima de este tamaño de petición (caracteres) el tiempo por intento crece, 1 s por cada 1000. */
+const CARACTERES_SIN_RECARGO = 30_000;
+
+/**
+ * Tiempo máximo de UN intento: el base, más un segundo por cada 1000 caracteres de petición por
+ * encima de 30 000, sin pasar del triple del base. Determinista: depende solo del tamaño.
+ * @param {number} baseMs @param {number} caracteres
+ */
+export function tiempoPorIntento(baseMs, caracteres) {
+  const recargo = Math.floor(Math.max(0, caracteres - CARACTERES_SIN_RECARGO) / 1000) * 1000;
+  return Math.min(baseMs + recargo, baseMs * 3);
 }
 
 function parseFrontmatter(raw) {
@@ -95,20 +119,59 @@ export class AgentRegistry {
   register(def)     { this.agents.set(def.name, def); }
 }
 
-async function withRetry(fn, opts = {}) {
-  const { maxAttempts = 3, backoffMs = 1000, retryOn } = opts;
-  let lastError;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+/**
+ * Ejecuta `intento` con tiempo máximo POR INTENTO, cada uno con su propio AbortController (la señal
+ * de un intento cancelado no sirve para el siguiente). El tiempo total queda acotado a dos intentos.
+ * Una cancelación por tiempo se reintenta como mucho una vez; cada intento cancelado pudo cobrarse,
+ * así que se estima su entrada con `estimarEntrada` y se devuelve acumulada.
+ * @param {(signal: AbortSignal) => Promise<any>} intento
+ * @param {{ porIntentoMs: number, estimarEntrada: () => number, maxIntentos?: number, backoffMs?: number }} o
+ * @returns {Promise<any>}
+ */
+async function conReintentos(intento, { porIntentoMs, estimarEntrada, maxIntentos = 3, backoffMs = 1000 }) {
+  const inicio = Date.now();
+  const totalMs = porIntentoMs * 2;
+  let canceladas = 0;
+  let tokensCancelados = 0;
+  /** @type {unknown} */ let error;
+  let ultimaCortada = false;
+  for (let n = 1; n <= maxIntentos; n++) {
+    const restante = totalMs - (Date.now() - inicio);
+    // El único reintento tras un tiempo agotado tiene su intento completo; los demás reintentos
+    // (429, 503...) comparten el tiempo total, para que la espera no se multiplique
+    if (n > 1 && !ultimaCortada && restante <= 0) break;
+    const controller = new AbortController();
+    let cortada = false;
+    const limite = ultimaCortada ? porIntentoMs : Math.max(1, Math.min(porIntentoMs, restante));
+    const timer = setTimeout(() => { cortada = true; controller.abort(); }, limite);
+    let espera = 0;
     try {
-      return await fn();
+      const result = await intento(controller.signal);
+      return { ok: true, result, canceladas, tokensCancelados };
     } catch (err) {
-      lastError = err;
-      const shouldRetry = retryOn ? retryOn(err) : isRetryable(err);
-      if (!shouldRetry || attempt === maxAttempts) throw err;
-      await new Promise(r => setTimeout(r, backoffMs * attempt));
+      error = err;
+      ultimaCortada = cortada;
+      if (cortada) {
+        canceladas++;
+        tokensCancelados += estimarEntrada();
+        if (canceladas > 1) break;          // un solo reintento tras tiempo agotado
+      } else {
+        if (!isRetryable(err) || n === maxIntentos) break;
+        espera = backoffMs * n;
+      }
+    } finally {
+      clearTimeout(timer);
     }
+    if (espera > 0) await new Promise(r => setTimeout(r, espera));
   }
-  throw lastError;
+  return { ok: false, error, ultimaCortada, canceladas, tokensCancelados };
+}
+
+/** Campos que acompañan a un resultado cuando hubo intentos cancelados por tiempo. */
+function datosCancelados(c) {
+  return c.canceladas > 0
+    ? { abortada: true, tokensEstimados: c.tokensCancelados, intentosCancelados: c.canceladas }
+    : {};
 }
 
 function isRetryable(err) {
@@ -131,8 +194,9 @@ export class LlmAgentAdapter {
    */
   constructor(definition, apiKey, globalTimeoutMs, cwd, provider) {
     this.definition      = definition;
-    this.globalTimeoutMs = globalTimeoutMs ?? DEFAULT_GLOBAL_TIMEOUT_MS;
     this.cwd             = cwd ?? process.cwd();
+    // `llm.timeout_s` de sdd.config.yaml (validado); sin él, 120 s
+    this.globalTimeoutMs = globalTimeoutMs ?? leerTimeoutLlmMs(this.cwd) ?? DEFAULT_GLOBAL_TIMEOUT_MS;
     // El provider se crea una vez y se reutiliza por instancia
     this._provider = provider ?? crearProvider({
       cwd: this.cwd,
@@ -155,26 +219,25 @@ export class LlmAgentAdapter {
     const modelAlias = this.definition.model ?? 'sonnet';
     const modelId    = this._provider.resolveModelId(modelAlias);
 
-    const effectiveTimeoutMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
-    const controller = new AbortController();
-    let cortada = false;
-    const timer = setTimeout(() => { cortada = true; controller.abort(); }, effectiveTimeoutMs);
+    const porIntentoMs = tiempoPorIntento(this.definition.timeout_ms ?? this.globalTimeoutMs, String(systemPrompt).length + String(ctx.userPrompt ?? '').length);
+    const estimarEntrada = () => estimarTokens(systemPrompt, ctx.userPrompt);
 
-    try {
-      const result = await withRetry(
-        () => this._provider.complete({
-          model:        modelAlias,
-          systemPrompt,
-          // Parte fija del prompt de sistema (siempre un prefijo de systemPrompt): el proveedor
-          // que tenga caché de prompts marca hasta aquí; los demás lo ignoran
-          systemFijo,
-          userPrompt:   ctx.userPrompt,
-          maxTokens:    8192,
-          signal:       controller.signal,
-        }),
-        { maxAttempts: 3, backoffMs: 1000 },
-      );
+    const c = await conReintentos(
+      (signal) => this._provider.complete({
+        model:        modelAlias,
+        systemPrompt,
+        // Parte fija del prompt de sistema (siempre un prefijo de systemPrompt): el proveedor
+        // que tenga caché de prompts marca hasta aquí; los demás lo ignoran
+        systemFijo,
+        userPrompt:   ctx.userPrompt,
+        maxTokens:    8192,
+        signal,
+      }),
+      { porIntentoMs, estimarEntrada },
+    );
 
+    if (c.ok) {
+      const result = c.result;
       return {
         ok:           true,
         agentName:    this.definition.name,
@@ -188,23 +251,24 @@ export class LlmAgentAdapter {
         durationMs:   Date.now() - start,
         modelo:       modelId,
         provider:     this._provider.nombre,
+        // Estimación de la entrada, para anotar el gasto si el proveedor no informa del consumo (N-06)
+        tokensEntradaEstimados: estimarEntrada(),
+        // Intentos previos cancelados por tiempo: pudieron cobrarse aunque este saliera bien
+        ...(c.canceladas > 0 ? { intentosCancelados: c.canceladas, tokensEstimadosCancelados: c.tokensCancelados } : {}),
       };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return {
-        ok:        false,
-        agentName: this.definition.name,
-        output:    '',
-        durationMs: Date.now() - start,
-        error:     cortada ? mensajeCortada(effectiveTimeoutMs) : msg,
-        modelo:    modelId,
-        provider:  this._provider.nombre,
-        // El proveedor pudo recibir y cobrar la petición aunque aquí se cancelara la espera
-        ...(cortada ? { abortada: true, tokensEstimados: estimarTokens(systemPrompt, ctx.userPrompt) } : {}),
-      };
-    } finally {
-      clearTimeout(timer);
     }
+    const msg = c.error instanceof Error ? c.error.message : String(c.error);
+    return {
+      ok:        false,
+      agentName: this.definition.name,
+      output:    '',
+      durationMs: Date.now() - start,
+      error:     c.ultimaCortada ? mensajeCortada(porIntentoMs, c.canceladas) : msg,
+      modelo:    modelId,
+      provider:  this._provider.nombre,
+      // El proveedor pudo recibir y cobrar cada intento aunque aquí se cancelara la espera
+      ...datosCancelados(c),
+    };
   }
 }
 
@@ -228,33 +292,37 @@ LlmAgentAdapter.prototype.conversar = async function conversar(ctx) {
     return { ok: false, ...base, contenido: [], durationMs: 0, error: `El proveedor "${this._provider.nombre}" no admite conversaciones con herramientas.` };
   }
 
-  const controller = new AbortController();
-  const limiteMs = this.definition.timeout_ms ?? this.globalTimeoutMs;
-  let cortada = false;
-  const timer = setTimeout(() => { cortada = true; controller.abort(); }, limiteMs);
-  try {
-    const result = await withRetry(
-      () => this._provider.conversar({
-        model: modelAlias, systemPrompt: systemParts.join('\n'),
-        mensajes: ctx.mensajes, herramientas: ctx.herramientas, maxTokens: 8192, signal: controller.signal,
-      }),
-      { maxAttempts: 3, backoffMs: 1000 },
-    );
+  const systemPrompt = systemParts.join('\n');
+  const mensajesJson = JSON.stringify(ctx.mensajes ?? []);
+  const herramientasJson = JSON.stringify(ctx.herramientas ?? []);
+  const estimarEntrada = () => estimarTokens(systemPrompt, mensajesJson, herramientasJson);
+  const porIntentoMs = tiempoPorIntento(
+    this.definition.timeout_ms ?? this.globalTimeoutMs,
+    systemPrompt.length + mensajesJson.length + herramientasJson.length,
+  );
+  const c = await conReintentos(
+    (signal) => this._provider.conversar({
+      model: modelAlias, systemPrompt,
+      mensajes: ctx.mensajes, herramientas: ctx.herramientas, maxTokens: 8192, signal,
+    }),
+    { porIntentoMs, estimarEntrada },
+  );
+  if (c.ok) {
+    const result = c.result;
     return {
       ok: true, ...base, contenido: result.contenido, stopReason: result.stopReason,
       inputTokens: result.inputTokens, outputTokens: result.outputTokens,
       cacheCreationTokens: result.cacheCreationTokens, cacheReadTokens: result.cacheReadTokens,
       durationMs: Date.now() - start,
+      tokensEntradaEstimados: estimarEntrada(),
+      ...(c.canceladas > 0 ? { intentosCancelados: c.canceladas, tokensEstimadosCancelados: c.tokensCancelados } : {}),
     };
-  } catch (err) {
-    return {
-      ok: false, ...base, contenido: [], durationMs: Date.now() - start,
-      error: cortada ? mensajeCortada(limiteMs) : (err instanceof Error ? err.message : String(err)),
-      ...(cortada ? { abortada: true, tokensEstimados: estimarTokens(systemParts.join('\n'), JSON.stringify(ctx.mensajes ?? []), JSON.stringify(ctx.herramientas ?? [])) } : {}),
-    };
-  } finally {
-    clearTimeout(timer);
   }
+  return {
+    ok: false, ...base, contenido: [], durationMs: Date.now() - start,
+    error: c.ultimaCortada ? mensajeCortada(porIntentoMs, c.canceladas) : (c.error instanceof Error ? c.error.message : String(c.error)),
+    ...datosCancelados(c),
+  };
 };
 
 /** @param {string} forgeRoot @returns {AgentRegistry} */

@@ -442,13 +442,14 @@ describe("H-03 — por el ciclo: el libro y el nodo", () => {
     "decimal en entrada": { inputTokens: 1.5, outputTokens: 10 },
     "Infinity en salida": { inputTokens: 100, outputTokens: Infinity },
   })) {
-    test(`_llamador: ${nombre} se anota con costo 0 y 0 tokens, sin corromper el libro`, async () => {
+    test(`_llamador: ${nombre} se anota como ESTIMACIÓN (N-06), sin corromper el libro`, async () => {
       const c = ciclo(async () => ({ ok: true, output: "x", ...SONNET, ...resp }));
       await c._llamador("r1:T1", "T1")({ agente: "a", userPrompt: "u" });
       const [l] = lineas(c);
-      assert.equal(l.usd, 0);
-      assert.equal(l.inputTokens, 0);
-      assert.equal(l.outputTokens, 0);
+      assert.equal(l.estimado, true);
+      assert.ok(Number.isInteger(l.inputTokens) && l.inputTokens >= 0);
+      assert.ok(Number.isInteger(l.outputTokens) && l.outputTokens >= 0);
+      assert.ok(Number.isFinite(l.usd) && l.usd >= 0);
       const t = c.libro.total();
       assert.ok(Number.isFinite(t.usd) && t.usd >= 0);
     });
@@ -457,8 +458,9 @@ describe("H-03 — por el ciclo: el libro y el nodo", () => {
       const c = new CicloVerificado(/** @type {any} */ ({ cwd, runId: "r1", config: POR_DEFECTO, log: { append() {} }, llamar: async () => ({ ok: false }), conversar: async () => ({ ok: true, output: "x", ...SONNET, ...resp }) }));
       await c._conversador("r1:T1", "T1")({ clave: "k1", agente: "a" });
       const [l] = lineas(c);
-      assert.equal(l.usd, 0);
-      assert.equal(l.inputTokens + l.outputTokens, 0);
+      assert.equal(l.estimado, true);
+      assert.ok(Number.isFinite(l.usd) && l.usd >= 0);
+      assert.ok(Number.isInteger(l.inputTokens) && Number.isInteger(l.outputTokens));
     });
   }
 

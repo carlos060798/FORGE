@@ -92,6 +92,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - `llm:` con sangría de 1 espacio, tabulación o estilo `{}` se rechaza con un error claro en vez de ignorar `cache: false` (H-07). `initialize` con versión desconocida responde `2025-06-18` otra vez (H-11). `subscriptions/listen`: tope de 64 y sin ids repetidos (H-10). Decisión sobre peticiones sin `_meta` documentada (H-08).
 - Abiertos y documentados: la cancelación MCP no detiene la herramienta (H-09), `supported` de `-32022` (H-12), el recargo de Haiku 5.5 con más de 100 000 tokens y las escrituras de caché de 1 hora (H-13).
 
+**Robustez del gasto** (H13, N-06, N-11 y H-10 de la fase 8):
+
+- **Tiempo máximo por intento, no por llamada (H13).** Cada intento de una llamada al modelo tiene su propio límite y su propia señal de cancelación; antes un solo temporizador cubría todos los reintentos y, tras cancelar, los reintentos eran inútiles. Una cancelación por tiempo se reintenta **una sola vez** (tiempo total acotado a dos intentos) y **cada intento cancelado se cobra en el libro** como estimación de su entrada (`estimado`, evento `ciclo:llamada_abortada`, con `intentosCancelados`). El tiempo crece con el tamaño de la petición (un segundo por cada 1000 caracteres sobre 30 000, tope el triple). Nueva clave `llm.timeout_s` (1 a 3600, por defecto 120) en `sdd.config.yaml`; un valor no válido es un error claro.
+- **Estimación de tokens (N-11).** `estimarTokens` cuenta el texto no ASCII (CJK, emoji, acentos) por la mitad de sus bytes UTF-8 y el ASCII a tres caracteres por token; antes todo a tres caracteres y el CJK se subcontaba hasta cuatro veces. El ASCII se deja en tres caracteres por token a propósito: el código y el JSON rondan ese valor y un tope que se queda corto es peor que uno que se pasa.
+- **Consumo no informado o inválido (N-06).** Una respuesta sin datos de consumo válidos se anota en el libro con una estimación de entrada y salida (`estimado: true`, evento `ciclo:consumo_estimado`) y el tarea sigue pausada por infraestructura; así el tope acaba mordiendo y los `continuar` seguidos no pagan sin fin. Un proveedor local sigue contando cero.
+- **Una llamada cortada con la petición en vuelo (H-10).** La intención de llamar se anota antes de llamar; si el proceso muere con la llamada en vuelo, al reanudar se anota una estimación de su entrada (evento `ciclo:llamada_huerfana`). No evita pagar dos veces: lo hace visible y contado.
+
 Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 
 ## [4.3.0] — No publicada

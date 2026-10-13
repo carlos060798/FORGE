@@ -103,10 +103,11 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] Publicar (`npm publish`, etiqueta de git): solo con la integración continua en verde.
 
 **Abierto, sin asignar**
-- [ ] H13: no se sabe por qué algunas llamadas no responden en 120 s si el proveedor responde en un segundo. Los reintentos del adaptador no sirven tras una cancelación por tiempo.
+- [~] H13: sigue sin saberse POR QUÉ algunas llamadas no responden en 120 s si el proveedor responde en un segundo (causa abierta). Mitigado: tiempo por intento con señal propia, un reintento tras tiempo agotado, cada intento cancelado se cobra como estimación y `llm.timeout_s` configurable.
 - [ ] H10: con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
-- [ ] La estimación del gasto de una llamada cancelada subcuenta el texto no ASCII, sobrecuenta un tercio en ASCII y no estima la salida (N-11).
-- [ ] Cada `continuar` tras un consumo inválido paga una llamada real con el libro en cero (N-06).
+- [x] Estimación del gasto (N-11): el texto no ASCII ya se cuenta por bytes UTF-8 (mitad de bytes). El ASCII se queda a 3 caracteres por token a propósito (por lo alto). La salida de una llamada cancelada sigue sin estimarse (se desconoce), solo la de una respuesta sin consumo válido.
+- [x] Consumo inválido (N-06): se anota una estimación (`estimado`, `ciclo:consumo_estimado`); el tope muerde y los `continuar` no pagan sin fin.
+- [~] H-10 (fase 8, pagar dos veces tras un corte con la petición en vuelo): inherente, no se evita; ahora la intención se anota antes de llamar y al reanudar se cuenta una estimación (`ciclo:llamada_huerfana`).
 - [ ] `initialize` con una versión desconocida superior responde `2025-06-18`, no la más reciente (N-10); `pytest \`, `#egg=pytest` y `-r base.txt` no se reconocen en requisitos (N4).
 - [ ] Los tiempos de espera repetidos no cuentan para «sin progreso».
 - [ ] El modo por turnos no usa el recuperador de contexto, solo el mapa de archivos.

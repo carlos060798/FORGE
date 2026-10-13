@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { LlmAgentAdapter } from '../agent-registry.js';
+import { LlmAgentAdapter, estimarTokens } from '../agent-registry.js';
 import { crearProvider, OllamaProvider } from '../llm-providers/index.js';
 import { crearRecuperador } from '../recuperacion/recuperador.js';
 import { GuardadorArchivos } from './checkpoint-archivos.js';
@@ -17,7 +17,7 @@ import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
 import { costoDe, estadoDe } from './presupuesto.js';
-import { esRecuentoValido } from '../session-budget.js';
+import { esRecuentoValido, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 import { Respaldo } from './respaldo.js';
 
 const ARCHIVO_SESION = 'sesion.json';
@@ -120,7 +120,15 @@ export function crearLlamador(registry, apiKey, cwd, opciones = {}) {
       const cache = typeof r.cacheCreationTokens === 'number' || typeof r.cacheReadTokens === 'number'
         ? { cacheCreationTokens: r.cacheCreationTokens ?? 0, cacheReadTokens: r.cacheReadTokens ?? 0 }
         : {};
-      return { ok: r.ok, contenido: r.contenido, stopReason: r.stopReason, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}) };
+      return { ok: r.ok, contenido: r.contenido, stopReason: r.stopReason, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}), ...(typeof r.tokensEntradaEstimados === 'number' && !(esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens)) ? { tokensEntradaEstimados: r.tokensEntradaEstimados } : {}), ...(r.tokensEstimadosCancelados > 0 ? { tokensEstimadosCancelados: r.tokensEstimadosCancelados, intentosCancelados: r.intentosCancelados } : {}) };
+    },
+    /**
+     * Proveedor y modelo que atenderían una petición, antes de llamar (para estimar lo que costaría).
+     * @param {{ modeloAlias: string, proveedorLocal?: boolean }} peticion
+     */
+    destino: ({ modeloAlias, proveedorLocal }) => {
+      const p = proveedorDe(Boolean(proveedorLocal));
+      return { proveedor: String(p.nombre), modelo: String(p.resolveModelId?.(modeloAlias) ?? modeloAlias) };
     },
     /** @param {string} agente */
     aliasDe: (agente) => registry.get(agente)?.model ?? 'sonnet',
@@ -138,7 +146,7 @@ export function crearLlamador(registry, apiKey, cwd, opciones = {}) {
       const cache = typeof r.cacheCreationTokens === 'number' || typeof r.cacheReadTokens === 'number'
         ? { cacheCreationTokens: r.cacheCreationTokens ?? 0, cacheReadTokens: r.cacheReadTokens ?? 0 }
         : {};
-      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}) };
+      return { ok: r.ok, output: r.output, inputTokens: r.inputTokens, outputTokens: r.outputTokens, ...cache, modelo: r.modelo, proveedor: r.provider, error: r.error, ...(r.abortada ? { abortada: true, tokensEstimados: r.tokensEstimados } : {}), ...(typeof r.tokensEntradaEstimados === 'number' && !(esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens)) ? { tokensEntradaEstimados: r.tokensEntradaEstimados } : {}), ...(r.tokensEstimadosCancelados > 0 ? { tokensEstimadosCancelados: r.tokensEstimadosCancelados, intentosCancelados: r.intentosCancelados } : {}) };
     },
   };
 }
@@ -241,7 +249,9 @@ export class CicloVerificado {
    *   recuperar?: Function,
    *   conversar?: Function,
    *   admiteHerramientas?: (peticion: { agente: string, proveedorLocal?: boolean }) => boolean,
+   *   destino?: (peticion: { modeloAlias: string, proveedorLocal?: boolean }) => { proveedor: string, modelo: string },
    * }} opciones
+   *   `destino`: proveedor y modelo de una petición, para estimar una llamada cortada en vuelo (sin él, se asume anthropic).
    *   `conversar` y `admiteHerramientas`: solo para el implementador por turnos (ADR-21); sin ellos, modo de bloque.
    */
   constructor(opciones) {
@@ -278,22 +288,62 @@ export class CicloVerificado {
       const previa = this.diario.obtener(threadId, clave);
       if (previa) return previa;
 
+      const abierta = this._abrirIntencion(threadId, taskId, clave, peticion, estimarTokens(peticion.userPrompt, peticion.extraContext));
       const r = await this.o.llamar(peticion);
+      this.diario.anotarIntencion(threadId, clave, abierta, { cerrada: true, ok: Boolean(r?.ok) });
       if (r.ok) {
-        const conConsumo = esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens);
-        // Cada tipo de token a su precio: entrada normal, escritura de caché, lectura de caché y salida
-        const usd = conConsumo ? costoDe(r, { precios: this.o.config?.precios }) : 0;
-        // Sin consumo (proveedor que no lo informa) se anota con coste 0: el nodo lo trata como error aparte
-        this.libro.anotar({
-          taskId, usd, inputTokens: conConsumo ? r.inputTokens : 0, outputTokens: conConsumo ? r.outputTokens : 0,
-          ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
-        });
+        this._anotarCanceladasPrevias(taskId, r);
+        this._anotarRespuesta(taskId, r, estimarTokens(peticion.userPrompt, peticion.extraContext), estimarTokens(r.output));
         this.diario.anotar(threadId, clave, r);
       } else {
         this._anotarAbortada(taskId, r);
       }
       return r;
     };
+  }
+
+  /**
+   * Anota en el libro una respuesta ok. Con consumo válido, su costo real. Sin él (el proveedor no lo
+   * informó o lo informó roto), una ESTIMACIÓN de entrada y salida marcada `estimado`, para que el tope
+   * muerda: si no, cada `continuar` pagaría otra llamada real con el libro en cero (N-06). Un proveedor
+   * sin costo (local) sigue contando cero.
+   * @param {string} taskId @param {any} r @param {number} entradaPropia @param {number} salidaPropia
+   */
+  _anotarRespuesta(taskId, r, entradaPropia, salidaPropia) {
+    const conConsumo = esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens);
+    if (conConsumo) {
+      // Cada tipo de token a su precio: entrada normal, escritura de caché, lectura de caché y salida
+      const usd = costoDe(r, { precios: this.o.config?.precios });
+      this.libro.anotar({
+        taskId, usd, inputTokens: r.inputTokens, outputTokens: r.outputTokens,
+        cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens,
+      });
+      return;
+    }
+    if (PROVEEDORES_SIN_COSTO.has(r.proveedor)) {
+      this.libro.anotar({ taskId, usd: 0, inputTokens: 0, outputTokens: 0 });
+      return;
+    }
+    const entrada = esRecuentoValido(r.inputTokens) ? r.inputTokens : (esRecuentoValido(r.tokensEntradaEstimados) ? r.tokensEntradaEstimados : entradaPropia);
+    const salida = esRecuentoValido(r.outputTokens) ? r.outputTokens : salidaPropia;
+    let usd = 0;
+    try {
+      usd = costoDe({ proveedor: r.proveedor, modelo: r.modelo, inputTokens: entrada, outputTokens: salida }, { precios: this.o.config?.precios });
+    } catch { /* un precio roto: el nodo lo trata como error de consumo */ }
+    this.libro.anotar({ taskId, usd, inputTokens: entrada, outputTokens: salida, estimado: true });
+    this.o.log?.append('ciclo:consumo_estimado', {
+      modelo: r.modelo, proveedor: r.proveedor, tokensEntrada: entrada, tokensSalida: salida, usdEstimado: usd,
+      aviso: 'El proveedor respondió sin datos de consumo válidos. Se anotó una estimación (por lo alto) para que el tope de gasto siga contando; el costo real puede diferir.',
+    }, { taskId });
+  }
+
+  /**
+   * Intentos que el adaptador canceló por tiempo antes de una respuesta correcta: pudieron cobrarse.
+   * @param {string} taskId @param {any} r
+   */
+  _anotarCanceladasPrevias(taskId, r) {
+    if (!(r?.tokensEstimadosCancelados > 0) || !esRecuentoValido(r.tokensEstimadosCancelados)) return;
+    this._anotarAbortada(taskId, { abortada: true, tokensEstimados: r.tokensEstimadosCancelados, intentosCancelados: r.intentosCancelados, modelo: r.modelo, proveedor: r.proveedor });
   }
 
   /**
@@ -310,8 +360,42 @@ export class CicloVerificado {
     this.libro.anotar({ taskId, usd, inputTokens: r.tokensEstimados, outputTokens: 0, estimado: true });
     this.o.log?.append('ciclo:llamada_abortada', {
       modelo: r.modelo, proveedor: r.proveedor, tokensEstimados: r.tokensEstimados, usdEstimado: usd,
+      ...(r.intentosCancelados > 1 ? { intentosCancelados: r.intentosCancelados } : {}),
       aviso: 'La llamada se canceló por tiempo. El proveedor pudo procesarla y cobrarla: se anotó una estimación de la entrada; la salida no se conoce.',
     }, { taskId });
+  }
+
+  /**
+   * Anota la INTENCIÓN de una llamada antes de hacerla (H-10, reduce el pago doble tras un corte).
+   * Si el proceso muere con la petición en vuelo, al reanudar queda una intención sin cerrar: la
+   * llamada pudo cobrarse sin que la respuesta llegara al diario. Entonces se anota ahora en el libro
+   * una estimación de su entrada (marcada `estimado`), de modo que el gasto no quede por debajo de
+   * lo cobrado aunque se vuelva a pagar. No evita el pago doble: lo hace visible y contado.
+   * @param {string} threadId @param {string} taskId @param {string} clave @param {any} peticion @param {number} tokensEntrada
+   * @returns {number} número de esta intención
+   */
+  _abrirIntencion(threadId, taskId, clave, peticion, tokensEntrada) {
+    const previas = this.diario.intenciones(threadId, clave);
+    for (const i of previas) {
+      if (i.cerrada) continue;
+      const dato = i.dato ?? {};
+      this.diario.anotarIntencion(threadId, clave, i.numero, { cerrada: true, huerfana: true });
+      if (!esRecuentoValido(dato.tokensEntrada) || PROVEEDORES_SIN_COSTO.has(dato.proveedor)) continue;
+      let usd = 0;
+      try { usd = costoDe({ proveedor: dato.proveedor, modelo: dato.modelo, inputTokens: dato.tokensEntrada, outputTokens: 0 }, { precios: this.o.config?.precios }); } catch { /* sin precio válido */ }
+      this.libro.anotar({ taskId, usd, inputTokens: dato.tokensEntrada, outputTokens: 0, estimado: true });
+      this.o.log?.append('ciclo:llamada_huerfana', {
+        modelo: dato.modelo, proveedor: dato.proveedor, tokensEstimados: dato.tokensEntrada, usdEstimado: usd,
+        aviso: 'Una ejecución anterior se cortó con esta llamada en vuelo: pudo cobrarse sin que la respuesta llegara. Se anotó una estimación de la entrada; la petición se repite y se pagará de nuevo.',
+      }, { taskId });
+    }
+    const numero = previas.length + 1;
+    // Un proveedor local no cobra: no hay nada que estimar
+    const destino = peticion?.proveedorLocal === true
+      ? { proveedor: 'ollama', modelo: String(peticion?.modeloAlias ?? '') }
+      : (this.o.destino?.(peticion) ?? { proveedor: 'anthropic', modelo: String(peticion?.modeloAlias ?? 'sonnet') });
+    this.diario.anotarIntencion(threadId, clave, numero, { proveedor: destino.proveedor, modelo: destino.modelo, tokensEntrada });
+    return numero;
   }
 
   /**
@@ -325,14 +409,13 @@ export class CicloVerificado {
       if (previa) return { ...previa, delDiario: true };
       if (typeof this.o.conversar !== 'function') return { ok: false, error: 'No hay un proveedor de modelos con herramientas configurado.' };
 
+      const entrada = estimarTokens(JSON.stringify(peticion.mensajes ?? []), JSON.stringify(peticion.herramientas ?? []), peticion.extraContext);
+      const abierta = this._abrirIntencion(threadId, taskId, clave, peticion, entrada);
       const r = await this.o.conversar(peticion);
+      this.diario.anotarIntencion(threadId, clave, abierta, { cerrada: true, ok: Boolean(r?.ok) });
       if (r.ok) {
-        const conConsumo = esRecuentoValido(r.inputTokens) && esRecuentoValido(r.outputTokens);
-        const usd = conConsumo ? costoDe(r, { precios: this.o.config?.precios }) : 0;
-        this.libro.anotar({
-          taskId, usd, inputTokens: conConsumo ? r.inputTokens : 0, outputTokens: conConsumo ? r.outputTokens : 0,
-          ...(conConsumo ? { cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens } : {}),
-        });
+        this._anotarCanceladasPrevias(taskId, r);
+        this._anotarRespuesta(taskId, r, entrada, estimarTokens(JSON.stringify(r.contenido ?? [])));
         this.diario.anotar(threadId, clave, r);
       } else {
         this._anotarAbortada(taskId, r);
