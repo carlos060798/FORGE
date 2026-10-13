@@ -121,6 +121,7 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [x] 2026-10-12: sangría incorrecta de claves conocidas del config lanza error con línea; `forge doctor` comprueba Docker siempre; tope de 256 KiB en manifiestos y nombres no ASCII de dependencias; señal de cancelación pasada a las herramientas MCP (H-09, límite documentado en M-3).
 - [x] Comprobación de tipos: de 36 errores a 0.
 - [x] Tercera revisión independiente (N-01 a N-14): N-01, N-03, N-04, N-05, N-07, N-08, N-09, N-12, N-13 y N-14 corregidos; N-02 abierto arriba.
+- [x] Cuarta revisión independiente, parte 1 (N4-03, N4-04, N4-05, N4-07, N4-08, N4-09): redacción por valor, cuerpo de clave privada oculto por tramo y en `buscar`, BOM conservado, temporales huérfanos barridos, `import`/`export`/`runner` por escritura segura con prueba estática, marcador `[REDACTADO` permitido si el archivo ya lo tiene. N4-03 queda mitigado, no cerrado (contraseñas cortas o de una clase); N4-01, N4-02, N4-06 y N4-10 en otra tarea.
 - [x] `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
 - [x] Mutación limitada a las líneas que la tarea cambió (H11).
 - [x] Pruebas frágiles estabilizadas (`docker info`, rendimiento, doctor).

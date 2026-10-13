@@ -187,6 +187,36 @@ export function crearArchivo(raiz, ruta, contenido, modo = 0o644) {
   return true;
 }
 
+/** Un temporal propio de `escribirArchivo` es de un proceso cortado si tiene más de esto. */
+export const EDAD_TEMPORAL_HUERFANO_MS = 60 * 60 * 1000;
+const NOMBRE_TEMPORAL = /^.+\.forge-tmp-\d+-[0-9a-f]{8}$/;
+
+/**
+ * Borra los temporales que dejó un corte (SIGKILL entre crear y renombrar) en ESTE directorio:
+ * solo archivos normales con el nombre exacto que genera `escribirArchivo` y de más de una hora.
+ * Nunca toca enlaces, carpetas ni otros nombres, y nunca falla la escritura que la lanza (N4-07).
+ * @param {string} dir  directorio ya verificado
+ * @returns {number} cuántos borró
+ */
+function barrerTemporales(dir) {
+  let borrados = 0;
+  try {
+    const ahora = Date.now();
+    for (const nombre of readdirSync(dir)) {
+      if (!NOMBRE_TEMPORAL.test(nombre)) continue;
+      const p = join(dir, nombre);
+      try {
+        const st = lstatSync(p);
+        if (!st.isFile() || st.isSymbolicLink()) continue;
+        if (ahora - st.mtimeMs < EDAD_TEMPORAL_HUERFANO_MS) continue;
+        unlinkSync(p);
+        borrados++;
+      } catch { /* otro proceso lo quitó o no se puede: se deja */ }
+    }
+  } catch { /* el directorio aún no existe o no se lista */ }
+  return borrados;
+}
+
 /**
  * Deja `ruta` con este contenido: la crea o la reemplaza, pero solo si ya es un archivo normal.
  * El reemplazo borra el archivo y lo crea de nuevo con 'wx', de modo que no se escribe sobre un
@@ -196,6 +226,7 @@ export function crearArchivo(raiz, ruta, contenido, modo = 0o644) {
  */
 export function escribirArchivo(raiz, ruta, contenido, modo) {
   const destino = verificarRuta(raiz, ruta);
+  barrerTemporales(dirname(destino));
   const st = lstatONulo(destino);
   if (st !== null) {
     if (st.isSymbolicLink()) throw new ErrorEnlace(destino, 'El destino es un enlace; no se escribe a través de él');

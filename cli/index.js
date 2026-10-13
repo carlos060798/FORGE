@@ -13,7 +13,6 @@
  */
 
 import {
-  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,

@@ -18,7 +18,7 @@
  */
 
 import {
-  existsSync, mkdirSync, readFileSync, writeFileSync,
+  existsSync, readFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
