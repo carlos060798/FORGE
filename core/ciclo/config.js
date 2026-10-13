@@ -61,6 +61,18 @@ const TOPE_TURNOS = 200;
 const MUTACION = ['no', 'informar', 'exigir'];
 
 /**
+ * ¿Es `clave` una clave que la sección `nombre` reconoce? Solo estas se vigilan por sangría: una
+ * clave desconocida no es un fallo de sangría. En `precios` valen las que acaban en un sufijo de precio.
+ * @param {string} nombre @param {string} clave
+ */
+function claveConocida(nombre, clave) {
+  if (nombre === 'modelos') return NIVELES.includes(clave);
+  if (nombre === 'precios') return Object.keys(SUFIJOS_TODOS).some((s) => clave.endsWith(s) && clave.length > s.length);
+  const defectos = /** @type {Record<string, object>} */ (POR_DEFECTO)[nombre];
+  return Boolean(defectos) && Object.prototype.hasOwnProperty.call(defectos, clave);
+}
+
+/**
  * @param {string} yaml
  * @param {string} nombre  clave de primer nivel
  * @returns {Record<string, string>}
@@ -70,11 +82,23 @@ export function leerSeccion(yaml, nombre) {
   const seccion = {};
   let dentro = false;
   const inicio = new RegExp(`^${nombre}\\s*:`);
+  const lineas = yaml.split(/\r?\n/);
 
-  for (const linea of yaml.split(/\r?\n/)) {
+  for (let i = 0; i < lineas.length; i++) {
+    const linea = lineas[i];
     if (inicio.test(linea)) { dentro = true; continue; }
     if (dentro && /^\S/.test(linea) && !/^#/.test(linea)) dentro = false;
     if (!dentro) continue;
+
+    // Una clave conocida con otra sangría que dos espacios no la lee este analizador: antes se
+    // ignoraba sin avisar (un `mutacion: no` mal sangrado no hacía nada). Ahora se rechaza.
+    const mala = linea.match(/^([ \t]+)("[^"]+"|'[^']+'|[\w.-]+)\s*:(?:\s|$)/);
+    if (mala && mala[1] !== '  ') {
+      const clave = mala[2].replace(/^["']|["']$/g, '');
+      if (claveConocida(nombre, clave)) {
+        throw new Error(`.sdd/sdd.config.yaml, línea ${i + 1}: la clave "${nombre}.${clave}" tiene una sangría que no se admite (${mala[1].includes('\t') ? 'con tabulación' : `${mala[1].length} espacio(s)`}); usa exactamente 2 espacios. Con otra sangría la clave se ignoraría sin avisar.`);
+      }
+    }
 
     // La clave admite guiones y puntos (identificadores de modelo: claude-sonnet-4-6, gpt-4.1).
     // Si lleva dos puntos (qwen2.5-coder:7b) tiene que ir entre comillas.

@@ -56,7 +56,7 @@ Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del
 | Brecha | Estado | Qué quedó |
 |---|---|---|
 | **C1** modelo real | ✅ | 24 ejecuciones (JavaScript, Python, Go; código existente; corte y reanudación; pausa por presupuesto) y 14 hallazgos, ver `evidencia-2026-10-09.md` |
-| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido. Además ese job solo ejecuta `sandbox-real`: las demás pruebas con Docker no las corre ningún job |
+| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido. Desde el 2026-10-12 `ci.yml` añade `tipos` y `pruebas-docker` (todas las pruebas que mencionan `FORGE_TEST_DOCKER`), sin ejecutar |
 | **C3** correcciones sin revisar | ⚠️ | Tres revisiones y dos pasadas hechas, con sus hallazgos altos corregidos. Lo corregido en la tercera pasada no tiene cuarta |
 | **C4** modelos y precios | ✅ | ADR-19 implementada y contrastada con la tarifa publicada; falta compararla con lo facturado |
 | **C5** rojo | ✅ | Obligatorio con reintento y exención; no se aplica si ya hay implementación |
@@ -72,6 +72,8 @@ Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del
 
 Documentos: `evidencia-2026-10-09.md` y `revision-independiente.md`, `-2` y `-3` en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/`; `revision-independiente.md` y `verificacion.md` en la carpeta de cada una de las otras tres specs; `docs/PROBLEMAS-CONOCIDOS.md`, `docs/MIGRACION-5.0.md` y `docs/COBERTURA.md`.
 
+> **El plan de trabajo por olas, con quién hace cada cosa, está en `PLAN-EJECUCION-FINAL.md`** (2026-10-12). Esta lista queda como inventario.
+
 ## Pendiente para las próximas sesiones
 
 Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
@@ -84,11 +86,11 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] Refuerzo de pruebas con un modelo real: en las dos ejecuciones con `exigir`, las pruebas detectaron todo y no hubo refuerzo.
 - [ ] Caché: una tarea de tres iteraciones en modo de bloque, con y sin caché, para el criterio de la spec de puesta al día (probablemente no se cumple).
 - [ ] Permisos 0700 de las copias temporales y enlaces simbólicos de archivo en Linux.
-- [ ] Un job de integración continua para las demás pruebas con Docker, y otro de tipos.
+- [x] Un job de integración continua para las demás pruebas con Docker, y otro de tipos. *(2026-10-12: jobs `pruebas-docker` y `tipos` en `ci.yml`; no pueden ejecutarse fuera de GitHub Actions y no han corrido.)*
 - [ ] `forge doctor` debe comprobar Docker siempre, no solo con `sandbox.runtime`.
 - [ ] La configuración ignora en silencio una clave mal sangrada: avisar.
-- [ ] Test de consistencia que compare las cifras escritas en prosa (agentes, comandos, skills) con el disco.
-- [ ] Corregir las contradicciones entre documentos listadas en `docs/PROBLEMAS-CONOCIDOS.md`, sección 8 (índices con enlaces que no existen, nombres de paquete antiguos).
+- [x] Test de consistencia que compare las cifras escritas en prosa (agentes, comandos, skills) con el disco. *(2026-10-12: `tests/consistencia-cifras.test.js`; corrigió `docs-site/assets/data.js`, que decía 6 agentes de solo lectura y 8 que escriben.)*
+- [x] Corregir las contradicciones entre documentos listadas en `docs/PROBLEMAS-CONOCIDOS.md`, sección 8 (índices con enlaces que no existen, nombres de paquete antiguos). *(2026-10-12, salvo la razón del Principio IV de la constitución, que dice «dos dependencias» y son tres: es decisión del dueño.)*
 
 **Necesita algo tuyo**
 - [ ] Abrir la solicitud de cambio `feature/motor-agentico` hacia `main` para que corra la integración continua.
@@ -103,18 +105,20 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] Publicar (`npm publish`, etiqueta de git): solo con la integración continua en verde.
 
 **Abierto, sin asignar**
-- [ ] H13: no se sabe por qué algunas llamadas no responden en 120 s si el proveedor responde en un segundo. Los reintentos del adaptador no sirven tras una cancelación por tiempo.
+- [~] H13: sigue sin saberse POR QUÉ algunas llamadas no responden en 120 s si el proveedor responde en un segundo (causa abierta). Mitigado: tiempo por intento con señal propia, un reintento tras tiempo agotado, cada intento cancelado se cobra como estimación y `llm.timeout_s` configurable.
 - [ ] H10: con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
-- [ ] La estimación del gasto de una llamada cancelada subcuenta el texto no ASCII, sobrecuenta un tercio en ASCII y no estima la salida (N-11).
-- [ ] Cada `continuar` tras un consumo inválido paga una llamada real con el libro en cero (N-06).
-- [ ] `initialize` con una versión desconocida superior responde `2025-06-18`, no la más reciente (N-10); `pytest \`, `#egg=pytest` y `-r base.txt` no se reconocen en requisitos (N4).
-- [ ] Los tiempos de espera repetidos no cuentan para «sin progreso».
+- [x] Estimación del gasto (N-11): el texto no ASCII ya se cuenta por bytes UTF-8 (mitad de bytes). El ASCII se queda a 3 caracteres por token a propósito (por lo alto). La salida de una llamada cancelada sigue sin estimarse (se desconoce), solo la de una respuesta sin consumo válido.
+- [x] Consumo inválido (N-06): se anota una estimación (`estimado`, `ciclo:consumo_estimado`); el tope muerde y los `continuar` no pagan sin fin.
+- [~] H-10 (fase 8, pagar dos veces tras un corte con la petición en vuelo): inherente, no se evita; ahora la intención se anota antes de llamar y al reanudar se cuenta una estimación (`ciclo:llamada_huerfana`).
+- [x] `initialize` con una versión desconocida responde con la más reciente soportada (N-10, spec 2025-11-25 lifecycle); `pytest `, `#egg=pytest` y `-r base.txt` se reconocen y la comprobación previa avisa de que la imagen no resuelve `-r` (N4). 2026-10-12.
+- [x] Tres tiempos de espera seguidos con la misma huella cuentan para «sin progreso». 2026-10-12.
 - [ ] El modo por turnos no usa el recuperador de contexto, solo el mapa de archivos.
-- [ ] Los precios de OpenAI no están contrastados; el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
+- [x] Precios de OpenAI contrastados el 2026-10-12 (https://developers.openai.com/api/docs/pricing). [ ] Pendiente: el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
 - [ ] Proyectos grandes y una ejecución larga sin intervención: no se han probado.
 - [ ] Que el ciclo use servidores MCP de GitHub o GitLab (cliente MCP): exige una especificación nueva y revisión de seguridad (ADR-12 y ADR-15 hoy lo excluyen).
 
 **Cerrado en esta tanda**
+- [x] 2026-10-12: sangría incorrecta de claves conocidas del config lanza error con línea; `forge doctor` comprueba Docker siempre; tope de 256 KiB en manifiestos y nombres no ASCII de dependencias; señal de cancelación pasada a las herramientas MCP (H-09, límite documentado en M-3).
 - [x] Comprobación de tipos: de 36 errores a 0.
 - [x] Tercera revisión independiente (N-01 a N-14): N-01, N-03, N-04, N-05, N-07, N-08, N-09, N-12, N-13 y N-14 corregidos; N-02 abierto arriba.
 - [x] `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.

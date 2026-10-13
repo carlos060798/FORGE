@@ -165,6 +165,13 @@ async function cmdStatus(cwd) {
     ciclo.forEach((l) => console.log(l));
   }
 
+  // Integraciones externas: solo si hay alguna activa (carga perezosa)
+  if ((await import('./integraciones-activas.js')).integracionesActivas(cwd)) {
+    const { lineasEstado } = await import('./integraciones.js');
+    console.log('');
+    lineasEstado(cwd).forEach((l) => console.log(l));
+  }
+
   // Qué mecanismo de aislamiento usará el ciclo verificado (sandbox.runtime)
   if (lineaAislamiento) {
     console.log('');

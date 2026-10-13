@@ -135,9 +135,13 @@ describe("decidirRuta — sin progreso", () => {
     assert.deepEqual(decidirRuta(estado([["fail", undefined], ["fail", undefined], ["fail", undefined]])), { ruta: "coder" });
   });
 
-  test("solo cuentan los fallos: un tiempo agotado entre medias rompe la racha", () => {
+  test("tres tiempos de espera seguidos con la misma huella cuentan como sin progreso; mezclados con fallos, no", () => {
     assert.deepEqual(decidirRuta(estado([["fail", A], ["timeout", A], ["fail", A]])), { ruta: "coder" });
-    assert.deepEqual(decidirRuta(estado([["timeout", A], ["timeout", A], ["timeout", A]])), { ruta: "coder" });
+    assert.deepEqual(decidirRuta(estado([["timeout", A], ["timeout", A], ["timeout", A]])), SIN_PROGRESO);
+    assert.deepEqual(decidirRuta(estado([["timeout", A], ["timeout", A], ["timeout", B]])), { ruta: "coder" });
+    // un contenedor que se cuelga sin escribir nada: huella vacía, pero todos tiempos de espera
+    assert.deepEqual(decidirRuta(estado([["timeout", ""], ["timeout", ""], ["timeout", ""]])), SIN_PROGRESO);
+    assert.equal(sinProgreso(estado([["timeout", A], ["timeout", A], ["timeout", A]]), 0), false);
   });
 
   test("el presupuesto agotado manda; sin_progreso va antes que el tope de iteraciones", () => {

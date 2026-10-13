@@ -2,6 +2,8 @@
 
 Este documento describe la estrategia de versionamiento semántico (SemVer) para FORGE y cómo mantener versiones consistentes entre el plugin y npm.
 
+> **Nombre del paquete:** el paquete de npm se llama **`forja-mvp`** (campo `name` de `package.json`). `forge` y `sdd-es` son los nombres de **comando** que instala (`bin`), no del paquete. Los números de versión de los ejemplos de abajo (2.5.0, 2.6.0…) son ilustrativos; la versión vigente está en `package.json` y `CHANGELOG.md`. Para una beta, los pasos concretos están en `RELEASE-CHECKLIST.md`, sección «Beta».
+
 ## Semantic Versioning (SemVer)
 
 FORGE sigue el formato: **MAJOR.MINOR.PATCH**
@@ -81,7 +83,7 @@ git checkout -b release/2.6.0
 
 ```json
 {
-  "name": "sdd-es",
+  "name": "forja-mvp",
   "version": "2.6.0",
   ...
 }
@@ -144,15 +146,15 @@ npm publish
 
 # Respuesta esperada:
 # npm notice Publishing to registry
-# npm notice 📦  sdd-es@2.6.0
+# npm notice 📦  forja-mvp@2.6.0
 # npm notice === Tarball Contents ===
 ```
 
 Para ver el paquete publicado:
 
 ```bash
-npm view sdd-es@2.6.0
-npm info sdd-es versions  # lista todas las versiones publicadas
+npm view forja-mvp@2.6.0
+npm info forja-mvp versions  # lista todas las versiones publicadas
 ```
 
 ---
@@ -214,7 +216,7 @@ Con npm:
 
 ```bash
 npm publish --tag rc
-npm dist-tags ls sdd-es
+npm dist-tags ls forja-mvp
 
 # Resultado:
 # latest: 2.5.0
@@ -224,8 +226,8 @@ npm dist-tags ls sdd-es
 Usuarios instalan así:
 
 ```bash
-npm install sdd-es@rc      # última RC
-npm install sdd-es@latest  # estable
+npm install forja-mvp@rc      # última RC
+npm install forja-mvp@latest  # estable
 ```
 
 ---
@@ -241,7 +243,7 @@ Ejemplo:
 
 ```bash
 # v2.6.0
-npm deprecate sdd-es@2.5.0 "Use v2.6.0+ instead"
+npm deprecate forja-mvp@2.5.0 "Use v2.6.0+ instead"
 
 # v3.0.0 remueve feature antigua
 ```
@@ -268,9 +270,9 @@ Antes de publicar, verifica:
 ### ¿Publiqué la versión equivocada?
 
 ```bash
-npm unpublish sdd-es@2.6.1  # elimina
+npm unpublish forja-mvp@2.6.1  # elimina
 # O marca deprecated:
-npm deprecate sdd-es@2.6.1 "Use 2.6.0"
+npm deprecate forja-mvp@2.6.1 "Use 2.6.0"
 ```
 
 ### ¿Necesito re-publicar con cambios?
@@ -291,8 +293,8 @@ git push origin v2.6.1
 Los usuarios pueden instalar cualquier versión histórica:
 
 ```bash
-npm install sdd-es@2.5.0
-npx sdd-es@2.5.0   # ejecutar una versión específica
+npm install forja-mvp@2.5.0
+npx -p forja-mvp@2.5.0 forge --version   # ejecutar una versión específica
 ```
 
 ---

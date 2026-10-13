@@ -214,7 +214,7 @@ forge dispatch --agente=main --tarea="Design REST API"
 forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
 
       <h2>14 specialized agents</h2>
-      <p>6 agents are strictly read-only (enforced at hook level — not configurable). 8 agents can write files.</p>
+      <p>7 agents are strictly read-only (enforced at hook level — not configurable). 7 agents can write files.</p>
 
       <h2>Key capabilities</h2>
       <ul>

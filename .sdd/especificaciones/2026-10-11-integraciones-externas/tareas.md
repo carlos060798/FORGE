@@ -36,16 +36,18 @@
 
 ## F3 — Publicación
 
-- [ ] **F3.1** `aprobacion.js`: cola de pendientes, huella del contenido, estados.
-- [ ] **F3.2** `publicar`: arma la publicación desde el estado del ciclo (huellas, resultado, evidencia), nunca desde archivos releídos; excluye los archivos de dependencias y configuración pausados.
-- [ ] **F3.3** `aprobar`: comprueba modo, destino, tope, huella sin cambios y que no esté ya publicada; idempotente.
-- [ ] **F3.4** Fallo de la plataforma: la publicación queda pendiente y reintentable; ninguna tarea se pierde (CA-005-04).
+- [x] **F3.1** `aprobacion.js`: cola de pendientes, huella del contenido, estados.
+- [x] **F3.2** `publicar`: arma la publicación desde el estado del ciclo (huellas, resultado, evidencia), nunca desde archivos releídos; excluye los archivos de dependencias y configuración pausados.
+- [x] **F3.3** `aprobar`: comprueba modo, destino, tope, huella sin cambios y que no esté ya publicada; idempotente.
+- [x] **F3.4** Fallo de la plataforma: la publicación queda pendiente y reintentable; ninguna tarea se pierde (CA-005-04).
 
 ## F4 — CLI y diagnóstico
 
-- [ ] **F4.1** `cli/integraciones.js` con `leer`, `publicar`, `aprobar`, `estado`, `apagar`.
-- [ ] **F4.2** `doctor`: variable definida, host permitido y HTTPS; alcance solo donde se puede (GitLab con token personal) y «no comprobable» en GitHub y Jira con el alcance declarado a la vista; escritura bloqueada si el alcance excede; sin imprimir tokens.
-- [ ] **F4.3** `forge status` muestra pendientes y operaciones por proveedor.
+- [x] **F4.1** `cli/integraciones.js` con `leer`, `publicar`, `aprobar`, `estado`, `apagar`.
+- [x] **F4.2** `doctor`: variable definida, host permitido y HTTPS; alcance solo donde se puede (GitLab con token personal) y «no comprobable» en GitHub y Jira con el alcance declarado a la vista; escritura bloqueada si el alcance excede; sin imprimir tokens.
+- [x] **F4.3** `forge status` muestra pendientes y operaciones por proveedor.
+
+> F3 y F4 hechas (2026-10-12), con los matices de `verificacion.md` §10: la prueba con el ciclo guionizado usa modelo y pruebas simulados; GitLab/GitHub/Jira solo contra servidores falsos.
 
 ## F5 — Seguridad y cierre
 

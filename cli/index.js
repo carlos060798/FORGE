@@ -1291,6 +1291,12 @@ async function cmdDoctor() {
   // ── Aislamiento del ciclo verificado ─────────────────────────────────────────
   titulo("Verificando el aislamiento del ciclo verificado...");
   try {
+    // Docker es obligatorio para el ciclo: se comprueba siempre, con o sin sandbox.runtime
+    const { diagnosticarDocker } = await import("../core/sandbox/diagnostico.js");
+    for (const l of (await diagnosticarDocker()).lineas) {
+      (l.nivel === "info" ? info : aviso)(l.texto);
+      if (l.problema) problemas++;
+    }
     const { leerConfigCiclo } = await import("../core/ciclo/config.js");
     const runtime = leerConfigCiclo(process.cwd()).sandbox.runtime;
     /** @type {{ ok: true } | { ok: false, error: string }} */
@@ -1322,6 +1328,14 @@ async function cmdDoctor() {
   } catch (e) {
     aviso(`Configuración del ciclo no válida: ${e instanceof Error ? e.message : e}`);
     problemas++;
+  }
+
+  // ── Integraciones externas: solo si hay alguna activa (carga perezosa; sin sección no se importa nada) ──
+  if ((await import("./integraciones-activas.js")).integracionesActivas(process.cwd())) {
+    titulo("Verificando integraciones externas...");
+    const { ejecutarIntegraciones } = await import("./integraciones.js");
+    const extra = process.argv.includes("--integraciones-red") ? ["--red"] : [];
+    if (await ejecutarIntegraciones(["doctor", ...extra]) !== 0) problemas++;
   }
 
   // ── Diagnóstico del LLM ──────────────────────────────────────────────────────
@@ -1870,6 +1884,12 @@ async function main() {
     case "aprobar":
       cmdAprobar(args.slice(1));
       break;
+    case "integraciones": {
+      // Carga perezosa: solo quien invoca este comando importa el paquete de integraciones (HU-005)
+      const { cmdIntegraciones } = await import("./integraciones.js");
+      await cmdIntegraciones(args.slice(1));
+      break;
+    }
     case "api": {
       // API HTTP local con token (spec 2026-10-03-api-http). Por stdout sale una sola línea JSON con la URL y el token.
       const valor = (flag) => { const i = args.indexOf(flag); return i !== -1 && args[i + 1] ? args[i + 1] : undefined; };

@@ -35,13 +35,13 @@ Mejora incremental, opt-in. Detalle y límites en [PLAN-MOTOR-AGENTICO.md](../PL
 - **Ciclo verificado** — `forge run --motor ciclo`, ver [ciclo-verificado.md](ciclo-verificado.md)
 - **Servidor MCP** — `forge mcp`, ver [servidor-mcp.md](servidor-mcp.md)
 - **API HTTP local** — `forge api`, ver [api-http.md](api-http.md)
-- **`forge probar-modelo`** — la prueba con un modelo real, **todavía sin ejecutar con uno de pago**
+- **`forge probar-modelo`** — la prueba con un modelo real. Se ejecutó con uno de pago el 2026-10-09 (ver `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`)
 - Suite al cerrar 4.3.0: 1405 tests pasando en Windows con Docker (3 saltados, 0 fallos). El recuento actual está en [COBERTURA.md](COBERTURA.md)
 
 ## En desarrollo activo
 
-- **Memoria semántica** (FASE 3 de `PLAN-MOTOR-AGENTICO.md`): un recuperador con embeddings reales (LanceDB, opcional, Node ≥22) tras el puerto `Recuperador` del ciclo. No empezada.
-- **Ciclo por defecto** (FASE 5, 5.0.0): hecho en el código (`motor.modo: ciclo` por defecto, Node ≥20). **Sin publicar hasta probar el ciclo con un modelo de pago y ejecutar el job de CI `aislamiento`.**
+- **Memoria semántica** (FASE 3 de `PLAN-MOTOR-AGENTICO.md`): hecha con un índice propio en un archivo, sin dependencias (ADR-14); guía en [memoria-semantica.md](memoria-semantica.md). LanceDB (embeddings reales, opcional, Node ≥22) quedó diferido.
+- **Ciclo por defecto** (FASE 5, 5.0.0): hecho en el código (`motor.modo: ciclo` por defecto, Node ≥20). **Sin publicar hasta ejecutar en CI los jobs `aislamiento` y `pruebas-docker` (nunca han corrido); el ciclo ya se probó con un modelo de pago en tareas pequeñas.**
 
 Estas funcionalidades tienen trabajo iniciado pero no están disponibles en la versión publicada:
 

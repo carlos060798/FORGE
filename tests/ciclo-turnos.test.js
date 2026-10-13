@@ -344,9 +344,13 @@ describe("HU-005 — reanudar sin pagar dos veces", () => {
     assert.equal(r.reanudada, true);
     assert.equal(r.estado.resultado, "exito");
     assert.equal(e.conversaciones.length, 6, "en total, seis llamadas al modelo: los cuatro primeros turnos no se repitieron");
-    assert.equal(despues.libro.total().llamadas, 8, "planificador, pruebas y seis turnos");
-    assert.ok(Math.abs(despues.libro.total().usd - (2 * COSTE_LLAMADA + 6 * COSTE_TURNO)) < 1e-12, "el gasto no cuenta dos veces los cuatro primeros");
-    assert.equal(r.estado.presupuesto.llamadas, 8);
+    // La petición del turno 5 estaba en vuelo cuando se cortó (H-10): pudo cobrarse, así que el libro
+    // lleva además una estimación de su entrada (marcada `estimado`), nunca un cobro duplicado de los turnos 1 a 4
+    assert.equal(despues.libro.total().llamadas, 9, "planificador, pruebas, seis turnos y la estimación de la llamada cortada");
+    const base = 2 * COSTE_LLAMADA + 6 * COSTE_TURNO;
+    const huerfana = despues.libro.total().usd - base;
+    assert.ok(huerfana > 0 && huerfana < 1, `gasto de más por la llamada cortada: ${huerfana}`);
+    assert.equal(r.estado.presupuesto.llamadas, 9);
     assert.ok(Math.abs(r.estado.presupuesto.gastado_usd - despues.libro.total().usd) < 1e-12);
     assert.equal(e.ejecutadas, 3, "las pruebas que pidió el turno 4 no se ejecutaron otra vez");
     assert.equal(/** @type {any} */ (r.estado).turnos, 6);
