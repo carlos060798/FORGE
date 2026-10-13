@@ -72,6 +72,8 @@ Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del
 
 Documentos: `evidencia-2026-10-09.md` y `revision-independiente.md`, `-2` y `-3` en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/`; `revision-independiente.md` y `verificacion.md` en la carpeta de cada una de las otras tres specs; `docs/PROBLEMAS-CONOCIDOS.md`, `docs/MIGRACION-5.0.md` y `docs/COBERTURA.md`.
 
+> **El plan de trabajo por olas, con quién hace cada cosa, está en `PLAN-EJECUCION-FINAL.md`** (2026-10-12). Esta lista queda como inventario.
+
 ## Pendiente para las próximas sesiones
 
 Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
