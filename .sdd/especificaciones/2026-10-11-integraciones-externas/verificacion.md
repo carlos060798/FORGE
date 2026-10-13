@@ -267,3 +267,59 @@ La prueba opt-in (`FORGE_PRUEBA_GITHUB_REAL=1` con token, destino e incidencia d
 - `npm run typecheck`: 0 errores.
 - `node --test tests/*.test.js`: 2457 pruebas, 2445 pasan, 0 fallan, 12 omitidas (anteriores). Pruebas nuevas de F2.1: 49 en `integraciones-github.test.js` (más la suite opt-in, omitida).
 - Una corrida anterior bajo carga fuerte de la máquina falló `proyecto-hostil` («5000 archivos pequeños», tope de tiempo); aislada y en la corrida completa siguiente pasó. No es de este trabajo.
+
+## 10. F3 (publicación) y F4 (CLI y diagnóstico)
+
+> 2026-10-12. Todo contra los servidores falsos locales y con el ciclo guionizado (modelo y pruebas simulados). Ninguna llamada a una cuenta real.
+
+### 10.1 Qué hay
+
+| Módulo | Archivo | Pruebas |
+|---|---|---|
+| Qué se publica, desde el estado del ciclo | `core/integraciones/publicacion.js` | `integraciones-publicacion` (26) |
+| Cola, vista previa, aprobación, bloqueo por alcance | `core/integraciones/aprobacion.js` | `integraciones-aprobacion` (28) |
+| Diagnóstico | `core/integraciones/doctor.js` | `integraciones-doctor` (19), `integraciones-doctor-cli` (2) |
+| CLI `forge integraciones` y resumen de `forge status` | `cli/integraciones.js`, `cli/integraciones-activas.js` | `integraciones-cli` (13, con el ciclo real guionizado) |
+| `<proveedor>_alcance` en la configuración | `core/integraciones/config.js` | `integraciones-alcance-config` (4) |
+
+Cambios fuera de los archivos nuevos: `cli/index.js` (enrutado `integraciones` y bloque de `doctor`, ambos con import dinámico y tras la puerta `integracionesActivas`), `cli/runner.js` (resumen en `status`), `core/integraciones/config.js` (clave de alcance). `tests/integraciones-aislamiento.test.js`: `cli/index.js` y `cli/runner.js` pasan a la lista de archivos que pueden mencionar integraciones, con una prueba nueva que exige que sea SOLO con `import()` dinámico; y la lista de módulos internos admitidos suma `ciclo/checkpoint-archivos.js`, `ciclo/protocolo-archivos.js` y `ciclo/estado.js` (tipo JSDoc). Adaptadores, `http.js`, `confianza.js` y `auditoria.js` sin tocar. Salida de `forge doctor` sin la sección: byte a byte igual que antes del cambio (captura previa comparada con `fc`).
+
+### 10.2 Criterios
+
+| CA | Estado | Prueba |
+|---|---|---|
+| CA-002-01 vista previa exacta y ninguna escritura hasta aprobar | Cubierto | `vista`, `publicar` (0 escrituras en el falso) |
+| CA-002-02 redactado y acotado | Cubierto | plantilla fija, `redactar`, 6000 bytes; aprobar re-verifica |
+| CA-002-03 identificador y origen | Cubierto (enlace a evidencia = ruta local relativa) | texto de la plantilla |
+| CA-002-04 no duplica | Cubierto en los 3 | aprobar dos veces; marcador de los adaptadores |
+| CA-002-05 modo `solo_lectura` | Cubierto | `publicar` y `aprobar` sin red |
+| CA-003-02 huellas del estado | Cubierto | huella de disco distinta → error |
+| CA-003-03 CI, dependencias, configuración | Cubierto | excluidos y listados con motivo |
+| CA-003-04 sin permiso de escritura | Parcial | el modo y el alcance bloquean antes; el 403 real es del adaptador |
+| CA-004-02 `doctor` | Cubierto contra falsos | GitLab con `--red`; GitHub y Jira «no comprobable» |
+| CA-004-05 token ausente | Cubierto en pendientes, entradas, eventos, salida y errores (centinelas, 3 proveedores) | `integraciones-cli`; la prueba de prompts y puntos de guardado completa sigue siendo F5.1 |
+| CA-005-04 plataforma caída | Cubierto | pendiente `fallido`, reintentable, `.sdd/motor` y archivos intactos |
+| CA-006-02/03/04 estado, apagar, tope | Cubierto | `estado`, `apagar`, tope antes de la red |
+
+### 10.3 Decisiones
+
+- **Sesión del contador:** `runId` de `.sdd/motor/sesion.json` si es válido; si no, `dia-AAAA-MM-DD` (UTC).
+- **Los adaptadores se construyen SIN `auditoria`**: la capa de aprobación envuelve la operación en `AuditoriaIntegraciones.ejecutar` una sola vez (si no, cada publicación contaría dos).
+- **El token se lee tras las comprobaciones** de modo, destino, alcance, interruptor y tope; un token ausente no consume tope ni marca el pendiente como fallido.
+- **Bloqueo por alcance persistente** (`.sdd/integraciones/alcance.json`): lo escribe `doctor --integraciones-red` y `aprobar` lo respeta. Solo existe para GitLab; GitHub y Jira no son comprobables.
+- **Contenido cambiado** (huella): el pendiente pasa a `rechazado`; `--huella` ata la aprobación a lo visto.
+- **Un archivo con formato de secreto** en una propuesta se excluye (no se redacta: cambiaría la huella).
+- **Jira + propuesta** se rechaza al preparar, no se degrada en silencio.
+- **`forge doctor`** llama a `ejecutarIntegraciones(['doctor'])`, que a su vez usa `doctor.js`.
+
+### 10.4 Límites y sin confirmar
+
+- Dos `aprobar` simultáneos del mismo id no tienen candado: la protección es el marcador de los adaptadores.
+- El token faltante cuenta como intento solo si el interruptor y el tope pasaron (no cuenta: se lee antes de `ejecutar`).
+- El modo `proponer` no se verifica contra permisos reales; todo lo «sin confirmar» de §7 a §9 sigue igual.
+- `forge status` e `integraciones estado` cuentan operaciones de la sesión actual, no históricas.
+- El ciclo guionizado de la prueba usa modelo y runner simulados; F5.3 (hostil de extremo a extremo comparando resultados) sigue pendiente.
+
+### 10.5 Totales
+
+`npm run typecheck`: 0 errores. `tests/integraciones-*.test.js`: 454 pruebas, 0 fallos (la suite completa la ejecuta quien integra).

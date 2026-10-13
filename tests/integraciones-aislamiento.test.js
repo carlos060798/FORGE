@@ -49,7 +49,9 @@ const ESPECIFICADORES = /(?:\bimport\s*(?:[\w*${}\s,]+\s*from\s*)?|\bexport\s*(?
 
 describe('F1.6 carga perezosa: prueba estática', () => {
   test('ningún archivo del producto, salvo el propio paquete y su CLI, importa core/integraciones/', () => {
-    const permitidos = new Set([join(RAIZ, 'cli', 'integraciones.js')]);
+    // cli/index.js y cli/runner.js enrutan `forge integraciones`, `forge doctor` y `forge status`: solo
+    // pueden mencionarlo con import() DINÁMICO (se comprueba en la prueba siguiente).
+    const permitidos = new Set([join(RAIZ, 'cli', 'integraciones.js'), join(RAIZ, 'cli', 'index.js'), join(RAIZ, 'cli', 'runner.js')]);
     const propios = join(RAIZ, 'core', 'integraciones') + sep;
     /** @type {string[]} */
     const infractores = [];
@@ -70,10 +72,24 @@ describe('F1.6 carga perezosa: prueba estática', () => {
     assert.deepEqual(infractores, []);
   });
 
+  test('cli/index.js y cli/runner.js mencionan integraciones solo con import() dinámico, nunca con import estático', () => {
+    for (const f of ['index.js', 'runner.js']) {
+      const texto = readFileSync(join(RAIZ, 'cli', f), 'utf8');
+      let dinamicos = 0;
+      for (const m of texto.matchAll(ESPECIFICADORES)) {
+        if (!/integraciones(?:\/|\.js|-activas\.js|$)/.test(m[2])) continue;
+        const antes = texto.slice(Math.max(0, m.index - 0), m.index + m[0].length);
+        assert.ok(/import\s*\(/.test(antes) && !/\bfrom\s*['"]/.test(antes), `${f}: import estático de ${m[2]}`);
+        dinamicos++;
+      }
+      assert.ok(dinamicos >= 1, `${f}: no se encontró el enrutado esperado`);
+    }
+  });
+
   test('el propio paquete solo depende de módulos de Node y de módulos internos conocidos (sin dependencias nuevas)', () => {
     const dir = join(RAIZ, 'core', 'integraciones');
     // Módulos de core/ que el paquete puede importar, como rutas absolutas (valen desde proveedores/ también)
-    const internos = new Set(['ciclo/redactar.js', 'ciclo/config.js', 'escritura-segura.js', 'event-log.js'].map((r) => join(RAIZ, 'core', r)));
+    const internos = new Set(['ciclo/redactar.js', 'ciclo/config.js', 'ciclo/checkpoint-archivos.js', 'ciclo/estado.js','ciclo/protocolo-archivos.js', 'escritura-segura.js', 'event-log.js'].map((r) => join(RAIZ, 'core', r)));
     for (const f of archivosJs(dir)) {
       const texto = readFileSync(f, 'utf8');
       for (const m of texto.matchAll(ESPECIFICADORES)) {

@@ -34,9 +34,9 @@ const TOPE_MAXIMO = 1000;
 
 /** Claves permitidas dentro de la sección. Cualquier otra es un error. */
 const CLAVES = Object.freeze({
-  github: ['github_modo', 'github_token_env', 'github_destinos'],
-  gitlab: ['gitlab_modo', 'gitlab_host', 'gitlab_token_env', 'gitlab_destinos'],
-  jira: ['jira_modo', 'jira_sitio', 'jira_usuario_env', 'jira_token_env', 'jira_destinos'],
+  github: ['github_modo', 'github_token_env', 'github_destinos', 'github_alcance'],
+  gitlab: ['gitlab_modo', 'gitlab_host', 'gitlab_token_env', 'gitlab_destinos', 'gitlab_alcance'],
+  jira: ['jira_modo', 'jira_sitio', 'jira_usuario_env', 'jira_token_env', 'jira_destinos', 'jira_alcance'],
   topes: ['topes_operaciones_por_sesion'],
 });
 const TODAS = new Set(Object.values(CLAVES).flat());
@@ -58,6 +58,8 @@ export class ErrorConfigIntegraciones extends Error {
  * @property {string} [tokenEnv]      nombre de la variable de entorno del token
  * @property {string} [usuarioEnv]    solo Jira: variable con el correo del usuario de servicio
  * @property {string[]} destinos      lista cerrada
+ * @property {string} [alcance]       alcance del token DECLARADO por el proyecto (texto libre, solo informativo:
+ *                                    GitHub y Jira no permiten consultarlo; `doctor` lo muestra para que una persona lo revise)
  *
  * @typedef {Object} ConfigIntegraciones
  * @property {boolean} presente       había sección `integraciones:`
@@ -172,6 +174,33 @@ function validarVariable(clave, valor, problemas) {
   return valor;
 }
 
+const MAX_ALCANCE = 200;
+
+/**
+ * El alcance declarado es texto libre, solo informativo: acotado, sin caracteres de control y sin
+ * nada que la redacción reconozca como secreto (esta clave se muestra en `doctor` y `estado`).
+ * @returns {string|undefined}
+ */
+function validarAlcance(clave, valor, problemas) {
+  if (valor.length > MAX_ALCANCE) {
+    problemas.push(`${clave}: supera ${MAX_ALCANCE} caracteres; descríbelo en una línea corta`);
+    return undefined;
+  }
+  if (/[\u0000-\u001F\u007F-\u009F]/.test(valor)) {
+    problemas.push(`${clave}: no puede llevar caracteres de control`);
+    return undefined;
+  }
+  if (pareceTokenLiteral(valor) && valor.length <= 64 && !/\s/.test(valor)) {
+    problemas.push(`${clave}: el valor parece un token literal; aquí va una descripción del alcance (por ejemplo «Issues: lectura y escritura; Pull requests: escritura»), nunca un secreto`);
+    return undefined;
+  }
+  if (redactar(valor) !== valor) {
+    problemas.push(`${clave}: el texto contiene algo con forma de secreto; descríbelo sin pegar credenciales (no se imprime el valor)`);
+    return undefined;
+  }
+  return valor;
+}
+
 /** @returns {string|undefined} host en minúsculas */
 function validarHost(clave, valor, problemas) {
   if (ESQUEMA.test(valor)) {
@@ -263,7 +292,9 @@ export function interpretarIntegraciones(yaml) {
       avisos.push(`${nombre}_modo no está definido: el proveedor queda apagado aunque tenga otras claves`);
     }
 
-    proveedores[nombre] = { nombre, modo, host, ...(tokenEnv ? { tokenEnv } : {}), ...(usuarioEnv ? { usuarioEnv } : {}), destinos };
+    const alcance = v[`${nombre}_alcance`] === undefined ? undefined : validarAlcance(`${nombre}_alcance`, v[`${nombre}_alcance`], problemas);
+
+    proveedores[nombre] = { nombre, modo, host, ...(tokenEnv ? { tokenEnv } : {}), ...(usuarioEnv ? { usuarioEnv } : {}), destinos, ...(alcance ? { alcance } : {}) };
   }
 
   let operacionesPorSesion = TOPE_POR_DEFECTO;

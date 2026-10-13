@@ -1324,6 +1324,14 @@ async function cmdDoctor() {
     problemas++;
   }
 
+  // ── Integraciones externas: solo si hay alguna activa (carga perezosa; sin sección no se importa nada) ──
+  if ((await import("./integraciones-activas.js")).integracionesActivas(process.cwd())) {
+    titulo("Verificando integraciones externas...");
+    const { ejecutarIntegraciones } = await import("./integraciones.js");
+    const extra = process.argv.includes("--integraciones-red") ? ["--red"] : [];
+    if (await ejecutarIntegraciones(["doctor", ...extra]) !== 0) problemas++;
+  }
+
   // ── Diagnóstico del LLM ──────────────────────────────────────────────────────
   titulo("Diagnosticando conexión con el LLM...");
   await cmdDoctorLlm(apiKey, { problemas: (n) => { problemas += n; } });
@@ -1870,6 +1878,12 @@ async function main() {
     case "aprobar":
       cmdAprobar(args.slice(1));
       break;
+    case "integraciones": {
+      // Carga perezosa: solo quien invoca este comando importa el paquete de integraciones (HU-005)
+      const { cmdIntegraciones } = await import("./integraciones.js");
+      await cmdIntegraciones(args.slice(1));
+      break;
+    }
     case "api": {
       // API HTTP local con token (spec 2026-10-03-api-http). Por stdout sale una sola línea JSON con la URL y el token.
       const valor = (flag) => { const i = args.indexOf(flag); return i !== -1 && args[i + 1] ? args[i + 1] : undefined; };
