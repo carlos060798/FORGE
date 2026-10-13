@@ -62,8 +62,14 @@ export function sinProgreso(estado, n) {
   if (!Number.isInteger(n) || n < 1 || estado.ejecuciones.length < n) return false;
   const ultimas = estado.ejecuciones.slice(-n);
   const huella  = ultimas[0].huellaSalida;
-  if (typeof huella !== 'string' || huella === '') return false;
-  return ultimas.every((e) => e.categoria === 'fail' && e.huellaSalida === huella);
+  if (typeof huella !== 'string') return false;
+  // Un tiempo de espera repetido cuenta igual que un fallo idéntico (misma huella). Sin salida (huella
+  // vacía) solo cuenta si TODAS fueron tiempos de espera: un contenedor que se cuelga sin escribir nada.
+  if (huella === '' && !ultimas.every((e) => e.categoria === 'timeout')) return false;
+  // La racha es de una sola categoría: un fallo entre tiempos de espera (o al revés) la rompe
+  const categoria = ultimas[0].categoria;
+  if (categoria !== 'fail' && categoria !== 'timeout') return false;
+  return ultimas.every((e) => e.categoria === categoria && e.huellaSalida === huella);
 }
 
 /** @param {number} n */

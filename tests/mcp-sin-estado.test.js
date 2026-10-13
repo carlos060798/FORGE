@@ -211,9 +211,30 @@ describe("CA-002-04 — una revisión desconocida recibe una respuesta clara con
     assert.equal(segundo.respuestas[0].result.tools.length, 3);
   });
 
-  test("con saludo: una versión desconocida se contesta con 2025-06-18 (la de antes de la fase 9)", async () => {
+  test("con saludo: una versión desconocida se contesta con la más reciente soportada (N-10: lifecycle 2025-11-25)", async () => {
     const { respuestas } = await conversar([req(1, "initialize", { protocolVersion: VIGENTE, capabilities: {}, clientInfo: { name: "t", version: "1" } })]);
-    assert.equal(respuestas[0].result.protocolVersion, "2025-06-18");
+    assert.equal(respuestas[0].result.protocolVersion, VERSIONES[0]);
+  });
+
+  test("H-09: una petición cancelada llega a la herramienta como señal abortada (y una anterior a empezar no la ejecuta)", async () => {
+    let vistaAbortada = null;
+    let ejecuciones = 0;
+    const herr = [{
+      name: "espera", description: "x", inputSchema: { type: "object", properties: {} },
+      ejecutar: async (_a, senal) => { ejecuciones++; await new Promise((r) => setTimeout(r, 150)); vistaAbortada = senal?.aborted ?? null; return { texto: "fin" }; },
+    }];
+    const entrada = new PassThrough(); const salida = new PassThrough(); let crudo = "";
+    salida.on("data", (d) => (crudo += d));
+    const s = new ServidorMcp({ nombre: "p", version: "1", herramientas: herr, entrada, salida });
+    const fin = s.iniciar();
+    entrada.write(mod("e-1", "tools/call", { name: "espera", arguments: {} }) + "\n");
+    await new Promise((r) => setTimeout(r, 40));
+    entrada.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: "e-1" } }) + "\n");
+    entrada.end();
+    await fin;
+    assert.equal(vistaAbortada, true);
+    assert.equal(crudo.includes('"e-1"'), false, "sin respuesta a una petición cancelada");
+    assert.equal(ejecuciones, 1);
   });
 });
 

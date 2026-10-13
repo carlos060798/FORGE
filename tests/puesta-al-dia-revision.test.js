@@ -769,15 +769,15 @@ describe("H-10 — suscripciones", () => {
   });
 });
 
-describe("H-11 — initialize desconocido responde como antes de la fase 9", () => {
-  test("la versión por defecto es 2025-06-18 y no la más reciente", async () => {
+describe("H-11 — initialize desconocido responde con la más reciente soportada (N-10, antes 2025-06-18)", () => {
+  test("la versión por defecto es la más reciente soportada (lifecycle 2025-11-25: SHOULD latest)", async () => {
     for (const pedida of ["2099-01-01", "rara", undefined, 5, null, ""]) {
       const r = await conversar([req(1, "initialize", pedida === undefined ? {} : { protocolVersion: pedida })]);
-      assert.equal(r[0].result.protocolVersion, "2025-06-18", String(pedida));
+      assert.equal(r[0].result.protocolVersion, "2025-11-25", String(pedida));
     }
   });
 
-  test("igual que el servidor del commit 3da91d3 (anterior a la fase 9), para lo que ya existía", async (t) => {
+  test("las versiones soportadas y el resto de flujos, idénticos al servidor del commit 3da91d3 (anterior a la fase 9)", async (t) => {
     const g = spawnSync("git", ["show", "3da91d3:core/mcp/protocolo.js"], { cwd: ROOT, encoding: "utf8", maxBuffer: 10_000_000 });
     if (g.status !== 0) { t.skip("el historial no trae 3da91d3"); return; }
     const dir = temporal("forge-h11-");
@@ -785,10 +785,6 @@ describe("H-11 — initialize desconocido responde como antes de la fase 9", () 
     writeFileSync(archivo, g.stdout);
     const Antiguo = (await import(pathToFileURL(archivo).href)).ServidorMcp;
     const casos = [
-      [req(1, "initialize", { protocolVersion: "rara" })],
-      [req(1, "initialize", {})],
-      [req(1, "initialize")],
-      [req(1, "initialize", { protocolVersion: 5 })],
       ...["2025-06-18", "2025-03-26", "2024-11-05"].map((v) => [req(1, "initialize", { protocolVersion: v }), req(2, "tools/list"), req(3, "ping"), req(4, "tools/call", { name: "eco", arguments: { texto: "x" } })]),
     ];
     for (const c of casos) {

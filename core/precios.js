@@ -18,6 +18,9 @@
 /** Fecha de la última revisión de la tabla contra la fuente oficial. */
 export const REVISADA = '2026-10-09';
 
+/** Fecha en que se contrastaron los precios de OpenAI con https://developers.openai.com/api/docs/pricing (los de Anthropic: REVISADA). */
+export const REVISADA_OPENAI = '2026-10-12';
+
 /** Página de la que se copiaron los precios de Anthropic. */
 export const FUENTE = 'https://platform.claude.com/docs/en/about-claude/pricing';
 
@@ -60,8 +63,9 @@ export const TABLA = {
     // Haiku 4.5: activo, con retirada «no antes del 2026-10-15»
     'claude-haiku-4-5-20251001':  { entrada: 1,   salida: 5,   cache_escritura_5m: 1.25,  cache_escritura_1h: 2,   cache_lectura: 0.1 },
   },
-  // OpenAI: SIN CONFIRMAR. Valores de referencia heredados, no contrastados con la tarifa
-  // oficial en esta revisión. Quien use este proveedor debe fijar sus precios en `precios:`.
+  // OpenAI: contrastados el 2026-10-12 (REVISADA_OPENAI) con la tarifa oficial, nivel «Standard»:
+  // https://developers.openai.com/api/docs/pricing (platform.openai.com/docs/pricing redirige ahí).
+  // gpt-4o 2.50 / 10.00 y gpt-4o-mini 0.15 / 0.60 USD por millón de tokens (entrada / salida).
   openai: {
     'gpt-4o':      { entrada: 2.5,  salida: 10 },
     'gpt-4o-mini': { entrada: 0.15, salida: 0.6 },

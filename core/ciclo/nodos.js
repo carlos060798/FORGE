@@ -147,7 +147,16 @@ function seccionPlan(estado) {
 
 const MAX_BYTES_PROPIOS = 24 * 1024;
 /** Un manifiesto (package.json, go.mod) más grande que esto no es normal: no se lee para el prompt. */
-const MAX_BYTES_MANIFIESTO = 1024 * 1024;
+const MAX_BYTES_MANIFIESTO = 256 * 1024;
+
+/**
+ * Nombre de dependencia seguro para el prompt: letras y cifras de cualquier alfabeto, sin espacios
+ * ni control, invisibles o separadores raros (un nombre con espacios podría ser una instrucción).
+ * @param {string} nombre
+ */
+function nombreDependencia(nombre) {
+  return /^[\p{L}\p{N}@._/-]{1,80}$/u.test(nombre) && nombreListable(nombre);
+}
 
 /**
  * Datos del proyecto que condicionan cómo se escribe el código y que no dependen de la tarea.
@@ -180,7 +189,7 @@ export function seccionProyecto(cwd, vetadas = []) {
       const pkg = JSON.parse(crudo);
       if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('no es un objeto');
       const nombres = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
-        .filter((d) => /^[@a-z0-9._/-]{1,80}$/i.test(d));
+        .filter(nombreDependencia);
       const esTs = nombres.includes('typescript') || fs.existsSync(path.join(cwd, 'tsconfig.json'));
       if (esTs) lineas.push('- Proyecto TypeScript: en los archivos .ts usa import/export.');
       if (pkg.type === 'module') lineas.push('- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.');
@@ -195,7 +204,7 @@ export function seccionProyecto(cwd, vetadas = []) {
     const mod = /^module\s+([\w./~-]{1,200})\s*$/m.exec(gomod);
     if (mod) lineas.push(`- Módulo de Go: ${mod[1]}`);
   }
-  for (const ruta of demasiado) lineas.push(`- ${ruta} es demasiado grande para leerlo (más de ${MAX_BYTES_MANIFIESTO / 1024 / 1024} MB): no se resume aquí.`);
+  for (const ruta of demasiado) lineas.push(`- ${ruta} es demasiado grande para leerlo (más de ${MAX_BYTES_MANIFIESTO / 1024} KiB): no se resume aquí.`);
   return lineas.length ? `\n\n## Proyecto\n${lineas.join('\n')}` : '';
 }
 

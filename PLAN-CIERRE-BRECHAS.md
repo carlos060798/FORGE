@@ -107,14 +107,15 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] H10: con el nivel económico, el agente de pruebas a veces escribe valores esperados erróneos y el ciclo no puede distinguirlos de una implementación que falla.
 - [ ] La estimación del gasto de una llamada cancelada subcuenta el texto no ASCII, sobrecuenta un tercio en ASCII y no estima la salida (N-11).
 - [ ] Cada `continuar` tras un consumo inválido paga una llamada real con el libro en cero (N-06).
-- [ ] `initialize` con una versión desconocida superior responde `2025-06-18`, no la más reciente (N-10); `pytest \`, `#egg=pytest` y `-r base.txt` no se reconocen en requisitos (N4).
-- [ ] Los tiempos de espera repetidos no cuentan para «sin progreso».
+- [x] `initialize` con una versión desconocida responde con la más reciente soportada (N-10, spec 2025-11-25 lifecycle); `pytest `, `#egg=pytest` y `-r base.txt` se reconocen y la comprobación previa avisa de que la imagen no resuelve `-r` (N4). 2026-10-12.
+- [x] Tres tiempos de espera seguidos con la misma huella cuentan para «sin progreso». 2026-10-12.
 - [ ] El modo por turnos no usa el recuperador de contexto, solo el mapa de archivos.
-- [ ] Los precios de OpenAI no están contrastados; el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
+- [x] Precios de OpenAI contrastados el 2026-10-12 (https://developers.openai.com/api/docs/pricing). [ ] Pendiente: el tramo caro de Claude Haiku 5.5 (más de 100 000 tokens de entrada) no se contempla.
 - [ ] Proyectos grandes y una ejecución larga sin intervención: no se han probado.
 - [ ] Que el ciclo use servidores MCP de GitHub o GitLab (cliente MCP): exige una especificación nueva y revisión de seguridad (ADR-12 y ADR-15 hoy lo excluyen).
 
 **Cerrado en esta tanda**
+- [x] 2026-10-12: sangría incorrecta de claves conocidas del config lanza error con línea; `forge doctor` comprueba Docker siempre; tope de 256 KiB en manifiestos y nombres no ASCII de dependencias; señal de cancelación pasada a las herramientas MCP (H-09, límite documentado en M-3).
 - [x] Comprobación de tipos: de 36 errores a 0.
 - [x] Tercera revisión independiente (N-01 a N-14): N-01, N-03, N-04, N-05, N-07, N-08, N-09, N-12, N-13 y N-14 corregidos; N-02 abierto arriba.
 - [x] `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
