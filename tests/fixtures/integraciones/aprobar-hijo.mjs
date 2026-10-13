@@ -8,7 +8,7 @@
  * Salida estándar: una línea JSON { codigo, salida, error }.
  */
 
-const [cwd, baseUrl, id, arranque, esperaMs] = process.argv.slice(2);
+const [cwd, baseUrl, id, arranque, esperaMs, huella] = process.argv.slice(2);
 const { ejecutarIntegraciones } = await import(new URL('../../../cli/integraciones.js', import.meta.url).href);
 const { crearProveedorGitHub } = await import(new URL('../../../core/integraciones/proveedores/github.js', import.meta.url).href);
 const { BASE_LOCAL } = await import(new URL('../../../core/integraciones/pruebas-internas.js', import.meta.url).href);
@@ -26,7 +26,7 @@ const fabrica = (/** @type {any} */ cfg, /** @type {any} */ { token, auditoria }
   token, destinos: cfg.destinos, modo: cfg.modo, auditoria, [BASE_LOCAL]: baseUrl,
 });
 while (Date.now() < Number(arranque)) { /* barrera por reloj */ }
-const codigo = await ejecutarIntegraciones(['aprobar', id, '--cwd', cwd], {
+const codigo = await ejecutarIntegraciones(['aprobar', id, ...(huella ? ['--huella', huella] : []), '--cwd', cwd], {
   fabrica: /** @type {any} */ (fabrica), salida: (l) => sal.push(l), error: (l) => err.push(l),
 });
 process.stdout.write(`${JSON.stringify({ codigo, salida: sal.join('\n'), error: err.join('\n') })}\n`);

@@ -11,6 +11,7 @@
 import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, before, after, beforeEach } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -614,7 +615,7 @@ describe('F2.2 GitLab: el token no aparece en ningún sitio', () => {
   test('ni en errores, ni en valores devueltos, ni en eventos de auditoría', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'forge-gitlab-'));
     mkdirSync(join(dir, '.sdd'), { recursive: true });
-    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: {}, sesion: 'gl' });
+    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: process.env, sesion: 'gl' });
     const p = crear({ auditoria });
     /** @type {string[]} */
     const salidas = [];

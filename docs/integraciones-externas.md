@@ -95,6 +95,8 @@ El host de GitHub es siempre `api.github.com`.
 | `comentar` | Sí | Sí | No |
 | `proponer` | Sí | Sí | Sí (rama `forge/…` y solicitud en borrador) |
 
+**El modo de escritura lo concede el usuario, no el proyecto** (revisión 2, H8): `comentar` y `proponer` en `sdd.config.yaml` son una petición; solo valen si en TU entorno defines `FORGE_INTEGRACIONES_ESCRITURA=github,gitlab` (proveedores, separados por comas, comparación exacta). Sin ella el modo efectivo es `solo_lectura` como máximo y `forge doctor` lo dice. Con `FORGE_INTEGRACIONES_DESTINOS=org/repo,otro/repo` solo valen esos destinos aunque el proyecto liste más.
+
 El modo por defecto al activar un proveedor es `solo_lectura`. En Jira, `proponer` equivale a `comentar`. **Toda escritura exige aprobación humana**: la opción `aprobacion: no_requerida` de la spec original **no existe** en la primera entrega (suposición 5 del plan).
 
 ## Modelo de seguridad
@@ -227,3 +229,17 @@ La configuración del proyecto no es de confianza. Por eso:
 - **Tope por sesión**: un archivo por sesión y recuento atómico entre procesos; la sesión por defecto es por día.
 - **Rutas de `proponerCambio`**: lista común (`.github/`, `.gitlab/`, CI, `.gitmodules`, `.gitattributes`, `.gitignore`, `CODEOWNERS`, `.git` y variantes).
 - **Marcador de idempotencia**: solo vale el comentario que escribió la cuenta del propio token; si lo escribió otro (o no se puede comprobar), se publica uno propio con un marcador derivado. Quien copia el marcador solo puede provocar una publicación adicional, nunca suprimirla.
+
+
+## Dónde viven las decisiones de seguridad (revisión 2)
+
+Un archivo del árbol del proyecto no es de confianza: lo controla quien escribió el repositorio. Por eso lo que AUTORIZA una escritura no está en el árbol:
+
+- **Cola de aprobaciones, bloqueo por alcance y contadores**: en el directorio de estado del usuario, `~/.forge/integraciones/<hash de la ruta real del proyecto>/` (en Windows `%LOCALAPPDATA%\forge\integraciones\<hash>\`; `FORGE_HOME` lo mueve, sirve para pruebas). Modo 0700 y 0600 donde el sistema los respeta; en Windows, la ACL de tu perfil.
+- **Autenticación**: cada pendiente lleva un HMAC-SHA256 con una clave aleatoria local (32 bytes, archivo `clave` de ese directorio, nunca en el proyecto). Un pendiente sin firma válida no se aprueba.
+- **Migración**: lo que hubiera en `.sdd/integraciones/pendientes/` (cola antigua) se lista como «no autenticado» y no se aprueba nunca; vuelve a prepararlo con `forge integraciones publicar`.
+- **Aprobar**: `forge integraciones aprobar <id> --huella <huella>`. Sin `--huella` solo muestra la vista previa (texto exacto, destino, cuenta, archivos con su huella) y el comando completo, y sale con 2. La huella cubre proveedor, operación, destino, referencia y contenido.
+- **Escritura y destinos**: `FORGE_INTEGRACIONES_ESCRITURA` y `FORGE_INTEGRACIONES_DESTINOS` (ver «Modos»). El proyecto puede restringir, no ampliar.
+- **Topes**: por sesión y, además, por día (5 veces el de sesión, con techo de 200): fabricar otro `sesion.json` no reinicia el diario.
+- **Texto saliente**: los nombres de archivo y todo texto no confiable que entra en una solicitud o comentario se neutralizan (`@`, `#`, `!`, `[`, URL y barra inicial pasan a su forma de ancho completo): no cierran incidencias ni mencionan a nadie. Todo lo que el CLI imprime pasa por un saneado de secuencias de escape.
+- **Exclusiones**: `package.json`, `Makefile`, `.vscode/`, scripts (`scripts/`, `*.sh`, `*.ps1`...), `setup.py`, `pyproject.toml`, `go.mod`... se excluyen por defecto de una propuesta, tanto al preparar como al aprobar.

@@ -9,6 +9,7 @@
 import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, afterEach } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -572,7 +573,7 @@ describe('F2.1 github: el token nunca aparece', () => {
     const eco = JSON.stringify({ message: `Bad credentials ${TOKEN} Bearer ${TOKEN}`, token: TOKEN });
     const dir = mkdtempSync(join(tmpdir(), 'forge-gh-'));
     mkdirSync(join(dir, '.sdd'), { recursive: true });
-    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: {}, tope: 100 });
+    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: process.env, tope: 100 });
     const { srv, prov } = await entorno({
       token: TOKEN,
       fallos: [
@@ -661,7 +662,7 @@ describe('F2.1 github: auditoría (opcional)', () => {
   test('cada operación deja su evento y el tope corta antes de la red', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'forge-gh-'));
     mkdirSync(join(dir, '.sdd'), { recursive: true });
-    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: {}, tope: 2 });
+    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: process.env, tope: 2 });
     const { srv, prov } = await entorno(undefined, { auditoria });
     await prov.leerElemento('org/repo#7');
     await prov.comentar('org/repo#7', 'hola', { marcador: 'm' });
@@ -690,7 +691,7 @@ describe('F2.1 github: auditoría (opcional)', () => {
   test('un error de plataforma deja el código tipado en el evento, no el mensaje', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'forge-gh-'));
     mkdirSync(join(dir, '.sdd'), { recursive: true });
-    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: {} });
+    const auditoria = new AuditoriaIntegraciones({ cwd: dir, env: process.env });
     const { prov } = await entorno({ token: TOKEN, escrituraDenegada: 403 }, { auditoria });
     await fallo(prov.comentar('org/repo#7', 'hola', { marcador: 'm' }));
     const { EventLog } = await import('../core/event-log.js');

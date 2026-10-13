@@ -5,6 +5,7 @@
  */
 
 import { test, describe } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 
 import { ErrorConfigIntegraciones, interpretarIntegraciones } from '../core/integraciones/config.js';

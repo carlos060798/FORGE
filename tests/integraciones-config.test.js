@@ -5,6 +5,7 @@
  */
 
 import { test, describe } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -120,11 +121,11 @@ describe('F1.2 config: sección válida', () => {
     assert.equal(cfg.topes.operacionesPorSesion, 7);
   });
 
-  test('leerConfigIntegraciones lee el archivo del proyecto y no toca el entorno', () => {
+  test('leerConfigIntegraciones lee el archivo del proyecto; del entorno solo la política del usuario, nunca un token', () => {
     const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: 'x' });
     const cfg = leerConfigIntegraciones(proyecto(VALIDA), { env });
     assert.equal(cfg.activa, true);
-    assert.deepEqual(lecturas, []);
+    assert.deepEqual([...lecturas].sort(), ['FORGE_INTEGRACIONES_DESTINOS', 'FORGE_INTEGRACIONES_ESCRITURA']);
   });
 
   test('gitlab sin host usa gitlab.com; un puerto escrito de forma explícita se admite', () => {

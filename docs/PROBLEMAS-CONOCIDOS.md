@@ -565,3 +565,11 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 
 - **Corregido**: R1 a R15 (ver `verificacion.md` de la especificación de integraciones). Para usar un GitLab autoalojado o Jira hay que definir `FORGE_INTEGRACIONES_HOSTS` en tu entorno; las variables de token deben llamarse `FORGE_*`.
 - **Sigue abierto**: no hay segunda revisión independiente; HTTPS real, DNS y proxies no se han probado (solo servidores falsos); el recuento atómico se probó en Windows; la lista de rutas vetadas puede dar falsos positivos (`docs/.github/`).
+
+
+## Integraciones externas: revisión de seguridad 2 (2026-10-13)
+
+- **Corregido**: H1 a H12 (ver `verificacion.md` de la especificación de integraciones). La cola de aprobaciones, el bloqueo por alcance y los contadores ya no viven en `.sdd/` del proyecto sino en el estado del usuario (`~/.forge/integraciones/<hash>/`; en Windows `%LOCALAPPDATA%\forge\integraciones\<hash>\`), con HMAC-SHA256. `aprobar` exige `--huella` y muestra siempre lo que publica. Para escribir en una plataforma hay que definir `FORGE_INTEGRACIONES_ESCRITURA` en tu entorno (el modo del proyecto solo es una petición); `FORGE_INTEGRACIONES_DESTINOS` acota los destinos.
+- **Migración**: un pendiente antiguo de `.sdd/integraciones/pendientes/` no se aprueba nunca; se lista «no autenticado». Recréalo con `forge integraciones publicar`.
+- **Mitigado, no cerrado**: el tope de operaciones por sesión se puede reiniciar fabricando `sesion.json` hasta el tope diario (5 veces el de sesión, máximo 200). El estado del ciclo (`.sdd/motor/`) que `publicar` lee sigue en el árbol: lo contienen la vista previa y la huella obligatorias.
+- **Sigue abierto**: no hay tercera revisión independiente; solo servidores falsos; en Windows la protección de la clave es la ACL del perfil (no se aplica 0600); `forge doctor` pasa el entorno completo (incluido `FORGE_GITHUB_TOKEN`) a `where claude` y a las consultas de Docker, como cualquier proceso hijo.

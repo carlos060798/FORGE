@@ -60,6 +60,7 @@ export class ErrorConfigIntegraciones extends Error {
  * @property {string} host            host de la API (HTTPS siempre)
  * @property {string} [tokenEnv]      nombre de la variable de entorno del token
  * @property {string} [usuarioEnv]    solo Jira: variable con el correo del usuario de servicio
+ * @property {'comentar'|'proponer'} [modoDelProyecto] el modo que el PROYECTO pidió cuando el usuario lo redujo
  * @property {string[]} destinos      lista cerrada
  * @property {string} [alcance]       alcance del token DECLARADO por el proyecto (texto libre, solo informativo:
  *                                    GitHub y Jira no permiten consultarlo; `doctor` lo muestra para que una persona lo revise)
@@ -357,12 +358,77 @@ export function interpretarIntegraciones(yaml) {
  * Lee `.sdd/sdd.config.yaml` del proyecto. Sin archivo, sin sección o con todo apagado: no hay
  * nada que hacer y no se toca el entorno.
  * @param {string} cwd
- * @param {{ env?: Record<string, string|undefined> }} [_opciones]  solo para que las pruebas demuestren que no se lee
+ * @param {{ env?: Record<string, string|undefined> }} [opciones]  `env`: de dónde salen FORGE_INTEGRACIONES_ESCRITURA y _DESTINOS (solo con alguna integración activa; nunca un token)
  * @returns {ConfigIntegraciones}
  */
-export function leerConfigIntegraciones(cwd, _opciones = {}) {
+export function leerConfigIntegraciones(cwd, opciones = {}) {
   const ruta = join(cwd, '.sdd', 'sdd.config.yaml');
-  return interpretarIntegraciones(existsSync(ruta) ? readFileSync(ruta, 'utf8') : '');
+  const base = interpretarIntegraciones(existsSync(ruta) ? decodificarTexto(readFileSync(ruta)) : '');
+  const { env = process.env } = opciones;
+  return aplicarPoliticaDelUsuario(base, env);
+}
+
+/**
+ * Texto de un archivo de configuración: UTF-8 (con o sin BOM) o UTF-16 con BOM (el «Unicode» del Bloc de
+ * notas y `Out-File` de PowerShell 5.1). Los finales CRLF los tratan los lectores de línea.
+ * @param {Buffer} b
+ */
+export function decodificarTexto(b) {
+  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return b.subarray(2).toString('utf16le');
+  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) {
+    const s = Buffer.from(b.subarray(2));
+    s.swap16();
+    return s.toString('utf16le');
+  }
+  const t = b.toString('utf8');
+  return t.charCodeAt(0) === 0xfeff ? t.slice(1) : t;
+}
+
+// ── La política del USUARIO manda sobre la del repositorio (revisión 2, H8) ─────────────────────
+
+/** Proveedores (separados por comas, comparación exacta) en los que el USUARIO permite escribir. */
+export const VARIABLE_ESCRITURA = 'FORGE_INTEGRACIONES_ESCRITURA';
+/** Destinos (separados por comas) fuera de los cuales el USUARIO no permite nada, aunque el proyecto los liste. */
+export const VARIABLE_DESTINOS = 'FORGE_INTEGRACIONES_DESTINOS';
+
+/** @param {string|undefined} v @returns {string[]|null} null si no está definida (o en blanco) */
+function listaDelUsuario(v) {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  return v.split(',').map((x) => x.trim()).filter(Boolean);
+}
+
+/**
+ * El proyecto puede PEDIR escribir, no concederlo: sin `FORGE_INTEGRACIONES_ESCRITURA` que nombre al
+ * proveedor, el modo efectivo es `solo_lectura` como máximo. Con `FORGE_INTEGRACIONES_DESTINOS`, solo
+ * valen los destinos de esa lista. Devuelve una configuración nueva; no toca la recibida.
+ * @param {ConfigIntegraciones} config
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {ConfigIntegraciones}
+ */
+export function aplicarPoliticaDelUsuario(config, env = process.env) {
+  if (!config.activa) return config;            // todo apagado: ninguna lectura del entorno (CA-005-01)
+  const escritura = new Set(listaDelUsuario(env[VARIABLE_ESCRITURA]) ?? []);
+  const destinosUsuario = listaDelUsuario(env[VARIABLE_DESTINOS]);
+  const avisos = [...config.avisos];
+  /** @type {Record<string, ConfigProveedor>} */
+  const proveedores = {};
+  for (const [nombre, cfg] of Object.entries(config.proveedores)) {
+    let nuevo = { ...cfg };
+    if ((cfg.modo === 'comentar' || cfg.modo === 'proponer') && !escritura.has(nombre)) {
+      nuevo = { ...nuevo, modo: 'solo_lectura', modoDelProyecto: cfg.modo };
+      avisos.push(`${nombre}_modo: el proyecto pide «${cfg.modo}», pero ${VARIABLE_ESCRITURA} no incluye «${nombre}»: el modo efectivo es solo_lectura (el proyecto no puede conceder escritura; la concedes tú en tu entorno).`);
+    }
+    if (destinosUsuario !== null && cfg.modo !== 'apagado') {
+      const permitido = (/** @type {string} */ d) => destinosUsuario.some((u) => (nombre === 'jira' ? u === d : u.toLowerCase() === d.toLowerCase()));
+      const quedan = cfg.destinos.filter(permitido);
+      if (quedan.length !== cfg.destinos.length) {
+        avisos.push(`${nombre}_destinos: ${cfg.destinos.length - quedan.length} destino(s) del proyecto quedan fuera de ${VARIABLE_DESTINOS} y no se usan.`);
+        nuevo = { ...nuevo, destinos: quedan };
+      }
+    }
+    proveedores[nombre] = nuevo;
+  }
+  return { ...config, proveedores: /** @type {any} */ (proveedores), avisos };
 }
 
 // ── Uso de la configuración ─────────────────────────────────────────────────────────────────

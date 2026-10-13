@@ -6,6 +6,7 @@
  */
 
 import { test, describe, before, after, beforeEach, afterEach } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 

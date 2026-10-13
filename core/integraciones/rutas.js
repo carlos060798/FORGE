@@ -63,3 +63,52 @@ export function motivoRutaVetada(ruta) {
   if (ARCHIVOS_VETADOS.includes(ultimo)) return `${segmentos[segmentos.length - 1]} es un archivo de CI o de configuración de la plataforma: no se proponen cambios ahí`;
   return null;
 }
+
+// ── Manifiestos y archivos que ejecutan código al instalar, construir o abrir el proyecto ───────
+//
+// Revisión independiente 2 (H2). No son «vetados» (no se vuelven imposibles de proponer): son
+// EXCLUIDOS POR DEFECTO de una propuesta, con la aprobación aparte por archivo que ya existe. Se
+// suman a lo que ya clasifica `clasificarRuta` del ciclo (package.json, .npmrc, .env*, Makefile,
+// setup.py, pyproject.toml, go.mod, cualquier segmento que empiece por «.»…): si esa lista cambia
+// o se queda corta, esta cubre lo que un manifiesto o un script puede ejecutar.
+
+/** Manifiestos de dependencias o de construcción. */
+const NOMBRES_DEPENDENCIAS = [
+  /^cargo\.(?:toml|lock)$/, /^gemfile(?:\.lock)?$/, /^composer\.(?:json|lock)$/, /^pom\.xml$/, /^build\.gradle(?:\.kts)?$/,
+  /^settings\.gradle(?:\.kts)?$/, /^package\.swift$/, /^mix\.exs$/, /^pubspec\.yaml$/, /^deno\.jsonc?$/, /^npm-shrinkwrap\.json$/,
+  /^pipfile(?:\.lock)?$/, /^poetry\.lock$/, /^requirements[^/]*\.txt$/, /^pyproject\.toml$/, /^setup\.(?:py|cfg)$/,
+  /^go\.(?:mod|sum|work)$/, /^package(?:-lock)?\.json$/, /^yarn\.lock$/, /^pnpm-lock\.yaml$/, /^bun\.lockb?$/,
+  /^[^/]+\.(?:csproj|fsproj|vbproj|sln|gemspec)$/, /^packages\.config$/, /^nuget\.config$/, /^directory\.build\.(?:props|targets)$/,
+];
+/** Archivos que una herramienta de construcción o un editor ejecuta sin que nadie los lance. */
+const NOMBRES_CONFIGURACION = [
+  /^makefile$/, /^gnumakefile$/, /^justfile$/, /^rakefile$/, /^taskfile\.ya?ml$/, /^cmakelists\.txt$/, /^vagrantfile$/,
+  /^dockerfile/, /^docker-compose.*\.ya?ml$/, /^compose\.ya?ml$/, /^procfile$/, /^tsconfig.*\.json$/, /^gruntfile/, /^gulpfile/,
+  /^\.[^/]+$/,
+  /^[^/]+\.(?:config|conf)\.[cm]?[jt]s$/, /^conftest\.py$/, /^sitecustomize\.py$/, /^pytest\.ini$/, /^tox\.ini$/,
+  /^claude\.md$/, /^agents\.md$/,
+];
+/** Extensiones de scripts y binarios que se ejecutan solos. */
+const EXTENSIONES_EJECUTABLES = /\.(?:sh|bash|zsh|fish|ps1|psm1|psd1|bat|cmd|vbs|vbe|wsf|command|run|jar|exe|dll|so|dylib|com|scr|msi)$/;
+/** Carpetas cuyo contenido son scripts de proyecto (se ejecutan con `npm run`, `make`, hooks…). */
+const CARPETAS_DE_SCRIPTS = new Set(['scripts', 'script', 'bin', 'tools', 'hooks', 'githooks', 'devcontainer']);
+const EXTENSIONES_DE_SCRIPT = /\.(?:[cm]?js|ts|py|rb|pl|php|lua|go|rs)$/;
+
+/**
+ * ¿Es un manifiesto o un archivo de configuración o de ejecución que no se propone sin aprobación
+ * expresa por archivo? Sin red ni disco.
+ * @param {string} ruta  relativa y con «/»
+ * @returns {null | 'dependencias' | 'configuracion'}
+ */
+export function clasificarManifiesto(ruta) {
+  if (typeof ruta !== 'string') return null;
+  const segmentos = ruta.normalize('NFKC').toLowerCase().split('/');
+  const nombre = segmentos[segmentos.length - 1];
+  if (NOMBRES_DEPENDENCIAS.some((r) => r.test(nombre))) return 'dependencias';
+  if (NOMBRES_CONFIGURACION.some((r) => r.test(nombre))) return 'configuracion';
+  if (EXTENSIONES_EJECUTABLES.test(nombre)) return 'configuracion';
+  const carpetas = segmentos.slice(0, -1);
+  if (carpetas.some((s) => s.startsWith('.'))) return 'configuracion';
+  if (carpetas.some((s) => CARPETAS_DE_SCRIPTS.has(s)) && EXTENSIONES_DE_SCRIPT.test(nombre)) return 'configuracion';
+  return null;
+}
