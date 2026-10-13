@@ -72,6 +72,22 @@ function leerConfigLlm(cwd) {
 }
 
 /**
+ * Tiempo máximo por intento de una llamada (`llm.timeout_s`, en segundos), en milisegundos.
+ * Sin la clave, `null` (el llamador usa 120 s). Un valor que no sea un número entre 1 y 3600 es un error.
+ * @param {string} [cwd]
+ * @returns {number|null}
+ */
+export function leerTimeoutLlmMs(cwd = process.cwd()) {
+  const crudo = leerConfigLlm(cwd).timeout_s;
+  if (crudo === undefined) return null;
+  const n = Number(crudo);
+  if (!/^\d+(\.\d+)?$/.test(String(crudo)) || !Number.isFinite(n) || n < 1 || n > 3600) {
+    throw new Error(`.sdd/sdd.config.yaml: llm.timeout_s debe ser un número de segundos entre 1 y 3600 (recibido "${crudo}").`);
+  }
+  return Math.round(n * 1000);
+}
+
+/**
  * Detecta el mejor provider disponible según variables de entorno.
  * Se usa cuando no hay config explícita.
  */

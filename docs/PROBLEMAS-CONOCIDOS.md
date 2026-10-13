@@ -291,6 +291,13 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 - **Cómo evitarlo hoy.** `llm.cache: false` si tus tareas suelen resolverse en una llamada. Para medirlo: GUÍA, «Caché de prompts».
 - **Evidencia.** EVID, ronda 7. PD-V, «Pendiente: medir el ahorro real». PLAN, 9.1.
 
+### G-9 · Una llamada cortada o sin consumo informado se cuenta por estimación (abierto)
+
+- **Qué pasa.** (a) Una llamada cancelada por tiempo, o con el proceso cortado mientras estaba en vuelo, pudo cobrarse sin que FORGE sepa cuánto: se anota una estimación por lo alto de la **entrada** (`estimado: true` en `gasto.jsonl`; eventos `ciclo:llamada_abortada` y `ciclo:llamada_huerfana`); la salida no se conoce. Tras un corte la petición se repite y se paga otra vez (inherente: el proveedor no permite saber si la primera se procesó). (b) Una respuesta sin datos de consumo válidos se anota con una estimación de entrada y salida (`ciclo:consumo_estimado`) para que el tope siga mordiendo. (c) Cada intento cancelado por tiempo se estima aparte; solo se reintenta una vez. (d) Se desconoce por qué algunas llamadas no responden en 120 s (H13).
+- **A quién afecta.** A quien tenga proveedores lentos o corte el proceso a mitad de una llamada.
+- **Cómo evitarlo hoy.** Ajusta `llm.timeout_s` si tu proveedor es lento y compara el gasto con la consola del proveedor. El texto no ASCII se estima por bytes; es una cota, no una medida.
+- **Evidencia.** Hallazgos H13, N-06, N-11 y H-10 de la fase 8. `tests/gasto-robustez.test.js`.
+
 ### G-6 · El tope se puede superar en una llamada, y un precio mal puesto lo falsea (abierto)
 
 - **Qué pasa.** Al llegar al tope no se inicia otra llamada: el exceso máximo es el costo de la última. Un modelo sin precio se cobra al más caro conocido (el tope llega antes de lo real). Un precio configurado por debajo del real hace que se gaste más de lo que FORGE cree.

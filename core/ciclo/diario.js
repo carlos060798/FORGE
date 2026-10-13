@@ -71,8 +71,41 @@ export class Diario {
     fs.appendFileSync(this._archivo(threadId), JSON.stringify({ clave, respuesta }) + '\n', 'utf8');
   }
 
+  /**
+   * Intenciones de llamada (H-10): se anotan ANTES de llamar, en un archivo aparte para no mezclarse con
+   * las respuestas. Cada una guarda lo necesario para estimar su gasto; `cerrada` marca las que ya
+   * tuvieron respuesta (ok o error) o ya se contaron al reanudar.
+   * @param {string} threadId @param {string} clave @param {number} numero @param {object} dato
+   */
+  anotarIntencion(threadId, clave, numero, dato) {
+    fs.mkdirSync(this.dir, { recursive: true });
+    fs.appendFileSync(this._archivoIntenciones(threadId), JSON.stringify({ clave, numero, ...dato }) + '\n', 'utf8');
+  }
+
+  /** @param {string} threadId @param {string} clave @returns {{ numero: number, cerrada: boolean, dato: any }[]} */
+  intenciones(threadId, clave) {
+    let texto;
+    try { texto = fs.readFileSync(this._archivoIntenciones(threadId), 'utf8'); } catch { return []; }
+    /** @type {Map<number, { numero: number, cerrada: boolean, dato: any }>} */
+    const porNumero = new Map();
+    for (const linea of texto.split('\n')) {
+      if (!linea) continue;
+      try {
+        const e = JSON.parse(linea);
+        if (e.clave !== clave) continue;
+        const actual = porNumero.get(e.numero) ?? { numero: e.numero, cerrada: false, dato: null };
+        if (e.cerrada === true) actual.cerrada = true; else actual.dato = e;
+        porNumero.set(e.numero, actual);
+      } catch { /* línea cortada por un fallo: se ignora */ }
+    }
+    return [...porNumero.values()];
+  }
+
+  _archivoIntenciones(threadId) { return path.join(this.dir, nombre(threadId).replace(/\.jsonl$/, '.intenciones.jsonl')); }
+
   limpiar(threadId) {
     try { fs.unlinkSync(this._archivo(threadId)); } catch { /* no había nada */ }
+    try { fs.unlinkSync(this._archivoIntenciones(threadId)); } catch { /* no había nada */ }
   }
 }
 
