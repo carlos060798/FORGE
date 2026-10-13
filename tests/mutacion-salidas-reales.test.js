@@ -65,7 +65,10 @@ function veredictoDe(captura) {
 const ESPERADO = {
   "pasa": "sobrevive",
   "asercion": "detectada",
-  "excepcion-en-prueba": "detectada",
+  // N-02: una excepcion que no es de asercion (TypeError, panic) no demuestra que la prueba compruebe nada
+  "excepcion-en-prueba": "no_concluyente",
+  // N-02: el cable trampa que salta al llamar al codigo (Error/RuntimeError/panic propios) tampoco es una deteccion
+  "guardia-en-llamada": "no_concluyente",
   "sintaxis": "no_concluyente",
   "importacion": "no_concluyente",
   "excepcion-al-cargar": "no_concluyente",
@@ -122,7 +125,7 @@ describe("capturas reales — veredicto de la medición por mutación", () => {
           if (esperado === "detectada") assert.equal(juicio.motivo, "prueba_fallida");
           // Un error del código (no compila, no carga) se reconoce como tal: «sin señal» significaría que el
           // ejecutor falló y la salida no se entendió
-          if (esperado === "no_concluyente") assert.ok(juicio.motivo === "no_compila" || juicio.motivo === "no_carga", `${ejecutor}/${situacion}: motivo «${juicio.motivo}»`);
+          if (esperado === "no_concluyente") assert.ok(juicio.motivo === "no_compila" || juicio.motivo === "no_carga" || (/^(?:excepcion-en-prueba|guardia-en-llamada)$/.test(situacion) && juicio.motivo === "excepcion_no_asercion"),`${ejecutor}/${situacion}: motivo «${juicio.motivo}»`);
         });
       }
     });
@@ -141,6 +144,11 @@ describe("capturas reales — motivo de lo no concluyente", () => {
     ["node-test", "sintaxis", "no_compila"], ["node-test", "importacion", "no_carga"], ["node-test", "excepcion-al-cargar", "no_carga"],
     ["node-test-ts", "sintaxis", "no_compila"], ["node-test-ts", "importacion", "no_carga"], ["node-test-ts", "excepcion-al-cargar", "no_carga"],
     ["go-test", "sintaxis", "no_compila"], ["go-test", "importacion", "no_compila"], ["go-test", "excepcion-al-cargar", "no_carga"],
+    // N-02: lo que antes era «detectada» por cualquier excepcion; solo la asercion cuenta
+    ...EJECUTORES.map((e) => /** @type {[string, string, string]} */ ([e, "excepcion-en-prueba", "excepcion_no_asercion"])),
+    ...EJECUTORES.map((e) => /** @type {[string, string, string]} */ ([e, "guardia-en-llamada", "excepcion_no_asercion"])),
+    // y las aserciones siguen siendo fallo de prueba
+    ...EJECUTORES.map((e) => /** @type {[string, string, string]} */ ([e, "asercion", "prueba"])),
   ];
   for (const [ejecutor, situacion, motivo] of casos) {
     test(`${ejecutor}/${situacion} → ${motivo}`, () => {

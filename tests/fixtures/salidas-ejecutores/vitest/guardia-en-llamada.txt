@@ -1,0 +1,50 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: vitest
+situacion: guardia-en-llamada
+descripcion: el código bajo prueba lanza una excepción propia (cable trampa) cuando la prueba lo llama (N-02)
+version: vitest/5.0.3 linux-x64 node-v22.23.3 · vite/8.3.4 linux-x64 node-v22.23.3
+imagen: forge-sbx:node-b4dd3f4189ae25c7 (base node:22-alpine; sha256:63876327b2003f5814ccac3c9eeca65477f20d8a6b18829b654c7824a4e1602f)
+comando: npx vitest run
+lenguaje: typescript
+archivo_alterado: src/calc.ts
+fecha: 2026-10-13
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 5959
+=====STDOUT=====
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/deps/work[39m
+
+ [31m❯[39m tests/calc.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 31[2mms[22m[39m
+   [31m❯[39m calc [2m(3)[22m
+     [32m✓[39m suma dos numeros[32m 11[2mms[22m[39m
+     [32m✓[39m esPar reconoce los pares[32m 1[2mms[22m[39m
+[31m     [31m×[31m formatea un numero[39m[32m 11[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 15:43:00
+[2m   Duration [22m 862ms[2m (transform 58%, import 26%, tests 10%, worker 6%)[22m
+
+
+=====STDERR=====
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/calc.test.ts[2m > [22mcalc[2m > [22mformatea un numero
+[31m[1mError[22m: trampa[39m
+[36m [2m❯[22m formatea src/calc.ts:[2m10:9[22m[39m
+    [90m  8|[39m
+    [90m  9|[39m export function formatea(n: number): string {
+    [90m 10|[39m   throw new Error('trampa');
+    [90m   |[39m         [31m^[39m
+    [90m 11|[39m }
+    [90m 12|[39m
+[90m [2m❯[22m tests/calc.test.ts:[2m12:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+=====FIN=====

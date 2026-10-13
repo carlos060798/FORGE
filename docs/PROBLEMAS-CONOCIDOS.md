@@ -212,11 +212,12 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 | La copia temporal de la medición vive en la carpeta temporal del sistema. Sus permisos `0700` no se han comprobado en un Linux real, y una copia que deja un proceso matado no se barre hasta pasadas 6 horas. No lleva secretos vetados; sí el código del proyecto | Equipos Linux compartidos | Borra `forge-mutacion-*` de la carpeta temporal tras un corte | PC-V, H-06; PLAN, «Verificación» |
 | La skill `mutation-detector` **no** hace pruebas de mutación: registra qué archivos cambian los agentes. No se ha renombrado | Quien busque la medición por su nombre | La medición está en `core/ciclo/mutacion.js` | PLAN, «Corrección al análisis previo»; PC-V |
 
-### P-10 · La puntuación se infla con funciones trampa que el código llama (abierto, N-02)
+### P-10 · La puntuación se infla con funciones trampa que el código llama (mitigado, con límite del adversario deliberado; N-02)
 
-- **Qué pasa.** Un implementador (o un modelo que no entiende cómo se mide) puede poner comprobaciones que se autodisparan **dentro de funciones** que el código bajo prueba llama. Al alterar esos archivos, las pruebas fallan de verdad y la alteración cuenta como «detectada» aunque las pruebas no comprueben nada. En la reproducción con Docker real, nueve archivos de una línea dieron 9 de 10, el 90 %. El reparto de la muestra por archivo lo facilita, y el mínimo de tres cambios concluyentes se cumple con tres de esos archivos. No se filtra por cobertura (qué líneas ejecutan las pruebas).
-- **A quién afecta.** A quien use `motor.mutacion: exigir` como garantía, sobre todo frente a un implementador adversario.
-- **Cómo evitarlo hoy.** No trates la puntuación como garantía; revisa el diff. Es la razón por la que `exigir` no es el valor por defecto.
+- **Qué pasa.** Antes, un implementador (o un modelo que no entiende cómo se mide) podía poner comprobaciones que se autodisparan **dentro de funciones** que el código bajo prueba llama (`if (K !== N) throw new Error(...)`): la alteración contaba como «detectada» aunque las pruebas no comprobaran nada (nueve archivos de una línea dieron 9 de 10, el 90 %). **Mitigado:** ahora solo cuenta como detectado el fallo de una **aserción**; una excepción que no es de aserción (un `Error` del código, un `TypeError`, un `panic`) es no concluyente (`excepcion_no_asercion`) y sale del denominador. El mismo caso da 0 detectadas, y el control con aserciones fuertes sigue dando 100 %.
+- **Límite que queda.** Una guardia que lance deliberadamente un `AssertionError` (`new assert.AssertionError(...)`, o un `assert` de Python en el código bajo prueba) es indistinguible por clase de una aserción de la prueba y sí cuenta. Una prueba lo fija (`tests/mutacion-cobertura.test.js`). Un mutante que hace reventar el código antes de la aserción tampoco cuenta; con `exigir` la tarea puede pausarse por pocos cambios concluyentes en lugar de dar éxito (el lado seguro).
+- **A quién afecta.** A quien use `motor.mutacion: exigir` como garantía frente a un implementador adversario que conozca el criterio.
+- **Cómo evitarlo hoy.** Frente a un adversario deliberado, revisa el diff; la puntuación no es una garantía. Es la razón por la que `exigir` no es el valor por defecto.
 - **Evidencia.** REV-3, N-02 (`core/ciclo/mutacion.js`, `seleccionarPorArchivo`). PLAN, «Pendiente», primera casilla de Verificación.
 
 ---
@@ -538,7 +539,7 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 | N4-08 | `import`, `export` y `runner` escribían directo, a través de enlaces | **Corregido**: pasan por `escritura-segura`; prueba estática que impide volver a escribir directo en `cli/` | `tests/revision4-correcciones.test.js` |
 | N4-09 | `editar` rechazaba cualquier texto con `[REDACTADO`, aunque fuera contenido del archivo | **Corregido**: se permite lo que el archivo ya contiene; los marcadores nuevos siguen rechazados | `tests/revision4-correcciones.test.js` |
 
-**Siguen abiertos de esa revisión:** N-02 (P-10), N-06 (G-10), N-10 (M-10) y N-11 (G-9).
+**Siguen abiertos de esa revisión:** N-02 (P-10, mitigado: queda el adversario deliberado), N-06 (G-10), N-10 (M-10) y N-11 (G-9).
 
 **Hallazgos de las ejecuciones con un modelo real (EVID, H1 a H14)**
 

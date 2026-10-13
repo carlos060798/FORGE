@@ -330,7 +330,7 @@ const IMPL_V2 = "// v2\n" + IMPL;
 const BUENAS = [IMPL, IMPL_V2];
 const PASE  = { exitCode: 0, stdout: "# tests 1\n# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
 // Un fallo real de una prueba, como lo informa node:test (TAP): una prueba con nombre propio que falla tras cargar el módulo (H-02)
-const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 - suma\n  ---\n  failureType: 'testCodeFailure'\n  ...\n1..1\n# tests 1\n# pass 0\n# fail 1\n", stderr: "AssertionError\n", timedOut: false, infraError: false, durationMs: 3 };
+const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 - suma\n  ---\n  failureType: 'testCodeFailure'\n  code: 'ERR_ASSERTION'\n  ...\n1..1\n# tests 1\n# pass 0\n# fail 1\n", stderr: "AssertionError\n", timedOut: false, infraError: false, durationMs: 3 };
 
 /**
  * Ejecutor falso: decide leyendo los archivos de la carpeta que recibe, como haría una ejecución real.

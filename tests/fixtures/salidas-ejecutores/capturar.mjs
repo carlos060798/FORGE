@@ -37,6 +37,7 @@ export const SITUACIONES = {
   "importacion": "el código bajo prueba importa un módulo que no existe",
   "excepcion-al-cargar": "el código bajo prueba lanza una excepción al cargarse (cable trampa)",
   "excepcion-en-prueba": "una prueba con nombre falla por una excepción dentro de la prueba (el código devuelve nulo)",
+  "guardia-en-llamada": "el código bajo prueba lanza una excepción propia (cable trampa) cuando la prueba lo llama (N-02)",
   "excepcion-al-cargar-con-salida": "como excepcion-al-cargar, pero el código escribe en la consola antes de lanzar",
   "error-de-tipos": "el código bajo prueba no pasa la comprobación de tipos (devuelve null donde se declara number)",
 };
@@ -56,6 +57,7 @@ const PY_SITUACIONES = {
   "importacion": py({}, ["import modulo_que_no_existe", "", ""]),
   "excepcion-al-cargar": py({}, ["LIMITE = 11", "if LIMITE != 10:", "    raise RuntimeError(\"trampa\")", "", ""]),
   "excepcion-en-prueba": py({ formatea: ["def formatea(n):", "    return None"] }),
+  "guardia-en-llamada": py({ formatea: ["def formatea(n):", "    raise RuntimeError(\"trampa\")"] }),
   "excepcion-al-cargar-con-salida": py({}, ["print(\"cargando calc\")", "LIMITE = 11", "if LIMITE != 10:", "    raise RuntimeError(\"trampa\")", "", ""]),
 };
 
@@ -87,6 +89,7 @@ function jsSituaciones(forma, extra = {}) {
     "importacion": js(forma, {}, importar),
     "excepcion-al-cargar": js(forma, {}, trampa),
     "excepcion-en-prueba": js(forma, { formatea: forma === "ts" ? "  return null as any;" : "  return null;" }),
+    "guardia-en-llamada": js(forma, { formatea: "  throw new Error('trampa');" }),
     "excepcion-al-cargar-con-salida": js(forma, {}, ["console.log('cargando calc');", ...trampa]),
   };
   if (extra.tipos) s["error-de-tipos"] = js(forma, { suma: "  return null;" });
@@ -125,6 +128,7 @@ const GO_SITUACIONES = {
   "importacion": go({}, ["strconv", "demo/noexiste"], ["var _ = noexiste.Nada", ""]),
   "excepcion-al-cargar": go({}, [], ["const limite = 11", "", "func init() {", "\tif limite != 10 {", "\t\tpanic(\"trampa\")", "\t}", "}", ""]),
   "excepcion-en-prueba": go({ formatea: ["\t_ = strconv.Itoa(n)", "\treturn nil"] }),
+  "guardia-en-llamada": go({ formatea: ["\t_ = strconv.Itoa(n)", "\tpanic(\"trampa\")"] }),
 };
 const GO_PRUEBAS = lineas(
   "package demo", "", "import \"testing\"", "",

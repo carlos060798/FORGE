@@ -39,12 +39,12 @@ function escribir(cwd, archivos) {
 
 const PASE = { exitCode: 0, stdout: "# tests 1\n# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
 const FALLO_PRUEBA = {
-  exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 - suma\n  ---\n  failureType: 'testCodeFailure'\n  ...\n1..1\n# fail 1\n",
+  exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 - suma\n  ---\n  failureType: 'testCodeFailure'\n  code: 'ERR_ASSERTION'\n  ...\n1..1\n# fail 1\n",
   stderr: "", timedOut: false, infraError: false, durationMs: 3,
 };
 /** El módulo no se cargó: node:test informa un «fallo» llamado como el archivo de pruebas. */
 const FALLO_CARGA = {
-  exitCode: 1, stdout: "TAP version 13\n# Subtest: suma.test.js\nnot ok 1 - suma.test.js\n  ---\n  failureType: 'testCodeFailure'\n  error: 'test failed'\n  ...\n1..1\n# fail 1\n",
+  exitCode: 1, stdout: "TAP version 13\n# Subtest: suma.test.js\nnot ok 1 - suma.test.js\n  ---\n  failureType: 'testCodeFailure'\n  code: 'ERR_ASSERTION'\n  error: 'test failed'\n  ...\n1..1\n# fail 1\n",
   stderr: "Error: trampa\n    at file:///x/guardia.js:1:36\n", timedOut: false, infraError: false, durationMs: 3,
 };
 
@@ -63,10 +63,17 @@ const MARCA_VIVA = marcaDe(process.pid);
 describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   test("node:test (TAP y spec): una prueba con nombre propio que falla es un fallo de prueba; un «fallo» llamado como el archivo es un fallo de carga", () => {
     // Estructura real del reporter TAP (línea + bloque YAML del ejecutor) y del spec («test at» + línea ✖)
-    const tap = (nombre, sangria = "") => `${sangria}not ok 1 - ${nombre}\n${sangria}  ---\n${sangria}  duration_ms: 1.2\n${sangria}  failureType: 'testCodeFailure'\n`;
+    const tap = (nombre, sangria = "", codigo = "ERR_ASSERTION") => `${sangria}not ok 1 - ${nombre}\n${sangria}  ---\n${sangria}  duration_ms: 1.2\n${sangria}  failureType: 'testCodeFailure'\n${sangria}  code: '${codigo}'\n`;
     const resumen = (n) => `1..1\n# tests 1\n# pass 0\n# fail ${n}\n`;
     assert.equal(senalDeFallo(tap("suma devuelve 3") + resumen(1), "javascript"), "prueba");
     assert.equal(senalDeFallo(tap("dentro de un describe", "    ") + resumen(1), "javascript"), "prueba");
+    // N-02: el mismo bloque, pero por una excepción que no es de aserción (ERR_TEST_FAILURE: un Error del código, un TypeError)
+    assert.equal(senalDeFallo(tap("suma devuelve 3", "", "ERR_TEST_FAILURE") + resumen(1), "javascript"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo(tap("dentro de un describe", "    ", "ERR_TEST_FAILURE") + resumen(1), "javascript"), "excepcion_no_asercion");
+    // una línea «code: 'ERR_ASSERTION'» dentro del mensaje de error (más sangrada) no convierte la excepción en aserción
+    assert.equal(senalDeFallo(tap("suma", "", "ERR_TEST_FAILURE") + "  error: |-\n    boom\n      code: 'ERR_ASSERTION'\n" + resumen(1), "javascript"), "excepcion_no_asercion");
+    // si falla una aserción y además una excepción, hubo detección real
+    assert.equal(senalDeFallo(tap("a", "", "ERR_TEST_FAILURE") + tap("b") + "1..2\n# fail 2\n", "javascript"), "prueba");
     // N4-06: el spec ya no se reconoce (un módulo lo puede imprimir con console.log): sin señal, falla cerrado
     assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "sin_senal");
     // Bloques con su YAML pero sin el resumen del ejecutor, o con un resumen que no cuadra: no cuentan
@@ -88,8 +95,14 @@ describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   });
 
   test("jest, vitest y errores de compilación de TypeScript", () => {
-    assert.equal(senalDeFallo("  ● suma › devuelve 3\n\nTests:       1 failed, 2 passed, 3 total\n", "javascript"), "prueba");
-    assert.equal(senalDeFallo(" FAIL  tests/suma.test.ts > suma > devuelve 3\n Tests  1 failed | 2 passed (3)\n", "typescript"), "prueba");
+    assert.equal(senalDeFallo("  ● suma › devuelve 3\n\n    expect(received).toBe(expected) // Object.is equality\n\n    Expected: 3\n    Received: 0\n\nTests:       1 failed, 2 passed, 3 total\n", "javascript"), "prueba");
+    assert.equal(senalDeFallo(" FAIL  tests/suma.test.ts > suma > devuelve 3\nAssertionError: expected 0 to be 3\n Tests  1 failed | 2 passed (3)\n", "typescript"), "prueba");
+    // N-02: una excepción (Error del código, TypeError) no es una aserción
+    assert.equal(senalDeFallo("  ● suma › devuelve 3\n\n    Error: trampa\n\n      at suma (src/suma.js:2:9)\n\nTests:       1 failed, 2 passed, 3 total\n", "javascript"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo(" FAIL  tests/suma.test.ts > suma > devuelve 3\nTypeError: Cannot read properties of null\n Tests  1 failed | 2 passed (3)\n", "typescript"), "excepcion_no_asercion");
+    // un fallo contado en el resumen pero sin mensaje que se pueda leer: no se adivina
+    assert.equal(senalDeFallo("  ● suma › devuelve 3\n\nTests:       1 failed, 2 passed, 3 total\n", "javascript"), "sin_senal");
+    assert.equal(senalDeFallo("Tests:       1 failed, 2 passed, 3 total\n", "javascript"), "sin_senal");
     assert.equal(senalDeFallo("  ● Test suite failed to run\n\n    Cannot find module '../src/x'\n", "javascript"), "no_carga");
     assert.equal(senalDeFallo(" FAIL  tests/suma.test.ts [ tests/suma.test.ts ]\nError: Failed to load url ../src/x\n Failed Suites 1\n", "typescript"), "no_carga");
     assert.equal(senalDeFallo("Test suite failed to run\n\nsrc/suma.ts:3:5 - error TS2322: Type 'string' is not assignable to type 'number'.\n", "typescript"), "no_compila");
@@ -99,7 +112,11 @@ describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   test("Python: SyntaxError e ImportError no son fallos de prueba; FAILED y FAIL: sí", () => {
     assert.equal(senalDeFallo("FAILED tests/test_suma.py::test_suma - assert 4 == 5\n=== 1 failed in 0.1s ===\n", "python"), "prueba");
     assert.equal(senalDeFallo("FAIL: test_suma (tests.test_suma.T)\nAssertionError\nFAILED (failures=1)\n", "python"), "prueba");
-    assert.equal(senalDeFallo("ERROR: test_suma (tests.test_suma.T)\nTypeError: x\nFAILED (errors=1)\n", "python"), "prueba");
+    // N-02: ERROR: es una excepción que no es de aserción; el AssertionError de pytest empieza por «assert»
+    assert.equal(senalDeFallo("ERROR: test_suma (tests.test_suma.T)\nTypeError: x\nFAILED (errors=1)\n", "python"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo("FAILED tests/test_suma.py::test_suma - RuntimeError: trampa\n=== 1 failed in 0.1s ===\n", "python"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo("___ test_suma ___\n\n>   assert suma(1, 2) == 3\nE   RuntimeError: trampa\n\ncalc.py:3: RuntimeError\n=== 1 failed ===\n", "python"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo("___ test_suma ___\n\n>   assert suma(1, 2) == 3\nE   assert 0 == 3\n\ntests/test_suma.py:3: AssertionError\n=== 1 failed ===\n", "python"), "prueba");
     assert.equal(senalDeFallo("ERROR collecting tests/test_suma.py\nE   SyntaxError: invalid syntax\n!!! Interrupted: 1 error during collection !!!\n", "python"), "no_compila");
     assert.equal(senalDeFallo("ERROR: tests.test_suma (unittest.loader._FailedTest.tests.test_suma)\nImportError: Failed to import test module: tests.test_suma\nFAILED (errors=1)\n", "python"), "no_carga");
     assert.equal(senalDeFallo("IndentationError: unexpected indent\n", "python"), "no_compila");
@@ -109,7 +126,11 @@ describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   test("Go: [build failed] no es un fallo de prueba; --- FAIL y panic sí", () => {
     assert.equal(senalDeFallo("# demo\n./demo.go:6:7: duplicate case 2 in expression switch\nFAIL\tdemo [build failed]\n", "go"), "no_compila");
     assert.equal(senalDeFallo("--- FAIL: TestSuma (0.00s)\n    demo_test.go:9: quería 3\nFAIL\nFAIL\tdemo\t0.003s\n", "go"), "prueba");
-    assert.equal(senalDeFallo("panic: runtime error: index out of range\ngoroutine 6 [running]:\nFAIL\tdemo\t0.004s\n", "go"), "prueba");
+    // N-02: un pánico del código no es una aserción; t.Error/t.Fatal sí, aunque otra prueba haga pánico después
+    assert.equal(senalDeFallo("panic: runtime error: index out of range\ngoroutine 6 [running]:\nFAIL\tdemo\t0.004s\n", "go"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo("--- FAIL: TestFormatea (0.00s)\npanic: trampa [recovered]\n\tpanic: trampa\n\ngoroutine 36 [running]:\nFAIL\tdemo\t0.1s\n", "go"), "excepcion_no_asercion");
+    assert.equal(senalDeFallo("--- FAIL: TestSuma (0.00s)\n    demo_test.go:9: quería 3\n--- FAIL: TestFormatea (0.00s)\npanic: trampa\n\ngoroutine 36 [running]:\n", "go"), "prueba");
+    assert.equal(senalDeFallo("panic: trampa\n\ngoroutine 1 [running]:\nmain.init()\n", "go"), "no_carga");
     assert.equal(senalDeFallo("FAIL\tdemo [setup failed]\n", "go"), "no_compila");
     assert.equal(senalDeFallo("FAIL\n", "go"), "sin_senal");
   });

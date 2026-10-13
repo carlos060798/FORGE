@@ -210,9 +210,46 @@ No hubo que corregir patrones de salida ni la preparación de imagen: los 9 test
 
 ### Lo que queda sin hacer o sin comprobar
 
-- ❌ N-02 en su forma de cables trampa dentro de funciones: sin solución con cobertura; haría falta distinguir fallos de aserción de excepciones o revisión humana.
+- ✅ N-02 en su forma de cables trampa dentro de funciones: sin solución con cobertura; resuelto después con el criterio de aserción (sección siguiente), con el límite del adversario deliberado.
 - ⚠️ `go test` con cobertura: el analizador y el comando se prueban con salidas escritas a mano, **no** con Docker real (la compilación de Go tarda ~13 min por caso).
 - ⚠️ jest y vitest sin cobertura (exigirían dependencias que no se instalan).
 - ⚠️ La cobertura añade una ejecución por medición (un contenedor más).
 - ⚠️ `forge status` se probó por su función `textoMutacion`, no lanzando el comando.
 - ⚠️ N4-10: no se acotó a la ventana de contexto real de cada modelo, solo a 2 000 000.
+
+## N-02 resuelto con el criterio de aserción (2026-10-13)
+
+Sustituye al ❌ «N-02 sigue abierto» de las secciones anteriores. Decisión del dueño, más estricta y nunca más permisiva: una alteración solo cuenta como **detectada** si la prueba falló por una **aserción**. Una excepción que no es de aserción (un `Error` del código bajo prueba, un `TypeError`, un `panic`) es **no concluyente** con motivo `excepcion_no_asercion` y sale del denominador. Código: `senalJs`, `senalPython` y `senalGo` en `core/ciclo/mutacion.js` (`juzgar` no cambia: solo la señal `prueba` es detección).
+
+### Cómo se distingue por ejecutor (comprobado con salidas reales)
+
+| Ejecutor | Aserción (detecta) | Otra excepción (no concluyente) |
+|---|---|---|
+| node:test TAP (JS y TS) | YAML del bloque con `code: 'ERR_ASSERTION'` | `code: 'ERR_TEST_FAILURE'` con `name: 'TypeError'` o `error: 'trampa'` |
+| pytest | primera línea `E ` = `assert ...`/`AssertionError`/`Failed:` | `E       RuntimeError: trampa`, `AttributeError` |
+| unittest | `FAIL:` | `ERROR:` |
+| jest (JS y ts-jest) | mensaje `expect(received)...` / `Expected`/`Received` | `TypeError: ...`, `Error: trampa` |
+| vitest | `AssertionError: expected ...` | `TypeError: ...`, `Error: trampa` |
+| go test | `--- FAIL:` con salida de `t.Fatal`/`t.Error` | `--- FAIL:` seguido de `panic:`; `panic` en la goroutine 1 sigue siendo carga |
+
+Sin mensaje legible o con un resumen sin bloques: `sin_senal` (falla cerrado).
+
+### Resultados
+
+- **El caso de la revisión** (nueve `src/g/gN.js` con `if (K !== N) throw new Error(...)` llamados desde `suma()` por `comprobar()`, pruebas sin aserciones, `node --test` real sobre una copia, con cobertura y tope de 5 archivos): **antes 9/10 = 90 %; ahora 0 detectadas**, puntuación 0; las alteraciones de las guardias son todas `no_concluyente`/`excepcion_no_asercion` y las de `suma.js` sobreviven. Fijado en `tests/mutacion-cobertura.test.js`.
+- **Control con aserciones fuertes** sobre el mismo proyecto: 100 %.
+- **Adversario deliberado (límite):** una guardia con `throw new assert.AssertionError(...)` SÍ cuenta como detectada (clase indistinguible de una aserción real). Una prueba lo fija como límite documentado; no se oculta.
+- **Capturas reales** (`tests/mutacion-salidas-reales.test.js`): las ocho de aserción siguen en `detectada`; las ocho de `excepcion-en-prueba` pasan de `detectada` a `no_concluyente` (`excepcion_no_asercion`). Capturas nuevas con Docker: `guardia-en-llamada` (cable trampa que salta al llamar al código) en los ocho ejecutores, todas `excepcion_no_asercion`.
+- Efecto esperado: hay menos cambios concluyentes que antes. Un mutante que revienta el código antes de la aserción queda no concluyente; con `exigir` y `mutacion_min_concluyentes` (3) la tarea puede pausarse por pocas concluyentes en lugar de dar éxito. Es el lado seguro.
+
+### Tests existentes modificados
+
+- `tests/mutacion-salidas-reales.test.js`: `excepcion-en-prueba` pasa de `detectada` a `no_concluyente` (N-02); nueva situación `guardia-en-llamada`.
+- `tests/mutacion-cobertura.test.js`: la prueba que fijaba «la puntuación SIGUE inflada» ahora fija 0 detectadas; se añaden el control y el límite del adversario deliberado.
+- `tests/mutacion-revision.test.js`, `ciclo-mutacion`, `mutacion-lineas-cambiadas`: los fallos sintéticos llevan `code: 'ERR_ASSERTION'` (un fallo sin el código ya no es detección); casos nuevos de excepción en TAP, jest, vitest, pytest, unittest y Go.
+
+### Sin comprobar
+
+- ⚠️ Una aserción hecha por un auxiliar compartido fuera del archivo de pruebas se reconoce igual (por clase); el límite es el mismo que el del adversario deliberado.
+- ⚠️ Reporter de jest/vitest distinto del por defecto (junit, json): sin señal.
+- ⚠️ `go test -json` o `-v` con subpruebas: solo se probó con la salida por defecto.

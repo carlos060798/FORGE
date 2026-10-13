@@ -1,0 +1,46 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: jest
+situacion: guardia-en-llamada
+descripcion: el código bajo prueba lanza una excepción propia (cable trampa) cuando la prueba lo llama (N-02)
+version: 30.5.2 · v22.23.3
+imagen: forge-sbx:node-b0008fa8e463e016 (base node:22-alpine; sha256:2fff1e3521caf6c1831d2a5543df7af424caf1cdb1e0b6ff04dc661c0aea0c7b)
+comando: npx jest
+lenguaje: javascript
+archivo_alterado: src/calc.js
+fecha: 2026-10-13
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 8133
+=====STDOUT=====
+
+=====STDERR=====
+FAIL tests/calc.test.js
+  calc
+    ✓ suma dos numeros (7 ms)
+    ✓ esPar reconoce los pares (1 ms)
+    ✕ formatea un numero
+
+  ● calc › formatea un numero
+
+    trampa
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m formatea(n) {
+    [31m[1m>[22m[39m[90m 10 |[39m   [36mthrow[39m [36mnew[39m [33mError[39m([32m'trampa'[39m)[33m;[39m
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 11 |[39m }
+     [90m 12 |[39m
+     [90m 13 |[39m module[33m.[39mexports [33m=[39m { suma[33m,[39m esPar[33m,[39m formatea }[33m;[39m[0m
+
+      at formatea (src/calc.js:10:9)
+      at Object.formatea (tests/calc.test.js:11:12)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        3.138 s
+Ran all test suites.
+
+=====FIN=====

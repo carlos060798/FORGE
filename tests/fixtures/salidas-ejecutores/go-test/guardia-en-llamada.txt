@@ -1,0 +1,41 @@
+# Salida real de un ejecutor de pruebas en el entorno aislado de FORGE. NO editar a mano:
+# se regenera con `node tests/fixtures/salidas-ejecutores/capturar.mjs`.
+ejecutor: go-test
+situacion: guardia-en-llamada
+descripcion: el código bajo prueba lanza una excepción propia (cable trampa) cuando la prueba lo llama (N-02)
+version: go version go1.23.12 linux/amd64
+imagen: forge-sbx:go-8f8c092d878d60d7 (base golang:1.23-alpine; sha256:9dd209e07bba2a08387c0bfa422cc169513eca8242654b60cf2495014f0ff9b6)
+comando: go test ./...
+lenguaje: go
+archivo_alterado: calc.go
+fecha: 2026-10-13
+codigo_salida: 1
+tiempo_agotado: false
+memoria_agotada: false
+duracion_ms: 38277
+=====STDOUT=====
+--- FAIL: TestFormatea (0.00s)
+panic: trampa [recovered]
+	panic: trampa
+
+goroutine 36 [running]:
+testing.tRunner.func1.2({0x52d220, 0x58ce40})
+	/usr/local/go/src/testing/testing.go:1632 +0x230
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1635 +0x35e
+panic({0x52d220?, 0x58ce40?})
+	/usr/local/go/src/runtime/panic.go:791 +0x132
+demo.Formatea(...)
+	/deps/work/calc.go:15
+demo.TestFormatea(0xc000140820?)
+	/deps/work/calc_test.go:18 +0x32
+testing.tRunner(0xc000140820, 0x5641d8)
+	/usr/local/go/src/testing/testing.go:1690 +0xf4
+created by testing.(*T).Run in goroutine 1
+	/usr/local/go/src/testing/testing.go:1743 +0x390
+FAIL	demo	0.076s
+FAIL
+
+=====STDERR=====
+
+=====FIN=====
