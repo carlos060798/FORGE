@@ -30,13 +30,13 @@
  * Como ese archivo lo puede fabricar el repositorio, la auditoría cuenta además por día.
  */
 
-import { createHash } from 'node:crypto';
-import { readdirSync, statSync, unlinkSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
+import { linkSync, readdirSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { crearArchivo, escribirArchivo, leerArchivo } from '../escritura-segura.js';
 import { redactar, redactarFormatos } from '../ciclo/redactar.js';
 import { destinoPermitido } from './config.js';
-import { claveLocal, canonico, directorioDeEstado, firmar, firmaValida } from './estado-usuario.js';
+import { claveLocal, canonico, directorioDeEstado, existeEstado, firmar, firmaValida } from './estado-usuario.js';
 import { MODOS, PROVEEDORES } from './puerto.js';
 import { ErrorPublicacion, MAX_ARCHIVOS, PREFIJO_RAMA, archivoPublicable, destinoDeReferencia, vetadasDelProyecto } from './publicacion.js';
 
@@ -248,6 +248,8 @@ export function leerPendiente(cwd, id, env = process.env) {
  * @param {string} cwd @param {Entorno} [env] @returns {Pendiente[]}
  */
 export function listarPendientes(cwd, env = process.env) {
+  // Leer no crea nada: sin estado del usuario no hay nada autenticado que listar
+  if (!existeEstado(cwd, env)) return [];
   /** @type {string[]} */
   let nombres = [];
   try { nombres = readdirSync(contexto(cwd, env).pendientes).filter((n) => n.endsWith('.json')).map((n) => n.slice(0, -5)); } catch { return []; }
@@ -270,6 +272,7 @@ export function listarNoAutenticados(cwd, env = process.env) {
   const r = [];
   const ids = (/** @type {string} */ d) => { try { return readdirSync(d).filter((n) => n.endsWith('.json')).map((n) => n.slice(0, -5)).filter((i) => ID_PENDIENTE.test(i)); } catch { return []; } };
   for (const id of ids(dirPendientesDelArbol(cwd))) r.push({ id, origen: 'arbol' });
+  if (!existeEstado(cwd, env)) return r;
   for (const id of ids(contexto(cwd, env).pendientes)) {
     try { leerPendiente(cwd, id, env); } catch (e) {
       if (e instanceof ErrorAprobacion && (e.codigo === 'pendiente_no_autenticado' || e.codigo === 'pendiente_corrupto')) r.push({ id, origen: 'usuario' });
@@ -393,6 +396,7 @@ export function escribirAlcance(cwd, proveedor, r, env = process.env) {
  * @returns {Record<string, { comprobado: string, ambitos: string[], exceso: boolean, suficiente: boolean, bloqueaEscritura: boolean, motivo?: string, noAutenticado?: boolean }>}
  */
 export function leerAlcance(cwd, env = process.env) {
+  if (!existeEstado(cwd, env)) return {};
   const { dir, clave, alcance } = contexto(cwd, env);
   let texto;
   try { texto = leerArchivo(dir, alcance); } catch { texto = '{'; }
@@ -482,15 +486,31 @@ function tomarCandado(cwd, id, env) {
   for (let intento = 0; intento < 2; intento++) {
     if (crearArchivo(dir, ruta, `${JSON.stringify({ pid: process.pid, ts: new Date().toISOString() })}\n`, 0o600)) return ruta;
     let huerfano = false;
+    /** @type {string|null} */
+    let juzgado = null;
     try {
-      const dueno = JSON.parse(leerArchivo(dir, ruta) ?? 'null');
+      juzgado = leerArchivo(dir, ruta);
+      const dueno = JSON.parse(juzgado ?? 'null');
       const viejo = Date.now() - statSync(ruta).mtimeMs > EDAD_CANDADO_HUERFANO_MS;
       let vivo = true;
       if (Number.isInteger(dueno?.pid)) { try { process.kill(dueno.pid, 0); } catch (e) { vivo = /** @type {any} */ (e).code === 'EPERM'; } }
       huerfano = viejo || !vivo;
     } catch { huerfano = false; }
     if (!huerfano) break;
-    try { unlinkSync(ruta); } catch { /* otro proceso lo retiró primero */ }
+    // Se retira moviéndolo (atómico) y se comprueba que era el candado juzgado: si otro proceso lo
+    // retiró y tomó uno nuevo entre medias, se devuelve y se espera (N3-08)
+    const apartado = `${ruta}.${process.pid}.${randomBytes(4).toString('hex')}.huerfano`;
+    try {
+      renameSync(ruta, apartado);
+      let leido = null;
+      try { leido = leerArchivo(dir, apartado); } catch { /* ilegible */ }
+      if (leido !== juzgado) {
+        try { linkSync(apartado, ruta); } catch { /* ya hay otro */ }
+        try { unlinkSync(apartado); } catch { /* nada */ }
+        break;
+      }
+      try { unlinkSync(apartado); } catch { /* nada */ }
+    } catch { /* otro proceso lo retiró primero */ }
   }
   throw new ErrorAprobacion('en_curso', `Otro proceso está aprobando «${id}» ahora mismo: no se publica dos veces. Espera a que termine y mira «forge integraciones pendientes».`);
 }

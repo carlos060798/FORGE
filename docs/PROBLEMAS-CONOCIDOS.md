@@ -573,3 +573,10 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 - **Migración**: un pendiente antiguo de `.sdd/integraciones/pendientes/` no se aprueba nunca; se lista «no autenticado». Recréalo con `forge integraciones publicar`.
 - **Mitigado, no cerrado**: el tope de operaciones por sesión se puede reiniciar fabricando `sesion.json` hasta el tope diario (5 veces el de sesión, máximo 200). El estado del ciclo (`.sdd/motor/`) que `publicar` lee sigue en el árbol: lo contienen la vista previa y la huella obligatorias.
 - **Sigue abierto**: no hay tercera revisión independiente; solo servidores falsos; en Windows la protección de la clave es la ACL del perfil (no se aplica 0600); `forge doctor` pasa el entorno completo (incluido `FORGE_GITHUB_TOKEN`) a `where claude` y a las consultas de Docker, como cualquier proceso hijo.
+
+## Límites conocidos tras la quinta revisión (2026-10-13)
+
+- **`mutacion: exigir` y funciones con guardas `throw`:** una función con muchas guardas produce muchos mutantes no concluyentes; con menos de `mutacion_min_concluyentes` el ciclo se pausa (falla cerrado). Baja el mínimo o usa `informar`.
+- **La señal de «aserción fallida» puede imitarse:** un código generado que imprima el texto de una aserción, o aserciones naturales, puede aparentar detección. El adversario deliberado queda fuera del alcance de la medición; la revisión humana sigue siendo el control.
+- **`FORGE_INTEGRACIONES_DESTINOS` con solo comas (`","`)** se lee como lista vacía: no se permite ningún destino (falla cerrado); vacía o sin definir significa «los del proyecto».
+- Corregidos: clave local atómica (N3-01), estado dentro del proyecto rechazado (N3-02), lectura sin crear estado (N3-03), manifiestos nuevos (N3-06), carrera del candado huérfano (N3-08).

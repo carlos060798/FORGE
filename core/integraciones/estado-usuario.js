@@ -22,9 +22,9 @@
  */
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { chmodSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { chmodSync, linkSync, lstatSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve, sep } from 'node:path';
 
 export const VARIABLE_HOME = 'FORGE_HOME';
 
@@ -46,10 +46,44 @@ export function raizDeEstado(env = process.env) {
   const home = String(env[VARIABLE_HOME] ?? '').trim();
   if (home !== '') return join(resolve(home), 'integraciones');
   if (process.platform === 'win32') {
-    const base = String(env.LOCALAPPDATA ?? '').trim() || join(homedir(), 'AppData', 'Local');
+    const declarada = String(env.LOCALAPPDATA ?? '').trim();
+    // Una ruta relativa dependería del directorio de trabajo, que puede ser el del proyecto
+    const base = declarada !== '' && isAbsolute(declarada) ? declarada : join(homedir(), 'AppData', 'Local');
     return join(base, 'forge', 'integraciones');
   }
   return join(homedir(), '.forge', 'integraciones');
+}
+
+/**
+ * Ruta del estado de ESTE proyecto, SIN crear nada (para lecturas como `forge status`: abrir un
+ * repositorio ajeno no debe dejar rastro en el equipo del usuario). Rechaza una raíz que caiga dentro
+ * del proyecto: un repositorio no debe poder mover el estado de aprobaciones a su propio árbol.
+ * @param {string} cwd
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {string}
+ */
+export function rutaDeEstado(cwd, env = process.env) {
+  let real;
+  try { real = realpathSync(resolve(cwd)); } catch { real = resolve(cwd); }
+  const proyecto = process.platform === 'win32' ? real.toLowerCase() : real;
+  const hash = createHash('sha256').update(proyecto).digest('hex').slice(0, 32);
+  const raiz = raizDeEstado(env);
+  let raizReal = raiz;
+  try { raizReal = realpathSync(raiz); } catch { /* aún no existe: se compara la ruta declarada */ }
+  const norm = (/** @type {string} */ p) => (process.platform === 'win32' ? p.toLowerCase() : p);
+  const base = norm(proyecto) + sep;
+  if (norm(resolve(raiz)) + sep === base || (norm(resolve(raiz)) + sep).startsWith(base) || (norm(raizReal) + sep).startsWith(base)) {
+    throw new Error('El estado de las integraciones (FORGE_HOME o la carpeta de datos de tu usuario) apunta DENTRO del proyecto: un proyecto no puede guardar sus propias aprobaciones. Cámbialo a una carpeta fuera del proyecto.');
+  }
+  return join(raiz, hash);
+}
+
+/**
+ * ¿Existe ya el estado de este proyecto? No crea nada.
+ * @param {string} cwd @param {Record<string, string|undefined>} [env]
+ */
+export function existeEstado(cwd, env = process.env) {
+  try { return lstatSync(rutaDeEstado(cwd, env)).isDirectory(); } catch { return false; }
 }
 
 /**
@@ -60,11 +94,7 @@ export function raizDeEstado(env = process.env) {
  * @returns {string}
  */
 export function directorioDeEstado(cwd, env = process.env) {
-  let real;
-  try { real = realpathSync(resolve(cwd)); } catch { real = resolve(cwd); }
-  if (process.platform === 'win32') real = real.toLowerCase();
-  const hash = createHash('sha256').update(real).digest('hex').slice(0, 32);
-  const dir = join(raizDeEstado(env), hash);
+  const dir = rutaDeEstado(cwd, env);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   try { if (process.platform !== 'win32') chmodSync(dir, 0o700); } catch { /* no es nuestro: se sigue */ }
   const st = lstatSync(dir);
@@ -91,14 +121,20 @@ export function claveLocal(dir) {
     if (/** @type {any} */ (e)?.code !== 'ENOENT') throw e;
   }
   const nueva = randomBytes(32);
+  // Se escribe completa en un temporal y se enlaza al nombre final: `linkSync` es atómico y falla si ya
+  // existe, así que un proceso que llega a la vez nunca ve un archivo vacío ni a medias (N3-01)
+  const temporal = `${ruta}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    writeFileSync(ruta, `${nueva.toString('hex')}\n`, { flag: 'wx', mode: 0o600 });
+    writeFileSync(temporal, `${nueva.toString('hex')}\n`, { flag: 'wx', mode: 0o600 });
+    linkSync(temporal, ruta);
     return nueva;
   } catch (e) {
     if (/** @type {any} */ (e)?.code !== 'EEXIST') throw e;
     const k = leer(readFileSync(ruta, 'utf8'));
-    if (!k) throw new Error('La clave local de las integraciones está dañada.');
+    if (!k) throw new Error('La clave local de las integraciones está dañada: bórrala (se pierden las aprobaciones pendientes) y vuelve a preparar con «forge integraciones publicar».');
     return k;
+  } finally {
+    try { unlinkSync(temporal); } catch { /* ya no está */ }
   }
 }
 

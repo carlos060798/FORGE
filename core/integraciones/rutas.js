@@ -87,6 +87,9 @@ const NOMBRES_CONFIGURACION = [
   /^\.[^/]+$/,
   /^[^/]+\.(?:config|conf)\.[cm]?[jt]s$/, /^conftest\.py$/, /^sitecustomize\.py$/, /^pytest\.ini$/, /^tox\.ini$/,
   /^claude\.md$/, /^agents\.md$/,
+  // Lanzadores y ganchos que se ejecutan al construir o al hacer commit (N3-06)
+  /^gradlew(?:\.bat)?$/, /^mvnw(?:\.cmd)?$/, /^configure(?:\.ac)?$/, /^build\.rs$/, /^lefthook\.ya?ml$/,
+  /^pre-commit$/, /^commit-msg$/, /^pre-push$/, /^post-checkout$/, /^post-merge$/, /^husky$/,
 ];
 /** Extensiones de scripts y binarios que se ejecutan solos. */
 const EXTENSIONES_EJECUTABLES = /\.(?:sh|bash|zsh|fish|ps1|psm1|psd1|bat|cmd|vbs|vbe|wsf|command|run|jar|exe|dll|so|dylib|com|scr|msi)$/;
