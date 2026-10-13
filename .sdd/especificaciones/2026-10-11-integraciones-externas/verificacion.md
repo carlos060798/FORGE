@@ -345,3 +345,31 @@ Prueba: `tests/integraciones-revision1.test.js` (y los cambios en las pruebas ex
 | R15 | corregido (rutas normalizables rechazadas) | «R15» |
 
 Límites abiertos: las nuevas protecciones se probaron con servidores falsos; HTTPS real, DNS y proxies siguen sin comprobarse. Se requiere nueva revisión independiente (la 2) antes de publicar.
+
+## F5.1 a F5.3 y cierres de HU-005 e idempotencia (2026-10-13)
+
+Prueba: `tests/integraciones-extremo-a-extremo.test.js` (19 pruebas). Servidores falsos locales de los tres
+proveedores y el ciclo guionizado REAL (`CicloVerificado`, implementador por turnos, modelo y runner
+simulados). Ninguna petición sale del equipo; todos los tokens son centinelas con formato reconocible.
+
+| Criterio | Qué demuestra | Qué NO demuestra |
+|---|---|---|
+| CA-004-05 (F5.1) | Con token y usuario centinela en `FORGE_*`, el recorrido `leer` → tareas → ciclo → `publicar` → `vista` → `aprobar` en los tres proveedores deja a los centinelas (y el Base64 de la cabecera Basic, en tres alineaciones) fuera de todos los prompts y `extraContext` de todas las llamadas, de los eventos del ciclo, del estado final, de TODO el árbol `.sdd/` (events.jsonl, motor/**, diario, libro de gasto, integraciones/**) y de stdout y stderr. Con control positivo del buscador y comprobación de que la credencial sí viajó por el cable. Mismos controles en 401 (los tres), destino fuera de la lista, 500 de los tres con el token en el cuerpo, 403 al leer y al escribir, 503 al aprobar y un proceso real de la CLI. Un tercero que pega el token en la incidencia tampoco lo filtra. | Plataformas reales: sus mensajes de error pueden tener otra forma. El enmascarado depende de reconocer el formato del token. |
+| RF-001, RF-002 (F5.2) | (a) Ningún archivo de `agents/`, `contratos.js`, `herramientas-coder.js`, `turnos.js`, `core/mcp/herramientas.js` ni `core/mcp/servidor.js` menciona el módulo, `fetch(`, hosts de plataformas ni variables de token; (b) con `fetch` interceptado, un modelo guionizado que pide `fetch`, `http_get`, `publicar_comentario`, `leer_incidencia` y `ejecutar` con URL recibe cinco «Herramienta desconocida», cero intentos de `fetch` y cero peticiones a los servidores; (c) `tools/list` del servidor MCP devuelve exactamente `ejecutar_pruebas`, `leer_archivo`, `escribir_archivo`, y llamar a una operación de integraciones es un error de protocolo. | Un modelo real que invente herramientas distintas: la defensa es que la lista cerrada de herramientas no tiene ninguna de red, no el nombre concreto. |
+| CA-001-03, CA-001-04 (F5.3) | Para cada uno de los 52 casos de `hostiles.json` como cuerpo de una incidencia: `leer` → ciclo con las MISMAS respuestas del modelo que con un cuerpo limpio. Idénticos al control: resultado, iteraciones, archivos y huellas, gasto (estado y libro), llamadas, eventos por tipo, eventos de rechazo de escritura (0), lecturas rechazadas (0), peticiones durante el ciclo (0) y `fetch` (0). **Sin hallazgos.** | Que un modelo real no obedezca el texto: aquí el modelo es un guion, así que prueba que el texto hostil no cambia NADA de lo que el sistema decide por su cuenta, no que el modelo resista. |
+| HU-005 | `forge run --motor clasico` con el proveedor de pruebas: sin sección, con todo apagado y sin archivo de configuración, cero `fetch`, ninguna lectura de variables de token, ningún módulo de integraciones cargado, y stdout, stderr, código de salida, eventos y archivos creados idénticos a una ejecución con un gancho de resolución que hace que el módulo «no exista». | No es una versión sin el código fuente del módulo, sino su ausencia simulada. `--motor ciclo` exige Docker y no se ejecutó aquí. |
+| Idempotencia entre procesos | Dos `aprobar` simultáneos del mismo id, como procesos hijos, contra el mismo servidor falso, 4 rondas con espera tras cada respuesta para ensanchar la ventana: una sola escritura efectiva; el otro proceso falla con «Otro proceso está aprobando…» o devuelve lo ya publicado. | Un candado por archivo no cubre dos máquinas sobre un directorio compartido sin semántica `O_EXCL`. |
+
+### Hallazgo corregido: doble escritura entre procesos
+
+Reproducción (antes del cambio): publicación pendiente de comentario en GitHub; dos procesos
+`forge integraciones aprobar <id>` lanzados a la vez (barrera por reloj) contra el mismo servidor falso.
+Ambos buscaban el marcador, no lo encontraban y escribían: **2 `POST .../issues/7/comments`**. Causa: el
+estado `publicado` se escribe al terminar, y la búsqueda del marcador y la escritura no son atómicas.
+
+Corrección (`core/integraciones/aprobacion.js`): `aprobar` toma `<id>.lock` con creación exclusiva
+(`crearArchivo`, `O_EXCL`) antes de hacer nada y lo suelta al terminar. Con el candado puesto, el segundo
+proceso falla limpio con código `en_curso` (salida 1). Si llegó justo después, relee el pendiente ya
+`publicado` y devuelve lo publicado sin llamar a la plataforma. Un candado cuyo proceso murió o de más de
+10 minutos se retira. Un id inexistente no crea nada.
+

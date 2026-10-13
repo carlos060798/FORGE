@@ -24,9 +24,9 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync } from 'node:fs';
+import { readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { escribirArchivo, leerArchivo } from '../escritura-segura.js';
+import { crearArchivo, escribirArchivo, leerArchivo } from '../escritura-segura.js';
 import { redactar, redactarFormatos } from '../ciclo/redactar.js';
 import { destinoPermitido } from './config.js';
 import { MODOS, PROVEEDORES } from './puerto.js';
@@ -300,6 +300,48 @@ function normalizarResultado(r) {
  * @returns {Promise<{ ok: boolean, estado: string, id: string, yaPublicado: boolean, resultado?: any, error?: { codigo: string, mensaje: string } }>}
  */
 export async function aprobar(cwd, id, o) {
+  // Candado por archivo entre procesos: dos `aprobar` simultáneos del mismo id no pueden ambos
+  // buscar el marcador, no encontrarlo y escribir (hallazgo de la prueba de extremo a extremo).
+  // Quien llega con el candado puesto falla limpio («en_curso»); quien llega después de que el otro
+  // terminó lee el pendiente ya `publicado` y devuelve lo publicado sin llamar a nadie.
+  leerPendiente(cwd, id); // no crea nada para un id que no existe
+  const candado = tomarCandado(cwd, id);
+  try {
+    return await aprobarConCandado(cwd, id, o);
+  } finally {
+    try { unlinkSync(candado); } catch { /* ya no está */ }
+  }
+}
+
+/** Un candado de más de esto es de un proceso que murió sin soltarlo. */
+const EDAD_CANDADO_HUERFANO_MS = 10 * 60 * 1000;
+
+/**
+ * Toma `<id>.lock` con creación exclusiva (O_EXCL, `crearArchivo`). Si ya existe y su dueño murió o es
+ * muy viejo, lo retira y lo intenta una vez más; si no, el otro proceso está publicando.
+ * @param {string} cwd @param {string} id @returns {string} ruta del candado
+ */
+function tomarCandado(cwd, id) {
+  const ruta = join(dirPendientes(cwd), `${id}.lock`);
+  for (let intento = 0; intento < 2; intento++) {
+    if (crearArchivo(cwd, ruta, `${JSON.stringify({ pid: process.pid, ts: new Date().toISOString() })}
+`)) return ruta;
+    let huerfano = false;
+    try {
+      const dueno = JSON.parse(leerArchivo(cwd, ruta) ?? 'null');
+      const viejo = Date.now() - statSync(ruta).mtimeMs > EDAD_CANDADO_HUERFANO_MS;
+      let vivo = true;
+      if (Number.isInteger(dueno?.pid)) { try { process.kill(dueno.pid, 0); } catch (e) { vivo = /** @type {any} */ (e).code === 'EPERM'; } }
+      huerfano = viejo || !vivo;
+    } catch { huerfano = false; }
+    if (!huerfano) break;
+    try { unlinkSync(ruta); } catch { /* otro proceso lo retiró primero */ }
+  }
+  throw new ErrorAprobacion('en_curso', `Otro proceso está aprobando «${id}» ahora mismo: no se publica dos veces. Espera a que termine y mira «forge integraciones pendientes».`);
+}
+
+/** @param {string} cwd @param {string} id @param {Parameters<typeof aprobar>[2]} o */
+async function aprobarConCandado(cwd, id, o) {
   const p = leerPendiente(cwd, id);
   const secretos = o.secretos ?? [];
 

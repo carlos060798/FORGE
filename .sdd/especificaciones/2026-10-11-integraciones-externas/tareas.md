@@ -51,9 +51,9 @@
 
 ## F5 — Seguridad y cierre
 
-- [ ] **F5.1** Prueba de no filtración con token centinela en todo el recorrido (CA-004-05).
-- [ ] **F5.2** Prueba de que ningún camino lleva del modelo a una operación de red (RF-001, RF-002): ningún agente, herramienta, contrato ni prompt referencia el módulo.
-- [ ] **F5.3** Batería hostil de extremo a extremo con el ciclo guionizado: el resultado del ciclo con texto hostil es el mismo que con texto limpio (CA-001-04).
+- [x] **F5.1** Prueba de no filtración con token centinela en todo el recorrido (CA-004-05). *(`tests/integraciones-extremo-a-extremo.test.js`)*
+- [x] **F5.2** Prueba de que ningún camino lleva del modelo a una operación de red (RF-001, RF-002): ningún agente, herramienta, contrato ni prompt referencia el módulo. *(estática, dinámica y MCP, en el mismo archivo)*
+- [x] **F5.3** Batería hostil de extremo a extremo con el ciclo guionizado: el resultado del ciclo con texto hostil es el mismo que con texto limpio (CA-001-04). *(52 casos; sin diferencias. Además HU-005 contra una versión sin el módulo, y candado por archivo en `aprobar`.)*
 - [ ] **F5.4** Revisión independiente (`revisor` y `seguridad`) con la lista de riesgos agénticos como guion; corregir hallazgos altos.
 - [ ] **F5.5** `verificacion.md` honesto: cada criterio con su test y su estado.
 - [ ] **F5.6** Documentación: `docs/integraciones.md`, `docs/ciclo-verificado.md` (enlace), `CHANGELOG.md`, `configuracion-ejemplo/sdd.config.yaml`.
