@@ -1,4 +1,4 @@
-# 📑 Índice General de FORGE v4.0.0
+# 📑 Índice General de FORGE v5.0.0
 
 **Punto de entrada único a toda la documentación de FORGE**
 
@@ -18,7 +18,7 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 
 1. [Introducción](introduction.md) — Qué es FORGE y por qué existe (5 min)
 2. [Inicio rápido](getting-started.md) — Instalación paso-a-paso (10 min)
-3. [Ejemplo: API REST](Ejemplo-API-REST.md) — Walkthrough completo (30-45 min)
+3. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Walkthrough completo (30-45 min)
 4. [Glosario](GLOSARIO.md) — Referencia rápida de términos (consúltalo cuando sea necesario)
 
 **Próximo paso:** Ejecuta `/sdd.descubrir "tu idea"` en Claude Code
@@ -35,7 +35,7 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 2. [Conceptos fundamentales](core-concepts.md) — SDD, IR, Constitución, Pipeline (20 min)
 3. [Arquitectura](architecture.md) — 6 capas, diagramas, flujos (30 min)
 4. [Agentes](agents.md) — Los 14 agentes y sus roles (15 min)
-5. [Ejemplo: API REST](Ejemplo-API-REST.md) — Ver arquitectura en acción (30 min)
+5. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Ver arquitectura en acción (30 min)
 6. [Extender FORGE](extending-forge.md) — Customizaciones (15 min)
 
 **Consulta también:**
@@ -54,12 +54,12 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 
 1. [Inicio rápido](getting-started.md) — Instalación (10 min)
 2. [Flujos de trabajo](workflows.md) — 8 comandos del pipeline (20 min)
-3. [Ejemplo: API REST](Ejemplo-API-REST.md) — Implementación real (30 min)
+3. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Implementación real (30 min)
 4. [Configuración](configuration.md) — Stack, convenciones, calidad (15 min)
 5. [Agentes: desarrollador](agents.md#desarrollador-backend) — Tu rol (5 min)
 
 **Consulta cuando lo necesites:**
-- [Troubleshooting](Troubleshooting.md) — Errores comunes
+- [Troubleshooting](TROUBLESHOOTING.md) — Errores comunes
 - [Glosario](GLOSARIO.md) — Términos técnicos
 
 **Próximo paso:** Espera a que FORGE genere tareas, luego implementa
@@ -80,7 +80,7 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 
 **Consulta también:**
 - [Observabilidad y memoria](MEMORIA-Y-OBSERVABILIDAD.md) — Monitoring
-- [Troubleshooting](Troubleshooting.md) — Qué hacer si falla
+- [Troubleshooting](TROUBLESHOOTING.md) — Qué hacer si falla
 
 **Próximo paso:** Configura FORGE para tu infraestructura
 
@@ -100,8 +100,8 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 
 **Después, elige tu área:**
 - **Agentes:** Lee [agents.md](agents.md), luego crea uno con `/sdd.crear-agente`
-- **Comandos:** Copia estructura de [commands/*.md](../FORGE/commands/), registra en plugin.json
-- **Skills:** Copia estructura de [skills/*/SKILL.md](../FORGE/skills/), ¡inventa la tuya!
+- **Comandos:** Copia estructura de [commands/*.md](../commands/), registra en plugin.json
+- **Skills:** Copia estructura de [skills/*/SKILL.md](../skills/), ¡inventa la tuya!
 
 **Próximo paso:** [CONTRIBUTING.md](../CONTRIBUTING.md) — Cómo enviar PRs
 
@@ -126,7 +126,7 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 - 📋 [workflows.md](workflows.md) — 8 etapas del pipeline documentadas
 - 👥 [agents.md](agents.md) — 14 agentes: roles, herramientas, etapas
 - 🛠️ [tools.md](tools.md) — 31 skills: categorización, referencias
-- 📖 [Comandos-Referencia.md](Comandos-Referencia.md) — 39 comandos listados
+- 📖 [commands/](../commands/) — 39 comandos, uno por archivo `.md`
 - ⚙️ [configuration.md](configuration.md) — `sdd.config.yaml` completo
 - 🔗 [api-reference.md](api-reference.md) — APIs públicas
 
@@ -136,34 +136,34 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 - ⚠️ [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) — Límites conocidos, con cómo evitarlos y dónde está la evidencia
 - 🔀 [MIGRACION-5.0.md](MIGRACION-5.0.md) — Qué cambia al actualizar desde 4.2.0
 - 📏 [COBERTURA.md](COBERTURA.md) — Cobertura de pruebas por archivo
-- 📝 [EJEMPLO-API-REST.md](Ejemplo-API-REST.md) — Walkthrough completo
-- 🐛 [Troubleshooting.md](Troubleshooting.md) — Errores por fase
-- 🆘 [QUE-PASA-SI-FALLA.md](Que-Pasa-Si-Falla.md) — Recuperación
-- 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](Seguridad-Para-Notecnicos.md) — Security sin jerga
-- ⚙️ [OPTIMIZACION-ENTORNO.md](Optimizacion-Entorno.md) — Tuning
-- 🧠 [MEMORIA-Y-OBSERVABILIDAD.md](Memoria-Y-Observabilidad.md) — API memoria, SQLite
-- 📊 [EJEMPLOS-MEMORIA-API.md](Ejemplos-Memoria-API.md) — Código JS/TS
-- 🔗 [INTEGRACIONES.md](Integraciones.md) — MCP: Vercel, GitHub, Figma
-- ✅ [COMPATIBILIDAD.md](Compatibilidad.md) — Contrato de hooks
-- 📦 [VERIFICACION-SQLITE-AUTODETECT.md](Verificacion-SQLite-Autodetect.md) — Auto-detectión
+- 📝 [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) — Walkthrough completo
+- 🐛 [Troubleshooting.md](TROUBLESHOOTING.md) — Errores por fase
+- 🆘 [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md) — Recuperación
+- 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md) — Security sin jerga
+- ⚙️ [OPTIMIZACION-ENTORNO.md](OPTIMIZACION-ENTORNO.md) — Tuning
+- 🧠 [MEMORIA-Y-OBSERVABILIDAD.md](MEMORIA-Y-OBSERVABILIDAD.md) — API memoria, SQLite
+- 📊 [EJEMPLOS-MEMORIA-API.md](EJEMPLOS-MEMORIA-API.md) — Código JS/TS
+- 🔗 [INTEGRACIONES.md](INTEGRACIONES.md) — MCP: Vercel, GitHub, Figma
+- 🔌 [integraciones-externas.md](integraciones-externas.md) — GitHub, GitLab y Jira: leer incidencias y publicar resultados con aprobación (en construcción)
+- ✅ [COMPATIBILIDAD.md](COMPATIBILIDAD.md) — Contrato de hooks
+- 📦 [VERIFICACION-SQLITE-AUTODETECT.md](VERIFICACION-SQLITE-AUTODETECT.md) — Auto-detectión
 
 ### Nivel 6: Casos de Uso (soluciones end-to-end)
-- 💡 [Casos-de-Uso.md](Casos-De-Uso.md) — Monorepos, microservicios, data pipelines
-- 📚 [FABRICA.md](Fabrica.md) — Narrativas para no-técnicos
-- 📊 [ANALISIS-COMPARATIVO-FRAMEWORKS.md](Analisis-Comparativo-Frameworks.md) — FORGE vs CrewAI vs LangGraph
+- 📚 [FABRICA.md](FABRICA.md) — Narrativas para no-técnicos
+- 📊 [ANALISIS-COMPARATIVO-FRAMEWORKS.md](ANALISIS-COMPARATIVO-FRAMEWORKS.md) — FORGE vs CrewAI vs LangGraph
 
 ### Nivel 7: Contribuir y Mantener (para developers de FORGE)
 - 🤝 [../CONTRIBUTING.md](../CONTRIBUTING.md) — Cómo contribuir
 - 🏗️ [extending-forge.md](extending-forge.md) — Crear agentes, comandos, skills
-- 🧪 [TESTING-FORGE.md](Testing-FORGE.md) — Test framework
-- 📢 [RELEASE-PROCESS.md](Release-Process.md) — Versioning, changelog, deploy
+- 🧪 [COBERTURA.md](COBERTURA.md) — Cobertura de pruebas por archivo
+- 📢 [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md) — Lista de release y criterios de beta
+- 🔖 [VERSIONING.md](../VERSIONING.md) — Versionado
 
 ### Nivel 8: Especiales (investigaciones + futuro)
-- 🗜️ [COMPRESION.md](Compresion.md) — Técnica caveman-lite
-- 🗺️ [MAPAS.md](Mapas.md) — Estrategia de mapas estáticos
-- 📊 [INFORME-MEMORIA-OSS.md](Informe-Memoria-OSS.md) — Investigación OSS
-- 📋 [ESTANDAR-EJEMPLOS-CODIGO.md](Estandar-Ejemplos-Codigo.md) — Formato único ejemplos
-- 🎨 [AUDITORIA-DIAGRAMAS-MERMAID.md](Auditoria-Diagramas-Mermaid.md) — Validación de diagramas
+- 🗜️ [COMPRESION.md](COMPRESION.md) — Técnica caveman-lite
+- 🗺️ [MAPAS.md](MAPAS.md) — Estrategia de mapas estáticos
+- 📊 [INFORME-MEMORIA-OSS.md](INFORME-MEMORIA-OSS.md) — Investigación OSS
+- 📋 [ESTANDAR-EJEMPLOS-CODIGO.md](ESTANDAR-EJEMPLOS-CODIGO.md) — Formato único ejemplos
 
 ---
 
@@ -197,10 +197,10 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 [GLOSARIO.md](GLOSARIO.md) tiene definiciones de 12+ términos clave. Si un término te parece ambiguo, búscalo allí.
 
 ### Consulta Troubleshooting
-[Troubleshooting.md](Troubleshooting.md) tiene soluciones por fase del pipeline.
+[Troubleshooting.md](TROUBLESHOOTING.md) tiene soluciones por fase del pipeline.
 
 ### Lee el Ejemplo completo
-[EJEMPLO-API-REST.md](Ejemplo-API-REST.md) es un walkthrough paso-a-paso que toca casi todo.
+[EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) es un walkthrough paso-a-paso que toca casi todo.
 
 ### Revisa Architecture
 [architecture.md](architecture.md) tiene diagramas detallados de cómo funciona FORGE por dentro.
@@ -221,9 +221,9 @@ Elige tu rol para obtener una ruta de lectura personalizada:
 
 Esta documentación se mantiene con cada versión de FORGE.
 
-**Última actualización:** 2026-06-22  
-**Versión:** 4.0.0  
-**Estado:** ✅ Completo y verificado
+**Última actualización:** 2026-10-12  
+**Versión:** 5.0.0 (sin publicar)  
+**Estado:** los enlaces de este índice los comprueba `tests/consistencia-cifras.test.js`
 
 [Ver CHANGELOG.md](../CHANGELOG.md) para historial de cambios.
 
@@ -234,7 +234,7 @@ Esta documentación se mantiene con cada versión de FORGE.
 1. **Primeira visita:** Sigue la ruta para tu rol arriba
 2. **Referencia rápida:** Guarda el [GLOSARIO.md](GLOSARIO.md) para buscar términos
 3. **Profundidad:** El nivel 4 (Referencia) es exhaustivo; el nivel 2-3 es introductorio
-4. **Ejemplos:** [EJEMPLO-API-REST.md](Ejemplo-API-REST.md) y [EJEMPLOS-MEMORIA-API.md](Ejemplos-Memoria-API.md) son tutoriales paso-a-paso
+4. **Ejemplos:** [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) y [EJEMPLOS-MEMORIA-API.md](EJEMPLOS-MEMORIA-API.md) son tutoriales paso-a-paso
 
 ---
 

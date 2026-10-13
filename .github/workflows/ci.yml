@@ -7,9 +7,13 @@ on:
     branches: [main, master, develop]
 
 jobs:
+  # La suite completa, sin Docker, en la matriz de versiones de Node.
+  # FORGE_TEST_DOCKER va a 0 a propósito: las pruebas que piden Docker real se omiten aquí
+  # y las ejecuta el job `pruebas-docker`.
   test:
     name: Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       matrix:
@@ -28,12 +32,37 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
+      - name: Run tests (suite completa, sin Docker real)
         run: npm test
+        env:
+          FORGE_TEST_DOCKER: "0"
+
+  # Comprobación de tipos: `npm run typecheck` (tsc) debe terminar con 0 errores.
+  tipos:
+    name: Tipos (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Comprobación de tipos
+        run: npm run typecheck
 
   aislamiento:
     name: Aislamiento con Docker real
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -54,4 +83,42 @@ jobs:
           FORGE_TEST_DOCKER: "1"
 
       - name: Sin contenedores residuales
+        run: test -z "$(docker ps -aq --filter label=forge.sandbox=1)"
+
+  # Todas las pruebas que usan Docker real, no solo la de aislamiento. Los archivos se
+  # descubren con grep de FORGE_TEST_DOCKER para que una prueba nueva entre sola.
+  # Un archivo cada vez (--test-concurrency=1): comparten el demonio de Docker y construyen imágenes.
+  pruebas-docker:
+    name: Pruebas con Docker real
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Versión de Docker
+        run: docker version
+
+      - name: Pruebas que usan Docker real
+        run: |
+          archivos=$(grep -rl FORGE_TEST_DOCKER tests --include='*.test.js' | sort)
+          echo "Archivos:"
+          echo "$archivos"
+          test -n "$archivos"
+          node --test --test-concurrency=1 $archivos
+        env:
+          FORGE_TEST_DOCKER: "1"
+
+      - name: Sin contenedores residuales
+        if: always()
         run: test -z "$(docker ps -aq --filter label=forge.sandbox=1)"

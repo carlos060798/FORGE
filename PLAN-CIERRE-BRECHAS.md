@@ -56,7 +56,7 @@ Leyenda: ✅ hecho y comprobado · ⚠️ hecho con límites o sin comprobar del
 | Brecha | Estado | Qué quedó |
 |---|---|---|
 | **C1** modelo real | ✅ | 24 ejecuciones (JavaScript, Python, Go; código existente; corte y reanudación; pausa por presupuesto) y 14 hallazgos, ver `evidencia-2026-10-09.md` |
-| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido. Además ese job solo ejecuta `sandbox-real`: las demás pruebas con Docker no las corre ningún job |
+| **C2** CI | ⏳ | Rama subida; la matriz y el job `aislamiento` no han corrido. Desde el 2026-10-12 `ci.yml` añade `tipos` y `pruebas-docker` (todas las pruebas que mencionan `FORGE_TEST_DOCKER`), sin ejecutar |
 | **C3** correcciones sin revisar | ⚠️ | Tres revisiones y dos pasadas hechas, con sus hallazgos altos corregidos. Lo corregido en la tercera pasada no tiene cuarta |
 | **C4** modelos y precios | ✅ | ADR-19 implementada y contrastada con la tarifa publicada; falta compararla con lo facturado |
 | **C5** rojo | ✅ | Obligatorio con reintento y exención; no se aplica si ya hay implementación |
@@ -84,11 +84,11 @@ Marcas `[ ]` por hacer · `[x]` hecho. Cada línea dice quién puede hacerla.
 - [ ] Refuerzo de pruebas con un modelo real: en las dos ejecuciones con `exigir`, las pruebas detectaron todo y no hubo refuerzo.
 - [ ] Caché: una tarea de tres iteraciones en modo de bloque, con y sin caché, para el criterio de la spec de puesta al día (probablemente no se cumple).
 - [ ] Permisos 0700 de las copias temporales y enlaces simbólicos de archivo en Linux.
-- [ ] Un job de integración continua para las demás pruebas con Docker, y otro de tipos.
+- [x] Un job de integración continua para las demás pruebas con Docker, y otro de tipos. *(2026-10-12: jobs `pruebas-docker` y `tipos` en `ci.yml`; no pueden ejecutarse fuera de GitHub Actions y no han corrido.)*
 - [ ] `forge doctor` debe comprobar Docker siempre, no solo con `sandbox.runtime`.
 - [ ] La configuración ignora en silencio una clave mal sangrada: avisar.
-- [ ] Test de consistencia que compare las cifras escritas en prosa (agentes, comandos, skills) con el disco.
-- [ ] Corregir las contradicciones entre documentos listadas en `docs/PROBLEMAS-CONOCIDOS.md`, sección 8 (índices con enlaces que no existen, nombres de paquete antiguos).
+- [x] Test de consistencia que compare las cifras escritas en prosa (agentes, comandos, skills) con el disco. *(2026-10-12: `tests/consistencia-cifras.test.js`; corrigió `docs-site/assets/data.js`, que decía 6 agentes de solo lectura y 8 que escriben.)*
+- [x] Corregir las contradicciones entre documentos listadas en `docs/PROBLEMAS-CONOCIDOS.md`, sección 8 (índices con enlaces que no existen, nombres de paquete antiguos). *(2026-10-12, salvo la razón del Principio IV de la constitución, que dice «dos dependencias» y son tres: es decisión del dueño.)*
 
 **Necesita algo tuyo**
 - [ ] Abrir la solicitud de cambio `feature/motor-agentico` hacia `main` para que corra la integración continua.

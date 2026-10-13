@@ -92,6 +92,24 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - `llm:` con sangría de 1 espacio, tabulación o estilo `{}` se rechaza con un error claro en vez de ignorar `cache: false` (H-07). `initialize` con versión desconocida responde `2025-06-18` otra vez (H-11). `subscriptions/listen`: tope de 64 y sin ids repetidos (H-10). Decisión sobre peticiones sin `_meta` documentada (H-08).
 - Abiertos y documentados: la cancelación MCP no detiene la herramienta (H-09), `supported` de `-32022` (H-12), el recargo de Haiku 5.5 con más de 100 000 tokens y las escrituras de caché de 1 hora (H-13).
 
+**Correcciones de la tercera revisión independiente** (`.sdd/especificaciones/2026-10-09-validacion-modelo-real/revision-independiente-3.md`, 2026-10-11; veredicto: aprobada con observaciones):
+
+- **La intención del diario ya no da por aplicada una edición que no se aplicó** (N-01, alta): lleva la huella de después, y solo se da por hecha una acción si el archivo coincide con ella.
+- **El limpiador de secretos de `leer_archivo` y `buscar` redacta solo por formato de secreto** (N-03, alta), no por el nombre de la clave: `auth: true`, `max_tokens: 4096` o `const token = jwt.sign(…)` ya no se corrompen.
+- **`forge update --global`, `init --global --template` e `init --global --ui` vuelven a escribir** (N-04, alta): cada destino con su raíz, y sin éxito si faltó algo. `init` escribe con un temporal y `rename` (N-05), no lee a través de enlaces (N-07), inicializa un proyecto abierto por una unión (N-08), no acaba con una traza ante destinos raros (N-13) y sigue una unión de `~/.claude/commands` solo en lo global, por decisión explícita y avisándolo (N-14). **Cambio de comportamiento:** `init` sale con código 1 cuando se niega a escribir a través de un enlace.
+- La medición por mutación usa salidas reales capturadas de node:test, pytest, unittest, jest, vitest y Go (58 capturas) en lugar de patrones escritos de memoria (N-09), se limita a las líneas que la tarea cambió (H11) y el barrido de copias de procesos muertos comprueba la marca y el pid (N-12).
+- Una llamada cancelada por tiempo anota una estimación de su entrada (H12). La comprobación de tipos pasa de 36 errores a 0, y `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
+- **Siguen abiertos:** N-02 (las funciones trampa que el código llama inflan la puntuación de mutación, así que `motor.mutacion: exigir` no es una garantía), N-06 (un consumo inválido paga una llamada con el libro en cero), N-10 (`initialize` con una versión desconocida responde `2025-06-18`) y N-11 (la estimación de una llamada cancelada subcuenta el texto no ASCII). Ver [docs/PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md).
+
+**Integraciones externas con GitHub, GitLab y Jira Cloud, opcionales y en construcción** (spec `2026-10-11-integraciones-externas`, ADR-22; guía: [docs/integraciones-externas.md](docs/integraciones-externas.md)):
+
+- **Qué son.** Un módulo (`core/integraciones/`) para que una tarea pueda nacer de una incidencia o ticket y su resultado pueda volver como comentario o como solicitud de cambio en borrador. Tres adaptadores REST sin dependencias nuevas, con tres operaciones fijas (leer, comentar, proponer) y la comprobación de alcance del token donde la plataforma lo permite.
+- **Apagadas por defecto.** Sin la sección `integraciones:` en `sdd.config.yaml`, o con todo en `apagado`, no se abre ninguna conexión, no se lee ninguna variable de entorno de tokens y ni `forge run`, ni `forge resume`, ni el modo clásico, ni el servidor MCP, ni la API HTTP cambian. **No hay nada que migrar** (ver [docs/MIGRACION-5.0.md](docs/MIGRACION-5.0.md)).
+- **Modos por proveedor.** `apagado` (por defecto), `solo_lectura`, `comentar` y `proponer` (rama `forge/…` y solicitud en borrador; en Jira equivale a `comentar`). Configuración con **claves planas** (`github_modo`, `github_token_env`, `github_destinos`, `gitlab_host`, `jira_sitio`, `topes_operaciones_por_sesion`…), lista cerrada de destinos y el **nombre** de la variable de entorno del token, nunca el token: un valor que parezca un token impide empezar.
+- **El texto de la plataforma es dato, no instrucción**: se entrega delimitado, acotado, redactado y sin autoridad sobre reglas, topes ni herramientas. Ningún modelo recibe una herramienta de red, una credencial ni una URL que pueda seguir. Auditoría (`integracion:*`, sin contenido ni credenciales), tope de operaciones por sesión y por proveedor, e interruptor (`FORGE_INTEGRACIONES=apagado`).
+- **Lo que NO hacen:** no fusionan, aprueban, cierran, asignan, cambian de estado ni borran nada; no escriben en ramas existentes; no siguen enlaces ni descargan adjuntos; no admiten Jira Data Center, Bitbucket ni otras; no reciben eventos; no son un cliente MCP; no detectan inyección de instrucciones (la defensa es estructural); y **no demuestran** el alcance del token en GitHub ni en Jira, porque ninguna de las dos APIs lo informa.
+- **Estado.** Hechos: la configuración, la capa de confianza, el cliente HTTP, la auditoría y los tres adaptadores, probados contra servidores HTTP simulados (52 textos hostiles en `tests/fixtures/integraciones/hostiles.json`). **En construcción:** la cola de pendientes con vista previa y aprobación, la publicación desde el estado del ciclo, el comando `forge integraciones`, las comprobaciones de `forge doctor` y la revisión independiente. **Ninguna integración se ha ejecutado contra una plataforma real**, y hoy ningún comando de la línea de comandos las usa.
+
 Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 
 ## [4.3.0] — No publicada
@@ -139,7 +157,7 @@ API para que un programa del mismo equipo lance el ciclo verificado, consulte el
 - Solo `127.0.0.1`; secreto aleatorio en cada petición; rechaza `Origin` y `Host` ajeno; sin CORS
 - Siempre ejecuta el ciclo verificado (el modo no se elige); una ejecución a la vez; cuerpos de hasta 64 KB con validación estricta
 - Rutas: `GET /v1/estado`, `POST /v1/ejecuciones`, `GET /v1/ejecuciones/<id>`, `POST /v1/decisiones`
-- Autoevaluada, probada con Docker real en Windows. **Sin revisión independiente ni de seguridad**
+- Autoevaluada y probada con Docker real en Windows. Tuvo una verificación independiente de sus criterios (aprobada con observaciones: 11 de 14 criterios sin reservas) y una revisión de seguridad independiente (cuarta ronda, con observaciones), ambas anteriores a las correcciones que se listan en «Corregido tras la tercera ronda…», que no han tenido revisión propia
 
 ### Seguridad
 
