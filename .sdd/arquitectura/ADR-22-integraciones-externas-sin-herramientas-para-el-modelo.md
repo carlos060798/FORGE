@@ -63,3 +63,19 @@ Si las plataformas dejan de ofrecer una API estable para estas tres operaciones,
 - `.sdd/especificaciones/2026-10-11-integraciones-externas/spec.md`
 - `.sdd/arquitectura/ADR-12-servidor-mcp-sin-dependencias.md`, `ADR-15-sin-cliente-mcp-en-los-nodos.md`
 - OWASP GenAI Security Project, Top 10 para Aplicaciones Agénticas 2026
+
+
+## Dónde viven las decisiones de seguridad
+
+La revisión independiente 1 (R1) demostró que una configuración que vive en el repositorio, y que por tanto no es de confianza, no puede decidir sola qué variable de entorno se lee ni a qué servidor se envía. Regla: **ninguna elección de seguridad depende solo del archivo del proyecto.**
+
+| Decisión | Dónde vive | Quién la controla |
+|---|---|---|
+| Qué variable contiene el token | `*_token_env`, solo `FORGE_` + mayúsculas/dígitos/«_», con lista de nombres reservados en el código | el proyecto, dentro de un espacio propio de FORGE |
+| A qué host se envía | defecto en el código (`api.github.com`, `gitlab.com`); cualquier otro en `FORGE_INTEGRACIONES_HOSTS` | el USUARIO (su entorno), comparación exacta |
+| Qué hosts se rechazan siempre | código (`hosts.js`): localhost, `*.internal`, `*.local`, IP, `metadata.*`, puerto ≠ 443 | nadie |
+| Qué rutas no se proponen | código (`rutas.js`), lista común y no reducible | nadie |
+| Modo, tope e interruptor | modo obligatorio por adaptador; auditoría obligatoria para escribir; `FORGE_INTEGRACIONES` solo `normal`/`apagado` (otro valor apaga) | el proyecto puede restringir, no ampliar |
+| Servidor local de pruebas | símbolo `BASE_LOCAL` de `pruebas-internas.js`; no hay opción pública | solo las pruebas |
+
+Consecuencia: `forge doctor` muestra `FORGE_INTEGRACIONES_HOSTS` y los nombres de variable que la configuración pide leer, para que el usuario vea a dónde irían sus credenciales.

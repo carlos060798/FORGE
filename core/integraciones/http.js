@@ -13,7 +13,8 @@
  *     descartan las credenciales. Cualquier otra se rechaza sin copiar su destino al mensaje;
  *   - la respuesta se lee con un tope de bytes y la lectura se cancela al superarlo;
  *   - tiempo máximo por intento, que cubre también la lectura del cuerpo;
- *   - reintento acotado (máx. 2) con espera SOLO para 429 y 503, respetando `Retry-After` con tope;
+ *   - reintento acotado (máx. 2) con espera SOLO para 429 y 503, respetando `Retry-After` con tope. Una
+ *     escritura (POST/PUT/PATCH) no se reintenta tras un 503 salvo `idempotente: true` (R11);
  *   - nunca borra: DELETE no existe aquí;
  *   - el valor de una credencial no aparece en ningún error: todo mensaje se enmascara con los
  *     valores de las cabeceras enviadas y se pasa por `redactar`.
@@ -23,6 +24,7 @@
  */
 
 import { redactar } from '../ciclo/redactar.js';
+import { motivoHostVetado } from './hosts.js';
 
 const METODOS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH']);
 const REDIRECCIONES = new Set([301, 302, 303, 307, 308]);
@@ -63,6 +65,7 @@ export class ErrorHttpIntegracion extends Error {
  * @property {number} [maxBytes]                tope de la respuesta (1 MiB por defecto)
  * @property {number} [timeoutMs]               por intento (15 s por defecto)
  * @property {number} [maxEsperaMs]             tope de la espera por Retry-After (10 s por defecto)
+ * @property {boolean} [idempotente]           la escritura es idempotente: se puede repetir tras un 503
  * @property {boolean} [_permitirLocal]         solo pruebas: admite 127.0.0.1 y localhost, por http
  * @property {(ms: number) => Promise<void>} [_esperar]  solo pruebas
  */
@@ -131,6 +134,9 @@ function validarHost(host, permit, permitirLocal, secretos) {
     return { host: h, nombre, esquema: 'http:' };
   }
   if (IPV4.test(nombre) || nombre.includes(':')) throw e('host_no_permitido', `«${h}» es una dirección IP; se usan nombres de host`);
+  // R1: vetos que no dependen de ninguna lista (red interna, metadatos, puertos distintos de 443)
+  const vetado = motivoHostVetado(h);
+  if (vetado !== null) throw e('host_no_permitido', `«${h}» no se admite: ${vetado}`);
   if (permitirLocal) throw e('host_no_permitido', `con el interruptor local solo se admiten 127.0.0.1 y localhost: «${h}»`);
   return { host: h, nombre, esquema: 'https:' };
 }
@@ -139,6 +145,11 @@ function validarHost(host, permit, permitirLocal, secretos) {
 function validarRuta(ruta, secretos) {
   if (typeof ruta !== 'string' || !ruta.startsWith('/') || ruta.length > MAX_RUTA || /[\s\\\u0000-\u001F\u007F]/.test(ruta)) {
     throw new ErrorHttpIntegracion('ruta', enmascarar('la ruta debe empezar por «/», sin espacios, saltos de línea ni «\\»', secretos));
+  }
+  // R15: nada que la URL normalice a otra ruta del mismo host (puntos codificados, «//», «.» y «..»)
+  const camino = ruta.split(/[?#]/)[0];
+  if (/%2e|%5c/i.test(camino) || camino.includes('//') || camino.split('/').some((s) => s === '.' || s === '..')) {
+    throw new ErrorHttpIntegracion('ruta', enmascarar('la ruta lleva secuencias que la URL normalizaría a otra ruta (%2e, %5c, «//», «.» o «..»)', secretos));
   }
   return ruta;
 }
@@ -308,7 +319,11 @@ export async function pedir(o) {
 
   for (let intento = 0; ; intento++) {
     const r = await intentar({ objetivo, metodo, cabeceras, cuerpo, permit, permitirLocal, maxBytes, timeoutMs, secretos });
-    if (REINTENTABLES.has(r.estado) && intento < MAX_REINTENTOS) {
+    // R11: una escritura no se repite tras un 503 (la plataforma pudo aplicarla): solo si quien llama
+    // garantiza que es idempotente (`idempotente: true`). Un 429 sí se reintenta: no se procesó.
+    const esEscritura = metodo !== 'GET' && metodo !== 'HEAD';
+    const reintentable = REINTENTABLES.has(r.estado) && !(esEscritura && r.estado === 503 && o.idempotente !== true);
+    if (reintentable && intento < MAX_REINTENTOS) {
       let espera = esperaIndicada(r.cabeceras['retry-after'] ?? null, maxEsperaMs);
       if (espera === null) {
         // El servidor pide esperar más de lo que se tolera: no se insiste y se informa del estado

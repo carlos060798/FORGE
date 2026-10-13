@@ -8,6 +8,8 @@
  * punto «sin confirmar» del parámetro `draft` (FORGE_TEST_INTEGRACIONES=1).
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
+import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -69,7 +71,7 @@ beforeEach(() => { srv.peticiones.length = 0; srv.limpiarFallos(); fetchRemotos 
 
 /** @param {Record<string, any>} [extra] */
 const crear = (extra = {}) => crearProveedorGitLab({
-  token: TOKEN, destinos: [DESTINO, SIMPLE, 'empresa/archivado'], baseUrl: srv.baseUrl, modo: 'proponer', _esperar: async () => {}, ...extra,
+  token: TOKEN, destinos: [DESTINO, SIMPLE, 'empresa/archivado'], [BASE_LOCAL]: srv.baseUrl, modo: 'proponer', auditoria: auditoriaDePrueba(), _esperar: async () => {}, ...extra,
 });
 
 async function fallo(promesa) {
@@ -95,10 +97,10 @@ describe('F2.2 GitLab: contrato del puerto', () => {
 
   test('rechaza una configuración inválida sin mostrar el token', () => {
     for (const mal of [{ token: '' }, { token: 'a\nb' }, { destinos: [] }, { destinos: ['sin-grupo'] }, { destinos: ['a/../b'] }, { modo: 'todo' }, { baseUrl: 'https://127.0.0.1:1' }, { baseUrl: 'http://evil.example' }, { baseUrl: 'http://127.0.0.1:1/x' }]) {
-      assert.throws(() => crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: srv.baseUrl, ...mal }), TypeError);
+      assert.throws(() => crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: srv.baseUrl, ...mal }), TypeError);
     }
-    try { crearProveedorGitLab({ token: '', destinos: [SIMPLE], host: 'gitlab.com' }); } catch (e) { assert.ok(!String(e.message).includes(TOKEN)); }
-    assert.throws(() => crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE] }), /host/);
+    try { crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: '', destinos: [SIMPLE], host: 'gitlab.com' }); } catch (e) { assert.ok(!String(e.message).includes(TOKEN)); }
+    assert.throws(() => crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE] }), /host/);
   });
 });
 
@@ -145,7 +147,7 @@ describe('F2.2 GitLab: leerElemento', () => {
     const notas = Array.from({ length: 720 }, (_, i) => ({ id: 100 + i, body: `nota ${i}`, author: { username: 'u' } }));
     const s2 = await crearServidorGitLab({ token: TOKEN, porPagina: 100, proyectos: { [SIMPLE]: { incidencias: { 3: { title: 't', description: '', notas } } } } });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, _esperar: async () => {} });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, _esperar: async () => {} });
       const e = await p.leerElemento(`${SIMPLE}#3`);
       assert.equal(e.comentarios.length, 500, 'tope de 5 páginas de 100');
       assert.equal(e.comentarios[0].cuerpo, 'nota 0');
@@ -158,7 +160,7 @@ describe('F2.2 GitLab: leerElemento', () => {
     const notas = Array.from({ length: 250 }, (_, i) => ({ id: 100 + i, body: `n${i}` }));
     const s2 = await crearServidorGitLab({ token: TOKEN, porPagina: 100, proyectos: { [SIMPLE]: { incidencias: { 3: { title: 't', description: '', notas } } } } });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl });
       assert.equal((await p.leerElemento(`${SIMPLE}#3`)).comentarios.length, 250);
     } finally { await s2.cerrar(); }
   });
@@ -174,7 +176,7 @@ describe('F2.2 GitLab: leerElemento', () => {
     assert.equal(HOSTILES.length, 52);
     const s2 = await crearServidorGitLab({ token: TOKEN, proyectos: { [SIMPLE]: { incidencias: {} } } });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, maxBytes: 4 * 1024 * 1024 });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, maxBytes: 4 * 1024 * 1024 });
       let n = 0;
       for (const c of HOSTILES) {
         n++;
@@ -298,7 +300,9 @@ describe('F2.5 GitLab: comentar', () => {
   test('busca antes de publicar: lee las notas y solo entonces escribe', async () => {
     await crear().comentar(`${SIMPLE}#1`, 'hola', { marcador: 'orden-1' });
     const orden = srv.peticiones.map((p) => p.metodo);
-    assert.deepEqual(orden, ['GET', 'POST']);
+    // R7: primero la cuenta propia (GET /user), después las notas y, solo entonces, la escritura
+    assert.deepEqual(orden, ['GET', 'GET', 'POST']);
+    assert.ok(srv.peticiones[0].ruta.endsWith('/api/v4/user'));
   });
 
   test('el marcador es obligatorio y tiene forma acotada; el texto también', async () => {
@@ -330,7 +334,7 @@ describe('F2.5 GitLab: comentar', () => {
     const notas = Array.from({ length: 600 }, (_, i) => ({ id: 100 + i, body: `n${i}` }));
     const s2 = await crearServidorGitLab({ token: TOKEN, porPagina: 100, proyectos: { [SIMPLE]: { incidencias: { 3: { title: 't', description: '', notas } } } } });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo: 'comentar' });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo: 'comentar' });
       const e = await fallo(p.comentar(`${SIMPLE}#3`, 'x', { marcador: 'a' }));
       assert.equal(e.codigo, 'tope_paginas');
       assert.equal(s2.escrituras().length, 0);
@@ -516,7 +520,7 @@ describe('F2.2 GitLab: proponerCambio', () => {
   test('si GitLab no la marca como borrador, no se afirma que lo sea', async () => {
     const s2 = await crearServidorGitLab({ token: TOKEN, respetarDraft: false, proyectos: { [SIMPLE]: {} } });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo: 'proponer' });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo: 'proponer' });
       const e = await fallo(p.proponerCambio({ destino: SIMPLE, base: 'main', rama: 'forge/nd', archivos: [{ ruta: 'a', contenido: 'a' }], titulo: 't', marcador: 'm' }));
       assert.equal(e.codigo, 'no_borrador');
       assert.deepEqual(s2.escrituras().map((x) => x.metodo), ['POST', 'POST', 'POST']);
@@ -549,7 +553,7 @@ describe('F2.5 GitLab: comprobarAlcance', () => {
   test('token con ámbito api: en comentar/proponer no hay exceso; en solo_lectura sí', async () => {
     const s2 = await conAmbitos(['api']);
     try {
-      const mk = (modo) => crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo });
+      const mk = (modo) => crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo });
       for (const modo of ['comentar', 'proponer']) {
         assert.deepEqual(await mk(modo).comprobarAlcance(), { estado: 'comprobado', ambitos: ['api'], exceso: false, suficiente: true });
       }
@@ -561,7 +565,7 @@ describe('F2.5 GitLab: comprobarAlcance', () => {
   test('token con read_api: sin exceso en solo_lectura; insuficiente para comentar', async () => {
     const s2 = await conAmbitos(['read_api']);
     try {
-      const mk = (modo) => crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo });
+      const mk = (modo) => crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo });
       assert.deepEqual(await mk('solo_lectura').comprobarAlcance(), { estado: 'comprobado', ambitos: ['read_api'], exceso: false, suficiente: true });
       const c = await mk('comentar').comprobarAlcance();
       assert.deepEqual(c, { estado: 'comprobado', ambitos: ['read_api'], exceso: true, suficiente: false });
@@ -571,7 +575,7 @@ describe('F2.5 GitLab: comprobarAlcance', () => {
   test('ámbitos de más (api + read_user + sudo) cuentan como exceso', async () => {
     const s2 = await conAmbitos(['api', 'read_user', 'sudo']);
     try {
-      const r = await crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo: 'proponer' }).comprobarAlcance();
+      const r = await crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo: 'proponer' }).comprobarAlcance();
       assert.deepEqual(r, { estado: 'comprobado', ambitos: ['api', 'read_user', 'sudo'], exceso: true, suficiente: true });
     } finally { await s2.cerrar(); }
   });
@@ -579,7 +583,7 @@ describe('F2.5 GitLab: comprobarAlcance', () => {
   test('404 (token de proyecto) y 401: no_comprobable, sin fallar ni copiar el cuerpo', async () => {
     const s2 = await conAmbitos(['api'], { tipoToken: 'proyecto' });
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo: 'comentar' });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo: 'comentar' });
       const r = await p.comprobarAlcance();
       assert.equal(r.estado, 'no_comprobable');
       assert.match(/** @type {any} */ (r).motivo, /404/);
@@ -593,7 +597,7 @@ describe('F2.5 GitLab: comprobarAlcance', () => {
   test('otros estados y formas raras: error tipado', async () => {
     const s2 = await conAmbitos(['api']);
     try {
-      const p = crearProveedorGitLab({ token: TOKEN, destinos: [SIMPLE], baseUrl: s2.baseUrl, modo: 'comentar', _esperar: async () => {} });
+      const p = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: [SIMPLE], [BASE_LOCAL]: s2.baseUrl, modo: 'comentar', _esperar: async () => {} });
       s2.fallar(() => true, 403, {});
       assert.equal((await fallo(p.comprobarAlcance())).codigo, 'prohibido');
       s2.limpiarFallos();
@@ -629,7 +633,7 @@ describe('F2.2 GitLab: el token no aparece en ningún sitio', () => {
     const hostil = crear({ http: async () => { throw new Error(`fallo con ${TOKEN} en la cabecera`); } });
     await intentar(() => hostil.leerElemento(`${SIMPLE}#1`));
     // Token inválido: el servidor responde 401
-    const malo = crearProveedorGitLab({ token: TOKEN + 'x', destinos: [SIMPLE], baseUrl: srv.baseUrl });
+    const malo = crearProveedorGitLab({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN + 'x', destinos: [SIMPLE], [BASE_LOCAL]: srv.baseUrl });
     await intentar(() => malo.leerElemento(`${SIMPLE}#1`));
 
     assert.ok(salidas.length === 9);

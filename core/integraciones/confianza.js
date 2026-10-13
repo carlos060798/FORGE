@@ -33,24 +33,131 @@ const MARCA = 'DATO-NO-CONFIABLE';
 
 // Caracteres de control (salvo \n y \t), de formato (ancho cero, bidi, BOM, etiquetas Unicode, guion
 // blando), de uso privado, sustitutos sueltos y no asignados.
-const INVISIBLES = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]/gu;
+// Además, los «rellenos» que se ven como espacio y no son de formato: hangul (U+3164, U+115F, U+1160,
+// U+FFA0), braille en blanco (U+2800) y CGJ (U+034F) (R13).
+const INVISIBLES = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E]/gu;
 
 /** @param {string} t */
 function quitarInvisibles(t) {
-  return t.replace(INVISIBLES, (c) => (c === '\n' || c === '\t' ? c : ''));
+  // Una marca combinante entre dos caracteres ASCII de token parte un secreto sin cambiarlo a la vista (R13)
+  return t.replace(INVISIBLES, (c) => (c === '\n' || c === '\t' ? c : '')).replace(/(?<=[A-Za-z0-9])\p{Mn}+(?=[A-Za-z0-9])/gu, '');
 }
 
 const ETIQUETAS_ACTIVAS = 'img|a|script|style|iframe|object|embed|svg|link|meta|form|input|video|audio|source|base|body|html|button|textarea|math|frame|frameset|applet|picture|use|image';
-const HTML_ACTIVO = new RegExp(`<\\/?\\s*(?:${ETIQUETAS_ACTIVAS})\\b[^>\\n]{0,2000}>`, 'gi');
+const INICIO_HTML_ACTIVO = new RegExp(`<\\/?\\s*(?:${ETIQUETAS_ACTIVAS})\\b`, 'iy');
 const HTML_ACTIVO_ABIERTO = new RegExp(`<(?=\\/?\\s*(?:${ETIQUETAS_ACTIVAS})\\b)`, 'gi');
+
+/**
+ * Presupuesto de trabajo de los recorridos de enlaces y etiquetas, COMPARTIDO por todos los campos de
+ * una llamada a `comoDato`: cada paso que mira un carácter lo gasta, y al agotarse lo que queda se deja
+ * para el reemplazo grueso de después (que es lineal). Así una entrada hostil no puede costar más que
+ * este tope, sea cual sea su forma (R2b).
+ * @typedef {{ restante: number }} Presupuesto
+ */
+const PRESUPUESTO_PASOS = 4_000_000;
+
+/**
+ * Busca `]` desde `desde` (como mucho `max` caracteres, sin saltos de línea). Devuelve su posición o -1.
+ * @param {string} t @param {number} desde @param {number} max @param {string} cierre @param {Presupuesto} b
+ */
+function buscarCierre(t, desde, max, cierre, b) {
+  const tope = Math.min(t.length, desde + max + 1);
+  let j = desde;
+  while (j < tope) {
+    const c = t[j];
+    if (c === cierre) { b.restante -= j - desde + 1; return j; }
+    if (c === '\n') break;
+    j++;
+  }
+  b.restante -= j - desde + 1;
+  return -1;
+}
+
+/**
+ * Una pasada lineal sobre imágenes y enlaces markdown (`![alt](url)`, `![alt][ref]`, `[texto](url)`).
+ * Cada intento está acotado (alt 200, url 2000, ref 100) y gasta presupuesto: sin retroceso cuadrático.
+ * @param {string} t @param {Presupuesto} b
+ */
+function pasarEnlaces(t, b) {
+  const n = t.length;
+  let salida = '';
+  let ultimo = 0;
+  let i = 0;
+  while (i < n && b.restante > 0) {
+    const c = t.charCodeAt(i);
+    const esImagen = c === 33 && t.charCodeAt(i + 1) === 91;
+    if (!esImagen && c !== 91) {
+      // Salta hasta el siguiente «[» o «!» sin tocar el presupuesto
+      let k = i + 1;
+      while (k < n) { const d = t.charCodeAt(k); if (d === 91 || d === 33) break; k++; }
+      i = k;
+      continue;
+    }
+    const a = i + (esImagen ? 2 : 1);
+    const fin = buscarCierre(t, a, 200, ']', b);
+    let fila = -1;
+    let reemplazo = '';
+    if (fin !== -1) {
+      const alt = t.slice(a, fin);
+      const sig = t[fin + 1];
+      if (sig === '(') {
+        const f2 = buscarCierre(t, fin + 2, 2000, ')', b);
+        if (f2 !== -1) {
+          fila = f2 + 1;
+          reemplazo = esImagen ? `[imagen: ${alt.trim()}]` : `${alt} (${t.slice(fin + 2, f2)})`;
+        }
+      } else if (sig === '[' && esImagen) {
+        const f2 = buscarCierre(t, fin + 2, 100, ']', b);
+        if (f2 !== -1) { fila = f2 + 1; reemplazo = `[imagen: ${alt.trim()}]`; }
+      }
+    }
+    if (fila === -1) { i++; continue; }
+    salida += t.slice(ultimo, i) + reemplazo;
+    ultimo = fila;
+    i = fila;
+  }
+  return ultimo === 0 ? t : salida + t.slice(ultimo);
+}
+
+/**
+ * Etiquetas HTML activas completas (`<img ...>`): una pasada con `indexOf` y un cierre acotado a 2000
+ * caracteres sin salto de línea. Las que no cierran se tratan después (`<` → «‹»).
+ * @param {string} t @param {Presupuesto} b
+ */
+function quitarHtmlActivo(t, b) {
+  let salida = '';
+  let ultimo = 0;
+  let pos = 0;
+  while (b.restante > 0) {
+    const ini = t.indexOf('<', pos);
+    if (ini === -1) break;
+    INICIO_HTML_ACTIVO.lastIndex = ini;
+    const m = INICIO_HTML_ACTIVO.exec(t);
+    pos = ini + 1;
+    b.restante -= 1;
+    if (!m) continue;
+    const desde = ini + m[0].length;
+    const tope = Math.min(t.length, desde + 2001);
+    let j = desde;
+    while (j < tope && t[j] !== '>' && t[j] !== '\n') j++;
+    b.restante -= j - desde + 1;
+    if (j < tope && t[j] === '>') {
+      salida += t.slice(ultimo, ini) + '[etiqueta html omitida]';
+      ultimo = j + 1;
+      pos = j + 1;
+    }
+  }
+  return ultimo === 0 ? t : salida + t.slice(ultimo);
+}
 
 /**
  * Pasos de saneamiento comunes a todo campo, en el orden que importa: primero lo que puede partir
  * un secreto o un marcador, luego la redacción, y al final lo que reescribe URL y estructura.
  * @param {unknown} valor
  * @param {number} maxCaracteres  tope de entrada: acota el trabajo antes de empezar
+ * @param {Presupuesto} [presupuesto]
  */
-function sanear(valor, maxCaracteres) {
+function sanear(valor, maxCaracteres, presupuesto = { restante: PRESUPUESTO_PASOS }) {
   let t = typeof valor === 'string' ? valor : (valor === null || valor === undefined ? '' : (typeof valor === 'object' ? '' : String(valor)));
   if (t.length > maxCaracteres) t = t.slice(0, maxCaracteres);
 
@@ -70,14 +177,14 @@ function sanear(valor, maxCaracteres) {
 
   // HTML activo y comentarios (las instrucciones ocultas en un comentario pasan a ser visibles)
   t = t.replace(/<!--/g, '[comentario html: ').replace(/-->/g, ']');
-  t = t.replace(HTML_ACTIVO, '[etiqueta html omitida]');
+  t = quitarHtmlActivo(t, presupuesto);
   t = t.replace(HTML_ACTIVO_ABIERTO, '‹');
 
   // Imágenes y enlaces markdown: la URL deja de ser destino y pasa a ser texto
-  for (let i = 0; i < 3; i++) {
-    t = t.replace(/!\[([^\]\n]{0,200})\]\([^)\n]{0,2000}\)/g, (_m, alt) => `[imagen: ${alt.trim()}]`);
-    t = t.replace(/!\[([^\]\n]{0,200})\]\[[^\]\n]{0,100}\]/g, (_m, alt) => `[imagen: ${alt.trim()}]`);
-    t = t.replace(/\[([^\]\n]{0,200})\]\(([^)\n]{0,2000})\)/g, (_m, texto, url) => `${texto} (${url})`);
+  for (let i = 0; i < 3 && presupuesto.restante > 0; i++) {
+    const antes = t;
+    t = pasarEnlaces(t, presupuesto);
+    if (t === antes) break;
   }
   t = t.replace(/!\[/g, '[imagen: ').replace(/\]\(/g, '] (');
 
@@ -144,18 +251,23 @@ export function comoDato(entrada, opciones = {}) {
   }
   const e = entrada && typeof entrada === 'object' ? entrada : {};
   const entradaMax = Math.max(maxBytes * 4, 65536);
+  const presupuesto = { restante: PRESUPUESTO_PASOS };
 
   // El proveedor sale de un conjunto pequeño; cualquier otra cosa es «desconocido», nunca texto libre
   const proveedor = typeof e.proveedor === 'string' && /^[a-z][a-z0-9_-]{0,20}$/.test(e.proveedor) ? e.proveedor : 'desconocido';
   const referencia = enUnaLinea(sanear(e.referencia, 1000), 200);
-  let titulo = enUnaLinea(sanear(e.titulo, 4000), 300);
-  const cuerpoCompleto = sanear(e.cuerpo, entradaMax).trim();
+  let titulo = enUnaLinea(sanear(e.titulo, 4000, presupuesto), 300);
   const lista = Array.isArray(e.comentarios) ? e.comentarios.slice(0, MAX_COMENTARIOS) : [];
+  // La entrada total está acotada, no solo cada campo (R2): el cuerpo toma como mucho la mitad y los
+  // comentarios se reparten el resto. Lo que se muestra de cada uno es mucho menos que esto.
+  const topeCuerpo0 = lista.length === 0 ? entradaMax : Math.ceil(entradaMax / 2);
+  const topeComentario = Math.max(2048, Math.floor((entradaMax - topeCuerpo0) / Math.max(1, lista.length)));
+  const cuerpoCompleto = sanear(e.cuerpo, topeCuerpo0, presupuesto).trim();
   const omitidosPorNumero = Array.isArray(e.comentarios) ? Math.max(0, e.comentarios.length - MAX_COMENTARIOS) : 0;
   const comentarios = lista.map((c) => {
-    if (typeof c === 'string') return { autor: '', cuerpo: sanear(c, entradaMax).trim() };
+    if (typeof c === 'string') return { autor: '', cuerpo: sanear(c, topeComentario, presupuesto).trim() };
     const o = c && typeof c === 'object' ? c : {};
-    return { autor: enUnaLinea(sanear(o.autor, 500), 60), cuerpo: sanear(o.cuerpo, entradaMax).trim() };
+    return { autor: enUnaLinea(sanear(o.autor, 500, presupuesto), 60), cuerpo: sanear(o.cuerpo, topeComentario, presupuesto).trim() };
   });
 
   // Identificador: uno por llamada, y que no esté en nada de lo que se va a incluir

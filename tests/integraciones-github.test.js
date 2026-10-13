@@ -6,6 +6,8 @@
  * Cubre también partes de F2.4 (forma común del elemento) y F2.6 (idempotencia por marcador).
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
+import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -43,7 +45,7 @@ async function entorno(opSrv, opProv = {}) {
     ...(opSrv ?? {}),
   });
   limpieza.push(() => srv.cerrar());
-  const prov = crearProveedorGitHub({ token: TOKEN, destinos: ['org/repo'], baseUrl: srv.baseUrl, ...opProv });
+  const prov = crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: ['org/repo'], [BASE_LOCAL]: srv.baseUrl, ...opProv });
   return { srv, prov };
 }
 
@@ -72,7 +74,7 @@ const PROPUESTA = (extra = {}) => ({
 
 describe('F2.1 github: contrato del puerto y construcción', () => {
   test('pasa validarProveedor, sin operaciones genéricas, y está congelado', () => {
-    const p = crearProveedorGitHub({ token: TOKEN, destinos: ['org/repo'] });
+    const p = crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: ['org/repo'] });
     const r = validarProveedor(p);
     assert.deepEqual(r, { ok: true, faltan: [], genericas: [] });
     assert.equal(exigirProveedor(p).nombre, 'github');
@@ -82,17 +84,18 @@ describe('F2.1 github: contrato del puerto y construcción', () => {
 
   test('rechaza token vacío, destinos vacíos o con comodín, y bases distintas de api.github.com o local', () => {
     const ok = { token: TOKEN, destinos: ['org/repo'] };
-    assert.throws(() => crearProveedorGitHub({ ...ok, token: '' }), TypeError);
-    assert.throws(() => crearProveedorGitHub({ ...ok, token: 'a\nb' }), TypeError);
-    assert.throws(() => crearProveedorGitHub({ ...ok, destinos: [] }), TypeError);
-    assert.throws(() => crearProveedorGitHub({ ...ok, destinos: ['org/*'] }), TypeError);
-    assert.throws(() => crearProveedorGitHub({ ...ok, destinos: ['org'] }), TypeError);
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, token: '' }), TypeError);
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, token: 'a\nb' }), TypeError);
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, destinos: [] }), TypeError);
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, destinos: ['org/*'] }), TypeError);
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, destinos: ['org'] }), TypeError);
     for (const baseUrl of ['https://ghe.empresa.com', 'http://api.github.com', 'https://api.github.com/x', 'https://u:p@api.github.com', 'http://10.0.0.1', 'basura']) {
-      const e = (() => { try { crearProveedorGitHub({ ...ok, baseUrl }); } catch (x) { return x; } })();
+      const e = (() => { try { crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, baseUrl }); } catch (x) { return x; } })();
       assert.ok(e instanceof TypeError, baseUrl);
       assert.ok(!String(e.message).includes('empresa') && !String(e.message).includes('u:p'), 'el mensaje no repite la URL');
     }
-    assert.doesNotThrow(() => crearProveedorGitHub({ ...ok, baseUrl: 'https://api.github.com' }));
+    // R12: aseUrl ya no existe como opción pública, ni siquiera con el valor de defecto
+    assert.throws(() => crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), ...ok, baseUrl: 'https://api.github.com' }), TypeError);
   });
 
   test('comprobarAlcance devuelve «no_comprobable» y no hace ninguna petición', async () => {
@@ -331,7 +334,7 @@ describe('F2.1/F2.6 github: comentar es idempotente', () => {
 
   test('encuentra el marcador en una página posterior', async () => {
     const lista = Array.from({ length: 130 }, (_, i) => ({ body: `c${i}`, user: { login: 'u' } }));
-    lista.push({ body: 'ya publicado\n\n<!-- forge:fx -->', user: { login: 'bot' } });
+    lista.push({ body: 'ya publicado\n\n<!-- forge:fx -->', user: { login: 'forge-bot' } });
     const { srv, prov } = await entorno({ token: TOKEN, repos: { 'org/repo': { incidencias: { 7: { title: 't' } }, comentarios: { 7: lista } } } });
     const r = await prov.comentar('org/repo#7', 'x', { marcador: 'fx' });
     assert.equal(r.existente, true);
@@ -464,14 +467,14 @@ describe('F2.1 github: proponerCambio', () => {
   test('rutas de archivo maliciosas: rechazo sin red', async () => {
     const { srv, prov } = await entorno();
     const malas = ['../x', 'a/../../x', '/etc/passwd', '\\windows\\x', 'C:\\x', 'c:/x', '.git/config', 'sub/.git/hooks/x', '.GIT/x', '.git', 'a\u0000b', 'a\nb', 'a\u007Fb',
-      '.github/workflows/ci.yml', '.GITHUB/workflows/x.yml', 'a//b', './x', 'a/./b', 'dir/', '', 'a\\..\\b', 'x'.repeat(300)];
+      '.github/workflows/ci.yml', '.GITHUB/workflows/x.yml', '.github/CODEOWNERS', 'a/.gitignore', 'a//b', './x', 'a/./b', 'dir/', '', 'a\\..\\b', 'x'.repeat(300)];
     for (const ruta of malas) {
       const e = await fallo(prov.proponerCambio(PROPUESTA({ archivos: [{ ruta, contenido: 'x' }] })));
       assert.equal(e.codigo, 'ruta_archivo_no_valida', JSON.stringify(ruta));
     }
     assert.equal(srv.peticiones.length, 0);
     // Los nombres legítimos parecidos pasan
-    await prov.proponerCambio(PROPUESTA({ archivos: [{ ruta: '.github/CODEOWNERS', contenido: 'x' }, { ruta: 'a..b/.gitignore', contenido: 'x' }, { ruta: 'src/ñandú.md', contenido: 'x' }] }));
+    await prov.proponerCambio(PROPUESTA({ archivos: [{ ruta: 'docs/github.md', contenido: 'x' }, { ruta: 'a..b/leeme.md', contenido: 'x' }, { ruta: 'src/ñandú.md', contenido: 'x' }] }));
     assert.equal(srv.repo('org/repo').solicitudes.length, 1);
   });
 
@@ -646,7 +649,7 @@ describe('F2.1 github: errores de plataforma y ritmo', () => {
   test('un token rechazado por la plataforma (401) da un error claro', async () => {
     const srv = await crearServidorGitHub({ token: 'otro-token-distinto', repos: { 'org/repo': { incidencias: { 7: { title: 't' } } } } });
     limpieza.push(() => srv.cerrar());
-    const prov = crearProveedorGitHub({ token: TOKEN, destinos: ['org/repo'], baseUrl: srv.baseUrl });
+    const prov = crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: TOKEN, destinos: ['org/repo'], [BASE_LOCAL]: srv.baseUrl });
     const e = await fallo(prov.leerElemento('org/repo#7'));
     assert.equal(e.codigo, 'credencial_invalida');
   });
@@ -704,7 +707,7 @@ const REAL = process.env.FORGE_PRUEBA_GITHUB_REAL === '1'
 describe('F2.1 github: contra GitHub real (opt-in; se salta sin FORGE_PRUEBA_GITHUB_REAL=1)', { skip: !REAL && 'requiere cuenta de prueba real; ver verificacion.md' }, () => {
   test('lee la incidencia, comenta una vez y abre una solicitud en borrador (cuerpos de Git Data y campo draft sin confirmar)', async () => {
     const destino = /** @type {string} */ (process.env.FORGE_PRUEBA_GITHUB_DESTINO);
-    const prov = crearProveedorGitHub({ token: /** @type {string} */ (process.env.FORGE_PRUEBA_GITHUB_TOKEN), destinos: [destino] });
+    const prov = crearProveedorGitHub({ modo: 'proponer', auditoria: auditoriaDePrueba(), token: /** @type {string} */ (process.env.FORGE_PRUEBA_GITHUB_TOKEN), destinos: [destino] });
     const ref = `${destino}#${process.env.FORGE_PRUEBA_GITHUB_INCIDENCIA}`;
     const el = await prov.leerElemento(ref);
     assert.equal(typeof el.titulo, 'string');

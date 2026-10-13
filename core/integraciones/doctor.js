@@ -21,7 +21,8 @@
  * (y es lo único que conoce las URL de prueba).
  */
 
-import { ErrorConfigIntegraciones, leerConfigIntegraciones, leerToken, leerUsuario } from './config.js';
+import { ErrorConfigIntegraciones, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, hostAutorizado, leerConfigIntegraciones, leerToken, leerUsuario } from './config.js';
+import { hostsDelUsuario } from './hosts.js';
 import { AuditoriaIntegraciones, estadoInterruptor } from './auditoria.js';
 import { escribirAlcance, leerAlcance, listarPendientes, sesionDeIntegraciones } from './aprobacion.js';
 
@@ -69,8 +70,12 @@ export async function diagnosticarIntegraciones(o) {
 
   const auditoria = o.auditoria ?? new AuditoriaIntegraciones({ cwd, tope: config.topes.operacionesPorSesion, sesion: sesionDeIntegraciones(cwd), env });
   const sw = estadoInterruptor(cwd, env);
-  if (sw.apagado) aviso(`Interruptor: APAGADO (${sw.origen === 'variable' ? 'FORGE_INTEGRACIONES=apagado' : 'archivo .sdd/integraciones/apagado'}); no se hace ninguna operación.`);
-  else info('Interruptor: encendido');
+  if (sw.apagado) {
+    aviso(`Interruptor: APAGADO (${sw.origen === 'variable' ? 'FORGE_INTEGRACIONES' : 'archivo .sdd/integraciones/apagado'}); no se hace ninguna operación.`);
+    if (sw.aviso) problema(seguro(sw.aviso));
+  } else info('Interruptor: encendido');
+  const autorizados = hostsDelUsuario(env);
+  info(`${VARIABLE_HOSTS} (hosts adicionales que TÚ autorizas; el proyecto no puede): ${autorizados.length > 0 ? autorizados.join(', ') : '(no definida)'}`);
   info(`Tope de operaciones por sesión y proveedor: ${config.topes.operacionesPorSesion}`);
 
   for (const nombre of /** @type {const} */ (['github', 'gitlab', 'jira'])) {
@@ -78,18 +83,27 @@ export async function diagnosticarIntegraciones(o) {
     if (cfg.modo === 'apagado') continue;
     const p = nombre;
     info(`${p}: modo «${cfg.modo}»${nombre === 'jira' && cfg.modo === 'proponer' ? ' (Jira no tiene solicitudes de cambio: «proponer» se trata como «comentar»)' : ''}`);
-    ok(`${p}: host ${cfg.host}, solo HTTPS (únicamente ese host recibe peticiones)`);
+    // R1: el usuario ve a dónde irían sus credenciales y de dónde las leería FORGE
+    let hostOk = true;
+    try {
+      hostAutorizado(cfg, env);
+      ok(`${p}: host ${cfg.host}, solo HTTPS (únicamente ese host recibe peticiones y credenciales)${cfg.host === HOSTS_POR_DEFECTO[/** @type {'github'} */ (nombre)] ? ' · host de defecto' : ` · autorizado por ${VARIABLE_HOSTS}`}`);
+    } catch (e) {
+      hostOk = false;
+      problema(`${p}: ${seguro(/** @type {any} */ (e)?.message)}`);
+    }
     info(`${p}: destinos permitidos (${cfg.destinos.length}): ${cfg.destinos.join(', ')}`);
+    info(`${p}: la configuración del proyecto pide leer las variables ${[cfg.tokenEnv, cfg.usuarioEnv].filter(Boolean).map((v) => seguro(v)).join(' y ') || '(ninguna)'}`);
 
-    // Variables de entorno: el nombre sí, el valor nunca
+    // Variables de entorno: el nombre sí, el valor nunca. Con el host sin autorizar no se lee ninguna.
     let tieneToken = false;
     let tieneUsuario = nombre !== 'jira';
-    if (cfg.tokenEnv) {
+    if (cfg.tokenEnv && hostOk) {
       tieneToken = leerToken(cfg, env) !== null;
       if (tieneToken) ok(`${p}: variable ${cfg.tokenEnv} definida (no se muestra su valor)`);
       else problema(`${p}: la variable ${cfg.tokenEnv} no está definida: no se podrá leer ni publicar`);
     }
-    if (nombre === 'jira' && cfg.usuarioEnv) {
+    if (nombre === 'jira' && cfg.usuarioEnv && hostOk) {
       tieneUsuario = leerUsuario(cfg, env) !== null;
       if (tieneUsuario) ok(`${p}: variable ${cfg.usuarioEnv} definida (usuario de servicio; no se muestra su valor)`);
       else problema(`${p}: la variable ${cfg.usuarioEnv} no está definida: no se podrá leer ni publicar`);

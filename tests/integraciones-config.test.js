@@ -128,10 +128,10 @@ describe('F1.2 config: sección válida', () => {
   });
 
   test('gitlab sin host usa gitlab.com; un puerto escrito de forma explícita se admite', () => {
-    const a = interpretarIntegraciones(con(['gitlab_modo: solo_lectura', 'gitlab_token_env: T', 'gitlab_destinos: g/p']));
+    const a = interpretarIntegraciones(con(['gitlab_modo: solo_lectura', 'gitlab_token_env: FORGE_T', 'gitlab_destinos: g/p']));
     assert.equal(a.proveedores.gitlab.host, 'gitlab.com');
-    const b = interpretarIntegraciones(con(['gitlab_modo: solo_lectura', 'gitlab_host: git.empresa.com:8443', 'gitlab_token_env: T', 'gitlab_destinos: g/p']));
-    assert.equal(b.proveedores.gitlab.host, 'git.empresa.com:8443');
+    const b = interpretarIntegraciones(con(['gitlab_modo: solo_lectura', 'gitlab_host: git.empresa.com:443', 'gitlab_token_env: FORGE_T', 'gitlab_destinos: g/p']));
+    assert.equal(b.proveedores.gitlab.host, 'git.empresa.com:443');
   });
 
   test('el tope por defecto es 20', () => {
@@ -255,7 +255,7 @@ describe('F1.2 config: rechazos', () => {
 describe('F1.2 config: credenciales y destinos', () => {
   test('leerToken lee solo la variable nombrada, y solo si el proveedor está activo', () => {
     const cfg = interpretarIntegraciones(VALIDA);
-    const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: 'valor-secreto', OTRA: 'no' });
+    const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: 'valor-secreto', OTRA: 'no', FORGE_INTEGRACIONES_HOSTS: 'gitlab.empresa.com' });
     assert.equal(leerToken(cfg.proveedores.github, env), 'valor-secreto');
     assert.deepEqual(lecturas, ['FORGE_GITHUB_TOKEN']);
     assert.equal(leerToken(cfg.proveedores.gitlab, env), null);   // variable no definida

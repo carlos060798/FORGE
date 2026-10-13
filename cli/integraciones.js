@@ -59,15 +59,18 @@ const USO = `Uso: forge integraciones <subcomando>
 Opciones comunes: --cwd <ruta>. Códigos de salida: 0 bien · 1 rechazo o fallo · 2 uso incorrecto.`;
 
 /**
- * Construye el adaptador del proveedor. El token y el usuario ya vienen leídos.
+ * Construye el adaptador del proveedor. El token y el usuario ya vienen leídos. El modo es siempre el de
+ * la configuración (R4), la auditoría la pasa la CLI (R5) y el host se vuelve a validar contra
+ * `FORGE_INTEGRACIONES_HOSTS` del `env` del usuario dentro del adaptador (R1).
  * @param {import('../core/integraciones/config.js').ConfigProveedor} cfg
- * @param {{ token: string, usuario?: string }} cred
+ * @param {{ token: string, usuario?: string, auditoria?: import('../core/integraciones/auditoria.js').AuditoriaIntegraciones, env?: Record<string, string|undefined> }} cred
  * @returns {import('../core/integraciones/puerto.js').ProveedorDeTrabajo}
  */
-export function fabricaPorDefecto(cfg, { token, usuario }) {
-  if (cfg.nombre === 'github') return crearProveedorGitHub({ token, destinos: cfg.destinos });
-  if (cfg.nombre === 'gitlab') return /** @type {any} */ (crearProveedorGitLab({ token, host: cfg.host, destinos: cfg.destinos, modo: cfg.modo }));
-  return /** @type {any} */ (crearProveedorJira({ sitio: cfg.host, usuario: String(usuario ?? ''), token, destinos: cfg.destinos }));
+export function fabricaPorDefecto(cfg, { token, usuario, auditoria, env }) {
+  const comunes = { token, destinos: cfg.destinos, modo: cfg.modo, ...(auditoria ? { auditoria } : {}), ...(env ? { env } : {}) };
+  if (cfg.nombre === 'github') return /** @type {any} */ (crearProveedorGitHub(comunes));
+  if (cfg.nombre === 'gitlab') return /** @type {any} */ (crearProveedorGitLab({ ...comunes, host: cfg.host }));
+  return /** @type {any} */ (crearProveedorJira({ ...comunes, sitio: cfg.host, usuario: String(usuario ?? '') }));
 }
 
 /**
@@ -185,9 +188,12 @@ export async function ejecutarIntegraciones(args, opciones = {}) {
       usuario = u;
       secretos.push(u);
     }
-    return fabrica(cfg, { token, usuario });
+    return fabrica(cfg, { token, usuario, auditoria: auditoria(), env });
   };
-  const auditoria = () => new AuditoriaIntegraciones({ cwd, tope: config.topes.operacionesPorSesion, sesion: sesionDeIntegraciones(cwd), env });
+  /** Una sola auditoría por ejecución: la CLI y los adaptadores comparten contador y registro. */
+  /** @type {AuditoriaIntegraciones|undefined} */
+  let auditoriaUnica;
+  const auditoria = () => (auditoriaUnica ??= new AuditoriaIntegraciones({ cwd, tope: config.topes.operacionesPorSesion, sesion: sesionDeIntegraciones(cwd), env }));
   const masc = (/** @type {unknown} */ t) => { let s = corta(t instanceof Error ? t.message : t, 400); for (const x of secretos) if (x.length >= 3) s = s.split(x).join('[REDACTADO]'); return s; };
 
   try {
@@ -403,11 +409,12 @@ export function lineasEstado(cwd, env = process.env, config) {
   const alcance = leerAlcance(cwd);
   const l = ['Integraciones externas'];
   l.push(`  Interruptor: ${e.interruptor.apagado ? `APAGADO (${e.interruptor.origen === 'variable' ? 'FORGE_INTEGRACIONES' : 'archivo'})` : 'encendido'} · sesión ${e.sesion}`);
+  if (e.interruptor.aviso) l.push(`  AVISO: ${e.interruptor.aviso}`);
   for (const nombre of PROVEEDORES) {
     const cfg = c.proveedores[/** @type {'github'} */ (nombre)];
     if (cfg.modo === 'apagado') { l.push(`  ${nombre}: apagado`); continue; }
     const bloqueo = alcance[nombre]?.bloqueaEscritura ? ' · ESCRITURA BLOQUEADA por el alcance del token' : '';
-    l.push(`  ${nombre}: modo ${cfg.modo} · ${cfg.destinos.length} destino(s) · operaciones en la sesión: ${e.contadores[nombre] ?? 0} de ${e.tope}${bloqueo}`);
+    l.push(`  ${nombre}: modo ${cfg.modo} · host ${cfg.host} · ${cfg.destinos.length} destino(s) · operaciones en la sesión: ${e.contadores[nombre] ?? 0} de ${e.tope}${bloqueo}`);
   }
   const cola = listarPendientes(cwd);
   const n = (/** @type {string} */ s) => cola.filter((x) => x.estado === s).length;

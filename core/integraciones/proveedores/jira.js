@@ -29,6 +29,10 @@
 import { pedir } from '../http.js';
 import { redactar } from '../../ciclo/redactar.js';
 import { adfATexto, textoAAdf } from './jira-adf.js';
+import { MODOS } from '../puerto.js';
+import { exigirHostAutorizado } from '../hosts.js';
+import { derivarMarcador } from '../marcador.js';
+import { leerBaseLocal } from '../pruebas-internas.js';
 
 export const NOMBRE = 'jira';
 
@@ -91,9 +95,10 @@ export class OperacionNoSoportada extends ErrorJira {
  * @property {string} usuario               correo del usuario de servicio
  * @property {string} token                 token de API SIN ámbitos
  * @property {string[]} destinos            claves de proyecto permitidas
+ * @property {'apagado'|'solo_lectura'|'comentar'|'proponer'} modo  OBLIGATORIO (R4): cada operación exige su modo mínimo
+ * @property {Record<string, string|undefined>} [env]  entorno del que sale FORGE_INTEGRACIONES_HOSTS (por defecto process.env)
  * @property {(o: import('../http.js').OpcionesPedir) => Promise<import('../http.js').RespuestaHttp>} [http]  por defecto `pedir`
- * @property {{ ejecutar: (o: { proveedor: string, operacion: string, destino: string, accion: () => Promise<any> }) => Promise<any> }} [auditoria]
- * @property {string} [baseUrl]             SOLO PRUEBAS: `http://127.0.0.1:<puerto>` o `http://localhost:<puerto>`
+ * @property {{ ejecutar: (o: { proveedor: string, operacion: string, destino: string, accion: () => Promise<any> }) => Promise<any>, comprobarInterruptor?: () => void }} [auditoria]  OBLIGATORIA para escribir (R5)
  * @property {boolean} [conAmbitos]         la configuración indica un token con ámbitos: no soportado
  */
 
@@ -121,6 +126,11 @@ const esTextoLimpio = (v, min, max) => typeof v === 'string' && v.length >= min 
  */
 export function crearProveedorJira(opciones) {
   const o = opciones && typeof opciones === 'object' ? opciones : /** @type {OpcionesJira} */ ({});
+  const modo = o.modo;
+  if (!(/** @type {readonly string[]} */ (MODOS)).includes(/** @type {string} */ (modo))) {
+    throw new ErrorJira('modo_no_valido', 'El modo de Jira es obligatorio y debe ser apagado, solo_lectura, comentar o proponer (sin valor por defecto).');
+  }
+  const { env = process.env } = o;
 
   // ── Sitio y soporte ───────────────────────────────────────────────────────────────────────
   const sitio = typeof o.sitio === 'string' ? o.sitio.trim().toLowerCase() : '';
@@ -152,17 +162,18 @@ export function crearProveedorJira(opciones) {
   const destinos = Object.freeze([...new Set(o.destinos)]);
 
   // ── Conexión ──────────────────────────────────────────────────────────────────────────────
+  // R1: un sitio de Jira es siempre de un cliente: solo se acepta si está en FORGE_INTEGRACIONES_HOSTS (variable
+  // del USUARIO). R12: un servidor local solo existe en el interruptor interno de pruebas.
   let host = sitio;
   let local = false;
-  if (o.baseUrl !== undefined) {
-    /** @type {URL} */
-    let u;
-    try { u = new URL(String(o.baseUrl)); } catch { throw new ErrorJira('base_no_valida', 'baseUrl no es una URL válida.'); }
-    if (u.protocol !== 'http:' || (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost') || u.pathname !== '/' || u.username || u.password || u.search || u.hash) {
-      throw new ErrorJira('base_no_valida', 'baseUrl solo admite http://127.0.0.1:<puerto> o http://localhost:<puerto> (uso de pruebas).');
-    }
-    host = u.host;
+  const base = leerBaseLocal(/** @type {any} */ (o), (m) => new ErrorJira('base_no_valida', m));
+  if (base) {
+    host = base.host;
     local = true;
+  } else if (esAtlassianNet) {
+    try { host = exigirHostAutorizado('jira', sitio, env); } catch (e) {
+      throw new ErrorJira('host_no_autorizado', e instanceof Error ? e.message : 'host no autorizado');
+    }
   }
   const http = typeof o.http === 'function' ? o.http : pedir;
   const auditoria = o.auditoria;
@@ -177,12 +188,27 @@ export function crearProveedorJira(opciones) {
     ? auditoria.ejecutar({ proveedor: NOMBRE, operacion, destino, accion })
     : accion());
 
+  /** R4: cada operación exige su modo mínimo; sin red. @param {'solo_lectura'|'comentar'|'proponer'} minimo */
+  function exigirModo(minimo) {
+    if (modo === 'apagado') throw new ErrorJira('modo', 'La integración con Jira está apagada.');
+    if (MODOS.indexOf(modo) < MODOS.indexOf(minimo)) throw new ErrorJira('modo', `La operación pide el modo «${minimo}» y Jira está en «${modo}».`);
+  }
+
+  /** R5: escribir sin auditoría (interruptor, tope y registro) no es posible: fallo cerrado. */
+  function exigirAuditoria() {
+    if (!auditoria || typeof auditoria.ejecutar !== 'function') {
+      throw new ErrorJira('auditoria_obligatoria', 'Escribir en Jira exige una auditoría (interruptor, tope y registro); no hay ninguna.');
+    }
+  }
+
   /**
    * Una petición a la API. El estado HTTP no OK se convierte en un error tipado SIN cuerpo.
    * @param {string} ruta @param {'GET'|'POST'} metodo @param {object} [cuerpo]
    * @returns {Promise<unknown>}  JSON ya interpretado
    */
   async function llamar(ruta, metodo, cuerpo) {
+    // R9: el interruptor se mira antes de CADA petición de escritura, no solo al empezar la operación
+    if (metodo !== 'GET') auditoria?.comprobarInterruptor?.();
     /** @type {Record<string, string>} */
     const cabeceras = { Authorization: autorizacion, Accept: 'application/json' };
     /** @type {import('../http.js').RespuestaHttp} */
@@ -253,11 +279,11 @@ export function crearProveedorJira(opciones) {
   /**
    * Comentarios de un ticket, paginados con tope, ya como texto.
    * @param {string} clave
-   * @returns {Promise<{ comentarios: Array<{ id: string, autor: string, cuerpo: string }>, completo: boolean }>}
+   * @returns {Promise<{ comentarios: Array<{ id: string, autor: string, cuenta: string, cuerpo: string }>, completo: boolean }>}
    */
   async function leerComentarios(clave) {
     const base = `/rest/api/3/issue/${encodeURIComponent(clave)}/comment`;
-    /** @type {Array<{ id: string, autor: string, cuerpo: string }>} */
+    /** @type {Array<{ id: string, autor: string, cuenta: string, cuerpo: string }>} */
     const salida = [];
     let inicio = 0;
     let total = Infinity;
@@ -272,7 +298,8 @@ export function crearProveedorJira(opciones) {
         if (!ID_COMENTARIO.test(id)) throw new ErrorJira('respuesta_inesperada', 'Un comentario de Jira trae un identificador inesperado.');
         const autor = esObj(c.author) && typeof c.author.displayName === 'string' ? c.author.displayName.slice(0, 120) : '';
         const cuerpo = typeof c.body === 'string' ? c.body.slice(0, MAX_BYTES_COMENTARIO_LEIDO) : adfATexto(c.body, { maxBytes: MAX_BYTES_COMENTARIO_LEIDO });
-        salida.push({ id, autor: autor || 'desconocido', cuerpo });
+        const cuenta = esObj(c.author) && typeof c.author.accountId === 'string' ? c.author.accountId : '';
+        salida.push({ id, autor: autor || 'desconocido', cuenta, cuerpo });
       }
       total = p.total;
       inicio += p.comments.length;
@@ -303,6 +330,7 @@ export function crearProveedorJira(opciones) {
    * @returns {Promise<ElementoDeTrabajo>}
    */
   async function leerElemento(...args) {
+    exigirModo('solo_lectura');
     const clave = referenciaDe(args);
     const proyecto = exigirDestino(clave);
     exigirSoporte();
@@ -350,6 +378,8 @@ export function crearProveedorJira(opciones) {
       texto = args[1];
       marcador = esObj(args[2]) ? args[2].marcador : undefined;
     }
+    exigirModo('comentar');
+    exigirAuditoria();
     const { clave } = analizarReferencia(referencia);
     const proyecto = exigirDestino(clave);
     exigirSoporte();
@@ -359,21 +389,42 @@ export function crearProveedorJira(opciones) {
     if (typeof texto !== 'string' || texto.trim() === '') {
       throw new ErrorJira('texto_vacio', 'El texto del comentario está vacío.');
     }
+    // Antes de redactar: el trabajo de redactar no puede depender de un texto sin tope (R2)
+    if (texto.length > MAX_BYTES_COMENTARIO * 4) {
+      throw new ErrorJira('texto_demasiado_grande', `El comentario supera el tope de ${MAX_BYTES_COMENTARIO} bytes; no se recorta en silencio.`);
+    }
+    // El texto saliente no puede traer líneas de idempotencia propias: envenenarían otra tarea (R7)
+    if (/^\s*FORGE-ID\s*:/im.test(texto)) {
+      throw new ErrorJira('texto_no_valido', 'El comentario no puede traer líneas «FORGE-ID:» propias de FORGE.');
+    }
     // Lo saliente también se redacta: la barrera de FORGE no depende de quien llame
     const limpio = redactar(texto);
     if (Buffer.byteLength(limpio, 'utf8') > MAX_BYTES_COMENTARIO) {
       throw new ErrorJira('texto_demasiado_grande', `El comentario supera el tope de ${MAX_BYTES_COMENTARIO} bytes; no se recorta en silencio.`);
     }
-    const linea = `FORGE-ID: ${marcador}`;
 
     return auditar('comentar', proyecto, async () => {
-      // Búsqueda previa: si el marcador ya está en un comentario, no se publica otro
+      // R7: solo vale el comentario que escribió la cuenta del propio token (GET /myself). Si el marcador
+      // está en un comentario AJENO (o no se sabe de quién es), se publica uno propio con un marcador
+      // derivado: quien copia el marcador solo puede provocar una publicación adicional, no suprimirla.
+      let yo = null;
+      try {
+        const me = await llamar('/rest/api/3/myself', 'GET');
+        if (esObj(me) && typeof me.accountId === 'string' && me.accountId !== '') yo = me.accountId;
+      } catch { yo = null; }
       const previos = await leerComentarios(clave);
-      for (const c of previos.comentarios) {
-        if (c.cuerpo.split('\n').some((l) => l.trim() === linea)) {
-          return /** @type {ResultadoJira} */ ({ id: c.id, url: `${urlVisible(clave)}?focusedCommentId=${c.id}`, yaExistia: true });
+      let m = marcador;
+      for (let i = 0; i <= previos.comentarios.length; i++) {
+        const lineaM = `FORGE-ID: ${m}`;
+        const hallados = previos.comentarios.filter((c) => c.cuerpo.split('\n').some((l) => l.trim() === lineaM));
+        const propio = yo === null ? undefined : hallados.find((c) => c.cuenta === yo);
+        if (propio) {
+          return /** @type {ResultadoJira} */ ({ id: propio.id, url: `${urlVisible(clave)}?focusedCommentId=${propio.id}`, yaExistia: true });
         }
+        if (hallados.length === 0) break;
+        m = derivarMarcador(m);
       }
+      const linea = `FORGE-ID: ${m}`;
       if (!previos.completo) {
         throw new ErrorJira('idempotencia_no_verificable', 'El ticket tiene más comentarios de los que se revisan; no se publica sin poder comprobar el marcador.');
       }

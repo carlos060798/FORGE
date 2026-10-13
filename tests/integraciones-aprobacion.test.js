@@ -6,6 +6,7 @@
  * Contra el servidor falso de GitHub (127.0.0.1): ninguna petición sale del equipo.
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -46,7 +47,7 @@ async function entorno({ modo = 'proponer', archivos = /** @type {Record<string,
     crearProveedor: (/** @type {any} */ cfg) => {
       llamadasAFabrica.n++;
       if (!escribirToken) throw new ErrorAprobacion('sin_credencial', 'La variable FORGE_GITHUB_TOKEN no está definida.');
-      return crearProveedorGitHub({ token: TOKEN, destinos: cfg.destinos, baseUrl: gh.baseUrl });
+      return crearProveedorGitHub({ token: TOKEN, destinos: cfg.destinos, modo: cfg.modo, auditoria, [BASE_LOCAL]: gh.baseUrl });
     },
     secretos: [TOKEN],
   };

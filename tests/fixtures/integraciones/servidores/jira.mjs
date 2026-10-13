@@ -15,13 +15,15 @@
 import { createServer } from 'node:http';
 
 const CLAVE = /^[A-Z][A-Z0-9_]{1,19}-\d{1,9}$/;
+/** accountId de la cuenta del token en el servidor falso (GET /myself). */
+export const CUENTA_PROPIA = 'cuenta-forge';
 
 /**
  * @typedef {Object} TicketFalso
  * @property {string} summary
  * @property {unknown} [description]        ADF (o null)
  * @property {string[]} [labels]
- * @property {Array<{ id?: string, autor?: string, body: unknown }>} [comments]
+ * @property {Array<{ id?: string, autor?: string, cuenta?: string, body: unknown }>} [comments]   `cuenta`: accountId del autor
  */
 
 /** Documento ADF con un párrafo, para construir comentarios de prueba. @param {string} texto */
@@ -30,7 +32,7 @@ export function adfParrafo(texto) {
 }
 
 /**
- * @param {{ usuario: string, token: string, tickets?: Record<string, TicketFalso>, porPaginaMax?: number }} o
+ * @param {{ usuario: string, token: string, tickets?: Record<string, TicketFalso>, porPaginaMax?: number, cuenta?: string|null }} o
  */
 export async function crearServidorJiraFalso(o) {
   /** @type {Record<string, TicketFalso>} */
@@ -87,6 +89,12 @@ export async function crearServidorJiraFalso(o) {
       }
 
       const u = new URL(ruta, 'http://local');
+      // La cuenta del propio token (R7)
+      if (u.pathname === '/rest/api/3/myself' && metodo === 'GET') {
+        if (o.cuenta === null) { responder(404, { errorMessages: ['no disponible'] }); return; }
+        responder(200, { accountId: o.cuenta ?? CUENTA_PROPIA, displayName: 'FORGE', active: true });
+        return;
+      }
       const m = /^\/rest\/api\/3\/issue\/([^/]+)(\/comment)?$/.exec(u.pathname);
       if (!m) { responder(404, { errorMessages: ['no existe'] }); return; }
       const clave = decodeURIComponent(m[1]);
@@ -113,7 +121,7 @@ export async function crearServidorJiraFalso(o) {
         const pagina = comentarios.slice(inicio, inicio + n).map((c, i) => ({
           id: c.id ?? String(20000 + inicio + i),
           self: 'https://tu-dominio.atlassian.net/rest/api/3/issue/10010/comment/x',
-          author: { accountId: 'cuenta-ejemplo', displayName: c.autor ?? 'Persona Ejemplo', active: true },
+          author: { accountId: c.cuenta ?? 'cuenta-ejemplo', displayName: c.autor ?? 'Persona Ejemplo', active: true },
           body: c.body,
           created: '2026-10-01T12:00:00.000+0000',
           updated: '2026-10-01T12:00:00.000+0000',
@@ -129,7 +137,7 @@ export async function crearServidorJiraFalso(o) {
           return;
         }
         const id = String(siguienteId++);
-        comentarios.push({ id, autor: 'FORGE', body: j.body });
+        comentarios.push({ id, autor: 'FORGE', cuenta: o.cuenta ?? CUENTA_PROPIA, body: j.body });
         responder(201, { id, self: `https://tu-dominio.atlassian.net/rest/api/3/issue/10010/comment/${id}`, body: j.body, created: '2026-10-11T12:00:00.000+0000' });
         return;
       }

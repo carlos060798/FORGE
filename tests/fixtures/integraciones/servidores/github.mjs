@@ -31,8 +31,9 @@ const sha = (texto) => createHash('sha1').update(String(texto)).digest('hex');
  * @param {Record<string, any>} [o.repos]    `owner/repo` → { ramas, incidencias, comentarios, archivado }
  * @param {Fallo[]} [o.fallos]
  * @param {number|false} [o.escrituraDenegada]  estado con el que se rechaza TODO POST (403 o 404)
+ * @param {string|null} [o.usuario]          login de la cuenta del token (GET /user); null = no se puede consultar (404)
  */
-export async function crearServidorGitHub({ token, repos = {}, fallos = [], escrituraDenegada = false }) {
+export async function crearServidorGitHub({ token, repos = {}, fallos = [], escrituraDenegada = false, usuario = 'forge-bot' }) {
   const estado = {
     repos: new Map(),
     /** @type {Array<{ metodo: string, url: string, ruta: string, cabeceras: Record<string, any>, cuerpo: any, textoCuerpo: string }>} */
@@ -101,6 +102,12 @@ export async function crearServidorGitHub({ token, repos = {}, fallos = [], escr
       return json(res, estado.escrituraDenegada, { message: 'Resource not accessible by personal access token' });
     }
 
+    // La cuenta del propio token (R7: solo vale el comentario que escribió esta cuenta)
+    if (u.pathname === '/user' && metodo === 'GET') {
+      if (usuario === null) return json(res, 404, { message: 'Not Found' });
+      return json(res, 200, { login: usuario, id: 4242, type: 'User' });
+    }
+
     const partes = u.pathname.split('/').filter(Boolean).map((s) => decodeURIComponent(s));
     if (partes[0] !== 'repos' || partes.length < 3) return json(res, 404, { message: 'Not Found' });
     const nombre = `${partes[1]}/${partes[2]}`;
@@ -136,7 +143,7 @@ export async function crearServidorGitHub({ token, repos = {}, fallos = [], escr
         }
         if (metodo === 'POST') {
           if (!cuerpo || typeof cuerpo.body !== 'string') return json(res, 422, { message: 'Validation Failed' });
-          const c = { id: ++estado.siguienteId, body: cuerpo.body, user: { login: 'forge-bot' } };
+          const c = { id: ++estado.siguienteId, body: cuerpo.body, user: { login: usuario ?? 'forge-bot' } };
           if (!repo.comentarios.has(n)) repo.comentarios.set(n, []);
           repo.comentarios.get(n).push(c);
           return json(res, 201, { ...c, html_url: `https://github.com/${nombre}/issues/${n}#issuecomment-${c.id}`, created_at: '2026-10-11T12:00:00Z' });

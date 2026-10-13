@@ -6,7 +6,7 @@
  *
  *   integraciones:
  *     github_modo: solo_lectura            # apagado | solo_lectura | comentar | proponer
- *     github_token_env: FORGE_GITHUB_TOKEN # NOMBRE de la variable, nunca el valor
+ *     github_token_env: FORGE_GITHUB_TOKEN # NOMBRE de la variable (solo FORGE_*), nunca el valor
  *     github_destinos: org/repo, org/otro  # lista cerrada, separada por comas
  *     gitlab_modo / gitlab_host / gitlab_token_env / gitlab_destinos
  *     jira_modo / jira_sitio / jira_usuario_env / jira_token_env / jira_destinos
@@ -27,6 +27,9 @@ import { join } from 'node:path';
 import { leerSeccion } from '../ciclo/config.js';
 import { redactar } from '../ciclo/redactar.js';
 import { MODOS } from './puerto.js';
+import { ErrorHostNoAutorizado, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, exigirHostAutorizado, motivoHostVetado } from './hosts.js';
+
+export { ErrorHostNoAutorizado, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, exigirHostAutorizado };
 
 export const SECCION = 'integraciones';
 export const TOPE_POR_DEFECTO = 20;
@@ -142,7 +145,35 @@ export function pareceTokenLiteral(v) {
   return false;
 }
 
-const NOMBRE_VARIABLE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+/**
+ * Las variables de credenciales de FORGE viven en un espacio propio: `FORGE_` + mayúsculas, dígitos y «_».
+ * El repositorio no puede apuntar a `AWS_SECRET_ACCESS_KEY`, `ANTHROPIC_API_KEY`, `PATH`… (R1).
+ */
+export const NOMBRE_VARIABLE = /^FORGE_[A-Z0-9_]{1,58}$/;
+
+/** Variables que FORGE ya usa para otra cosa: nunca pueden ser el token de una integración. */
+export const VARIABLES_RESERVADAS = Object.freeze([
+  'FORGE_BUDGET_USD', 'FORGE_BUDGET_BLOCK_USD', 'FORGE_BUDGET_WARN_USD', 'FORGE_API_TOKEN', 'FORGE_DOCKER_TIMEOUT_S',
+  'FORGE_IMPLEMENTADOR', 'FORGE_INTEGRACIONES', VARIABLE_HOSTS, 'FORGE_LEDGER_MAX_BYTES', 'FORGE_LLM_PROVIDER',
+  'FORGE_MOTOR_GRAFO', 'FORGE_NIVEL_MAXIMO', 'FORGE_RUNTIMES_PERMITIDOS', 'FORGE_STUB_GUION', 'FORGE_TOOL_MAX_BYTES',
+  'FORGE_UI_PORT', 'FORGE_VERSION',
+]);
+/** Prefijos reservados para variables futuras de presupuesto, modelos y API. */
+const PREFIJOS_RESERVADOS = Object.freeze(['FORGE_BUDGET', 'FORGE_LLM', 'FORGE_API', 'FORGE_INTEGRACIONES']);
+
+/**
+ * @param {unknown} nombre
+ * @returns {string|null} motivo del rechazo, o null si es una variable permitida
+ */
+export function motivoVariableNoPermitida(nombre) {
+  if (typeof nombre !== 'string' || !NOMBRE_VARIABLE.test(nombre)) {
+    return 'debe empezar por «FORGE_» y seguir con mayúsculas, dígitos y «_» (por ejemplo FORGE_GITHUB_TOKEN): una variable arbitraria del entorno no se puede leer';
+  }
+  if (VARIABLES_RESERVADAS.includes(nombre) || PREFIJOS_RESERVADOS.some((p) => nombre === p || nombre.startsWith(`${p}_`))) {
+    return 'es el de una variable que FORGE usa para otra cosa (presupuesto, modelos, API, interruptor…); elige otro nombre, por ejemplo FORGE_GITHUB_TOKEN';
+  }
+  return null;
+}
 
 const HOST = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9](?::(\d{1,5}))?$/i;
 const ESQUEMA = /^[a-z][a-z0-9+.-]*:\/\//i;
@@ -167,8 +198,9 @@ function validarVariable(clave, valor, problemas) {
     problemas.push(`${clave}: el valor parece un token literal. Aquí va el NOMBRE de la variable de entorno que lo contiene, nunca el token (no se imprime el valor; si era real, rótalo)`);
     return undefined;
   }
-  if (!NOMBRE_VARIABLE.test(valor)) {
-    problemas.push(`${clave}: debe ser el nombre de una variable de entorno (letras, dígitos y «_», sin empezar por dígito)`);
+  const motivo = motivoVariableNoPermitida(valor);
+  if (motivo !== null) {
+    problemas.push(`${clave}: el nombre de la variable ${motivo}`);
     return undefined;
   }
   return valor;
@@ -210,7 +242,12 @@ function validarHost(clave, valor, problemas) {
   const m = HOST.exec(valor);
   const puerto = m?.[1];
   if (!m || (puerto !== undefined && (Number(puerto) < 1 || Number(puerto) > 65535))) {
-    problemas.push(`${clave}: debe ser solo un nombre de host (por ejemplo gitlab.empresa.com, con :puerto solo si hace falta): sin ruta, credenciales, consulta ni direcciones IP: «${mostrar(valor)}»`);
+    problemas.push(`${clave}: debe ser solo un nombre de host (por ejemplo gitlab.empresa.com): sin ruta, credenciales, consulta ni direcciones IP: «${mostrar(valor)}»`);
+    return undefined;
+  }
+  const vetado = motivoHostVetado(valor);
+  if (vetado !== null) {
+    problemas.push(`${clave}: «${mostrar(valor)}» se rechaza siempre: ${vetado}`);
     return undefined;
   }
   return valor.toLowerCase();
@@ -269,9 +306,9 @@ export function interpretarIntegraciones(yaml) {
     const tokenEnv = v[`${nombre}_token_env`] === undefined ? undefined : validarVariable(`${nombre}_token_env`, v[`${nombre}_token_env`], problemas);
     const usuarioEnv = nombre === 'jira' && v.jira_usuario_env !== undefined ? validarVariable('jira_usuario_env', v.jira_usuario_env, problemas) : undefined;
 
-    let host = nombre === 'github' ? 'api.github.com' : '';
+    let host = nombre === 'github' ? HOSTS_POR_DEFECTO.github : '';
     if (nombre === 'gitlab') {
-      host = v.gitlab_host === undefined ? 'gitlab.com' : (validarHost('gitlab_host', v.gitlab_host, problemas) ?? '');
+      host = v.gitlab_host === undefined ? HOSTS_POR_DEFECTO.gitlab : (validarHost('gitlab_host', v.gitlab_host, problemas) ?? '');
     } else if (nombre === 'jira' && v.jira_sitio !== undefined) {
       const h = validarHost('jira_sitio', v.jira_sitio, problemas);
       if (h !== undefined && !/^[a-z0-9-]+\.atlassian\.net$/.test(h)) {
@@ -343,19 +380,35 @@ export function destinoPermitido(proveedor, destino) {
   return proveedor.destinos.some((x) => x.toLowerCase() === d);
 }
 
+/**
+ * ¿Puede recibir este proveedor sus credenciales? Lanza `ErrorHostNoAutorizado` si su host no es el de
+ * defecto ni está en `FORGE_INTEGRACIONES_HOSTS` (variable del USUARIO). No lee ningún token.
+ * @param {ConfigProveedor} proveedor
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {string} el host autorizado
+ */
+export function hostAutorizado(proveedor, env = process.env) {
+  return exigirHostAutorizado(proveedor.nombre, proveedor.host, env);
+}
+
 /** @param {ConfigProveedor} proveedor @param {string|undefined} nombre @param {Record<string, string|undefined>} env */
 function leerVariable(proveedor, nombre, env) {
   if (proveedor.modo === 'apagado') {
     throw new Error(`La integración con ${proveedor.nombre} está apagada: no se leen sus credenciales`);
   }
+  // R1: el host se comprueba ANTES de tocar el entorno, y el nombre de la variable se vuelve a validar
+  // aquí (la configuración puede haberse construido a mano): nunca se lee una variable fuera de FORGE_*.
+  hostAutorizado(proveedor, env);
   if (!nombre) return null;
+  const motivo = motivoVariableNoPermitida(nombre);
+  if (motivo !== null) throw new Error(`La variable «${String(nombre).slice(0, 40)}» de ${proveedor.nombre} no se puede leer: ${motivo}`);
   const v = env[nombre];
   return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
 }
 
 /**
  * Valor del token del proveedor, o null si la variable no está definida. Lanza si el proveedor está
- * apagado. Es la ÚNICA lectura del entorno de este paquete para tokens.
+ * apagado o si su host no está autorizado. Es la ÚNICA lectura del entorno de este paquete para tokens.
  * @param {ConfigProveedor} proveedor
  * @param {Record<string, string|undefined>} [env]
  */

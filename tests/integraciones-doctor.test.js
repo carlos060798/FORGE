@@ -7,6 +7,7 @@
  * `red: true`); en GitHub y Jira se dice que no se puede y se muestra el alcance declarado.
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -27,6 +28,8 @@ import { escribirConfig } from './fixtures/integraciones/estado-ciclo.mjs';
 
 const TOKEN_GH = 'github_pat_' + 'DOCTORa9f8e7d6c5b4a39281706f5e4d3c2b1a0';
 const TOKEN_GL = 'glpat-' + 'DOCTOR0123456789abcdef';
+/** Hosts que el USUARIO autoriza (R1): sin esto, ni GitLab autoalojado ni ningún Jira reciben credenciales. */
+const HOSTS = { FORGE_INTEGRACIONES_HOSTS: 'gitlab.empresa.com,ejemplo.atlassian.net' };
 const TOKEN_JI = 'ATATT3xFfGF0' + 'ZZdoctorJira9876543210abcdefXYZ';
 const USUARIO = 'forge-bot@ejemplo.com';
 
@@ -81,7 +84,7 @@ describe('GitHub: el alcance no se puede comprobar y se dice', () => {
     const cwd = proyecto(YAML);
     const r = await diagnosticarIntegraciones({
       cwd, env: { FORGE_GITHUB_TOKEN: TOKEN_GH },
-      crearProveedor: (cfg) => crearProveedorGitHub({ token: /** @type {string} */ (leerToken(cfg, { FORGE_GITHUB_TOKEN: TOKEN_GH })), destinos: cfg.destinos, baseUrl: gh.baseUrl }),
+      crearProveedor: (cfg) => crearProveedorGitHub({ token: /** @type {string} */ (leerToken(cfg, { FORGE_GITHUB_TOKEN: TOKEN_GH })), destinos: cfg.destinos, modo: cfg.modo, [BASE_LOCAL]: gh.baseUrl }),
     });
     const t = texto(r);
     assert.equal(r.activo, true);
@@ -109,7 +112,7 @@ describe('GitHub: el alcance no se puede comprobar y se dice', () => {
 
   test('sin alcance declarado lo dice y pide declararlo', async () => {
     const cwd = proyecto('integraciones:\n  github_modo: solo_lectura\n  github_token_env: FORGE_GITHUB_TOKEN\n  github_destinos: org/repo\n');
-    const r = await diagnosticarIntegraciones({ cwd, env: { FORGE_GITHUB_TOKEN: TOKEN_GH }, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'] }) });
+    const r = await diagnosticarIntegraciones({ cwd, env: { FORGE_GITHUB_TOKEN: TOKEN_GH }, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'solo_lectura' }) });
     assert.match(texto(r), /github_alcance/);
   });
 });
@@ -121,8 +124,8 @@ describe('GitLab: alcance real con token personal, solo con red explícita', () 
     cierres.push(() => gl.cerrar());
     const cwd = proyecto(yaml(modo));
     const opciones = {
-      cwd, env: { FORGE_GITLAB_TOKEN: TOKEN_GL },
-      crearProveedor: (/** @type {any} */ cfg) => crearProveedorGitLab({ token: /** @type {string} */ (leerToken(cfg, { FORGE_GITLAB_TOKEN: TOKEN_GL })), destinos: cfg.destinos, modo: cfg.modo, baseUrl: gl.baseUrl }),
+      cwd, env: { FORGE_GITLAB_TOKEN: TOKEN_GL, ...HOSTS },
+      crearProveedor: (/** @type {any} */ cfg) => crearProveedorGitLab({ token: /** @type {string} */ (leerToken(cfg, { FORGE_GITLAB_TOKEN: TOKEN_GL, ...HOSTS })), destinos: cfg.destinos, modo: cfg.modo, [BASE_LOCAL]: gl.baseUrl }),
     };
     return { gl, cwd, opciones };
   };
@@ -201,10 +204,10 @@ describe('Jira: el límite de los tokens con ámbitos', () => {
   test('variables del usuario y del token, «no comprobable», alcance declarado y aviso del límite', async () => {
     const ji = await crearServidorJiraFalso({ usuario: USUARIO, token: TOKEN_JI, tickets: {} });
     cierres.push(() => ji.cerrar());
-    const env = { FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI };
+    const env = { FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI, ...HOSTS };
     const r = await diagnosticarIntegraciones({
       cwd: proyecto(YAML), env,
-      crearProveedor: (cfg) => crearProveedorJira({ sitio: cfg.host, usuario: /** @type {string} */ (leerUsuario(cfg, env)), token: /** @type {string} */ (leerToken(cfg, env)), destinos: cfg.destinos, baseUrl: ji.baseUrl }),
+      crearProveedor: (cfg) => crearProveedorJira({ sitio: cfg.host, usuario: /** @type {string} */ (leerUsuario(cfg, env)), token: /** @type {string} */ (leerToken(cfg, env)), destinos: cfg.destinos, modo: cfg.modo, [BASE_LOCAL]: ji.baseUrl }),
     });
     const t = texto(r);
     assert.match(t, /FORGE_JIRA_USUARIO.*definida/);
@@ -220,7 +223,7 @@ describe('Jira: el límite de los tokens con ámbitos', () => {
 
   test('si el alcance declarado habla de ámbitos, avisa con más fuerza de que no está soportado', async () => {
     const cwd = proyecto(YAML.replace('token de API clásico, sin ámbitos', 'token con ámbitos write:jira-work'));
-    const env = { FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI };
+    const env = { FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI, ...HOSTS };
     const r = await diagnosticarIntegraciones({ cwd, env, crearProveedor: () => { throw new ErrorAprobacion('sin_credencial', 'x'); } });
     assert.ok(r.lineas.some((l) => l.nivel === 'aviso' && /ámbitos/i.test(l.texto) && /no (está )?soportad/i.test(l.texto)));
     assert.ok(r.problemas >= 1);
@@ -244,7 +247,7 @@ describe('el resto de la información', () => {
     const base = { proveedor: 'github', operacion: 'comentar', destino: 'org/repo', referencia: 'org/repo#1', contenido: { tipo: 'comentario', texto: 'x', marcador: 'm' }, huellaContenido: 'a'.repeat(64), creado: '2026-10-11T00:00:00Z' };
     writeFileSync(join(cwd, '.sdd', 'integraciones', 'pendientes', 'p1.json'), JSON.stringify({ ...base, id: 'p1', estado: 'pendiente' }));
     writeFileSync(join(cwd, '.sdd', 'integraciones', 'pendientes', 'p2.json'), JSON.stringify({ ...base, id: 'p2', estado: 'fallido', error: { codigo: 'x', mensaje: 'y', ts: 'z' } }));
-    const r = await diagnosticarIntegraciones({ cwd, env: { FORGE_GITHUB_TOKEN: TOKEN_GH }, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'] }) });
+    const r = await diagnosticarIntegraciones({ cwd, env: { FORGE_GITHUB_TOKEN: TOKEN_GH }, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'solo_lectura' }) });
     const t = texto(r);
     assert.match(t, /tope.*7/i);
     assert.match(t, /1 pendiente/i);
@@ -253,10 +256,10 @@ describe('el resto de la información', () => {
   });
 
   test('solo se lee el entorno de los proveedores activos', async () => {
-    const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: TOKEN_GH, FORGE_GITLAB_TOKEN: TOKEN_GL, FORGE_JIRA_TOKEN: TOKEN_JI });
+    const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: TOKEN_GH, FORGE_GITLAB_TOKEN: TOKEN_GL, FORGE_JIRA_TOKEN: TOKEN_JI, ...HOSTS });
     const cwd = proyecto('integraciones:\n  github_modo: solo_lectura\n  github_token_env: FORGE_GITHUB_TOKEN\n  github_destinos: org/repo\n  gitlab_modo: apagado\n  gitlab_token_env: FORGE_GITLAB_TOKEN\n');
-    await diagnosticarIntegraciones({ cwd, env, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'] }) });
-    assert.ok(lecturas.every((k) => k === 'FORGE_GITHUB_TOKEN' || k === 'FORGE_INTEGRACIONES'), `se leyó: ${lecturas.join(', ')}`);
+    await diagnosticarIntegraciones({ cwd, env, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'solo_lectura' }) });
+    assert.ok(lecturas.every((k) => k === 'FORGE_GITHUB_TOKEN' || k === 'FORGE_INTEGRACIONES' || k === 'FORGE_INTEGRACIONES_HOSTS'), `se leyó: ${lecturas.join(', ')}`);
     assert.ok(!lecturas.includes('FORGE_GITLAB_TOKEN'));
   });
 });

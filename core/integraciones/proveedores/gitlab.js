@@ -23,6 +23,10 @@
 
 import { pedir } from '../http.js';
 import { destinoPermitido } from '../config.js';
+import { exigirHostAutorizado } from '../hosts.js';
+import { motivoRutaVetada } from '../rutas.js';
+import { derivarMarcador } from '../marcador.js';
+import { leerBaseLocal } from '../pruebas-internas.js';
 
 export const NOMBRE = 'gitlab';
 /** Prefijo obligatorio de toda rama que FORGE crea. */
@@ -50,7 +54,7 @@ const RE_MARCADOR = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
 const RE_RAMA_DESTINO = /^forge\/[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const RE_RAMA_BASE = /^[A-Za-z0-9][A-Za-z0-9._\/-]{0,199}$/;
 const RE_AMBITO = /^[a-z][a-z_]{0,39}$/;
-const PROHIBIDOS = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u;
+const PROHIBIDOS = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E]/u;
 
 /** Ámbitos que necesita cada modo con un token personal (permisos-minimos.md §2.2 y §2.3). */
 const AMBITOS_NECESARIOS = Object.freeze({
@@ -92,18 +96,8 @@ function ramaBaseValida(n) {
  * @returns {string|null}
  */
 function motivoRutaInvalida(ruta) {
-  if (typeof ruta !== 'string' || ruta === '') return 'vacía o no es texto';
-  if (ruta.length > MAX_RUTA_ARCHIVO) return 'demasiado larga';
-  if (PROHIBIDOS.test(ruta)) return 'tiene caracteres de control o invisibles';
-  if (ruta.startsWith('/') || /^[A-Za-z]:/.test(ruta) || ruta.includes('\\')) return 'es absoluta o usa «\\» o unidad de disco';
-  const segmentos = ruta.split('/');
-  for (const s of segmentos) {
-    if (s === '') return 'tiene un segmento vacío';
-    if (s === '.' || s === '..') return 'sale del proyecto («.» o «..»)';
-    if (s.toLowerCase() === '.git') return 'toca el directorio .git';
-    if (s !== s.trim() || s.endsWith('.')) return 'un segmento empieza o acaba por espacio, o acaba en «.»';
-  }
-  return null;
+  // Lista COMÚN con GitHub (R3, R8): CI de las plataformas, .git y sus variantes, nombres de Windows…
+  return motivoRutaVetada(ruta);
 }
 
 /**
@@ -111,10 +105,10 @@ function motivoRutaInvalida(ruta) {
  * @property {string} token                   valor del token (lo lee quien llama con `leerToken`); nunca se registra
  * @property {string} [host]                  host de la API sin esquema (ya validado por config.js); HTTPS siempre
  * @property {string[]} destinos              lista cerrada `grupo[/subgrupo]/proyecto`
- * @property {'apagado'|'solo_lectura'|'comentar'|'proponer'} [modo]  por defecto `solo_lectura` (lo más estrecho)
+ * @property {'apagado'|'solo_lectura'|'comentar'|'proponer'} modo  OBLIGATORIO (R4): sin valor por defecto
+ * @property {Record<string, string|undefined>} [env]  entorno del que sale FORGE_INTEGRACIONES_HOSTS (por defecto process.env)
  * @property {(o: import('../http.js').OpcionesPedir) => Promise<import('../http.js').RespuestaHttp>} [http]  solo pruebas; por defecto `pedir`
- * @property {import('../auditoria.js').AuditoriaIntegraciones} [auditoria]  si se pasa, toda operación va por ella
- * @property {string} [baseUrl]               SOLO pruebas: `http://127.0.0.1:<puerto>` o `http://localhost:<puerto>`
+ * @property {import('../auditoria.js').AuditoriaIntegraciones} [auditoria]  OBLIGATORIA para escribir (R5)
  * @property {null|'draft'|'work_in_progress'} [parametroBorrador]  además del prefijo del título, envía este parámetro (por defecto no; ver la prueba opt-in)
  * @property {number} [maxBytes]              tope de cada respuesta
  * @property {number} [timeoutMs]
@@ -133,22 +127,24 @@ export function crearProveedorGitLab(opciones) {
   if (!Array.isArray(destinos) || destinos.length === 0 || !destinos.every((d) => typeof d === 'string' && RE_DESTINO.test(d))) {
     throw new TypeError('GitLab: «destinos» debe ser una lista no vacía de grupo[/subgrupo]/proyecto');
   }
-  const modo = o.modo ?? 'solo_lectura';
-  if (!['apagado', 'solo_lectura', 'comentar', 'proponer'].includes(modo)) throw new TypeError('GitLab: modo no válido');
+  const modo = o.modo;
+  if (!['apagado', 'solo_lectura', 'comentar', 'proponer'].includes(/** @type {string} */ (modo))) {
+    throw new TypeError('GitLab: modo es obligatorio y debe ser apagado, solo_lectura, comentar o proponer (sin valor por defecto)');
+  }
+  const { env = process.env } = o;
 
-  // Host: el de la configuración, o, solo en pruebas, el de un servidor local
+  // Host: el de la configuración, que debe ser el de defecto o estar en FORGE_INTEGRACIONES_HOSTS (R1);
+  // solo el interruptor interno de pruebas admite un servidor local (R12)
   let host = typeof o.host === 'string' ? o.host.toLowerCase() : '';
   let local = false;
-  if (o.baseUrl !== undefined) {
-    let u;
-    try { u = new URL(o.baseUrl); } catch { throw new TypeError('GitLab: baseUrl no es una URL'); }
-    if (u.protocol !== 'http:' || (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost') || u.username || u.password || (u.pathname !== '/' && u.pathname !== '')) {
-      throw new TypeError('GitLab: baseUrl solo admite http://127.0.0.1 o http://localhost (uso de pruebas)');
-    }
-    host = u.host;
+  const base = leerBaseLocal(/** @type {any} */ (o), (m) => new TypeError(`GitLab: ${m}`));
+  if (base) {
+    host = base.host;
     local = true;
+  } else {
+    if (host === '') throw new TypeError('GitLab: falta el host');
+    host = exigirHostAutorizado('gitlab', host, env);
   }
-  if (host === '') throw new TypeError('GitLab: falta el host');
 
   const http = o.http ?? pedir;
   const auditoria = o.auditoria;
@@ -181,6 +177,8 @@ export function crearProveedorGitLab(opciones) {
    * @returns {Promise<{ estado: number, ok: boolean, cabeceras: Record<string, string>, texto: string }>}
    */
   async function llamar(metodo, ruta, cuerpo) {
+    // R9: el interruptor se mira antes de CADA petición de escritura, no solo al empezar la operación
+    if (metodo !== 'GET' && metodo !== 'HEAD') auditoria?.comprobarInterruptor?.();
     const r = await http({
       host, ruta, metodo,
       cabeceras: { 'PRIVATE-TOKEN': token, accept: 'application/json' },
@@ -241,6 +239,26 @@ export function crearProveedorGitLab(opciones) {
     if (orden.indexOf(modo) < orden.indexOf(minimo)) {
       throw new ErrorGitLab('modo', `La operación pide el modo «${minimo}» y GitLab está en «${modo}»`);
     }
+  }
+
+  /** R5: escribir sin auditoría (interruptor, tope y registro) no es posible: fallo cerrado. */
+  function exigirAuditoria() {
+    if (!auditoria || typeof auditoria.ejecutar !== 'function') {
+      throw new ErrorGitLab('auditoria_obligatoria', 'Escribir en GitLab exige una auditoría (interruptor, tope y registro); no hay ninguna');
+    }
+  }
+
+  /**
+   * Usuario propio (dueño del token), en minúsculas, o null si no se puede comprobar. R7.
+   * @returns {Promise<string|null>}
+   */
+  async function cuentaPropia() {
+    try {
+      const r = await llamar('GET', '/api/v4/user');
+      if (r.estado !== 200) return null;
+      const v = JSON.parse(r.texto);
+      return esObjeto(v) && typeof v.username === 'string' && v.username !== '' ? v.username.toLowerCase() : null;
+    } catch { return null; }
   }
 
   /** @template T @param {string} operacion @param {string} destino @param {() => Promise<T>} accion @returns {Promise<T>} */
@@ -346,6 +364,7 @@ export function crearProveedorGitLab(opciones) {
    */
   async function comentar(referencia, texto, opciones) {
     exigirModo('comentar');
+    exigirAuditoria();
     const { destino, iid } = leerReferencia(referencia);
     const marca = marcadorOculto(opciones?.marcador);
     if (typeof texto !== 'string' || texto.trim() === '' || texto.length > MAX_TEXTO_COMENTARIO || /\u0000/.test(texto)) {
@@ -354,15 +373,25 @@ export function crearProveedorGitLab(opciones) {
     if (/<!--\s*forge:/i.test(texto)) throw new ErrorGitLab('texto', 'El comentario no puede traer marcadores propios de FORGE');
     if (texto.includes(token)) throw new ErrorGitLab('texto', 'El comentario contiene el valor del token; no se publica');
     return auditada('comentar', destino, async () => {
-      // Búsqueda previa: si el marcador ya está en una nota de una persona, no se publica de nuevo.
-      // Límite conocido: quien pueda comentar puede pegar el marcador y evitar la publicación (no la falsea).
+      // Búsqueda previa (R7): solo vale la nota que escribió la cuenta del propio token. Si el marcador
+      // está en una nota ajena (o no se sabe de quién es), se publica una propia con un marcador
+      // derivado: quien copia el marcador solo puede provocar una publicación adicional, no suprimirla.
+      const yo = await cuentaPropia();
       const { notas, completo } = await traerNotas(destino, iid);
-      const previa = notas.find((n) => n.body.includes(marca));
-      if (previa) return { id: String(previa.id), yaExistia: true };
+      let m = opciones.marcador;
+      for (let i = 0; i <= notas.length; i++) {
+        const etiqueta = marcadorOculto(m);
+        const halladas = notas.filter((n) => n.body.includes(etiqueta));
+        const previa = yo === null ? undefined : halladas.find((n) => typeof n.author?.username === 'string' && n.author.username.toLowerCase() === yo);
+        if (previa) return { id: String(previa.id), yaExistia: true };
+        if (halladas.length === 0) break;
+        m = derivarMarcador(m);
+      }
+      const marcaUsada = marcadorOculto(m);
       if (!completo) {
         throw new ErrorGitLab('tope_paginas', 'La incidencia tiene más notas de las que se pueden revisar; no se publica para no arriesgar un duplicado');
       }
-      const r = await llamar('POST', `${rutaProyecto(destino)}/issues/${iid}/notes`, { body: `${texto}\n\n${marca}` });
+      const r = await llamar('POST', `${rutaProyecto(destino)}/issues/${iid}/notes`, { body: `${texto}\n\n${marcaUsada}` });
       const nota = json(r, [200, 201], 'publicar el comentario');
       // SIN CONFIRMAR: la página de notas no trae ejemplo de respuesta de creación; se exige solo `id`.
       if (!esObjeto(nota) || !(Number.isSafeInteger(nota.id) || typeof nota.id === 'string')) {
@@ -414,6 +443,7 @@ export function crearProveedorGitLab(opciones) {
    */
   async function proponerCambio(p) {
     exigirModo('proponer');
+    exigirAuditoria();
     const d = esObjeto(p) ? p : /** @type {any} */ ({});
     exigirDestino(d.destino);
     const destino = nombreCanonico(d.destino);

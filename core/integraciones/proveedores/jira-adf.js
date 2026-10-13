@@ -30,7 +30,35 @@ const INLINE = new Set(['text', 'hardBreak', 'mention', 'emoji', 'inlineCard', '
 
 // Controles (salvo \n y \t), formato (ancho cero, bidi, BOM, etiquetas Unicode), uso privado,
 // sustitutos sueltos y no asignados: lo mismo que quita confianza.js.
-const INVISIBLES = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]/gu;
+const INVISIBLES = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E]/gu;
+
+/**
+ * Cada tramo de espacios que contiene un salto de línea pasa a ser UN espacio; los demás se conservan.
+ * Es lo que hacía una expresión regular de espacios, salto y espacios, que con muchos espacios seguidos
+ * es cuadrática (R2a): aquí es un solo recorrido lineal.
+ * @param {string} t
+ */
+function colapsarSaltos(t) {
+  if (!t.includes('\n')) return t;
+  let salida = '';
+  let i = 0;
+  const n = t.length;
+  while (i < n) {
+    if (!/\s/.test(t[i])) {
+      let j = i + 1;
+      while (j < n && !/\s/.test(t[j])) j++;
+      salida += t.slice(i, j);
+      i = j;
+      continue;
+    }
+    let j = i;
+    let hayNl = false;
+    while (j < n && /\s/.test(t[j])) { if (t[j] === '\n') hayNl = true; j++; }
+    salida += hayNl ? ' ' : t.slice(i, j);
+    i = j;
+  }
+  return salida;
+}
 
 /** @param {string} t */
 const limpiar = (t) => t.replace(INVISIBLES, (c) => (c === '\n' || c === '\t' ? c : ''));
@@ -235,7 +263,7 @@ function nodo(n, prof, ctx) {
       for (const c of celdas) {
         if (ctx.truncado && (ctx.restante <= 0 || ctx.nodos >= ctx.maxNodos)) break;
         if (!esObjeto(c)) continue;
-        out.push(nodo(c, prof + 1, ctx).replace(/\s*\n\s*/g, ' ').trim());
+        out.push(colapsarSaltos(nodo(c, prof + 1, ctx)).trim());
       }
       return out.join(' | ');
     }
