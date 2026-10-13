@@ -35,7 +35,7 @@ FORGE:
 
 ## Estado
 
-> A fecha de **2026-10-10**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` sigue en 4.2.0. Lo que sigue describe la rama `feature/motor-agentico`.
+> A fecha de **2026-10-12**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` sigue en 4.2.0. Lo que sigue describe la rama `feature/motor-agentico`.
 
 **Qué es.** Un framework de desarrollo guiado por especificaciones para Claude Code. Desde 5.0.0, las tareas de código pasan por un **ciclo verificado**:
 
@@ -56,26 +56,28 @@ Necesita Docker en marcha y Node ≥20, y cubre proyectos en JavaScript/TypeScri
 | `motor.mutacion: exigir` | Pausa la tarea si las pruebas detectan pocos cambios deliberados en el código | Sin ejecutar con un modelo real. Por defecto la medición solo informa |
 | `sandbox.runtime` | Elige un mecanismo de aislamiento de Docker más estricto | Probado solo con `runc` |
 | `forge mcp`, `forge api` | Servidor MCP y API HTTP local | Ver sus guías |
+| Integraciones externas (`integraciones:` en `sdd.config.yaml`) | Traer una incidencia o ticket de GitHub, GitLab o Jira Cloud como tarea y devolver el resultado como comentario o solicitud de cambio en borrador, con aprobación humana | **En construcción y apagadas por defecto.** Hechos el núcleo y los tres adaptadores, probados contra servidores simulados; faltan la publicación con aprobación y el comando `forge integraciones`. Nunca se ejecutaron contra una plataforma real. Ver [integraciones-externas.md](docs/integraciones-externas.md) |
 
 **Qué está probado y qué no.**
 
 | Probado | Evidencia |
 |---|---|
-| `npm test`: 2055 pruebas, 2045 pasan, 0 fallan, 10 omitidas (Windows 11, Node 24.20, sin Docker; 2026-10-10) | [docs/COBERTURA.md](docs/COBERTURA.md) |
+| `npm test` sin Docker en Windows 11 con Node 24.20: 2055 pruebas, 2045 pasan, 0 fallan, 10 omitidas el 2026-10-10 (`9180814`); 2214 pruebas, 2202 pasan, 0 fallan, 12 omitidas el 2026-10-11 (`27ea407`, según PLAN). Las de integraciones se añadieron después sin una pasada completa registrada sobre el commit actual | [docs/COBERTURA.md](docs/COBERTURA.md), [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md) |
 | Cobertura de líneas del 87,49 % de lo que cargan las pruebas de `tests/` | [docs/COBERTURA.md](docs/COBERTURA.md) |
-| El ciclo con un modelo real: unas veinte ejecuciones de tareas pequeñas en JavaScript, Python y Go, con Anthropic (2026-10-09) | [evidencia-2026-10-09.md](.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md) |
+| El ciclo con un modelo real: 24 ejecuciones de tareas pequeñas en JavaScript, Python y Go, con Anthropic (2026-10-09 y 2026-10-10) | [evidencia-2026-10-09.md](.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md) |
 | El aislamiento con Docker real en Windows (Docker Desktop) | `verificacion.md` de cada spec en [.sdd/especificaciones/](.sdd/especificaciones/) |
-| Cuatro revisiones independientes del 2026-10-09 y una segunda pasada de una de ellas | `revision-independiente*.md` en esas mismas carpetas |
+| Cuatro revisiones independientes del 2026-10-09, una segunda pasada y una tercera (2026-10-11) sobre las correcciones | `revision-independiente*.md` en esas mismas carpetas |
+| La comprobación de tipos (`npm run typecheck`): 0 errores (TypeScript 6.0.3; eran 36 el 2026-10-10) | PL-4 |
 
 | No probado o pendiente | Dónde se explica |
 |---|---|
-| El aislamiento en Linux con Docker real: el job `aislamiento` de la integración continua no ha corrido nunca. Nada en macOS | [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md), A-1 y PL-1 |
+| El aislamiento en Linux con Docker real: los jobs `aislamiento` y `pruebas-docker` de la integración continua no han corrido nunca, ni la matriz ni el job `tipos`. Nada en macOS | [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md), A-1 y PL-1 |
 | El gasto calculado frente a lo que factura el proveedor | G-1 |
 | Proyectos grandes; todo se probó en proyectos de pocos archivos | C-15 |
 | Un modelo real con OpenAI u Ollama. La llamada de OpenAI no tiene ninguna prueba automática | G-3 |
 | La medición por mutación con Docker real en Python y TypeScript | P-5 |
-| Revisión independiente de las últimas correcciones | [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md) |
-| La comprobación de tipos (`npm run typecheck`): hoy da 36 errores | PL-4 |
+| Una cuarta revisión independiente de lo corregido en la tercera pasada, y la primera de las integraciones externas | [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md), I-2 |
+| Las integraciones externas contra GitHub, GitLab y Jira reales; la puntuación de mutación como garantía frente a un implementador adversario (N-02) | I-1, P-10 |
 
 Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración desde 4.2.0](docs/MIGRACION-5.0.md) y [criterios para una beta](RELEASE-CHECKLIST.md). Las rutas de `.sdd/`, los planes y `RELEASE-CHECKLIST.md` están en el repositorio; el paquete de npm no los incluye.
 

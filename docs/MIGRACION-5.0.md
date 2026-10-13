@@ -1,8 +1,8 @@
 # Migración de 4.2.0 a 5.0.0
 
-> Estado: **5.0.0 no está publicada.** En npm, `forja-mvp` sigue en 4.2.0 (`latest`), consultado el 2026-10-10. Este documento describe la rama `feature/motor-agentico` en el commit `9180814`.
+> Estado: **5.0.0 no está publicada.** En npm, `forja-mvp` sigue en 4.2.0 (`latest`), consultado el 2026-10-10. Este documento describe la rama `feature/motor-agentico` en el commit `82815b4` (2026-10-12; la versión anterior describía `9180814`).
 > La 4.3.0 tampoco se publicó: quien actualiza desde 4.2.0 recibe de una vez sus cambios y los de 5.0.0. Aquí están juntos.
-> Cada punto se comprobó en el código o en una prueba el 2026-10-10; la última columna dice dónde. Lo que no se pudo comprobar está marcado.
+> Cada punto se comprobó en el código o en una prueba el 2026-10-10; la última columna dice dónde. Lo que no se pudo comprobar está marcado. Lo añadido el 2026-10-12 (punto 7.13 y las integraciones externas) se leyó en el código y en los commits, sin una migración real.
 
 Este documento lista lo que cambia **sin que toques tu configuración**. Lo nuevo que solo actúa si lo activas (implementador por turnos, `mutacion: exigir`, servidor MCP, API HTTP, memoria semántica) está en el [CHANGELOG](../CHANGELOG.md) y en [ciclo-verificado.md](ciclo-verificado.md).
 
@@ -106,6 +106,7 @@ En todos los casos `forge run` termina con el código 3 y `forge resume` muestra
 | 7.10 | Los agentes leen el `sdd.config.yaml` del proyecto indicado con `--cwd`, y el interruptor de circuito escribe en ese proyecto, no en el directorio actual | Quien use `--cwd` | — | `tests/saneamiento.test.js` («forzarNivel persiste en cwd…») |
 | 7.11 | La etapa del proyecto se entiende también si la escribieron los comandos `/sdd.*` (`fase_actual`, `especificacion_activa`) | — | — | `core/state-machine.js`; `tests/saneamiento.test.js` |
 | 7.12 | `forge status`, `step`, `validate` y `reset` vuelven a funcionar (en 4.2.0 fallaban con «dist/core/ no encontrado») | Todos | — | `tests/saneamiento.test.js` («forge status funciona sin dist/») |
+| 7.13 | **`forge init` y `forge update` salen con código 1 y dicen qué faltó** cuando se niegan a escribir (por un enlace, un destino que no es lo esperado o un archivo en uso); ya no imprimen «instalado» o «actualizado» en ese caso. Con `--global`, `~/.claude/commands`, `agents`, `skills` y `hooks` pueden ser una unión que creaste tú (típico: un repositorio de dotfiles) y FORGE escribe en su destino, avisándolo; en un proyecto no se sigue ningún enlace. `init` escribe con un temporal y `rename`, y no lee a través de enlaces | Scripts que den por bueno el código 0 de `init`; quien tenga enlaces en el proyecto | Quita el enlace o copia a mano `commands/`, `agents/`, `skills/` y `claude-hooks/` | `tests/escritura-global.test.js` (N-04, N-05, N-07, N-08, N-13, N-14) |
 
 ## Lo que no cambia si no lo activas
 
@@ -113,6 +114,7 @@ En todos los casos `forge run` termina con el código 3 y `forge resume` muestra
 - La medición por mutación nunca bloquea una tarea con el valor por defecto. Solo `motor.mutacion: exigir` puede pausarla.
 - No se usa ningún mecanismo de aislamiento distinto del de Docker por defecto.
 - `forge mcp` y `forge api` no arrancan solos.
+- **Las integraciones externas con GitHub, GitLab y Jira no cambian nada.** Están apagadas por defecto: sin la sección `integraciones:` en `sdd.config.yaml`, o con todo `apagado`, no se abre ninguna conexión, no se lee ninguna variable de entorno de tokens y `forge run`, `forge resume`, el modo clásico, el servidor MCP y la API HTTP se comportan igual. No hay nada que migrar ni que desactivar. Además, hoy ningún comando las usa (el comando `forge integraciones` está en construcción). Ver [integraciones-externas.md](integraciones-externas.md).
 
 ## Comprobar que tu configuración se lee como esperas
 

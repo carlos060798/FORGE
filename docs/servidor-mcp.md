@@ -52,7 +52,7 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 - `leer_archivo` y `escribir_archivo` no necesitan nada más.
 - `ejecutar_pruebas` necesita **Docker**. Se comprueba al primer uso, no al arrancar. Sin Docker devuelve un error y no ejecuta nada en tu equipo.
 - Solo una ejecución a la vez por proyecto, compartida con el ciclo verificado: si hay un `forge run --motor ciclo` en marcha, o dos llamadas simultáneas, la segunda recibe un error de «proyecto ocupado».
-- Proyectos en JavaScript/TypeScript o Python (los mismos que el ciclo).
+- Proyectos en JavaScript/TypeScript, Python o Go: los mismos que el ciclo, con la misma comprobación (`comprobarProyecto`). Un proyecto Go necesita `go.mod` en la raíz.
 - Por la salida estándar solo salen mensajes del protocolo; los avisos van a la salida de errores.
 - Revisiones del protocolo:
   - **con saludo** (el cliente abre con `initialize`): 2024-11-05, 2025-03-26, 2025-06-18 y 2025-11-25;
