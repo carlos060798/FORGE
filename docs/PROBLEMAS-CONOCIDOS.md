@@ -88,21 +88,21 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 
 ### C-9 · El mapa del proyecto que reciben los agentes es parcial (abierto)
 
-- **Qué pasa.** La lista de archivos descarta los nombres con letras no ASCII (`señal.py`, `módulo.py`), se corta en 200 entradas y, con más de 3000 archivos, deja carpetas enteras fuera sin avisar. El texto del repositorio (nombres de archivo, nombres de dependencia, `scripts.test`) entra en el prompt sin separar datos de instrucciones. `package.json` y `go.mod` se leen enteros, sin tope de tamaño.
+- **Qué pasa.** La lista de archivos descarta los nombres con letras no ASCII (`señal.py`, `módulo.py`), se corta en 200 entradas y, con más de 3000 archivos, deja carpetas enteras fuera sin avisar. El texto del repositorio (nombres de archivo, nombres de dependencia, `scripts.test`) entra en el prompt sin separar datos de instrucciones. Los nombres con letras no ASCII y el tope de 256 KiB para `package.json` y `go.mod` se corrigieron el 2026-10-12 (quedan el corte en 200 entradas y las carpetas fuera con más de 3000 archivos).
 - **A quién afecta.** Proyectos grandes, proyectos con nombres en español, y quien ejecute el ciclo sobre un repositorio ajeno.
 - **Cómo evitarlo hoy.** Nombra en la tarea los archivos que importan. No ejecutes el ciclo sobre un repositorio que no conoces.
 - **Evidencia.** REV-2, N8, N9, N6 y tabla ASI01/ASI07. PLAN, «Abierto». La expresión que descarta los nombres está en `core/ciclo/nodos.js` (`seccionMapa`), comprobada el 2026-10-10. Ningún efecto de esto se ha probado con un modelo real.
 
-### C-10 · Una clave de `sdd.config.yaml` mal sangrada se ignora sin aviso (abierto, comprobado el 2026-10-10)
+### C-10 · Una clave de `sdd.config.yaml` mal sangrada se ignora sin aviso (corregido el 2026-10-12)
 
-- **Qué pasa.** En las secciones `motor:`, `sandbox:`, `presupuesto:`, `modelos:` y `precios:` solo se leen las claves con **exactamente dos espacios**. Con cuatro, con uno o con tabulación, la clave se ignora y se aplica el valor por defecto, sin mensaje. `mutacion: no`, `modo: clasico` o `tope_usd: 0.5` con cuatro espacios no hacen nada. La sección `llm:` sí avisa.
+- **Corregido.** Una clave conocida de `motor`, `sandbox`, `presupuesto`, `modelos` o `precios` con sangría distinta de dos espacios (o con tabulación) lanza un error que nombra la clave y la línea; `llm:` ya avisaba. Antes: en las secciones `motor:`, `sandbox:`, `presupuesto:`, `modelos:` y `precios:` solo se leían las claves con **exactamente dos espacios**. Con cuatro, con uno o con tabulación, la clave se ignora y se aplica el valor por defecto, sin mensaje. `mutacion: no`, `modo: clasico` o `tope_usd: 0.5` con cuatro espacios no hacen nada. La sección `llm:` sí avisa.
 - **A quién afecta.** A quien edite el archivo a mano con otra sangría. Es más grave en los controles de gasto: `nivel_maximo` o `tope_usd` mal sangrados dejan el valor más caro.
 - **Cómo evitarlo hoy.** Dos espacios. Comprueba el efecto con `forge status` tras una ejecución pequeña.
 - **Evidencia.** `core/ciclo/config.js` (`leerSeccion`). REV-1, R10, observación 1. Reproducido llamando a `leerConfigCiclo` con cada sangría.
 
-### C-11 · `forge doctor` no comprueba que Docker esté en marcha (abierto, comprobado el 2026-10-10)
+### C-11 · `forge doctor` no comprueba que Docker esté en marcha (corregido el 2026-10-12)
 
-- **Qué pasa.** Docker es obligatorio para el modo por defecto, pero `forge doctor` solo lo consulta si hay un `sandbox.runtime` configurado. Puede salir sin problemas y `forge run` terminar después con el código 4.
+- **Corregido.** `forge doctor` comprueba Docker siempre (versión, tiempo de respuesta con tope de 5 s por consulta, imágenes base presentes o por descargar) mediante `core/sandbox/diagnostico.js`. Antes: Docker es obligatorio para el modo por defecto, pero `forge doctor` solo lo consultaba si hay un `sandbox.runtime` configurado. Puede salir sin problemas y `forge run` terminar después con el código 4.
 - **A quién afecta.** A quien instale FORGE y se fíe del diagnóstico.
 - **Cómo evitarlo hoy.** `docker info` antes de `forge run`.
 - **Evidencia.** `cli/index.js:1174-1183`. PD-V, «Pruebas inestables», cuenta que antes lo consultaba siempre y se quitó porque una prueba del diagnóstico agotó su tiempo.
@@ -116,7 +116,7 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 
 ### C-13 · Qué proyectos no cubre (abierto)
 
-- **Qué pasa.** Java, Rust, C#, Ruby y PHP: el ciclo no empieza. Monorepos: solo se leen los manifiestos de la raíz. Python: solo se instala `requirements.txt`; si ese archivo incluye otro con `-r` o `-c`, la imagen falla **después** de pagar dos llamadas; `pytest \` con continuación de línea y `#egg=pytest` no se reconocen. El comando de pruebas se ejecuta sin shell: un `&&`, `|` o `;` es un error.
+- **Qué pasa.** Java, Rust, C#, Ruby y PHP: el ciclo no empieza. Monorepos: solo se leen los manifiestos de la raíz. Python: solo se instala `requirements.txt`; si ese archivo incluye otro con `-r` o `-c`, la imagen no puede construirse (comprobado con Docker real) y desde el 2026-10-12 la comprobación previa lo dice antes de gastar; `pytest \` con continuación de línea y `#egg=pytest` ya se reconocen. El comando de pruebas se ejecuta sin shell: un `&&`, `|` o `;` es un error.
 - **A quién afecta.** Esos proyectos.
 - **Cómo evitarlo hoy.** Un `requirements.txt` plano con todo lo necesario. Para un comando complejo, un script de `package.json` o un Makefile. Para lo demás, `--motor clasico`.
 - **Evidencia.** GUÍA. REV-2, N4. La expresión de `requierePytest` (`core/pytest-deteccion.js`) se comprobó el 2026-10-10.
@@ -270,9 +270,9 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 - **Cómo evitarlo hoy.** No las uses como referencia de costo.
 - **Evidencia.** EVID, H5 y totales de las rondas 5 a 7.
 
-### G-3 · OpenAI: precios sin contrastar y sin ninguna prueba automática de su llamada (abierto)
+### G-3 · OpenAI: sin ninguna prueba automática de su llamada (abierto; precios contrastados el 2026-10-12)
 
-- **Qué pasa.** Los precios de OpenAI de la lista no se han comparado con su tarifa. Ninguna prueba ejecuta la llamada del proveedor de OpenAI, ni contra un servidor simulado. Y todas las ejecuciones registradas con un modelo real son con Anthropic: no hay ninguna con OpenAI ni con Ollama.
+- **Qué pasa.** Los precios de OpenAI (gpt-4o, gpt-4o-mini) se contrastaron el 2026-10-12 con https://developers.openai.com/api/docs/pricing (nivel Standard) y coinciden. Ninguna prueba ejecuta la llamada del proveedor de OpenAI, ni contra un servidor simulado. Y todas las ejecuciones registradas con un modelo real son con Anthropic: no hay ninguna con OpenAI ni con Ollama.
 - **A quién afecta.** A quien use OpenAI, un compatible u Ollama.
 - **Cómo evitarlo hoy.** Fija sus precios en `precios:` y prueba primero con una tarea trivial y un tope bajo.
 - **Evidencia.** `CHANGELOG.md`, 5.0.0; PLAN, «Abierto». `docs/COBERTURA.md` (61,36 % de líneas en `openai-provider.js`; todo `complete` sin cubrir). EVID, cabecera («Proveedor: Anthropic por API»).
@@ -370,7 +370,7 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 |---|---|---|---|---|
 | M-1 | La revisión `2026-07-28` del protocolo solo se ha probado con un cliente escrito por quien escribió el servidor. Un malentendido común de la especificación pasaría las pruebas (sin comprobar) | Clientes que hablen esa revisión | Las revisiones con saludo son las probadas con el cliente oficial | PD-V, CA-002-02; `docs/servidor-mcp.md` |
 | M-2 | La prueba con el cliente oficial de las revisiones con saludo no se repitió después de los últimos cambios: se omite si el paquete oficial no está instalado. El 2026-10-10 se omitió | Todos los clientes | — | PD-V, CA-002-03; `docs/COBERTURA.md` |
-| M-3 | Cancelar una petición no detiene la herramienta: `ejecutar_pruebas` y `escribir_archivo` terminan y sus efectos se aplican (abierto) | Clientes que cancelan | No des por deshecho lo cancelado | PD-R, H-09 |
+| M-3 | Cancelar una petición no detiene la herramienta en marcha: `ejecutar_pruebas` y `escribir_archivo` terminan y sus efectos se aplican (abierto; desde 2026-10-12 la herramienta recibe una señal abortada y una cancelación previa al inicio no la ejecuta, pero ninguna herramienta la usa aún) | Clientes que cancelan | No des por deshecho lo cancelado | PD-R, H-09 |
 | M-4 | El error `-32022` lista como admitida solo `2026-07-28`; el ejemplo oficial lista más (abierto) | Clientes que negocian por ese campo | — | PD-R, H-12 |
 | M-5 | Sin autenticación: el servidor confía en el proceso que lo lanza | Quien lo exponga por otro canal | No lo expongas | `docs/servidor-mcp.md` |
 | M-6 | Guarda respaldos de lo que escribe, pero no hay herramienta para restaurarlos | Quien quiera deshacer | Están en `.sdd/motor/mcp-<n>/respaldo/mcp/archivos/` | `docs/servidor-mcp.md` |

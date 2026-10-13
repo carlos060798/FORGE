@@ -1291,6 +1291,12 @@ async function cmdDoctor() {
   // ── Aislamiento del ciclo verificado ─────────────────────────────────────────
   titulo("Verificando el aislamiento del ciclo verificado...");
   try {
+    // Docker es obligatorio para el ciclo: se comprueba siempre, con o sin sandbox.runtime
+    const { diagnosticarDocker } = await import("../core/sandbox/diagnostico.js");
+    for (const l of (await diagnosticarDocker()).lineas) {
+      (l.nivel === "info" ? info : aviso)(l.texto);
+      if (l.problema) problemas++;
+    }
     const { leerConfigCiclo } = await import("../core/ciclo/config.js");
     const runtime = leerConfigCiclo(process.cwd()).sandbox.runtime;
     /** @type {{ ok: true } | { ok: false, error: string }} */

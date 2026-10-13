@@ -26,10 +26,13 @@
 export const VERSIONES = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
 /**
- * Con `initialize` de versión desconocida o ausente se responde con esta, la que respondía el
- * servidor antes de la fase 9 (CA-002-03: los clientes antiguos siguen igual). No es VERSIONES[0].
+ * Con `initialize` de versión desconocida o ausente se responde con la más reciente que el servidor
+ * soporta. Especificación 2025-11-25, basic/lifecycle, «Version Negotiation»: «Otherwise, the server
+ * MUST respond with another protocol version it supports. This SHOULD be the latest version supported
+ * by the server» (y el cliente que no la soporte debe desconectar). Antes respondía 2025-06-18 (N-10).
+ * Las versiones soportadas se siguen devolviendo tal cual, sin cambios.
  */
-export const VERSION_POR_DEFECTO = '2025-06-18';
+export const VERSION_POR_DEFECTO = VERSIONES[0];
 
 /** Tope de suscripciones (`subscriptions/listen`) abiertas a la vez en una conexión. */
 export const MAX_SUSCRIPCIONES = 64;
@@ -69,7 +72,7 @@ const MAX_LINEA = 10 * 1024 * 1024;
  * @property {string} name
  * @property {string} description
  * @property {{ type: 'object', properties: Record<string, any>, required?: string[], additionalProperties?: boolean }} inputSchema
- * @property {(args: any) => Promise<{ texto: string, error?: boolean }>} ejecutar
+ * @property {(args: any, senal?: AbortSignal) => Promise<{ texto: string, error?: boolean }>} ejecutar
  */
 
 /** Comprueba los argumentos contra el subconjunto de JSON Schema que usan las herramientas. */
@@ -108,6 +111,8 @@ export class ServidorMcp {
     /** Peticiones sin estado en curso y las que el cliente canceló: de estas no sale respuesta */
     this.enCurso = new Set();
     this.canceladas = new Set();
+    /** Señal de cada petición sin estado en curso; se aborta con notifications/cancelled (H-09) */
+    this.abortos = new Map();
     /** Suscripciones abiertas (`subscriptions/listen`), por el id de su petición */
     this.suscripciones = new Set();
   }
@@ -199,7 +204,7 @@ export class ServidorMcp {
     // La época la decide cada petición: con versión en _meta (o server/discover, que solo existe
     // en las revisiones sin estado) se atiende sin estado; `initialize` y todo lo demás, como siempre
     const sinEstado = !esNotificacion && esSinEstado(msg.method, msg.params);
-    if (sinEstado) this.enCurso.add(id);
+    if (sinEstado) { this.enCurso.add(id); this.abortos.set(id, new AbortController()); }
 
     try {
       const resultado = sinEstado
@@ -215,7 +220,7 @@ export class ServidorMcp {
       if (e instanceof ErrorProtocolo) this._fallar(id, e.code, e.message, e.data);
       else this._fallar(id, ERR.INTERNO, 'Error interno del servidor');
     } finally {
-      if (sinEstado) { this.enCurso.delete(id); this.canceladas.delete(id); }
+      if (sinEstado) { this.enCurso.delete(id); this.canceladas.delete(id); this.abortos.delete(id); }
     }
   }
 
@@ -262,7 +267,7 @@ export class ServidorMcp {
           ...identidad,
         };
       case 'tools/call':
-        return { resultType: 'complete', ...(await this._llamar(params)), ...identidad };
+        return { resultType: 'complete', ...(await this._llamar(params, this.abortos.get(id)?.signal)), ...identidad };
       case 'subscriptions/listen':
         // La lista de herramientas no cambia mientras vive el proceso (listChanged: false) y no hay
         // recursos ni prompts: se acepta la suscripción con el filtro vacío, que es decirle al cliente
@@ -296,7 +301,7 @@ export class ServidorMcp {
         // Solo tiene efecto sobre peticiones sin estado en curso: su respuesta ya no se envía.
         // Con saludo se conserva el comportamiento de siempre (la respuesta llega igual).
         if (this.suscripciones.delete(params?.requestId)) return undefined;
-        if (this.enCurso.has(params?.requestId)) this.canceladas.add(params.requestId);
+        if (this.enCurso.has(params?.requestId)) { this.canceladas.add(params.requestId); this.abortos.get(params.requestId)?.abort(); }
         return undefined;
       case 'ping':
         return {};
@@ -312,7 +317,7 @@ export class ServidorMcp {
     }
   }
 
-  async _llamar(params) {
+  async _llamar(params, senal) {
     if (!params || typeof params.name !== 'string') throw new ErrorProtocolo(ERR.PARAMS, 'Falta el nombre de la herramienta');
     const h = this.herramientas.get(params.name);
     if (!h) throw new ErrorProtocolo(ERR.PARAMS, `Herramienta desconocida: ${params.name}`);
@@ -322,7 +327,8 @@ export class ServidorMcp {
     if (problema) return { content: [{ type: 'text', text: `Argumentos no válidos: ${problema}` }], isError: true };
 
     try {
-      const r = await h.ejecutar(params.arguments ?? {});
+      if (senal?.aborted) return { content: [{ type: 'text', text: 'Petición cancelada' }], isError: true };
+      const r = await h.ejecutar(params.arguments ?? {}, senal);
       return { content: [{ type: 'text', text: r.texto }], ...(r.error ? { isError: true } : {}) };
     } catch (e) {
       this.avisar(`la herramienta "${h.name}" lanzó: ${e instanceof Error ? e.stack : e}`);
