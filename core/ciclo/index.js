@@ -189,6 +189,8 @@ export function lineasEstadoCiclo(cwd) {
 export function textoMutacion(m) {
   if (!m) return '';
   const descartadas = m.noConcluyentes ? `, ${m.noConcluyentes} descartadas por no compilar o no cargar` : '';
+  // N-02: sin cobertura del ejecutor la muestra no está filtrada por lo que ejecutan las pruebas
+  if (m.sinCobertura) return ` · mutación: ${m.detectadas}/${m.probadas} detectadas${typeof m.puntuacion === 'number' ? ` (${Math.round(m.puntuacion * 100)} %)` : ''}, SIN COBERTURA: no cuenta como evidencia${descartadas}`;
   if (typeof m.puntuacion !== 'number') {
     const porque = m.omitida ? 'nada que alterar' : m.motivoParcial === 'linea_base' ? 'las pruebas fallan sin alterar nada' : m.motivoParcial === 'infraestructura' ? 'falló el entorno' : 'ninguna alteración concluyente';
     return ` · mutación: no medida (${porque}${descartadas})`;

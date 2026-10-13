@@ -48,6 +48,11 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {number} [candidatas]      alteraciones posibles antes de aplicar el tope
  * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
  * @property {string} [omitida]         por qué no se midió (no había nada que alterar)
+ * @property {boolean} [sinCobertura]   el ejecutor no ofreció cobertura: la muestra no está filtrada por lo que ejecutan las pruebas (N-02)
+ * @property {string} [motivoSinCobertura]
+ * @property {number} [fueraDeCobertura]  alteraciones posibles descartadas por no ejecutarlas ninguna prueba
+ * @property {{ ruta: string, lineas: number }[]} [archivosOmitidos]  archivos que no se midieron por el tope de archivos
+ * @property {{ ruta: string, probadas: number, detectadas: number }[]} [porArchivo]
  * @property {string} [detalleInfra]
  * @property {number} refuerzos         rondas de refuerzo de las pruebas ya hechas en esta tarea
  */

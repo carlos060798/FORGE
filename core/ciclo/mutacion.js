@@ -20,9 +20,10 @@ import * as path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
 import { parse } from 'acorn';
 import { clasificar } from './router.js';
-import { redactar } from './redactar.js';
+import { redactar, cola } from './redactar.js';
 import { validarRuta } from './protocolo-archivos.js';
 import { crearCopia, eliminarCopia } from '../sandbox/staging.js';
+import { dividirComando } from '../sandbox/sandbox-runner.js';
 
 export const OPERADORES = ['comparacion', 'constante', 'condicion', 'retorno'];
 
@@ -794,7 +795,218 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
   return borradas;
 }
 
+// ── Cobertura de la línea base (N-02) ────────────────────────────────────────
+
+/**
+ * Una alteración en una línea que ninguna prueba ejecuta no puede ser detectada ni puede probar nada:
+ * solo diluye la muestra. Con la cobertura de la línea base se descartan esas líneas y los archivos
+ * que ninguna prueba carga. La cobertura es la del propio ejecutor (sin dependencias nuevas) y solo
+ * si la ofrece; si no, la medición sigue como antes y queda marcada `sinCobertura`.
+ *
+ * Límite que no se oculta: la cobertura no distingue una línea que comprueba algo de una que solo se
+ * ejecuta. Un «cable trampa» dentro de una función que el código bajo prueba llama SÍ está cubierto.
+ *
+ * Una cobertura se representa por archivo como `{ sin: Set }` (líneas no ejecutadas) o `{ ej: Set }`
+ * (líneas ejecutadas); un archivo que no aparece no lo ejecuta ninguna prueba.
+ * @typedef {{ sin?: Set<number>, ej?: Set<number> }} CoberturaArchivo
+ */
+
+const normalizarRuta = (r) => r.replace(/\\/g, '/').replace(/^\.\//, '');
+
+/** @param {string} texto  `3-5 9` o `3-5, 9` → líneas */
+function rangosALineas(texto) {
+  const lineas = new Set();
+  for (const trozo of texto.split(/[\s,]+/)) {
+    if (!trozo || trozo.includes('>')) continue;
+    const m = /^(\d+)(?:-(\d+))?$/.exec(trozo);
+    if (!m) continue;
+    const desde = Number(m[1]);
+    const hasta = m[2] ? Number(m[2]) : desde;
+    // Un informe absurdo no puede llenar la memoria
+    for (let l = desde; l <= hasta && l - desde < 200_000; l++) lineas.add(l);
+  }
+  return lineas;
+}
+
+/**
+ * Informe de texto de `node --test --experimental-test-coverage` (reporters spec y TAP; tabla plana o
+ * en árbol según la versión de Node).
+ * @param {string} salida
+ * @returns {Map<string, CoberturaArchivo>|null}  null si la salida no trae el informe
+ */
+export function parsearCoberturaNode(salida) {
+  const mapa = new Map();
+  let dentro = false;
+  let visto = false;
+  /** @type {string[]} */
+  const pila = [];
+  for (const cruda of salida.replace(COLOR_ANSI, '').split('\n')) {
+    const linea = cruda.replace(/\r$/, '').replace(/^(?:ℹ |# )/, '');
+    if (/start of coverage report/.test(linea)) { dentro = true; visto = true; continue; }
+    if (/end of coverage report/.test(linea)) break;
+    if (!dentro || /^[\s-]*$/.test(linea)) continue;
+    const celdas = linea.split('|');
+    if (celdas.length < 5) continue;
+    const nombre = celdas[0].trim();
+    if (nombre === '' || nombre === 'file' || nombre === 'all files') continue;
+    const nivel = celdas[0].length - celdas[0].trimStart().length;
+    if (celdas[1].trim() === '') { pila.length = nivel; pila[nivel] = nombre; continue; }
+    const ruta = normalizarRuta([...pila.slice(0, nivel), nombre].join('/'));
+    mapa.set(ruta, { sin: rangosALineas(celdas[celdas.length - 1]) });
+  }
+  return visto ? mapa : null;
+}
+
+/**
+ * Informe de `coverage report -m` (la tabla `Name Stmts Miss Cover Missing`).
+ * @param {string} salida
+ * @returns {Map<string, CoberturaArchivo>|null}
+ */
+export function parsearCoberturaPython(salida) {
+  const mapa = new Map();
+  let dentro = false;
+  for (const cruda of salida.split('\n')) {
+    const linea = cruda.replace(/\r$/, '');
+    if (/^Name\s+Stmts\s+Miss\b/.test(linea)) { dentro = true; continue; }
+    if (!dentro) continue;
+    if (/^TOTAL\b/.test(linea)) break;
+    const m = /^(\S.*?)\s+(\d+)\s+(\d+)(?:\s+\d+\s+\d+)?\s+\d+%(?:\s+(.*))?$/.exec(linea);
+    if (m) mapa.set(normalizarRuta(m[1]), { sin: rangosALineas(m[4] ?? '') });
+  }
+  return dentro ? mapa : null;
+}
+
+/**
+ * Perfil de `go test -coverprofile=/dev/stdout`: `modulo/pkg/archivo.go:12.3,14.5 2 1`.
+ * Línea ejecutada = alguna de sus partes tiene cuenta > 0.
+ * @param {string} salida
+ * @param {string} [modulo]  ruta del módulo (go.mod) para pasar de ruta de importación a ruta del proyecto
+ * @returns {Map<string, CoberturaArchivo>|null}
+ */
+export function parsearCoberturaGo(salida, modulo = '') {
+  const mapa = new Map();
+  let visto = false;
+  for (const cruda of salida.split('\n')) {
+    const linea = cruda.replace(/\r$/, '');
+    if (/^mode: (?:set|count|atomic)$/.test(linea)) { visto = true; continue; }
+    const m = /^(\S+\.go):(\d+)\.\d+,(\d+)\.\d+ \d+ (\d+)$/.exec(linea);
+    if (!m) continue;
+    visto = true;
+    let ruta = normalizarRuta(m[1]);
+    if (modulo && ruta.startsWith(`${modulo}/`)) ruta = ruta.slice(modulo.length + 1);
+    let a = mapa.get(ruta);
+    if (!a) { a = { ej: new Set() }; mapa.set(ruta, a); }
+    if (Number(m[4]) > 0) for (let l = Number(m[2]); l <= Number(m[3]); l++) /** @type {Set<number>} */ (a.ej).add(l);
+  }
+  return visto ? mapa : null;
+}
+
+/** Texto de un argumento para el comando de pruebas (el ejecutor no usa shell: solo comillas). */
+const comillas = (p) => (p !== '' && !/[\s"']/.test(p) ? p : !p.includes('"') ? `"${p}"` : `'${p}'`);
+
+/**
+ * El comando de pruebas del proyecto pasado a su variante con cobertura, o por qué no hay.
+ * Solo se usa lo que el propio ejecutor ya trae: nunca se instala nada.
+ *  - `node --test` (también por un script de package.json): `--experimental-test-coverage`;
+ *  - `go test`: `-coverprofile=/dev/stdout`;
+ *  - Python con pytest o unittest: el módulo `coverage`, si la imagen lo tiene (si no, el comando
+ *    falla y la medición queda sin cobertura);
+ *  - jest, vitest y demás: sin cobertura (su cobertura exige dependencias que no se instalan).
+ *
+ * @param {{ lenguaje?: string, testCmd?: string, packageJson?: string|null }} e
+ * @returns {{ formato: 'node'|'python'|'go', comando: string } | { motivo: string }}
+ */
+export function comandoConCobertura(e) {
+  const { lenguaje, testCmd } = e;
+  if (typeof testCmd !== 'string' || testCmd.trim() === '') return { motivo: 'no hay comando de pruebas' };
+  let partes;
+  try { partes = dividirComando(testCmd); } catch (err) { return { motivo: err instanceof Error ? err.message : String(err) }; }
+
+  if (lenguaje === 'javascript' || lenguaje === 'typescript') {
+    if (['npm', 'yarn', 'pnpm'].includes(partes[0])) {
+      const esTest = partes[1] === 'test' || (partes[1] === 'run' && partes[2] === 'test');
+      if (!esTest) return { motivo: `el comando «${testCmd}» no es un script de pruebas conocido` };
+      let script = null;
+      try { script = JSON.parse(e.packageJson ?? 'null')?.scripts?.test; } catch { /* sin package.json legible */ }
+      if (typeof script !== 'string') return { motivo: 'no se pudo leer el script «test» de package.json' };
+      try { partes = dividirComando(script); } catch (err) { return { motivo: `el script «test» no se puede analizar: ${err instanceof Error ? err.message : err}` }; }
+    }
+    if (partes[0] === 'npx') return { motivo: `el ejecutor «${partes.find((p, i) => i > 0 && !p.startsWith('-')) ?? 'npx'}» no ofrece cobertura sin dependencias adicionales` };
+    if (partes[0] !== 'node') return { motivo: `el ejecutor «${partes[0]}» no ofrece cobertura sin dependencias adicionales` };
+    const i = partes.indexOf('--test');
+    if (i === -1) return { motivo: 'el comando node no usa --test' };
+    if (!partes.includes('--experimental-test-coverage')) partes.splice(i + 1, 0, '--experimental-test-coverage');
+    return { formato: 'node', comando: partes.map(comillas).join(' ') };
+  }
+
+  if (lenguaje === 'python') {
+    let resto = [...partes];
+    if (/^(?:python3?|py)$/.test(resto[0] ?? '') && resto[1] === '-m') resto = resto.slice(2);
+    else if (resto[0] === 'pytest') resto = ['pytest', ...resto.slice(1)];
+    const [modulo, ...args] = resto;
+    // coverage se arranca antes de importar nada; los argumentos van como sys.argv[1:]
+    const cabecera = 'import sys,coverage;c=coverage.Coverage(source=[\'.\']);c.start();';
+    const cola = 'c.stop();c.report(show_missing=True)';
+    let script;
+    if (modulo === 'pytest') script = `${cabecera}import pytest;r=pytest.main(sys.argv[1:]);${cola};sys.exit(int(r))`;
+    else if (modulo === 'unittest') script = `${cabecera}import unittest;unittest.main(module=None,argv=['unittest']+sys.argv[1:],exit=False);${cola}`;
+    else return { motivo: `el ejecutor «${testCmd}» no es pytest ni unittest` };
+    return { formato: 'python', comando: ['python', '-c', script, ...args].map(comillas).join(' ') };
+  }
+
+  if (lenguaje === 'go') {
+    if (partes[0] !== 'go' || partes[1] !== 'test') return { motivo: 'el comando no es go test' };
+    if (partes.some((p) => p.startsWith('-coverprofile'))) return { motivo: 'el comando ya fija su propio perfil de cobertura' };
+    return { formato: 'go', comando: [...partes.slice(0, 2), '-coverprofile=/dev/stdout', ...partes.slice(2)].map(comillas).join(' ') };
+  }
+  return { motivo: 'lenguaje sin cobertura soportada' };
+}
+
+/**
+ * Un ejecutor igual que `runner` pero con otro comando de pruebas, o null si no se sabe hacer.
+ * Un ejecutor propio puede ofrecer `conComando(comando)`; el `SandboxRunner` se copia con sus mismas
+ * opciones (mismo aislamiento, límites e imagen) cambiando solo el comando.
+ * @param {any} runner
+ * @param {string} comando
+ */
+function ejecutorConComando(runner, comando) {
+  if (typeof runner?.conComando === 'function') return runner.conComando(comando);
+  const o = runner?.o;
+  if (o && typeof o === 'object' && typeof o.testCmd === 'string' && typeof runner.constructor === 'function' && typeof o.runId === 'string') {
+    const clon = new runner.constructor({ ...o, testCmd: comando, runId: `${o.runId}-cob`, cli: runner.cli ?? o.cli });
+    return clon;
+  }
+  return null;
+}
+
+/**
+ * @param {Map<string, CoberturaArchivo>} mapa
+ * @param {string} ruta
+ * @returns {CoberturaArchivo|null}
+ */
+function coberturaDe(mapa, ruta) {
+  const exacta = mapa.get(ruta);
+  if (exacta) return exacta;
+  // Un informe con rutas absolutas o con un prefijo (p. ej. «copia/src/a.js»)
+  for (const [k, v] of mapa) if (k.endsWith(`/${ruta}`)) return v;
+  return null;
+}
+
+/** @param {CoberturaArchivo|null|undefined} c @param {number} linea */
+const lineaEjecutada = (c, linea) => (!c ? false : c.ej ? c.ej.has(linea) : c.sin ? !c.sin.has(linea) : false);
+
+/**
+ * @typedef {Object} Instantanea  cobertura guardada con el avance (JSON)
+ * @property {boolean} [sinCobertura]
+ * @property {string} [motivo]
+ * @property {string} [formato]
+ * @property {Record<string, { sin?: number[], ej?: number[] }|null>} [archivos]
+ */
+
 // ── Ejecución ────────────────────────────────────────────────────────────────
+
+/** Archivos que se miden por medición, si no se indica otra cosa (motor.mutacion_max_archivos). */
+export const MAX_ARCHIVOS = 5;
 
 /**
  * @typedef {Object} ResultadoMutacion
@@ -805,8 +1017,13 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  * @property {boolean} parcial              no se probaron todas las alteraciones posibles
  * @property {'tope_alteraciones'|'tiempo'|'infraestructura'|'linea_base'} [motivoParcial]
  * @property {'ok'|'falla'|'infraestructura'|'no_medida'} lineaBase  la copia sin alterar: debe pasar para que la medición valga
- * @property {number} candidatas            alteraciones posibles antes de aplicar el tope (ya limitadas a lo que cambió la tarea)
+ * @property {number} candidatas            alteraciones posibles antes de aplicar el tope (ya limitadas a lo que cambió la tarea, a lo que ejecutan las pruebas y a los archivos medidos)
  * @property {number} [fueraDeLoCambiado]   alteraciones posibles descartadas por estar en código que la tarea no tocó (solo si hubo alguna)
+ * @property {boolean} [sinCobertura]       el ejecutor no ofreció cobertura: la muestra NO está filtrada por lo que ejecutan las pruebas (N-02); no cuenta como evidencia para `exigir`
+ * @property {string} [motivoSinCobertura]  por qué no hubo cobertura
+ * @property {number} [fueraDeCobertura]    alteraciones posibles descartadas por estar en líneas o archivos que ninguna prueba ejecuta
+ * @property {{ ruta: string, lineas: number }[]} [archivosOmitidos]  archivos que no se midieron por el tope de archivos (`maxArchivos`), con sus líneas cambiadas
+ * @property {{ ruta: string, probadas: number, detectadas: number }[]} [porArchivo]  cómo se reparten las alteraciones concluyentes entre los archivos
  * @property {{ ruta: string, linea: number, operador: string, antes: string, despues: string }[]} sobrevivientes
  * @property {{ ruta: string, motivo: string }[]} [rechazadas]  rutas que no se midieron por no ser válidas
  * @property {string} [detalleInfra]        cola del error del entorno o de la línea base, si lo hubo
@@ -830,6 +1047,12 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  * `huellasPruebas` evita reutilizar un avance medido con otras pruebas. `avance` guarda el
  * resultado de cada alteración ya probada, para no repetirla si el proceso se corta.
  *
+ * Cobertura (N-02): tras la línea base se ejecuta una vez la variante con cobertura del comando de
+ * pruebas (`comandoConCobertura`) y se descartan las alteraciones en líneas y archivos que ninguna
+ * prueba ejecuta. Después, como mucho `maxArchivos` archivos (por defecto 5), los de más líneas
+ * cambiadas. `cobertura: null` no la pide; un objeto `{ formato, test }` sustituye al ejecutor con
+ * cobertura (pruebas). Sin cobertura la medición sigue como antes y devuelve `sinCobertura: true`.
+ *
  * `originalDe` devuelve el contenido que tenía un archivo ANTES de la tarea, o null si es nuevo.
  * Con un archivo que ya existía, solo se altera lo que la tarea cambió (`alcanceDeLaTarea`): las
  * pruebas de una tarea no tienen por qué cubrir el resto del archivo. Sin `originalDe`, o con un
@@ -841,6 +1064,8 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
  *   archivos: string[],
  *   runner: { test: (cwd: string) => Promise<any> },
  *   max?: number,
+ *   maxArchivos?: number,
+ *   cobertura?: null | { formato: 'node'|'python'|'go', test: (cwd: string) => Promise<any> },
  *   timeoutMs?: number,
  *   excluir?: string[],
  *   vetadas?: string[],
@@ -893,29 +1118,65 @@ export async function medirMutacion(entrada) {
     entrada.alAcotar?.({ candidatas: candidatas.length, fueraDeLoCambiado, archivos: [...alcances].map(([ruta, lineas]) => ({ ruta, lineas: lineas.size })) });
   }
   if (candidatas.length === 0) return null;
-  const elegidas = seleccionarPorArchivo(candidatas, max);
-  const elegidasSet = new Set(elegidas);
-  // La reserva sustituye a las no concluyentes; el orden es fijo, así que la misma entrada da la misma medición
-  const reservas = seleccionarPorArchivo(candidatas.filter((c) => !elegidasSet.has(c)), max);
-  const secuencia = [...elegidas, ...reservas];
+
   const contenidoDe = new Map(fuentes.map((f) => [f.ruta, f.contenido]));
   const lenguajes = new Map(fuentes.map((f) => [f.ruta, lenguajeDe(f.ruta)]));
+  const maxArchivos = Math.max(1, Math.floor(entrada.maxArchivos ?? MAX_ARCHIVOS));
+  /** Líneas que la tarea cambió en un archivo (o las no vacías, si es nuevo): la prioridad para el tope de archivos. */
+  const lineasDe = (ruta) => alcances.get(ruta)?.size ?? /** @type {string} */ (contenidoDe.get(ruta)).split('\n').filter((l) => l.trim() !== '').length;
 
-  // Un avance guardado solo vale si se midió exactamente lo mismo: mismo código, mismas pruebas, misma secuencia
-  const clave = createHash('sha256').update(JSON.stringify({
-    v: 3,
+  // Un avance guardado solo vale si se midió exactamente lo mismo: mismo código, mismas pruebas, mismos topes
+  const hash = (dato) => createHash('sha256').update(JSON.stringify(dato)).digest('hex');
+  const claveBase = hash({
+    v: 4,
     fuentes: fuentes.map((f) => [f.ruta, createHash('sha256').update(f.contenido).digest('hex')]),
     pruebas: entrada.huellasPruebas ?? [],
-    secuencia: secuencia.map((a) => [a.ruta, a.inicio, a.fin, a.texto]),
-    max,
-  })).digest('hex');
+    max, maxArchivos,
+  });
   const guardado = entrada.avance?.leer();
+  const vigente = guardado && guardado.claveBase === claveBase ? guardado : null;
+  /** @type {Instantanea|null} */
+  let instantanea = vigente?.cobertura && typeof vigente.cobertura === 'object' ? vigente.cobertura : null;
+
+  /**
+   * Qué se mide dado el estado de la cobertura: lo ejecutado por las pruebas, los archivos con más
+   * líneas cambiadas (como mucho `maxArchivos`) y, de ahí, la muestra y su reserva.
+   * @param {Instantanea} inst
+   */
+  const planificar = (inst) => {
+    let filtradas = candidatas;
+    if (!inst.sinCobertura) {
+      /** @type {Map<string, CoberturaArchivo|null>} */
+      const mapa = new Map();
+      for (const [ruta, v] of Object.entries(inst.archivos ?? {})) {
+        mapa.set(ruta, v ? { ...(v.sin ? { sin: new Set(v.sin) } : {}), ...(v.ej ? { ej: new Set(v.ej) } : {}) } : null);
+      }
+      filtradas = candidatas.filter((c) => lineaEjecutada(mapa.get(c.ruta), c.linea));
+    }
+    const fueraDeCobertura = candidatas.length - filtradas.length;
+    const conAlteraciones = [...new Set(filtradas.map((c) => c.ruta))]
+      .map((ruta) => ({ ruta, lineas: lineasDe(ruta) }))
+      .sort((a, b) => b.lineas - a.lineas || (a.ruta < b.ruta ? -1 : a.ruta > b.ruta ? 1 : 0));
+    const medidos = new Set(conAlteraciones.slice(0, maxArchivos).map((x) => x.ruta));
+    const archivosOmitidos = conAlteraciones.slice(maxArchivos);
+    const finales = filtradas.filter((c) => medidos.has(c.ruta));
+    const elegidas = seleccionarPorArchivo(finales, max);
+    const elegidasSet = new Set(elegidas);
+    // La reserva sustituye a las no concluyentes; el orden es fijo, así que la misma entrada da la misma medición
+    const reservas = seleccionarPorArchivo(finales.filter((c) => !elegidasSet.has(c)), max);
+    const secuencia = [...elegidas, ...reservas];
+    const clave = hash({ claveBase, sinCobertura: Boolean(inst.sinCobertura), secuencia: secuencia.map((a) => [a.ruta, a.inicio, a.fin, a.texto]) });
+    return { finales, elegidas, secuencia, clave, fueraDeCobertura, archivosOmitidos, sinCobertura: Boolean(inst.sinCobertura), motivo: inst.motivo };
+  };
+
+  /** @type {ReturnType<typeof planificar>|null} */
+  let plan = instantanea ? planificar(instantanea) : null;
   /** @type {{ categoria: string, veredicto: Veredicto, motivo?: string, durationMs: number }[]} */
-  const hechas = guardado && guardado.clave === clave && Array.isArray(guardado.hechas)
-    ? guardado.hechas
+  const hechas = plan && vigente && vigente.clave === plan.clave && Array.isArray(vigente.hechas)
+    ? vigente.hechas
       .filter((h) => h && (h.categoria === 'pass' || h.categoria === 'fail' || h.categoria === 'timeout')
         && (h.veredicto === 'detectada' || h.veredicto === 'sobrevive' || h.veredicto === 'no_concluyente'))
-      .slice(0, secuencia.length)
+      .slice(0, plan.secuencia.length)
     : [];
 
   /** @type {ResultadoMutacion} */
@@ -925,26 +1186,94 @@ export async function medirMutacion(entrada) {
     ...(fueraDeLoCambiado > 0 ? { fueraDeLoCambiado } : {}),
     ...(rechazadas.length ? { rechazadas } : {}),
   };
+  const aplicarPlan = () => {
+    if (!plan) return;
+    r.candidatas = plan.finales.length;
+    if (plan.sinCobertura) { r.sinCobertura = true; if (plan.motivo) r.motivoSinCobertura = plan.motivo; }
+    if (plan.fueraDeCobertura > 0) r.fueraDeCobertura = plan.fueraDeCobertura;
+    if (plan.archivosOmitidos.length > 0) r.archivosOmitidos = plan.archivosOmitidos;
+  };
+  aplicarPlan();
 
+  /** @type {Map<string, { probadas: number, detectadas: number }>} */
+  const reparto = new Map();
   const anotar = (indice, h, reutilizada) => {
-    const a = secuencia[indice];
+    const p = /** @type {NonNullable<typeof plan>} */ (plan);
+    const a = p.secuencia[indice];
     if (h.veredicto === 'no_concluyente') {
       r.noConcluyentes++;
     } else {
       r.probadas++;
-      if (h.veredicto === 'detectada') r.detectadas++;
+      const c = reparto.get(a.ruta) ?? { probadas: 0, detectadas: 0 };
+      c.probadas++;
+      if (h.veredicto === 'detectada') { r.detectadas++; c.detectadas++; }
       else r.sobrevivientes.push({ ruta: a.ruta, linea: a.linea, operador: a.operador, antes: a.antes, despues: a.despues });
+      reparto.set(a.ruta, c);
     }
     entrada.alProbar?.({
-      indice, total: elegidas.length, alteracion: a, resultado: h.veredicto, categoria: h.categoria,
+      indice, total: p.elegidas.length, alteracion: a, resultado: h.veredicto, categoria: h.categoria,
       ...(h.motivo ? { motivo: h.motivo } : {}), durationMs: h.durationMs ?? 0, reutilizada,
     });
   };
 
   hechas.forEach((h, i) => anotar(i, h, true));
-  const faltan = () => r.probadas < max && hechas.length < secuencia.length;
+  const faltan = () => plan !== null && r.probadas < max && hechas.length < plan.secuencia.length;
 
-  if (faltan()) {
+  /**
+   * Cobertura de la línea base: se ejecuta una vez sobre la copia sin alterar, con el comando de
+   * cobertura del propio ejecutor. Cualquier fallo (el ejecutor no la ofrece, el módulo no está en
+   * la imagen, el informe no aparece) deja la medición «sin cobertura»: nunca se inventa.
+   * @param {string} copia
+   * @returns {Promise<Instantanea>}
+   */
+  const medirCobertura = async (copia) => {
+    const sin = (motivo) => ({ sinCobertura: true, motivo: cola(redactar(String(motivo)), 240) });
+    if (entrada.cobertura === null) return sin('no se pidió cobertura');
+    let ejecutor;
+    let formato;
+    if (entrada.cobertura && typeof entrada.cobertura.test === 'function') {
+      ejecutor = entrada.cobertura;
+      formato = entrada.cobertura.formato;
+    } else {
+      let packageJson = null;
+      try { packageJson = fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'); } catch { /* sin package.json */ }
+      const propio = /** @type {any} */ (runner);
+      const lenguaje = propio?.o?.lenguaje ?? lenguajes.get(fuentes[0]?.ruta) ?? undefined;
+      const c = comandoConCobertura({ lenguaje, testCmd: propio?.o?.testCmd, packageJson });
+      if ('motivo' in c) return sin(c.motivo);
+      try { ejecutor = ejecutorConComando(runner, c.comando); } catch (e) { return sin(`no se pudo preparar el ejecutor con cobertura: ${e instanceof Error ? e.message : e}`); }
+      if (!ejecutor) return sin('el ejecutor de pruebas no permite ejecutar otro comando');
+      formato = c.formato;
+    }
+    let ejecucion;
+    try { ejecucion = await ejecutor.test(copia); } catch (e) { return sin(`la ejecución con cobertura falló: ${e instanceof Error ? e.message : e}`); }
+    if (Array.isArray(ejecutor.copiasSinBorrar) && ejecutor.copiasSinBorrar.length > 0 && Array.isArray(/** @type {any} */ (runner)?.copiasSinBorrar)) /** @type {any} */ (runner).copiasSinBorrar.push(...ejecutor.copiasSinBorrar);
+    if (ejecucion?.infraError || ejecucion?.timedOut || esMuerteDeEntorno(ejecucion)) {
+      return sin(`el ejecutor falló al medir la cobertura: ${String(ejecucion?.stderr ?? '').slice(-160)}`);
+    }
+    const salida = `${ejecucion?.stdout ?? ''}\n${ejecucion?.stderr ?? ''}`;
+    let mapa = null;
+    if (formato === 'node') mapa = parsearCoberturaNode(salida);
+    else if (formato === 'python') mapa = parsearCoberturaPython(salida);
+    else if (formato === 'go') {
+      let modulo = '';
+      try { modulo = /^module\s+(\S+)/m.exec(fs.readFileSync(path.join(cwd, 'go.mod'), 'utf8'))?.[1] ?? ''; } catch { /* sin go.mod */ }
+      mapa = parsearCoberturaGo(salida, modulo);
+    }
+    if (mapa === null) {
+      const porque = ejecucion?.exitCode ? `el comando con cobertura terminó con código ${ejecucion.exitCode}: ${String(ejecucion?.stderr || ejecucion?.stdout || '').slice(-160)}` : 'el informe de cobertura no apareció en la salida';
+      return sin(porque);
+    }
+    /** @type {Instantanea['archivos']} */
+    const archivos = {};
+    for (const f of fuentes) {
+      const c = coberturaDe(mapa, f.ruta);
+      archivos[f.ruta] = c ? { ...(c.sin ? { sin: [...c.sin] } : {}), ...(c.ej ? { ej: [...c.ej] } : {}) } : null;
+    }
+    return { formato, archivos };
+  };
+
+  if (plan === null || faltan()) {
     r.huerfanasBorradas = barrerMutacionesHuerfanas(dirTemporal);
     // La carpeta madre lleva la marca y permisos 0700 (mkdtemp); la copia va dentro, también privada (H-06)
     const madre = fs.mkdtempSync(path.join(dirTemporal, 'forge-mutacion-'));
@@ -972,10 +1301,19 @@ export async function medirMutacion(entrada) {
         r.lineaBase = 'ok';
       }
 
+      // Cobertura de esa misma línea base (una vez; con el avance guardado no se repite al reanudar)
+      if (r.lineaBase === 'ok' && plan === null) {
+        instantanea = await medirCobertura(copia);
+        plan = planificar(instantanea);
+        aplicarPlan();
+        entrada.avance?.guardar({ claveBase, cobertura: instantanea, clave: plan.clave, hechas });
+      }
+
       while (r.lineaBase === 'ok' && faltan()) {
         if (ahora() - t0 >= timeoutMs) { r.parcial = true; r.motivoParcial = 'tiempo'; break; }
+        const p = /** @type {NonNullable<typeof plan>} */ (plan);
         const i = hechas.length;
-        const a = secuencia[i];
+        const a = p.secuencia[i];
         const original = /** @type {string} */ (contenidoDe.get(a.ruta));
         const destino  = path.join(copia, a.ruta);
         let ejecucion;
@@ -993,13 +1331,13 @@ export async function medirMutacion(entrada) {
           r.parcial = true;
           r.motivoParcial = 'infraestructura';
           r.detalleInfra = String(ejecucion?.stderr ?? '').slice(-400);
-          entrada.alProbar?.({ indice: i, total: elegidas.length, alteracion: a, resultado: 'sin_resultado', categoria, durationMs: ejecucion?.durationMs ?? 0, reutilizada: false });
+          entrada.alProbar?.({ indice: i, total: p.elegidas.length, alteracion: a, resultado: 'sin_resultado', categoria, durationMs: ejecucion?.durationMs ?? 0, reutilizada: false });
           break;
         }
         const juicio = juzgar(ejecucion, categoria, lenguajes.get(a.ruta) ?? null);
         const h = { categoria, veredicto: juicio.veredicto, ...(juicio.motivo ? { motivo: juicio.motivo } : {}), durationMs: ejecucion?.durationMs ?? 0 };
         hechas.push(h);
-        entrada.avance?.guardar({ clave, hechas });
+        entrada.avance?.guardar({ claveBase, cobertura: instantanea, clave: p.clave, hechas });
         anotar(i, h, false);
       }
     } finally {
@@ -1007,10 +1345,11 @@ export async function medirMutacion(entrada) {
     }
   }
 
-  if (!r.motivoParcial && candidatas.length > r.probadas + r.noConcluyentes) {
+  if (!r.motivoParcial && plan && plan.finales.length > r.probadas + r.noConcluyentes) {
     r.parcial = true;
     r.motivoParcial = 'tope_alteraciones';
   }
   r.puntuacion = puntuar(r.probadas, r.detectadas);
+  if (reparto.size > 0) r.porArchivo = [...reparto].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([ruta, c]) => ({ ruta, ...c }));
   return r;
 }

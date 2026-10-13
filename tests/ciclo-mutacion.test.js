@@ -343,8 +343,12 @@ const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: suma\nnot ok 1 
 function ejecutorFalso() {
   /** @type {{ dir: string, src: string|null }[]} */
   const vistas = [];
+  // El ejecutor ofrece cobertura (N-02): todo `src/suma.js` queda ejecutado. Sin ella, con `exigir` la medición no cuenta.
+  const informe = ["ℹ start of coverage report", "ℹ file | line % | branch % | funcs % | uncovered lines", "ℹ src/suma.js | 100.00 | 100.00 | 100.00 | ", "ℹ end of coverage report", ""].join("\n");
   return {
     vistas,
+    o: { lenguaje: "javascript", testCmd: "node --test", runId: "falso" },
+    conComando: () => ({ test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }),
     test: async (dir) => {
       const rutaSrc = join(dir, "src", "suma.js");
       const src = existsSync(rutaSrc) ? readFileSync(rutaSrc, "utf8") : null;
@@ -506,7 +510,7 @@ describe("medirMutacion", () => {
     // Primera pasada: el proceso «se corta» en la cuarta ejecución
     let n = 0;
     const base = ejecutorFalso();
-    const cortado = { test: async (dir) => { if (++n === 5) throw new Error("corte"); return base.test(dir); } };
+    const cortado = { ...base, test: async (dir) => { if (++n === 5) throw new Error("corte"); return base.test(dir); } };
     await assert.rejects(medirMutacion({ cwd, archivos: ["src/suma.js"], runner: cortado, avance }), /corte/);
     assert.equal(guardado.hechas.length, 3);
 
@@ -1047,7 +1051,7 @@ describe("ciclo completo — modo exigir", () => {
     const base = ejecutorFalso();
     let roto = true;
     let n = 0;
-    const runner = { test: async (dir) => (roto && ++n >= 3 ? { exitCode: null, infraError: true, stdout: "", stderr: "docker: no responde" } : base.test(dir)) };
+    const runner = { ...base, test: async (dir) => (roto && ++n >= 3 ? { exitCode: null, infraError: true, stdout: "", stderr: "docker: no responde" } : base.test(dir)) };
     const e = entorno({ tester: [pruebas("FUERTE")], motor: exigir, runner });
     const r = await e.ciclo().ejecutar(TAREA);
     assert.equal(r.estado.revision?.motivo, "infraestructura");
@@ -1121,7 +1125,7 @@ describe("revisión independiente — recorridos del ciclo", () => {
     const base = ejecutorFalso();
     let n = 0;
     // 1 y 2: la previa de qa y la del nodo sandbox. La 3 es la línea base de la medición: falla (prueba inestable, OOM...)
-    const runner = { test: async (dir) => (++n === 3 ? { exitCode: 1, stdout: "", stderr: "prueba inestable", timedOut: false, infraError: false, durationMs: 1 } : base.test(dir)) };
+    const runner = { ...base, test: async (dir) => (++n === 3 ? { exitCode: 1, stdout: "", stderr: "prueba inestable", timedOut: false, infraError: false, durationMs: 1 } : base.test(dir)) };
     const e = entorno({ tester: [pruebas("FUERTE")], motor: exigir, runner });
     const r = await e.ciclo().ejecutar(TAREA);
     assert.equal(r.status, "en_revision");

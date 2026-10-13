@@ -89,6 +89,18 @@ function ejecutorDeLaTarea(ruta, esperado, { inicio, fin }) {
   };
 }
 
+/**
+ * Ejecutor de prueba que ofrece cobertura: el informe de `node --test --experimental-test-coverage`
+ * con todo el archivo ejecutado.
+ */
+function conCobertura(runner, ruta) {
+  const informe = ["ℹ start of coverage report", "ℹ file | line % | branch % | funcs % | uncovered lines", `ℹ ${ruta} | 100.00 | 100.00 | 100.00 | `, "ℹ end of coverage report", ""].join("\n");
+  return Object.assign(runner, {
+    o: { lenguaje: "javascript", testCmd: "node --test", runId: "falso" },
+    conComando: () => ({ test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }),
+  });
+}
+
 // ── Comparación de líneas ────────────────────────────────────────────────────
 
 describe("lineasCambiadas — comparación de líneas propia, determinista y sin dependencias", () => {
@@ -388,7 +400,8 @@ describe("ciclo completo — una tarea que cambia una función de un archivo gra
         return { ok: true, output: s, inputTokens: 100, outputTokens: 10, modelo: "claude-sonnet-4-6", proveedor: "anthropic" };
       },
       // Con el archivo original (antes de implementar) las pruebas de la tarea fallan: rojo de verdad
-      runner: ejecutorDeLaTarea("src/reglas.js", NUEVO, rangoTocada),
+      // El ejecutor ofrece cobertura (N-02): con `exigir` una medición sin ella no cuenta como evidencia
+      runner: conCobertura(ejecutorDeLaTarea("src/reglas.js", NUEVO, rangoTocada), "src/reglas.js"),
     };
     return { cwd, eventos, ciclo: () => new CicloVerificado(/** @type {any} */ (opciones)) };
   }

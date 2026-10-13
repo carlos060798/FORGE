@@ -94,7 +94,7 @@ export async function mutacion(estado, deps) {
     cwd: estado.cwd, archivos, runner: deps.runner, vetadas: deps.vetadas,
     originalDe: typeof deps.respaldo?.original === 'function' ? (ruta) => deps.respaldo.original(ruta) : undefined,
     alAcotar: (a) => { fueraDeLoCambiado = a.fueraDeLoCambiado; },
-    max: motor.mutacion_max, timeoutMs: typeof motor.mutacion_timeout_s === 'number' ? motor.mutacion_timeout_s * 1000 : undefined,
+    max: motor.mutacion_max, maxArchivos: motor.mutacion_max_archivos, timeoutMs: typeof motor.mutacion_timeout_s === 'number' ? motor.mutacion_timeout_s * 1000 : undefined,
     huellasPruebas: estado.pruebas.archivos.map((a) => `${a.ruta}:${a.sha256}`),
     avance: deps.avanceMutacion,
     alProbar: (e) => deps.log.append('ciclo:mutante', {
@@ -119,10 +119,25 @@ export async function mutacion(estado, deps) {
     lineaBase: r.lineaBase, ...(r.motivoParcial ? { motivoParcial: r.motivoParcial } : {}), candidatas: r.candidatas, sobrevivientes: r.sobrevivientes, refuerzos,
     ...(r.rechazadas ? { rechazadas: r.rechazadas } : {}), ...(r.huerfanasBorradas ? { huerfanasBorradas: r.huerfanasBorradas } : {}),
     ...(r.fueraDeLoCambiado ? { fueraDeLoCambiado: r.fueraDeLoCambiado } : {}),
+    ...(r.sinCobertura ? { sinCobertura: true, motivoSinCobertura: r.motivoSinCobertura } : {}),
+    ...(r.fueraDeCobertura ? { fueraDeCobertura: r.fueraDeCobertura } : {}),
+    ...(r.archivosOmitidos ? { archivosOmitidos: r.archivosOmitidos } : {}),
+    ...(r.porArchivo ? { porArchivo: r.porArchivo } : {}),
   }, meta);
   // Una copia que no se pudo borrar queda en el equipo: se deja constancia (H-06)
   if (r.copiaSinBorrar) deps.log.append('custom', { message: 'Aviso: la copia temporal de la medición por mutación no se pudo borrar del todo', aviso: 'copia_mutacion_sin_borrar' }, meta);
-  return { mutacion: { ...r, ...(r.detalleInfra ? { detalleInfra: cola(r.detalleInfra, 400) } : {}), refuerzos } };
+  /** Sin cobertura la muestra no está filtrada por lo que ejecutan las pruebas (N-02): con `exigir` no cuenta como evidencia. */
+  const sinEvidencia = motor.mutacion === 'exigir' && r.sinCobertura === true && typeof r.puntuacion === 'number' && r.lineaBase === 'ok' && r.motivoParcial !== 'infraestructura' && r.motivoParcial !== 'linea_base';
+  const porque = sinEvidencia
+    ? `el ejecutor no ofrece cobertura (${r.motivoSinCobertura ?? 'sin detalle'}): con exigir la medición no cuenta como evidencia, porque no se sabe si las pruebas ejecutan el código alterado (${r.detectadas} de ${r.probadas} detectadas sin ese filtro)`
+    : null;
+  if (porque) deps.log.append('custom', { message: `Medición por mutación sin cobertura: no cuenta como evidencia con motor.mutacion: exigir`, aviso: 'mutacion_sin_cobertura' }, meta);
+  // Sin puntuación y con el motivo, el router pide revisión humana (pruebas_debiles, insuficiente): nunca éxito
+  const sinCoberturaExigida = sinEvidencia ? { puntuacion: null, omitida: porque } : {};
+  const sinResultados = r.candidatas === 0 && (r.fueraDeCobertura ?? 0) > 0 && !r.motivoParcial
+    ? { omitida: `ninguna prueba ejecuta el código alterado (${r.fueraDeCobertura} cambios posibles quedan fuera de la cobertura de la línea base)` }
+    : {};
+  return { mutacion: { ...r, ...sinResultados, ...sinCoberturaExigida, ...(r.detalleInfra ? { detalleInfra: cola(r.detalleInfra, 400) } : {}), refuerzos } };
 }
 
 // ── Nodo refuerzo ────────────────────────────────────────────────────────────
