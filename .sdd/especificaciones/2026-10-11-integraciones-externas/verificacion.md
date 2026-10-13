@@ -373,3 +373,30 @@ proceso falla limpio con código `en_curso` (salida 1). Si llegó justo después
 `publicado` y devuelve lo publicado sin llamar a la plataforma. Un candado cuyo proceso murió o de más de
 10 minutos se retira. Un id inexistente no crea nada.
 
+
+
+## Revisión independiente 2: correcciones (2026-10-13)
+
+Prueba: `tests/integraciones-revision2.test.js` (44 pruebas, una por hallazgo con la reproducción de la revisión). Servidor de GitHub falso en 127.0.0.1; ninguna petición real; tokens centinela. Causa raíz de H1, H2, H3, H8 y H9: la cola, `alcance.json`, `sesion.json` y el modo y los destinos los controlaba el repositorio. Corrección: ADR-22, «Revisión 2».
+
+| Hallazgo | Estado | Prueba («describe» de la prueba) | Cómo |
+|---|---|---|---|
+| H1 | corregido | «H1 la cola no se puede fabricar desde el repositorio» (6) | cola en el estado del usuario con HMAC-SHA256; un archivo del árbol o con firma inválida no se aprueba; `aprobar` imprime siempre la vista y exige `--huella` (sin ella, código 2) |
+| H2 | corregido | «H2 aprobar aplica las mismas exclusiones…» (4) | `archivoPublicable` compartida por preparar y aprobar; sha256 contra contenido; `redactar`+`redactarFormatos` del texto; `rutas.js` añade manifiestos, configuración y scripts como excluidos por defecto |
+| H3 | corregido | «H3 la huella cubre proveedor, operación, destino…» (3) | huella sobre `{proveedor, operacion, destino, referencia, contenido}` y coherencia destino/referencia/operación/tipo |
+| H4 | corregido (ya lo estaba; se conserva al mover la cola) | «H4 dos aprobar simultáneos…» (2: 3 rondas de 2 procesos reales) | candado `<id>.lock` O_EXCL en la cola del usuario |
+| H5 | corregido | «H5 el texto no confiable no activa nada…» (2) | `neutralizar` en todo texto no confiable (`@`, `#`, `!`, `[`, `://`, `GH-N`, barra inicial) y sin líneas que empiecen por «/» |
+| H6 | corregido | «H6 nada de lo que viene de archivos…» (3) | `paraTerminal` sobre TODA salida y error del CLI; `creado` y `error.codigo` validados |
+| H7 | corregido | «H7 forge doctor/status ven la sección con BOM y con CRLF» (8) | puerta y lector decodifican UTF-8 con BOM, UTF-16 LE/BE con BOM y CRLF |
+| H8 | corregido | «H8 el repositorio no puede ampliar permisos…» (6) | `FORGE_INTEGRACIONES_ESCRITURA` y `FORGE_INTEGRACIONES_DESTINOS` del usuario; `doctor` y `estado` lo dicen |
+| H9 | corregido (alcance) y mitigado (tope) | «H9 el bloqueo por alcance y los topes…» (3) | alcance firmado en el estado del usuario, falla cerrado; tope diario fuera del árbol: fabricar otro `sesion.json` ya no reinicia más que el tope de sesión, hasta 5 veces el tope por día |
+| H10 | corregido | «H10 lo que el adaptador rechaza siempre no se prepara» (1) | `motivoDeExclusion` usa `motivoRutaVetada` de `rutas.js` |
+| H11 | corregido | «H11 el identificador de la tarea de leer no colisiona» (2) | `<proveedor>-<slug>-<sha256(proveedor+referencia)[0..8]>` |
+| H12 | corregido | «H12 los usos incorrectos salen con código 2» (2) | `id_no_valido`, `huella_requerida` y `huella_no_valida` en `CODIGOS_DE_USO` |
+| «doctor lee `FORGE_GITHUB_TOKEN` sin sección» | explicado, no es del módulo | «Pendiente del revisor» (1) | ver abajo |
+
+**Origen de la lectura de `FORGE_GITHUB_TOKEN` en `forge doctor` sin sección.** Trazado con un `process.env` envuelto en un `Proxy`: no lo lee ningún módulo de integraciones (ni se importan). Lo enumera `child_process` al copiar el entorno completo en cada proceso hijo del diagnóstico: `claudeEnPath` de `cli/index.js` (`execSync("where claude")`) y las consultas de Docker de `core/sandbox/docker-cli.js` (`spawn`). El token se hereda como cualquier otra variable en esos procesos hijos; es previo al paquete y es el mismo con la integración apagada o ausente. La prueba «Pendiente del revisor» demuestra que `diagnosticarIntegraciones` sin sección o con todo apagado no toca el entorno. Endurecimiento posible, fuera de este alcance (`core/sandbox/` no se toca aquí): pasar un entorno mínimo a esos procesos hijos.
+
+**Cambios en pruebas existentes (y por qué).** (1) Todas las `integraciones-*.test.js` importan `fixtures/integraciones/entorno-usuario.mjs`: aísla el estado del usuario en un directorio temporal (`FORGE_HOME`) y concede `FORGE_INTEGRACIONES_ESCRITURA`, porque ahora el modo de escritura lo concede el usuario. (2) `aprobar` sin `--huella` ya no publica: las pruebas de flujo la toman de la vista previa, como la persona (`conHuella`, y un envoltorio en `integraciones-aprobacion`). (3) La cola ya no está en `.sdd/integraciones/pendientes/`: las pruebas que la leían o escribían a mano usan el estado del usuario y firman con la clave local; las que modificaban un pendiente «a mano» para ver `integro: false` ahora prueban que no se autentica (y, con firma válida, el aviso de la vista). (4) La entrada de `leer` ahora lleva un sufijo de huella (`idDeEntrada`). (5) Tres pruebas de «lecturas del entorno» admiten ahora `FORGE_INTEGRACIONES_ESCRITURA`, `FORGE_INTEGRACIONES_DESTINOS`, `FORGE_HOME` y `LOCALAPPDATA` (política y ubicación del estado del usuario; nunca un token). (6) Los `env: {}` de las pruebas de auditoría son `process.env`, para que el estado del usuario vaya al directorio temporal.
+
+**Límites abiertos tras la revisión 2.** El estado del ciclo en `.sdd/motor/` (de donde `publicar` arma el contenido) sigue en el árbol: un repositorio hostil puede fabricar un punto de guardado; lo contienen la vista y la huella obligatorias, el modo y los destinos del usuario. Quien tiene la clave local puede firmar. El tope de sesión se puede reiniciar hasta el tope diario. La tercera revisión independiente no se ha hecho. Sigue sin probarse contra plataformas reales.

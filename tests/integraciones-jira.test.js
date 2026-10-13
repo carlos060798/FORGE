@@ -8,6 +8,7 @@
 import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, before, after, beforeEach } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
@@ -483,7 +484,7 @@ describe('F2.3 jira: auditoría', () => {
   test('cada operación deja un evento sin contenido ni credenciales', async () => {
     /** @type {Array<{ tipo: string, datos: any }>} */
     const eventos = [];
-    const aud = new AuditoriaIntegraciones({ cwd: dir, tope: 50, sesion: 'jira-prueba', env: {}, eventLog: /** @type {any} */ ({ append: (tipo, datos) => { eventos.push({ tipo, datos }); } }) });
+    const aud = new AuditoriaIntegraciones({ cwd: dir, tope: 50, sesion: 'jira-prueba', env: process.env, eventLog: /** @type {any} */ ({ append: (tipo, datos) => { eventos.push({ tipo, datos }); } }) });
     const p = proveedor({ auditoria: aud });
     await p.leerElemento('ABC-1');
     await p.comentar('ABC-2', 'texto privado que no debe ir al evento', { marcador: 'aud-1' });
@@ -502,7 +503,7 @@ describe('F2.3 jira: auditoría', () => {
   });
 
   test('con el tope agotado no hay más peticiones', async () => {
-    const aud = new AuditoriaIntegraciones({ cwd: dir, tope: 1, sesion: 'jira-tope', env: {}, eventLog: /** @type {any} */ ({ append: () => {} }) });
+    const aud = new AuditoriaIntegraciones({ cwd: dir, tope: 1, sesion: 'jira-tope', env: process.env, eventLog: /** @type {any} */ ({ append: () => {} }) });
     const p = proveedor({ auditoria: aud });
     await p.leerElemento('ABC-2');
     const antes = srv.peticiones.length;

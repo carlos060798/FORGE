@@ -8,7 +8,7 @@
  *       GitLab con token personal  → ámbitos reales (`comprobarAlcance`), SOLO con `red: true`
  *                                    (`forge doctor --integraciones-red`). Si exceden lo que el modo
  *                                    necesita, avisa y BLOQUEA la escritura de ese proveedor hasta
- *                                    que se corrija (`.sdd/integraciones/alcance.json`, que
+ *                                    que se corrija (`alcance.json` del estado del USUARIO, firmado y fuera del árbol; que
  *                                    `aprobar` respeta);
  *       GitHub y Jira              → «no comprobable»: ninguna de las dos plataformas ofrece un
  *                                    endpoint que informe del alcance de un token (spikes S0.2).
@@ -24,7 +24,8 @@
 import { ErrorConfigIntegraciones, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, hostAutorizado, leerConfigIntegraciones, leerToken, leerUsuario } from './config.js';
 import { hostsDelUsuario } from './hosts.js';
 import { AuditoriaIntegraciones, estadoInterruptor } from './auditoria.js';
-import { escribirAlcance, leerAlcance, listarPendientes, sesionDeIntegraciones } from './aprobacion.js';
+import { escribirAlcance, leerAlcance, listarNoAutenticados, listarPendientes, sesionDeIntegraciones } from './aprobacion.js';
+import { VARIABLE_DESTINOS, VARIABLE_ESCRITURA } from './config.js';
 
 /** @typedef {{ nivel: 'ok'|'aviso'|'error'|'info', texto: string }} LineaDoctor */
 
@@ -56,7 +57,7 @@ export async function diagnosticarIntegraciones(o) {
   /** @type {import('./config.js').ConfigIntegraciones} */
   let config;
   try {
-    config = leerConfigIntegraciones(cwd);
+    config = leerConfigIntegraciones(cwd, { env });
   } catch (e) {
     if (!(e instanceof ErrorConfigIntegraciones)) throw e;
     problemas++;
@@ -76,12 +77,17 @@ export async function diagnosticarIntegraciones(o) {
   } else info('Interruptor: encendido');
   const autorizados = hostsDelUsuario(env);
   info(`${VARIABLE_HOSTS} (hosts adicionales que TÚ autorizas; el proyecto no puede): ${autorizados.length > 0 ? autorizados.join(', ') : '(no definida)'}`);
-  info(`Tope de operaciones por sesión y proveedor: ${config.topes.operacionesPorSesion}`);
+  info(`Tope de operaciones por sesión y proveedor: ${config.topes.operacionesPorSesion} (y ${auditoria.topeDiario} al día, que no reinicia otra sesión)`);
+  info(`${VARIABLE_ESCRITURA} (proveedores en los que TÚ permites escribir; el proyecto no puede): ${(env[VARIABLE_ESCRITURA] ?? '').trim() || '(no definida: solo lectura)'}`);
+  info(`${VARIABLE_DESTINOS} (destinos que TÚ permites, aunque el proyecto liste más): ${(env[VARIABLE_DESTINOS] ?? '').trim() || '(no definida: los del proyecto)'}`);
 
   for (const nombre of /** @type {const} */ (['github', 'gitlab', 'jira'])) {
     const cfg = config.proveedores[nombre];
     if (cfg.modo === 'apagado') continue;
     const p = nombre;
+    if (cfg.modoDelProyecto) {
+      aviso(`${p}: el proyecto pide el modo «${cfg.modoDelProyecto}», pero ${VARIABLE_ESCRITURA} no incluye «${p}»: el modo EFECTIVO es «solo_lectura» (el proyecto no puede conceder escritura; para permitirla: ${VARIABLE_ESCRITURA}=${p} en TU entorno)`);
+    }
     info(`${p}: modo «${cfg.modo}»${nombre === 'jira' && cfg.modo === 'proponer' ? ' (Jira no tiene solicitudes de cambio: «proponer» se trata como «comentar»)' : ''}`);
     // R1: el usuario ve a dónde irían sus credenciales y de dónde las leería FORGE
     let hostOk = true;
@@ -137,7 +143,7 @@ export async function diagnosticarIntegraciones(o) {
     }
 
     async function alcanceGitLab() {
-      const previo = leerAlcance(cwd).gitlab;
+      const previo = leerAlcance(cwd, env).gitlab;
       if (!o.red) {
         info('gitlab: alcance del token sin comprobar (sin red). Para comprobarlo con GitLab: «forge doctor --integraciones-red» (una petición de solo lectura a /personal_access_tokens/self)');
         if (previo?.bloqueaEscritura) aviso(`gitlab: la escritura sigue BLOQUEADA por la comprobación del ${seguro(previo.comprobado)} (el token excedía lo necesario); corrígelo y vuelve a ejecutar «forge doctor --integraciones-red»`);
@@ -182,18 +188,20 @@ export async function diagnosticarIntegraciones(o) {
       escribirAlcance(cwd, 'gitlab', {
         exceso, ambitos, suficiente: !insuficiente,
         ...(exceso ? { motivo: `ámbitos de más para el modo ${cfg.modo}` } : {}),
-      });
+      }, env);
     }
   }
 
   // Lo que ya está bloqueado por una comprobación anterior
   const activos = new Set(Object.values(config.proveedores).filter((c) => c.modo !== 'apagado').map((c) => c.nombre));
-  const bloqueos = Object.entries(leerAlcance(cwd)).filter(([k, v]) => activos.has(/** @type {any} */ (k)) && v.bloqueaEscritura).map(([k]) => k);
+  const bloqueos = Object.entries(leerAlcance(cwd, env)).filter(([k, v]) => activos.has(/** @type {any} */ (k)) && v.bloqueaEscritura).map(([k]) => k);
 
   // Publicaciones en cola
-  const cola = listarPendientes(cwd);
+  const cola = listarPendientes(cwd, env);
   const cuenta = (/** @type {string} */ e) => cola.filter((x) => x.estado === e).length;
   info(`Publicaciones: ${cuenta('pendiente')} pendiente(s) de aprobar, ${cuenta('fallido')} fallida(s) reintentable(s), ${cuenta('publicado')} publicada(s)`);
+  const sinAutenticar = listarNoAutenticados(cwd, env);
+  if (sinAutenticar.length > 0) aviso(`Hay ${sinAutenticar.length} publicación(es) NO AUTENTICADA(S) (cola antigua del proyecto o con la firma rota): no se aprueban nunca; «forge integraciones pendientes» dice cómo recrearlas`);
   if (cuenta('fallido') > 0) aviso('Hay publicaciones fallidas: «forge integraciones pendientes» y «forge integraciones aprobar <id>» para reintentar');
 
   return { activo: true, lineas, problemas, bloqueos };

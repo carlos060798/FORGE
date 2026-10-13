@@ -8,16 +8,18 @@
 
 import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { test, describe, after } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
-  ErrorAprobacion, aprobar, crearPendiente, huellaDeContenido, leerPendiente, listarPendientes, rechazar, sesionDeIntegraciones, vistaPrevia,
+  ErrorAprobacion, aprobar as aprobarLib, crearPendiente, huellaDeContenido, huellaDePublicacion, leerPendiente, listarNoAutenticados, listarPendientes, rechazar, sesionDeIntegraciones, vistaPrevia,
   escribirAlcance, leerAlcance,
 } from '../core/integraciones/aprobacion.js';
 import { prepararPublicacion } from '../core/integraciones/publicacion.js';
+import { claveLocal, directorioDeEstado, firmar } from '../core/integraciones/estado-usuario.js';
 import { AuditoriaIntegraciones, ErrorIntegracionesApagadas, ErrorTopeIntegraciones, apagar, encender } from '../core/integraciones/auditoria.js';
 import { interpretarIntegraciones } from '../core/integraciones/config.js';
 import { crearProveedorGitHub } from '../core/integraciones/proveedores/github.js';
@@ -40,7 +42,7 @@ async function entorno({ modo = 'proponer', archivos = /** @type {Record<string,
   });
   cierres.push(() => gh.cerrar());
   const config = interpretarIntegraciones(yaml(modo));
-  const auditoria = new AuditoriaIntegraciones({ cwd: p.cwd, tope, sesion: 'prueba', env: {} });
+  const auditoria = new AuditoriaIntegraciones({ cwd: p.cwd, tope, sesion: 'prueba', env: process.env });
   const llamadasAFabrica = { n: 0 };
   const opciones = {
     config, auditoria,
@@ -52,6 +54,29 @@ async function entorno({ modo = 'proponer', archivos = /** @type {Record<string,
     secretos: [TOKEN],
   };
   return { ...p, gh, config, auditoria, opciones, llamadasAFabrica };
+}
+
+/**
+ * `aprobar` exige la huella (revisión 2, H1): como la persona, estas pruebas la toman de la vista previa
+ * salvo que la prueba pase una.
+ */
+const aprobar = (/** @type {string} */ cwd, /** @type {string} */ id, /** @type {any} */ o) => {
+  let opciones = o;
+  if (o.huella === undefined) { try { opciones = { ...o, huella: vistaPrevia(cwd, id).huella }; } catch { /* sin pendiente legible: que falle aprobar */ } }
+  return aprobarLib(cwd, id, opciones);
+};
+
+/** Dónde vive un pendiente: en el estado del USUARIO, no en el árbol del proyecto. */
+const rutaPend = (/** @type {string} */ cwd, /** @type {string} */ id) => join(directorioDeEstado(cwd), 'pendientes', `${id}.json`);
+
+/** Reescribe un pendiente CON firma válida (un error o un cambio de reglas de FORGE, no un atacante). */
+function reescribirFirmado(/** @type {string} */ cwd, /** @type {string} */ id, /** @type {(j: any) => void} */ f) {
+  const ruta = rutaPend(cwd, id);
+  const j = JSON.parse(readFileSync(ruta, 'utf8'));
+  delete j.hmac;
+  f(j);
+  j.hmac = firmar(claveLocal(directorioDeEstado(cwd)), j);
+  writeFileSync(ruta, JSON.stringify(j));
 }
 
 /** Prepara y deja en cola. */
@@ -77,18 +102,20 @@ function foto(dir) {
 }
 
 describe('F3.1 — la cola de pendientes', () => {
-  test('el pendiente tiene exactamente la forma acordada y vive en .sdd/integraciones/pendientes/<id>.json', async () => {
+  test('el pendiente tiene exactamente la forma acordada, firmado, y vive en el estado del usuario (no en el árbol)', async () => {
     const e = await entorno();
     const p = encolar(e, { tipo: 'comentario' });
     assert.match(p.id, /^github-[0-9a-f]{12}$/);
-    const enDisco = JSON.parse(readFileSync(join(e.cwd, '.sdd', 'integraciones', 'pendientes', `${p.id}.json`), 'utf8'));
-    assert.deepEqual(Object.keys(enDisco).sort(), ['contenido', 'creado', 'destino', 'estado', 'huellaContenido', 'id', 'operacion', 'proveedor', 'referencia']);
+    const enDisco = JSON.parse(readFileSync(rutaPend(e.cwd, p.id), 'utf8'));
+    assert.equal(existsSync(join(e.cwd, '.sdd', 'integraciones', 'pendientes')), false, 'nada en el árbol del proyecto');
+    assert.deepEqual(Object.keys(enDisco).sort(), ['contenido', 'creado', 'destino', 'estado', 'hmac', 'huella', 'id', 'operacion', 'proveedor', 'referencia']);
+    assert.match(enDisco.hmac, /^[0-9a-f]{64}$/);
     assert.equal(enDisco.estado, 'pendiente');
     assert.equal(enDisco.proveedor, 'github');
     assert.equal(enDisco.operacion, 'comentar');
     assert.equal(enDisco.destino, 'org/repo');
     assert.equal(enDisco.referencia, 'org/repo#7');
-    assert.equal(enDisco.huellaContenido, huellaDeContenido(enDisco.contenido));
+    assert.equal(enDisco.huella, huellaDePublicacion(enDisco), 'la huella cubre proveedor, operación, destino, referencia y contenido');
     assert.match(enDisco.creado, /^\d{4}-\d{2}-\d{2}T/);
   });
 
@@ -113,8 +140,8 @@ describe('F3.1 — la cola de pendientes', () => {
       assert.equal((await falla(aprobar(e.cwd, malo, e.opciones))).codigo, 'id_no_valido', JSON.stringify(malo));
     }
     assert.equal((await falla(aprobar(e.cwd, 'github-000000000000', e.opciones))).codigo, 'pendiente_no_encontrado');
-    mkdirSync(join(e.cwd, '.sdd', 'integraciones', 'pendientes'), { recursive: true });
-    writeFileSync(join(e.cwd, '.sdd', 'integraciones', 'pendientes', 'roto.json'), '{ no es json');
+    mkdirSync(join(directorioDeEstado(e.cwd), 'pendientes'), { recursive: true });
+    writeFileSync(join(directorioDeEstado(e.cwd), 'pendientes', 'roto.json'), '{ no es json');
     assert.equal((await falla(aprobar(e.cwd, 'roto', e.opciones))).codigo, 'pendiente_corrupto');
     assert.equal(e.gh.peticiones.length, 0);
   });
@@ -151,16 +178,26 @@ describe('F3.1 — vista previa', () => {
     assert.deepEqual(v.archivos, []);
   });
 
-  test('si el pendiente fue modificado a mano, la vista lo avisa (integro: false)', async () => {
+  test('un pendiente modificado a mano (sin la clave) no se autentica: ni vista ni aprobación', async () => {
     const e = await entorno();
     const p = encolar(e);
-    const ruta = join(e.cwd, '.sdd', 'integraciones', 'pendientes', `${p.id}.json`);
+    const ruta = rutaPend(e.cwd, p.id);
     const j = JSON.parse(readFileSync(ruta, 'utf8'));
     j.contenido.texto += '\nAÑADIDO A MANO';
     writeFileSync(ruta, JSON.stringify(j));
+    assert.equal((await falla(Promise.resolve().then(() => vistaPrevia(e.cwd, p.id, { config: e.config })))).codigo, 'pendiente_no_autenticado');
+    assert.equal((await falla(aprobar(e.cwd, p.id, e.opciones))).codigo, 'pendiente_no_autenticado');
+    assert.deepEqual(listarNoAutenticados(e.cwd), [{ id: p.id, origen: 'usuario' }]);
+    assert.equal(e.gh.peticiones.length, 0);
+  });
+
+  test('con firma válida pero contenido que no es el de su huella, la vista avisa (integro: false)', async () => {
+    const e = await entorno();
+    const p = encolar(e);
+    reescribirFirmado(e.cwd, p.id, (j) => { j.contenido.texto += '\nAÑADIDO'; });
     const v = vistaPrevia(e.cwd, p.id, { config: e.config });
     assert.equal(v.integro, false);
-    assert.ok(v.advertencias.some((a) => /cambi/i.test(a)));
+    assert.ok(v.advertencias.some((a) => /huella/i.test(a)));
   });
 });
 
@@ -260,10 +297,7 @@ describe('F3.3 — aprobar', () => {
     const e = await entorno();
     const p = encolar(e);
     vistaPrevia(e.cwd, p.id, { config: e.config });
-    const ruta = join(e.cwd, '.sdd', 'integraciones', 'pendientes', `${p.id}.json`);
-    const j = JSON.parse(readFileSync(ruta, 'utf8'));
-    j.contenido.texto = 'Texto distinto al que se aprobó';
-    writeFileSync(ruta, JSON.stringify(j));
+    reescribirFirmado(e.cwd, p.id, (j) => { j.contenido.texto = 'Texto distinto al que se aprobó'; });
     const x = await falla(aprobar(e.cwd, p.id, e.opciones));
     assert.equal(x.codigo, 'contenido_cambiado');
     assert.equal(e.gh.peticiones.length, 0);
@@ -284,18 +318,18 @@ describe('F3.3 — aprobar', () => {
   test('--huella demasiado corta para identificar nada se rechaza', async () => {
     const e = await entorno();
     const p = encolar(e);
-    assert.equal((await falla(aprobar(e.cwd, p.id, { ...e.opciones, huella: 'abc' }))).codigo, 'huella_distinta');
+    assert.equal((await falla(aprobar(e.cwd, p.id, { ...e.opciones, huella: 'abc' }))).codigo, 'huella_no_valida');
+    assert.equal((await falla(aprobar(e.cwd, p.id, { ...e.opciones, huella: 'abcdef012345'.slice(0, 11) }))).codigo, 'huella_no_valida');
     assert.equal(e.gh.peticiones.length, 0);
   });
 
   test('un texto que ya no sale limpio de la redacción (pendiente manipulado y re-huellado) no se publica', async () => {
     const e = await entorno();
     const p = encolar(e);
-    const ruta = join(e.cwd, '.sdd', 'integraciones', 'pendientes', `${p.id}.json`);
-    const j = JSON.parse(readFileSync(ruta, 'utf8'));
-    j.contenido.texto += '\nclave: ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8';
-    j.huellaContenido = huellaDeContenido(j.contenido);
-    writeFileSync(ruta, JSON.stringify(j));
+    reescribirFirmado(e.cwd, p.id, (j) => {
+      j.contenido.texto += '\nclave: ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8';
+      j.huella = huellaDePublicacion(j);
+    });
     const x = await falla(aprobar(e.cwd, p.id, e.opciones));
     assert.equal(x.codigo, 'contenido_no_redactado');
     assert.equal(e.gh.peticiones.length, 0);

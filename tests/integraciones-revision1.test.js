@@ -8,6 +8,7 @@
  */
 
 import { test, describe, afterEach } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -401,7 +402,7 @@ describe('R4 y R5 modo obligatorio y auditoría que falla cerrada', () => {
 // ════════════════════════════════════════════════════════════════════════════════════════════
 describe('R6 tope por sesión atómico entre procesos', () => {
   test('la sesión por defecto es por día, no por proceso', () => {
-    const a = new AuditoriaIntegraciones({ cwd: proyecto(), env: {} });
+    const a = new AuditoriaIntegraciones({ cwd: proyecto(), env: process.env });
     assert.match(a.sesion, /^dia-\d{4}-\d{2}-\d{2}$/);
   });
 
@@ -415,7 +416,7 @@ describe('R6 tope por sesión atómico entre procesos', () => {
       import { join } from 'node:path';
       const { AuditoriaIntegraciones } = await import(${JSON.stringify(url)});
       const [cwd, salida, id, arranque] = process.argv.slice(2);
-      const a = new AuditoriaIntegraciones({ cwd, tope: 3, sesion: 'carrera', env: {} });
+      const a = new AuditoriaIntegraciones({ cwd, tope: 3, sesion: 'carrera', env: process.env });
       while (Date.now() < Number(arranque)) { /* barrera por reloj */ }
       for (let i = 0; i < 3; i++) {
         try {
@@ -520,7 +521,7 @@ describe('R9 apagar detiene proponerCambio entre peticiones', () => {
     const srv = await crearServidorGitHub({ token: TOKEN_GH, repos: { 'org/repo': { ramas: { main: 'a'.repeat(40) }, incidencias: {} } } });
     limpieza.push(() => srv.cerrar());
     const cwd = proyecto();
-    const auditoria = new AuditoriaIntegraciones({ cwd, tope: 50, sesion: 'r9', env: {} });
+    const auditoria = new AuditoriaIntegraciones({ cwd, tope: 50, sesion: 'r9', env: process.env });
     let n = 0;
     const http = (/** @type {any} */ o) => { n++; if (n === 2) apagar(cwd); return pedir(o); };
     const p = crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'proponer', auditoria, http, [BASE_LOCAL]: srv.baseUrl });
@@ -536,7 +537,7 @@ describe('R9 apagar detiene proponerCambio entre peticiones', () => {
     const srv = await crearServidorGitLab({ token: TOKEN_GL, proyectos: { 'empresa/web': { ramas: ['main'] } } });
     limpieza.push(() => srv.cerrar());
     const cwd = proyecto();
-    const auditoria = new AuditoriaIntegraciones({ cwd, tope: 50, sesion: 'r9', env: {} });
+    const auditoria = new AuditoriaIntegraciones({ cwd, tope: 50, sesion: 'r9', env: process.env });
     let n = 0;
     const http = (/** @type {any} */ o) => { n++; if (n === 3) apagar(cwd); return pedir(o); };
     const p = crearProveedorGitLab({ token: TOKEN_GL, destinos: ['empresa/web'], modo: 'proponer', auditoria, host: 'gitlab.com', http, [BASE_LOCAL]: srv.baseUrl });

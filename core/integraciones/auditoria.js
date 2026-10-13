@@ -12,18 +12,25 @@
  *      `{ proveedor, operacion, destino, resultado, duracionMs }`: ni contenido ni credenciales ni el
  *      mensaje de un error (solo su código tipado).
  *
- * El contador de la sesión se guarda en `.sdd/integraciones/sesiones/<sesion>.jsonl` para que valga
- * entre los comandos de `forge integraciones`, que son procesos distintos.
+ * Los contadores (por sesión y por día) se guardan en el estado del USUARIO, fuera del árbol del proyecto
+ * (`<estado>/sesiones/<sesion>.jsonl` y `<estado>/dias/<AAAA-MM-DD>.jsonl`; ver `estado-usuario.js`):
+ * valen entre los comandos de `forge integraciones`, que son procesos distintos, y un repositorio no
+ * puede reiniciarlos fabricando un `sesion.json` (H9). El interruptor por archivo sigue en el árbol:
+ * solo puede APAGAR.
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, lstatSync, readFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { crearDirectorio, crearArchivo, verificarRuta } from '../escritura-segura.js';
 import { EventLog } from '../event-log.js';
 import { redactar } from '../ciclo/redactar.js';
 import { TOPE_POR_DEFECTO } from './config.js';
+import { directorioDeEstado } from './estado-usuario.js';
+
+/** Tope diario por proveedor: lo que no reinicia fabricar otro `sesion.json` (H9). Múltiplo del tope por sesión, con techo. */
+export const topeDiarioDe = (/** @type {number} */ tope) => Math.min(tope * 5, 200);
 
 /** Operaciones auditables; cada una es un tipo de evento `integracion:<operacion>`. */
 export const OPERACIONES_AUDITADAS = Object.freeze(['leer_elemento', 'comentar', 'proponer_cambio', 'comprobar_alcance', 'publicar']);
@@ -48,9 +55,9 @@ export class ErrorIntegracionesApagadas extends Error {
 }
 
 export class ErrorTopeIntegraciones extends Error {
-  /** @param {string} proveedor @param {number} tope */
-  constructor(proveedor, tope) {
-    super(`Se alcanzó el tope de ${tope} operaciones de ${proveedor} en esta sesión. Se detiene para que una persona revise lo hecho (forge integraciones estado); si es correcto, sube topes_operaciones_por_sesion en .sdd/sdd.config.yaml o empieza otra sesión.`);
+  /** @param {string} proveedor @param {number} tope @param {'sesion'|'dia'} [ambito] */
+  constructor(proveedor, tope, ambito = 'sesion') {
+    super(`Se alcanzó el tope de ${tope} operaciones de ${proveedor} ${ambito === 'dia' ? 'hoy (tope diario)' : 'en esta sesión'}. Se detiene para que una persona revise lo hecho (forge integraciones estado); si es correcto, sube topes_operaciones_por_sesion en .sdd/sdd.config.yaml o empieza otra sesión.`);
     this.name = 'ErrorTopeIntegraciones';
     this.codigo = 'tope_operaciones';
     this.requiereRevisionHumana = true;
@@ -115,15 +122,28 @@ export class AuditoriaIntegraciones {
     // R6: la sesión por defecto es POR DÍA, no por proceso: cada invocación de la CLI es otro proceso
     this.sesion = String(sesion ?? `dia-${new Date().toISOString().slice(0, 10)}`).replace(/[^\w.-]/g, '_');
     this.eventos = eventLog ?? new EventLog(join(cwd, '.sdd'));
-    this.archivoSesion = join(DIR(cwd), 'sesiones', `${this.sesion}.jsonl`);
+    this.topeDiario = topeDiarioDe(tope);
+    /** @type {string|undefined} */
+    this._dirEstado = undefined;
   }
 
+  /** Directorio de estado del usuario (se crea al primer uso). */
+  dirEstado() { return (this._dirEstado ??= directorioDeEstado(this.cwd, this.env)); }
+  archivoSesion() { return join(this.dirEstado(), 'sesiones', `${this.sesion}.jsonl`); }
+  archivoDia() { return join(this.dirEstado(), 'dias', `${new Date().toISOString().slice(0, 10)}.jsonl`); }
+
   /** Operaciones hechas en la sesión, por proveedor. @returns {Record<string, number>} */
-  contadores() {
+  contadores() { return this._contar(this.archivoSesion()); }
+
+  /** Operaciones hechas hoy (UTC), por proveedor. @returns {Record<string, number>} */
+  contadoresDelDia() { return this._contar(this.archivoDia()); }
+
+  /** @param {string} archivo @returns {Record<string, number>} */
+  _contar(archivo) {
     /** @type {Record<string, number>} */
     const c = {};
     let texto = '';
-    try { texto = readFileSync(verificarRuta(this.cwd, this.archivoSesion), 'utf8'); } catch { return c; }
+    try { texto = readFileSync(verificarRuta(this.dirEstado(), archivo), 'utf8'); } catch { return c; }
     for (const linea of texto.split('\n')) {
       if (!linea) continue;
       try {
@@ -135,7 +155,11 @@ export class AuditoriaIntegraciones {
   }
 
   estado() {
-    return { tope: this.tope, sesion: this.sesion, contadores: this.contadores(), interruptor: estadoInterruptor(this.cwd, this.env) };
+    return {
+      tope: this.tope, sesion: this.sesion, contadores: this.contadores(),
+      topeDiario: this.topeDiario, contadoresDia: this.contadoresDelDia(),
+      interruptor: estadoInterruptor(this.cwd, this.env),
+    };
   }
 
   /** @param {string} proveedor @param {string} operacion @param {string} destino @param {string} resultado @param {number} duracionMs */
@@ -150,12 +174,12 @@ export class AuditoriaIntegraciones {
    * sola escritura con O_APPEND, que el sistema operativo serializa) y después se relee el archivo.
    * El orden de las líneas decide quién cabe: solo ejecutan las `tope` primeras de cada proveedor.
    * No hay «comprobar y luego contar», así que no hay carrera. Devuelve si esta operación cabe.
-   * @param {string} proveedor
+   * @param {string} proveedor @param {string} [archivo] @param {number} [limite]
    * @returns {boolean}
    */
-  _reservar(proveedor) {
-    crearDirectorio(this.cwd, join(DIR(this.cwd), 'sesiones'));
-    const ruta = verificarRuta(this.cwd, this.archivoSesion);
+  _reservar(proveedor, archivo = this.archivoSesion(), limite = this.tope) {
+    crearDirectorio(this.dirEstado(), dirname(archivo));
+    const ruta = verificarRuta(this.dirEstado(), archivo);
     const id = randomBytes(8).toString('hex');
     appendFileSync(ruta, JSON.stringify({ ts: new Date().toISOString(), proveedor, id }) + '\n', 'utf8');
     let posicion = 0;
@@ -165,7 +189,7 @@ export class AuditoriaIntegraciones {
       if (!linea) continue;
       try {
         const o = JSON.parse(linea);
-        if (o.id === id) return posicion < this.tope;
+        if (o.id === id) return posicion < limite;
         if (String(o.proveedor) === proveedor) posicion++;
       } catch { /* línea cortada */ }
     }
@@ -216,6 +240,11 @@ export class AuditoriaIntegraciones {
     if ((this.contadores()[proveedor] ?? 0) >= this.tope || !this._reservar(proveedor)) {
       this._evento(proveedor, operacion, destino, 'rechazado:tope_operaciones', 0);
       throw new ErrorTopeIntegraciones(proveedor, this.tope);
+    }
+    // Tope diario: no lo reinicia otro identificador de sesión (H9)
+    if ((this.contadoresDelDia()[proveedor] ?? 0) >= this.topeDiario || !this._reservar(proveedor, this.archivoDia(), this.topeDiario)) {
+      this._evento(proveedor, operacion, destino, 'rechazado:tope_operaciones', 0);
+      throw new ErrorTopeIntegraciones(proveedor, this.topeDiario, 'dia');
     }
 
     const t0 = Date.now();

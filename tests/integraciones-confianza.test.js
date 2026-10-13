@@ -9,6 +9,7 @@
  */
 
 import { test, describe } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

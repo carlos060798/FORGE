@@ -28,6 +28,7 @@ import { leerRutasProtegidas } from '../ciclo/config.js';
 import { clasificarRuta, huella } from '../ciclo/protocolo-archivos.js';
 import { redactar, redactarFormatos } from '../ciclo/redactar.js';
 import { PROVEEDORES } from './puerto.js';
+import { clasificarManifiesto, motivoRutaVetada } from './rutas.js';
 
 export const PREFIJO_RAMA = 'forge/';
 export const BASE_POR_DEFECTO = 'main';
@@ -135,10 +136,33 @@ export function leerEstadoDeTarea(cwd, tareaId) {
 
 // ── Texto saliente ──────────────────────────────────────────────────────────────────────────
 
-/** Una línea, sin invisibles, redactada, sin rutas locales y acotada. @param {unknown} valor @param {number} max */
+/**
+ * Caracteres con significado para una plataforma (menciones, referencias, imágenes, enlaces, HTML,
+ * referencias de GitLab) sustituidos por su forma de ancho completo: se leen igual y ya no son activos
+ * (revisión 2, H5). El texto no confiable (nombres de archivo, identificadores) nunca llega crudo.
+ */
+const INERTES = /** @type {Record<string, string>} */ ({
+  '@': '＠', '#': '＃', '!': '！', '&': '＆', '%': '％', '~': '～', '$': '＄', '`': "'",
+  '<': '＜', '>': '＞', '[': '［', ']': '］', '|': '｜',
+});
+
+/** @param {string} t */
+export function neutralizar(t) {
+  let r = String(t).replace(/[@#!&%~$`<>[\]|]/g, (c) => INERTES[c]);
+  r = r.replace(/:\/\//g, '：//').replace(/\bGH-(?=\d)/gi, 'GH‑');
+  if (r.startsWith('/')) r = `∕${r.slice(1)}`;
+  return r;
+}
+
+/** Ninguna línea del cuerpo empieza por «/» (acciones rápidas de GitLab, comandos de bots). @param {string} t */
+function sinComandos(t) {
+  return t.split('\n').map((l) => l.replace(/^(\s*)\//, '$1∕')).join('\n');
+}
+
+/** Una línea, sin invisibles, redactada, neutralizada, sin rutas locales y acotada. @param {unknown} valor @param {number} max */
 function limpiar(valor, max) {
   let t = String(valor ?? '').replace(INVISIBLES, ' ').replace(/\s+/g, ' ').trim();
-  t = redactar(redactarFormatos(t));
+  t = neutralizar(redactar(redactarFormatos(t)));
   t = t.replace(/(?:[A-Za-z]:[\\/]|\\\\|\/(?:home|Users|root|tmp|var|etc|mnt)\/)[^\s)»"']*/g, '[ruta local]');
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
@@ -165,7 +189,7 @@ const CARPETAS_CI = new Set(['.github', '.gitlab', '.circleci', '.buildkite', '.
  * ¿Por qué no se publica esta ruta sin una aprobación expresa por archivo?
  * @param {string} ruta  relativa y con «/»
  * @param {string[]} [vetadasExtra]
- * @returns {null | 'ruta_vetada'|'ci'|'dependencias'|'configuracion'}
+ * @returns {null | 'ruta_vetada'|'ci'|'dependencias'|'configuracion'|'ruta_no_valida'}
  */
 export function motivoDeExclusion(ruta, vetadasExtra = []) {
   const clase = clasificarRuta(ruta, vetadasExtra);
@@ -173,7 +197,38 @@ export function motivoDeExclusion(ruta, vetadasExtra = []) {
   const segmentos = ruta.split('/');
   const nombre = segmentos[segmentos.length - 1];
   if (segmentos.some((s) => CARPETAS_CI.has(s.toLowerCase())) || NOMBRES_CI.some((r) => r.test(nombre))) return 'ci';
-  return clase;
+  if (clase) return clase;
+  const manifiesto = clasificarManifiesto(ruta);
+  if (manifiesto) return manifiesto;
+  // Lo que el adaptador rechaza SIEMPRE (CODEOWNERS, .husky, nombres reservados…) no se prepara (H10)
+  if (motivoRutaVetada(ruta) !== null) return 'ruta_no_valida';
+  return null;
+}
+
+/**
+ * ¿Se puede publicar este archivo? UNA sola función para `prepararPublicacion` y para `aprobar`
+ * (revisión 2, H2): ruta válida, no excluida (dependencias, configuración, CI, vetados, rutas que el
+ * adaptador rechaza), tamaño acotado, texto sin NUL, sin secretos por formato y con el `sha256` que el
+ * ciclo registró coincidiendo con su contenido.
+ * @param {string} ruta @param {unknown} contenido @param {string} sha256
+ * @param {string[]} [vetadas] patrones adicionales de la configuración del proyecto
+ * @returns {{ publicable: true } | { publicable: false, motivo: ArchivoExcluido['motivo'] | 'sha256_no_coincide' | 'demasiado_grande' | 'forma_no_valida' }}
+ */
+export function archivoPublicable(ruta, contenido, sha256, vetadas = []) {
+  if (typeof ruta !== 'string' || typeof contenido !== 'string' || typeof sha256 !== 'string') return { publicable: false, motivo: 'forma_no_valida' };
+  if (!rutaValida(ruta)) return { publicable: false, motivo: 'ruta_no_valida' };
+  const motivo = motivoDeExclusion(ruta, vetadas);
+  if (motivo) return { publicable: false, motivo };
+  if (Buffer.byteLength(contenido, 'utf8') > MAX_BYTES_ARCHIVOS) return { publicable: false, motivo: 'demasiado_grande' };
+  if (huella(contenido) !== sha256) return { publicable: false, motivo: 'sha256_no_coincide' };
+  if (contenido.includes('\u0000')) return { publicable: false, motivo: 'no_es_texto' };
+  if (redactarFormatos(contenido) !== contenido) return { publicable: false, motivo: 'secreto_en_contenido' };
+  return { publicable: true };
+}
+
+/** Vetadas del proyecto (solo pueden AÑADIR vetos). @param {string} cwd @returns {string[]} */
+export function vetadasDelProyecto(cwd) {
+  try { return leerRutasProtegidas(cwd); } catch { return []; }
 }
 
 const slugMarcador = (/** @type {string} */ id) => id.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 47);
@@ -222,11 +277,11 @@ function textoDeResultado(estado, o) {
   l.push('Generado por FORGE a partir del estado del ciclo verificado; no es una revisión humana.');
   l.push(`Evidencia local: .sdd/motor/${limpiar(o.runId, 80)}/`);
   l.push(`Identificador: ${o.marcador}`);
-  let t = redactar(l.join('\n'));
+  let t = sinComandos(redactar(l.join('\n')));
   if (Buffer.byteLength(t, 'utf8') > MAX_BYTES_TEXTO) {
     // Nunca ocurre con las listas acotadas; si pasara, se recorta por líneas, conservando el pie
     const pie = l.slice(-4).join('\n');
-    t = redactar(`${l.slice(0, 12).join('\n')}\n[… recortado]\n\n${pie}`);
+    t = sinComandos(redactar(`${l.slice(0, 12).join('\n')}\n[… recortado]\n\n${pie}`));
   }
   return t;
 }
@@ -321,8 +376,8 @@ export function prepararPublicacion(o) {
       throw new ErrorPublicacion('archivo_no_legible', `No se pudo leer «${limpiar(a.ruta, 120)}» de forma segura (enlace, no es un archivo normal o es demasiado grande). No se publica nada.`);
     }
     if (contenido === null || huella(contenido) !== a.sha256) { alteradas.push(a.ruta); continue; }
-    if (contenido.includes('\u0000')) { excluidos.push({ ruta: a.ruta, motivo: 'no_es_texto' }); continue; }
-    if (redactarFormatos(contenido) !== contenido) { excluidos.push({ ruta: a.ruta, motivo: 'secreto_en_contenido' }); continue; }
+    const veredicto = archivoPublicable(a.ruta, contenido, a.sha256, vetadas);
+    if ('motivo' in veredicto) { excluidos.push({ ruta: a.ruta, motivo: /** @type {any} */ (veredicto.motivo) }); continue; }
     archivos.push({ ruta: a.ruta, contenido, sha256: a.sha256 });
   }
   if (alteradas.length > 0) {

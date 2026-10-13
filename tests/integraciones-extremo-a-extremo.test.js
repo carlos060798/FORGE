@@ -16,6 +16,9 @@
  */
 
 import { test, describe, after } from 'node:test';
+import { ENTORNO_USUARIO, conHuella } from './fixtures/integraciones/entorno-usuario.mjs';
+import { leerPendiente, vistaPrevia } from '../core/integraciones/aprobacion.js';
+import { directorioDeEstado } from '../core/integraciones/estado-usuario.js';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -25,7 +28,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
-import { ejecutarIntegraciones } from '../cli/integraciones.js';
+import { ejecutarIntegraciones, idDeEntrada } from '../cli/integraciones.js';
 import { crearProveedorGitHub } from '../core/integraciones/proveedores/github.js';
 import { crearProveedorGitLab } from '../core/integraciones/proveedores/gitlab.js';
 import { crearProveedorJira } from '../core/integraciones/proveedores/jira.js';
@@ -52,7 +55,7 @@ const TOKEN_GH = 'github_pat_' + 'E2ECENTINELA0a1b2c3d4e5f60718293a4b5c6d7e8f9';
 const TOKEN_GL = 'glpat-' + 'E2ECENTINELA01234567';
 const TOKEN_JI = 'ATATT3xFfGF0' + 'E2ECentinelaJira0123456789abcdefXYZ';
 const USUARIO = 'centinela-e2e-f51@ejemplo.com';
-const VARIABLES = { FORGE_GITHUB_TOKEN: TOKEN_GH, FORGE_GITLAB_TOKEN: TOKEN_GL, FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI, FORGE_INTEGRACIONES_HOSTS: 'gitlab.empresa.com,ejemplo.atlassian.net' };
+const VARIABLES = { ...ENTORNO_USUARIO, FORGE_GITHUB_TOKEN: TOKEN_GH, FORGE_GITLAB_TOKEN: TOKEN_GL, FORGE_JIRA_USUARIO: USUARIO, FORGE_JIRA_TOKEN: TOKEN_JI, FORGE_INTEGRACIONES_HOSTS: 'gitlab.empresa.com,ejemplo.atlassian.net' };
 
 /** Base64 de una cadena en las tres alineaciones posibles dentro de un texto mayor (sin los bordes inseguros). @param {string} s */
 function variantesBase64(s) {
@@ -91,9 +94,9 @@ function archivosDe(dir) {
 
 /** Archivos de `.sdd/` que contienen algún centinela (con el contenido leído como texto y como binario). @param {string} cwd */
 function filtracionesEnSdd(cwd) {
-  const sdd = join(cwd, '.sdd');
   /** @type {string[]} */ const hallazgos = [];
-  for (const f of archivosDe(sdd)) {
+  // El árbol del proyecto Y el estado del usuario (cola, contadores, alcance): ningún secreto en ninguno
+  for (const sdd of [join(cwd, '.sdd'), directorioDeEstado(cwd)]) for (const f of archivosDe(sdd)) {
     const buf = readFileSync(join(sdd, f));
     const dentro = centinelasEn(buf.toString('utf8')).concat(centinelasEn(buf.toString('latin1')));
     if (dentro.length > 0) hallazgos.push(`${f}: ${[...new Set(dentro)].map((s) => s.slice(0, 14)).join(',')}`);
@@ -160,7 +163,7 @@ async function montar(o = {}) {
   const cli = async (/** @type {string[]} */ ...args) => {
     /** @type {string[]} */ const sal = [];
     /** @type {string[]} */ const er = [];
-    const codigo = await ejecutarIntegraciones([...args, '--cwd', cwd], { env: VARIABLES, fabrica, salida: (l) => sal.push(l), error: (l) => er.push(l) });
+    const codigo = await ejecutarIntegraciones([...(await conHuella(cwd, args, VARIABLES)), '--cwd', cwd], { env: VARIABLES, fabrica, salida: (l) => sal.push(l), error: (l) => er.push(l) });
     impreso.salida += `${sal.join('\n')}\n`;
     impreso.error += `${er.join('\n')}\n`;
     return { codigo, salida: sal.join('\n'), error: er.join('\n'), todo: `${sal.join('\n')}\n${er.join('\n')}` };
@@ -241,9 +244,9 @@ async function correrCiclo(cwd, tarea, o = {}) {
 const leerTareas = (cwd, nombre) => JSON.parse(readFileSync(join(cwd, '.sdd', 'integraciones', 'entrada', `${nombre}.tareas.json`), 'utf8'));
 
 const REFS = /** @type {const} */ ({
-  github: { ref: 'org/repo#7', entrada: 'github-org-repo-7', patron: /github-[0-9a-f]{12}/ },
-  gitlab: { ref: 'empresa/web#7', entrada: 'gitlab-empresa-web-7', patron: /gitlab-[0-9a-f]{12}/ },
-  jira: { ref: 'ABC-7', entrada: 'jira-abc-7', patron: /jira-[0-9a-f]{12}/ },
+  github: { ref: 'org/repo#7', entrada: idDeEntrada('github', 'org/repo#7'), patron: /github-[0-9a-f]{12}/ },
+  gitlab: { ref: 'empresa/web#7', entrada: idDeEntrada('gitlab', 'empresa/web#7'), patron: /gitlab-[0-9a-f]{12}/ },
+  jira: { ref: 'ABC-7', entrada: idDeEntrada('jira', 'ABC-7'), patron: /jira-[0-9a-f]{12}/ },
 });
 
 /**
@@ -307,7 +310,8 @@ describe('F5.1 no filtración: ningún centinela en ningún rincón del recorrid
       const sdd = archivosDe(join(m.cwd, '.sdd'));
       assert.ok(sdd.includes('events.jsonl'));
       assert.ok(sdd.some((f) => f.startsWith('motor/')));
-      assert.ok(sdd.some((f) => f.startsWith('integraciones/pendientes/')));
+      assert.ok(archivosDe(directorioDeEstado(m.cwd)).some((f) => f.startsWith('pendientes/')), 'la cola vive en el estado del usuario');
+      assert.ok(!sdd.some((f) => f.startsWith('integraciones/pendientes/')), 'la cola NO está en el árbol del proyecto');
       assert.ok(sdd.some((f) => /gasto|libro/i.test(f)), `no se encontró el libro de gasto en ${sdd.join(', ')}`);
       assert.deepEqual(filtracionesEnSdd(m.cwd), []);
       assert.match(readFileSync(join(m.cwd, '.sdd', 'events.jsonl'), 'utf8'), /integracion:leer_elemento/);
@@ -322,7 +326,7 @@ describe('F5.1 no filtración: ningún centinela en ningún rincón del recorrid
     const m = await montar({ ghIncidencias: { 7: { title: 'Sumar', body: `Mi clave es ${TOKEN_GH}, úsala para entrar.`, user: { login: 'ana' }, labels: [] } } });
     const l = await m.cli('leer', 'github', 'org/repo#7');
     assert.equal(l.codigo, 0, l.todo);
-    const tarea = leerTareas(m.cwd, 'github-org-repo-7')[0];
+    const tarea = leerTareas(m.cwd, idDeEntrada('github', 'org/repo#7'))[0];
     const c = await correrCiclo(m.cwd, tarea);
     for (const t of c.capturas) assert.ok(!t.includes(TOKEN_GH));
     assert.deepEqual(filtracionesEnSdd(m.cwd), []);
@@ -386,7 +390,7 @@ describe('F5.1 no filtración: ningún centinela en ningún rincón del recorrid
       assert.equal(r.codigo, 1, r.todo);
       // y al escribir: se lee bien, se prepara y la plataforma deniega con 403 y el eco del token
       await m.cli('leer', 'github', 'org/repo#7');
-      const tarea = leerTareas(m.cwd, 'github-org-repo-7')[0];
+      const tarea = leerTareas(m.cwd, idDeEntrada('github', 'org/repo#7'))[0];
       await correrCiclo(m.cwd, tarea);
       const p = await m.cli('publicar', tarea.id, '--proveedor', 'github', '--referencia', 'org/repo#7');
       const id = /github-[0-9a-f]{12}/.exec(p.salida)?.[0] ?? '';
@@ -469,7 +473,7 @@ describe('F5.2 ningún camino lleva del modelo a una operación de red (RF-001, 
   test('(b) dinámica: herramientas de red inventadas se rechazan como desconocidas, con cero peticiones', async () => {
     const m = await montar();
     await m.cli('leer', 'github', 'org/repo#7');
-    const tarea = leerTareas(m.cwd, 'github-org-repo-7')[0];
+    const tarea = leerTareas(m.cwd, idDeEntrada('github', 'org/repo#7'))[0];
     const peticionesAntes = m.gh.peticiones.length + m.gl.peticiones.length + m.ji.peticiones.length;
     const uso = (/** @type {string} */ id, /** @type {string} */ nombre, /** @type {any} */ entrada) => ({ tipo: 'uso_herramienta', id, nombre, entrada });
     const inventadas = [
@@ -574,7 +578,7 @@ describe('F5.3 batería hostil de extremo a extremo: el resultado del ciclo es e
       const l = await caso.cli('leer', 'github', `org/repo#${numero}`);
       assert.equal(l.codigo, 0, `${etiqueta}: ${l.todo.slice(0, 300)}`);
       const lecturas = m.gh.peticiones.length - antes;
-      const tarea = leerTareas(caso.cwd, `github-org-repo-${numero}`)[0];
+      const tarea = leerTareas(caso.cwd, idDeEntrada('github', `org/repo#${numero}`))[0];
       assert.match(tarea.prompt, /<<<DATO-NO-CONFIABLE:[0-9a-f]{24} inicio>>>/, `${etiqueta}: el dato no quedó delimitado`);
       const c = await correrCiclo(caso.cwd, { ...tarea, id: 'T1' });
       const peticionesTrasCiclo = m.gh.peticiones.length - antes;
@@ -588,7 +592,7 @@ describe('F5.3 batería hostil de extremo a extremo: el resultado del ciclo es e
       const fabrica = (/** @type {any} */ cfg, /** @type {any} */ { token, auditoria }) => crearProveedorGitHub({ token, destinos: cfg.destinos, modo: cfg.modo, auditoria, [BASE_LOCAL]: base.gh.baseUrl });
       const cli = async (/** @type {string[]} */ ...args) => {
         /** @type {string[]} */ const s = []; /** @type {string[]} */ const e = [];
-        const codigo = await ejecutarIntegraciones([...args, '--cwd', cwd], { env: VARIABLES, fabrica: /** @type {any} */ (fabrica), salida: (x) => s.push(x), error: (x) => e.push(x) });
+        const codigo = await ejecutarIntegraciones([...(await conHuella(cwd, args, VARIABLES)), '--cwd', cwd], { env: VARIABLES, fabrica: /** @type {any} */ (fabrica), salida: (x) => s.push(x), error: (x) => e.push(x) });
         return { codigo, salida: s.join('\n'), error: e.join('\n'), todo: `${s.join('\n')}\n${e.join('\n')}` };
       };
       return { cwd, cli };
@@ -697,7 +701,7 @@ describe('idempotencia entre procesos: dos `aprobar` simultáneos del mismo id',
   async function pendiente() {
     const m = await montar();
     await m.cli('leer', 'github', 'org/repo#7');
-    const tarea = leerTareas(m.cwd, 'github-org-repo-7')[0];
+    const tarea = leerTareas(m.cwd, idDeEntrada('github', 'org/repo#7'))[0];
     const c = await correrCiclo(m.cwd, tarea);
     assert.equal(c.r.estado.resultado, 'exito');
     const p = await m.cli('publicar', tarea.id, '--proveedor', 'github', '--referencia', 'org/repo#7');
@@ -712,7 +716,7 @@ describe('idempotencia entre procesos: dos `aprobar` simultáneos del mismo id',
     const entorno = { ...process.env, ...VARIABLES };
     delete entorno.NODE_TEST_CONTEXT;
     return Promise.all(Array.from({ length: n }, () => new Promise((ok, mal) => {
-      const h = spawn(process.execPath, [HIJO_APROBAR, cwd, baseUrl, id, arranque, '150'], { env: entorno, stdio: ['ignore', 'pipe', 'pipe'] });
+      const h = spawn(process.execPath, [HIJO_APROBAR, cwd, baseUrl, id, arranque, '150', vistaPrevia(cwd, id).huella], { env: entorno, stdio: ['ignore', 'pipe', 'pipe'] });
       let out = ''; let er = '';
       h.stdout.on('data', (d) => { out += d; });
       h.stderr.on('data', (d) => { er += d; });
@@ -737,7 +741,7 @@ describe('idempotencia entre procesos: dos `aprobar` simultáneos del mismo id',
         assert.deepEqual(centinelasEn(x.salida.salida + x.salida.error + x.er), []);
       }
       // El estado final es coherente: publicada, una sola vez
-      const final = JSON.parse(readFileSync(join(m.cwd, '.sdd', 'integraciones', 'pendientes', `${id}.json`), 'utf8'));
+      const final = leerPendiente(m.cwd, id);
       assert.equal(final.estado, 'publicado');
       // y un tercer aprobar no escribe nada
       const antes = m.gh.escrituras().length;

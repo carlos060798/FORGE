@@ -73,3 +73,21 @@
 - [x] **R7** marcador de la cuenta propia. Prueba: R7.
 - [x] **R9/R10/R11/R12/R13** interruptor, valores, reintentos, base local, rellenos. Pruebas: R9 a R13.
 - [ ] Segunda revisión independiente (pendiente).
+
+
+## Correcciones de la revisión independiente 2
+
+- [x] **H1** cola autenticada (HMAC) y fuera del árbol; `aprobar` muestra siempre y exige `--huella`; migración (el antiguo se lista «no autenticado»). Prueba: `integraciones-revision2` (H1).
+- [x] **H2** `archivoPublicable` compartida y manifiestos/scripts excluidos por defecto en `rutas.js`. Prueba: H2.
+- [x] **H3** huella sobre proveedor, operación, destino, referencia y contenido; coherencia. Prueba: H3.
+- [x] **H4** candado por archivo conservado en la cola del usuario; prueba de dos procesos. Prueba: H4.
+- [x] **H5** neutralización de texto no confiable. Prueba: H5.
+- [x] **H6** saneado de toda salida del CLI. Prueba: H6.
+- [x] **H7** BOM UTF-8, UTF-16 y CRLF en la puerta y en el lector. Prueba: H7.
+- [x] **H8** `FORGE_INTEGRACIONES_ESCRITURA` y `FORGE_INTEGRACIONES_DESTINOS` (ADR-22, spec CA-004, docs). Prueba: H8.
+- [x] **H9** alcance firmado en el estado del usuario; tope diario. Prueba: H9 (el tope de sesión sigue siendo reiniciable hasta el diario: mitigado).
+- [x] **H10** exclusión de rutas del adaptador al preparar. Prueba: H10.
+- [x] **H11** identificador de entrada con huella de la referencia. Prueba: H11.
+- [x] **H12** códigos de salida 2. Prueba: H12.
+- [x] Origen de la lectura de `FORGE_GITHUB_TOKEN` en `forge doctor`: es `child_process` (`where claude`, Docker), no el módulo. Explicado en `verificacion.md`.
+- [ ] Tercera revisión independiente (pendiente).

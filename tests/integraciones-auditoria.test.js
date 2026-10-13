@@ -5,6 +5,7 @@
  */
 
 import { test, describe } from 'node:test';
+import './fixtures/integraciones/entorno-usuario.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -33,7 +34,7 @@ const A = (extra = {}) => ({ proveedor: 'github', operacion: 'leer_elemento', de
 describe('F1.5 auditoría: eventos', () => {
   test('cada operación deja integracion:<operacion> con exactamente cinco campos', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, env: process.env });
     const r = await au.ejecutar(A());
     assert.equal(r, 'hecho');
     const [e] = eventos(dir);
@@ -49,7 +50,7 @@ describe('F1.5 auditoría: eventos', () => {
 
   test('un error deja resultado error con el código tipado y sin el mensaje', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, env: process.env });
     const e1 = await au.ejecutar(A({ accion: async () => { throw new ErrorHttpIntegracion('tiempo', `falló con ${TOKEN}`); } })).catch((x) => x);
     assert.ok(e1 instanceof ErrorHttpIntegracion);                  // el error se propaga tal cual
     await au.ejecutar(A({ accion: async () => { throw new Error(`boom ${TOKEN}`); } })).catch(() => {});
@@ -63,7 +64,7 @@ describe('F1.5 auditoría: eventos', () => {
 
   test('el destino se redacta y se acota; nunca lleva contenido', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, env: process.env });
     await au.ejecutar(A({ destino: `org/repo?t=${TOKEN}\n${'x'.repeat(1000)}` }));
     const [e] = eventos(dir);
     assert.ok(!String(e.payload.destino).includes(TOKEN));
@@ -72,7 +73,7 @@ describe('F1.5 auditoría: eventos', () => {
   });
 
   test('las operaciones y los proveedores son cerrados', async () => {
-    const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: process.env });
     await assert.rejects(au.ejecutar(A({ operacion: 'llamar_api' })), TypeError);
     await assert.rejects(au.ejecutar(A({ proveedor: 'github; rm' })), TypeError);
     assert.deepEqual([...OPERACIONES_AUDITADAS], ['leer_elemento', 'comentar', 'proponer_cambio', 'comprobar_alcance', 'publicar']);
@@ -87,7 +88,7 @@ describe('F1.5 auditoría: eventos', () => {
 describe('F1.5 auditoría: tope por sesión y proveedor', () => {
   test('la operación que supera el tope lanza un error que pide revisión humana y no se ejecuta', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, tope: 3, sesion: 's1', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, tope: 3, sesion: 's1', env: process.env });
     let llamadas = 0;
     const accion = async () => { llamadas++; };
     for (let i = 0; i < 3; i++) await au.ejecutar(A({ accion }));
@@ -105,7 +106,7 @@ describe('F1.5 auditoría: tope por sesión y proveedor', () => {
   });
 
   test('el tope es por proveedor', async () => {
-    const au = new AuditoriaIntegraciones({ cwd: proyecto(), tope: 2, sesion: 's2', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: proyecto(), tope: 2, sesion: 's2', env: process.env });
     await au.ejecutar(A());
     await au.ejecutar(A());
     await au.ejecutar(A({ proveedor: 'gitlab' }));
@@ -117,17 +118,17 @@ describe('F1.5 auditoría: tope por sesión y proveedor', () => {
 
   test('el contador sobrevive entre procesos de la misma sesión y no entre sesiones', async () => {
     const dir = proyecto();
-    const a = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'misma', env: {} });
+    const a = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'misma', env: process.env });
     await a.ejecutar(A());
     await a.ejecutar(A());
-    const b = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'misma', env: {} });
+    const b = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'misma', env: process.env });
     await assert.rejects(b.ejecutar(A()), ErrorTopeIntegraciones);
-    const c = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'otra', env: {} });
+    const c = new AuditoriaIntegraciones({ cwd: dir, tope: 2, sesion: 'otra', env: process.env });
     await c.ejecutar(A());
   });
 
   test('un fallo también cuenta: una ráfaga de errores se corta', async () => {
-    const au = new AuditoriaIntegraciones({ cwd: proyecto(), tope: 2, sesion: 's3', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: proyecto(), tope: 2, sesion: 's3', env: process.env });
     const mal = async () => { throw new Error('x'); };
     await au.ejecutar(A({ accion: mal })).catch(() => {});
     await au.ejecutar(A({ accion: mal })).catch(() => {});
@@ -136,7 +137,7 @@ describe('F1.5 auditoría: tope por sesión y proveedor', () => {
 
   test('el tope por defecto es 20 y el nombre de sesión no puede salirse de la carpeta', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, sesion: '../../fuera', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, sesion: '../../fuera', env: process.env });
     assert.equal(au.estado().tope, 20);
     await au.ejecutar(A());
     assert.ok(!existsSync(join(dir, '..', 'fuera.jsonl')));
@@ -145,7 +146,7 @@ describe('F1.5 auditoría: tope por sesión y proveedor', () => {
 
   test('un tope no válido se rechaza', () => {
     for (const tope of [0, -1, 1.5, NaN, 'x']) {
-      assert.throws(() => new AuditoriaIntegraciones({ cwd: proyecto(), tope: /** @type {any} */ (tope), env: {} }), RangeError);
+      assert.throws(() => new AuditoriaIntegraciones({ cwd: proyecto(), tope: /** @type {any} */ (tope), env: process.env }), RangeError);
     }
   });
 });
@@ -173,7 +174,7 @@ describe('F1.5 auditoría: interruptor', () => {
 
   test('el archivo .sdd/integraciones/apagado detiene también lo ya aprobado, en mitad de una sesión', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, sesion: 'x', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, sesion: 'x', env: process.env });
     assert.equal(await au.ejecutar(A({ operacion: 'publicar' })), 'hecho');
     assert.equal(estadoInterruptor(dir, {}).apagado, false);
 
@@ -197,19 +198,20 @@ describe('F1.5 auditoría: interruptor', () => {
 
   test('un apagado no consume el tope', async () => {
     const dir = proyecto();
-    const au = new AuditoriaIntegraciones({ cwd: dir, tope: 1, sesion: 'y', env: {} });
+    const au = new AuditoriaIntegraciones({ cwd: dir, tope: 1, sesion: 'y', env: process.env });
     apagar(dir);
     for (let i = 0; i < 3; i++) await assert.rejects(au.ejecutar(A()), ErrorIntegracionesApagadas);
     encender(dir);
     assert.equal(await au.ejecutar(A()), 'hecho');
   });
 
-  test('el interruptor no lee ninguna variable que no sea FORGE_INTEGRACIONES', async () => {
+  test('el interruptor y los contadores solo leen FORGE_INTEGRACIONES y la ubicación del estado del usuario', async () => {
     /** @type {string[]} */
     const lecturas = [];
     const env = new Proxy({}, { get(_t, k) { if (typeof k === 'string') lecturas.push(k); return undefined; } });
     const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: /** @type {any} */ (env) });
     await au.ejecutar(A());
-    assert.deepEqual([...new Set(lecturas)], ['FORGE_INTEGRACIONES']);
+    // FORGE_HOME y LOCALAPPDATA: dónde está el estado del usuario (contadores); ninguna otra
+    assert.deepEqual([...new Set(lecturas)].sort(), ['FORGE_HOME', 'FORGE_INTEGRACIONES', 'LOCALAPPDATA']);
   });
 });
