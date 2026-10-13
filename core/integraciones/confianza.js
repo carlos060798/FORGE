@@ -37,10 +37,13 @@ const MARCA = 'DATO-NO-CONFIABLE';
 // U+FFA0), braille en blanco (U+2800) y CGJ (U+034F) (R13).
 const INVISIBLES = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E]/gu;
 
+const MARCA_COMBINANTE = /\p{Mn}/u;
+
 /** @param {string} t */
 function quitarInvisibles(t) {
   // Una marca combinante entre dos caracteres ASCII de token parte un secreto sin cambiarlo a la vista (R13)
-  return t.replace(INVISIBLES, (c) => (c === '\n' || c === '\t' ? c : '')).replace(/(?<=[A-Za-z0-9])\p{Mn}+(?=[A-Za-z0-9])/gu, '');
+  const s = t.replace(INVISIBLES, (c) => (c === '\n' || c === '\t' ? c : ''));
+  return MARCA_COMBINANTE.test(s) ? s.replace(/(?<=[A-Za-z0-9])\p{Mn}+(?=[A-Za-z0-9])/gu, '') : s;
 }
 
 const ETIQUETAS_ACTIVAS = 'img|a|script|style|iframe|object|embed|svg|link|meta|form|input|video|audio|source|base|body|html|button|textarea|math|frame|frameset|applet|picture|use|image';

@@ -65,7 +65,6 @@ const ENTRE_TOKEN = /(?<=[A-Za-z0-9_-])[\u200B-\u200F\u2060-\u2064\uFEFF\u00AD\u
 
 const CABECERA_PRIVADA = /-----BEGIN [A-Z ]*PRIVATE KEY-----/y;
 const FIN_PRIVADA = /-----END [A-Z ]*PRIVATE KEY-----/y;
-const MARCA_CLAVE = '[REDACTADO: clave privada]';
 
 /**
  * Sustituye los bloques de clave privada en UNA pasada: cada posición se visita una vez, sin
@@ -176,14 +175,16 @@ export function pareceSecreto(v) {
 
 const PREFIJO_NOMBRE = '[\\w.$-]{0,64}';
 /** nombre + separador (`=`, `:`, `:=`, `=>`) + literal entre comillas */
+// R2: sin el prefijo `[\w.$-]{0,64}` delante del nombre: solo se conserva en el reemplazo (`$1`), así que
+// quitarlo da el mismo resultado y evita probar 64 posiciones de prefijo en cada carácter de la entrada.
 const RE_LITERAL = new RegExp(
-  `(${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64})(["'\`]?\\s*(?::=|=>|[:=])\\s*)(["'\`])([^"'\`\\n]{12,200})\\3`, 'gi');
+  `(${NOMBRE_SECRETO}[\\w.-]{0,64})(["'\`]?[ \\t]*(?::=|=>|[:=])[ \\t]*)(["'\`])([^"'\`\\n]{12,200})\\3`, 'gi');
 /** nombre=valor sin comillas, con símbolos (export DB_PASSWORD=Zq8!kLm2#xP9, \`const password = Zq8!kLm2#xP9;\`) */
 const RE_SIN_COMILLAS = new RegExp(
-  `(${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*(?::=|[:=])\\s*)([^\\s"'\`,;(){}<>=\\[\\]]{12,200})`, 'gi');
+  `(${NOMBRE_SECRETO}[\\w.-]{0,64}[ \\t]*(?::=|[:=])[ \\t]*)([^\\s"'\`,;(){}<>=\\[\\]]{12,200})`, 'gi');
 /** línea de entorno: NOMBRE=valor, sin espacios y sin nada más */
 const RE_ENTORNO = new RegExp(
-  `^(\\s*(?:export\\s+)?${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}=)([^\\s"'\`$<{(]{12,200})\\s*$`, 'gim');
+  `^([ \\t]*(?:export[ \\t]+)?${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}=)([^\\s"'\`$<{(]{12,200})[ \\t]*\\r?$`, 'gim');
 const RE_AUTORIZACION = /(\bAuthorization["']?\s*[:=]\s*["']?\s*)(Basic|Bearer|Token)(\s+)([A-Za-z0-9+/=._~-]{8,})/gi;
 const RE_CONEXION = /(\b(?:password|pwd|passwd)\s*=\s*)([^;\s"'`<>${}(),]{3,})/gi;
 
