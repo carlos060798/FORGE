@@ -603,7 +603,7 @@ export function seleccionarPorArchivo(candidatas, max) {
   return rutas.flatMap((r) => seleccionar(/** @type {T[]} */ (porArchivo.get(r)), /** @type {number} */ (cuota.get(r))));
 }
 
-// ── ¿Qué significa un fallo de las pruebas con la alteración puesta? (H-02, H-03, H-11) ──────────
+// ── ¿Qué significa un fallo de las pruebas con la alteración puesta? (H-02, H-03, H-11, N-02) ───
 
 /**
  * Un código de salida distinto de cero no dice que una PRUEBA detectara el cambio: el módulo puede
@@ -611,11 +611,22 @@ export function seleccionarPorArchivo(candidatas, max) {
  * o el contenedor puede haber sido matado. Esas alteraciones no son «detectadas» ni
  * «sobrevivientes»: son no concluyentes y quedan fuera del denominador.
  *
- * Se reconoce por la forma de la salida del ejecutor (TAP o spec de node:test, jest, vitest,
- * pytest, unittest, go test). Si no se reconoce ningún fallo de prueba, NO se cuenta como
- * detectada: ante la duda, no concluyente.
+ * N-02: tampoco basta con que una prueba «falle». Una prueba sin aserciones no puede detectar nada:
+ * si el código bajo prueba lanza una excepción propia (un `Error` de un cable trampa, un
+ * `TypeError`, un `panic`), la prueba fallará con la alteración aunque no compruebe ningún valor.
+ * Solo cuenta como detección el fallo de una ASERCIÓN (el ejecutor la clasifica como tal). Una
+ * excepción que no es de aserción es `excepcion_no_asercion`: no concluyente, fuera del
+ * denominador. Donde la salida no permita distinguirlo con certeza, falla cerrado (no detectada).
  *
- * @typedef {'prueba'|'no_compila'|'no_carga'|'sin_senal'} SenalDeFallo
+ * Límite conocido: una guardia que lance deliberadamente un `AssertionError` (p. ej.
+ * `new assert.AssertionError(...)`, o un `assert` de Python en el código bajo prueba) es
+ * indistinguible por clase de una aserción de la prueba. Es un implementador adversario deliberado:
+ * ver ADR-20.
+ *
+ * Se reconoce por la forma de la salida del ejecutor (TAP de node:test, jest, vitest, pytest,
+ * unittest, go test). Si no se reconoce ningún fallo de prueba, NO se cuenta como detectada.
+ *
+ * @typedef {'prueba'|'excepcion_no_asercion'|'no_compila'|'no_carga'|'sin_senal'} SenalDeFallo
  */
 
 const ES_ARCHIVO_JS = /\.(?:[cm]?[jt]sx?)$/i;
@@ -623,40 +634,106 @@ const ES_ARCHIVO_JS = /\.(?:[cm]?[jt]sx?)$/i;
 /** Secuencias de color (SGR): vitest y jest las escriben cuando el entorno lo permite, y parten «FAIL » y «Tests ». */
 const COLOR_ANSI = /\u001b\[[0-9;]*m/g;
 
+/** Primera línea de un mensaje de fallo de jest o vitest que es de una aserción (no de una excepción). */
+const ES_MENSAJE_DE_ASERCION = /^(?:expect\b|assert\b|(?:\w+\.)*(?:Jest)?AssertionError\b|Expected\b|Received\b)/;
+
+/**
+ * Fallos de prueba de jest (`● suite › prueba`) y vitest (`FAIL  archivo > prueba`): cuántos hay
+ * y si su mensaje es de aserción.
+ * @param {string} salida
+ * @returns {{ asercion: number, otra: number, sinMensaje: number }}
+ */
+function fallosJestVitest(salida) {
+  const cab = /^[ \t]*(?:● (?!Test suite failed to run|Console\b)\S|FAIL[ \t]+\S+[ \t]+>[ \t]+\S).*$/gm;
+  const marcas = [...salida.matchAll(cab)].map((m) => ({ ini: m.index ?? 0, fin: (m.index ?? 0) + m[0].length }));
+  const limite = /^[ \t]*(?:Test Suites:|Tests:?[ \t]|Test Files|⎯{3,})/gm;
+  const cortes = [...salida.matchAll(limite)].map((m) => m.index ?? 0);
+  const r = { asercion: 0, otra: 0, sinMensaje: 0 };
+  marcas.forEach((m, i) => {
+    const tope = Math.min(marcas[i + 1]?.ini ?? Infinity, cortes.find((c) => c > m.fin) ?? Infinity, salida.length);
+    const primera = salida.slice(m.fin, tope).split(/\r?\n/).map((l) => l.trim()).find((l) => l !== '');
+    if (primera === undefined) r.sinMensaje++;
+    else if (ES_MENSAJE_DE_ASERCION.test(primera)) r.asercion++;
+    else r.otra++;
+  });
+  return r;
+}
+
 /**
  * @param {string} salida
  * @returns {SenalDeFallo}
  */
 function senalJs(salida) {
-  /** @type {string[]} */
-  const nombres = [];
   // node:test. La medición ejecuta SIEMPRE con el reporter TAP fijado (`comandoConReporterTap`): el ejecutor
   // antepone `# ` a lo que escribe el módulo, así que este análisis no se puede suplantar con console.log.
   // Se exige la estructura del ejecutor y su resumen (N-09, N4-06):
   //  - bloques `not ok 3 - nombre` seguidos del YAML del ejecutor (`---`, y `duration_ms:` o `failureType:`)
   //  - el resumen `# fail N` con N ≥ 1 y no más que los bloques encontrados
   // El reporter spec, dot o junit NO se reconoce: sin señal (falla cerrado; nada cuenta como detectado).
-  for (const m of salida.matchAll(/^([ \t]*)not ok \d+ - (.+?)(?:[ \t]+#.*)?\r?\n\1[ \t]+---[ \t]*\r?\n(?:\1[ \t]+\S.*\r?\n){0,3}?\1[ \t]+(?:duration_ms|failureType):/gm)) nombres.push(m[2].trim());
+  // N-02: el YAML del ejecutor lleva `code: 'ERR_ASSERTION'` solo si lo que falló fue una aserción.
+  /** @type {{ nombre: string, asercion: boolean }[]} */
+  let bloques = [];
+  const lineas = salida.split('\n');
+  for (let i = 0; i < lineas.length; i++) {
+    const m = /^([ \t]*)not ok \d+ - (.+?)(?:[ \t]+#.*)?\r?$/.exec(lineas[i]);
+    if (!m || !new RegExp('^' + m[1] + '[ \\t]+---[ \\t]*\\r?$').test(lineas[i + 1] ?? '')) continue;
+    /** @type {string[]} */
+    const yaml = [];
+    const fin = new RegExp('^' + m[1] + '[ \\t]+\\.\\.\\.[ \\t]*\\r?$');
+    for (let j = i + 2; j < lineas.length && !fin.test(lineas[j]); j++) {
+      if (!lineas[j].startsWith(m[1] + ' ')) break;
+      yaml.push(lineas[j].replace(/\r$/, ''));
+    }
+    if (!yaml.slice(0, 4).some((l) => /^\s*(?:duration_ms|failureType):/.test(l))) continue;
+    const clave = m[1] + '  ';
+    bloques.push({ nombre: m[2].trim(), asercion: yaml.some((l) => l === clave + "code: 'ERR_ASSERTION'") });
+  }
   const resumen = [...salida.matchAll(/^# fail (\d+)[ \t]*$/gm)].pop();
-  const falloDelEjecutor = resumen !== undefined && Number(resumen[1]) >= 1 && nombres.length >= Number(resumen[1]);
-  if (!falloDelEjecutor) nombres.length = 0;
+  const falloDelEjecutor = resumen !== undefined && Number(resumen[1]) >= 1 && bloques.length >= Number(resumen[1]);
+  if (!falloDelEjecutor) bloques = [];
   // Un fallo de CARGA aparece como una «prueba» que se llama como el archivo: ninguna prueba llegó a ejecutarse
-  if (nombres.some((n) => !ES_ARCHIVO_JS.test(n))) return 'prueba';
+  const deprueba = bloques.filter((b) => !ES_ARCHIVO_JS.test(b.nombre));
+  if (deprueba.some((b) => b.asercion)) return 'prueba';
+  if (deprueba.length > 0) return 'excepcion_no_asercion';
   // jest: `● suite › prueba` y `Tests: 2 failed`; vitest: `FAIL  archivo > prueba` y `Tests  2 failed`
-  if (/^[ \t]*● (?!Test suite failed to run)\S/m.test(salida)) return 'prueba';
-  if (/^[ \t]*Tests:?[ \t]+.*\b[1-9]\d* failed\b/m.test(salida)) return 'prueba';
-  if (/^[ \t]*FAIL[ \t]+\S+[ \t]+>[ \t]+\S/m.test(salida)) return 'prueba';
+  const jv = fallosJestVitest(salida);
+  if (jv.asercion > 0) return 'prueba';
+  if (jv.otra > 0) return 'excepcion_no_asercion';
+  if (jv.sinMensaje > 0) return 'sin_senal';
+  if (/^[ \t]*Tests:?[ \t]+.*\b[1-9]\d* failed\b/m.test(salida)) return 'sin_senal';
   if (/error TS\d+|\bTS\d{4}:|SyntaxError|Unexpected token|Unexpected identifier/.test(salida)) return 'no_compila';
-  if (nombres.length > 0 || /Test suite failed to run|Failed Suites|Cannot find module|ERR_MODULE_NOT_FOUND|ERR_REQUIRE_ESM|Failed to (?:load|resolve)/.test(salida)) return 'no_carga';
+  if (bloques.length > 0 || /Test suite failed to run|Failed Suites|Cannot find module|ERR_MODULE_NOT_FOUND|ERR_REQUIRE_ESM|Failed to (?:load|resolve)/.test(salida)) return 'no_carga';
   return 'sin_senal';
 }
 
 /** @param {string} salida @returns {SenalDeFallo} */
 function senalPython(salida) {
-  // pytest: `FAILED tests/x.py::test - motivo`; el resumen de unittest, `FAILED (errors=1)`, no cuenta
-  if (/^FAILED[ \t]+[^\s(]/m.test(salida) ||/\b[1-9]\d* failed\b/.test(salida)) return 'prueba';
-  // unittest: `FAIL: test_x (…)` y `ERROR: test_x (…)`; un módulo que no se importa es `_FailedTest`
-  for (const m of salida.matchAll(/^(?:FAIL|ERROR): .*$/gm)) if (!/_FailedTest/.test(m[0])) return 'prueba';
+  let asercion = 0;
+  let otra = 0;
+  // pytest: bloques `____ test ____` con la línea `E   <excepción>`; o, sin traza, `FAILED ruta::test - <excepción>`
+  const ES_ASERCION_PY = /^(?:assert\b|(?:\w+\.)*AssertionError\b|Failed:)/;
+  const cab = [...salida.matchAll(/^_{2,} (?!ERROR collecting)(\S.*?) _{2,}$/gm)];
+  cab.forEach((m, i) => {
+    const desde = (m.index ?? 0) + m[0].length;
+    const resto = salida.slice(desde);
+    const corte = resto.search(/^={3,}/m);
+    const hasta = Math.min((cab[i + 1]?.index ?? Infinity) - desde, corte >= 0 ? corte : Infinity, resto.length);
+    const e = /^E[ \t]+(\S.*)$/m.exec(resto.slice(0, hasta));
+    if (!e) return;
+    if (ES_ASERCION_PY.test(e[1])) asercion++; else otra++;
+  });
+  if (asercion + otra === 0) {
+    for (const m of salida.matchAll(/^FAILED[ \t]+[^\s(]\S*[ \t]+-[ \t]+(.*)$/gm)) {
+      if (ES_ASERCION_PY.test(m[1])) asercion++; else otra++;
+    }
+  }
+  // unittest: `FAIL: test_x (…)` es un AssertionError; `ERROR: test_x (…)` es cualquier otra excepción. Un módulo que no se importa es `_FailedTest`
+  for (const m of salida.matchAll(/^(FAIL|ERROR): .*$/gm)) {
+    if (/_FailedTest/.test(m[0])) continue;
+    if (m[1] === 'FAIL') asercion++; else otra++;
+  }
+  if (asercion > 0) return 'prueba';
+  if (otra > 0) return 'excepcion_no_asercion';
   if (/SyntaxError|IndentationError|TabError/.test(salida)) return 'no_compila';
   if (/ImportError|ModuleNotFoundError|errors? during collection|ERROR collecting|Failed to import test module|_FailedTest/.test(salida)) return 'no_carga';
   return 'sin_senal';
@@ -664,10 +741,22 @@ function senalPython(salida) {
 
 /** @param {string} salida @returns {SenalDeFallo} */
 function senalGo(salida) {
+  // `--- FAIL: Test` con su salida de `t.Error`/`t.Fatal` es una aserción de la prueba; si tras ese bloque viene
+  // `panic:`, el fallo es el pánico del código (excepción), no una aserción (N-02)
+  const lineas = salida.split('\n');
+  let asercion = 0;
+  let panico = 0;
+  lineas.forEach((l, i) => {
+    if (!/^[ \t]*--- FAIL:/.test(l)) return;
+    let j = i + 1;
+    while (j < lineas.length && /^[ \t]/.test(lineas[j])) j++;
+    if (j < lineas.length && /^(?:panic:|fatal error:)/.test(lineas[j])) panico++; else asercion++;
+  });
+  if (asercion > 0) return 'prueba';
   // Un pánico en un init o en una variable de paquete ocurre en la goroutine 1 antes de que corra ninguna
   // prueba: es una carga que falla (cable trampa), no una prueba que detecta. Las pruebas corren en otras goroutines
-  if (/^[ \t]*--- FAIL:/m.test(salida)) return 'prueba';
-  if (/^panic:/m.test(salida)) return /^goroutine 1 \[running\]:/m.test(salida) ? 'no_carga' : 'prueba';
+  if (/^panic:/m.test(salida)) return /^goroutine 1 \[running\]:/m.test(salida) ? 'no_carga' : 'excepcion_no_asercion';
+  if (panico > 0) return 'excepcion_no_asercion';
   if (/\[build failed\]|\[setup failed\]|^# \S+[ \t]*$/m.test(salida)) return 'no_compila';
   // Un paquete que no existe falla al preparar la compilación, sin cabecera «# paquete»
   if (/\bpackage \S+ is not in std\b|no required module provides package|cannot find package/.test(salida)) return 'no_compila';

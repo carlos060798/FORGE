@@ -5,8 +5,9 @@
  * medición sin cobertura.
  *
  * Sin modelos ni claves. Los casos «reales» usan `node --test` de verdad sobre la copia temporal.
- * Lo que NO arregla la cobertura (cables trampa dentro de una función que el código llama) queda
- * fijado en la última prueba para que nadie crea que está resuelto.
+ * Lo que la cobertura NO arreglaba (cables trampa dentro de una función que el código llama) lo resuelve
+ * el criterio de aserción (N-02, ADR-20): solo un fallo de aserción cuenta como detección; el límite
+ * (una guardia que lanza un AssertionError a propósito) queda fijado en la última prueba de esa serie.
  */
 
 import { test, describe } from "node:test";
@@ -38,7 +39,7 @@ function escribir(cwd, archivos) {
 }
 
 const PASE = { exitCode: 0, stdout: "# tests 1\n# pass 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
-const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: x\nnot ok 1 - x\n  ---\n  failureType: 'testCodeFailure'\n  ...\n1..1\n# fail 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
+const FALLO = { exitCode: 1, stdout: "TAP version 13\n# Subtest: x\nnot ok 1 - x\n  ---\n  failureType: 'testCodeFailure'\n  code: 'ERR_ASSERTION'\n  ...\n1..1\n# fail 1\n", stderr: "", timedOut: false, infraError: false, durationMs: 3 };
 
 /** Informe de cobertura de node en formato de árbol (Node 24) y plano (Node 22). */
 const NODE_ARBOL = L(
@@ -353,20 +354,50 @@ describe("node --test real", () => {
     return { cwd: escribir(tmp("forge-mcob-n02-"), archivos), archivos: ["src/suma.js", "src/comprobar.js", ...Array.from({ length: 9 }, (_, i) => `src/g/g${i + 1}.js`)] };
   }
 
-  test("N-02: cables trampa dentro de funciones llamadas por el código — la muestra respeta el tope de archivos; la puntuación SIGUE inflada (límite documentado)", async () => {
+  test("N-02: cables trampa dentro de funciones llamadas por el código — con pruebas sin aserciones, 0 detectadas y las guardias son no concluyentes", async () => {
     const { cwd, archivos } = proyectoDeGuardias();
-    const r = await medirMutacion({ cwd, archivos, runner: ejecutorNodeReal(), max: 10 });
+    const eventos = [];
+    const r = await medirMutacion({ cwd, archivos, runner: ejecutorNodeReal(), max: 10, alProbar: (e) => eventos.push(e) });
     assert.ok(r);
     assert.equal(r.sinCobertura, undefined, r.motivoSinCobertura);
-    // Lo que la corrección sí consigue: como mucho 5 archivos, los demás quedan anotados
-    assert.equal(r.porArchivo?.length, 5);
+    // El tope de archivos sigue limitando la muestra: como mucho 5 archivos, los demás quedan anotados
+    assert.ok((r.porArchivo?.length ?? 0) <= 5);
     assert.equal(r.archivosOmitidos?.length, 5, "diez archivos con algo que alterar (comprobar.js no tiene nada): cinco medidos y cinco omitidos");
-    assert.ok(r.porArchivo?.some((x) => x.ruta === "src/suma.js" && x.detectadas === 0), "el cálculo real (suma.js) NO está comprobado por ninguna prueba: 0 detectadas");
-    // Lo que NO consigue: las guardias están cubiertas (se ejecutan) y su fallo es un fallo de prueba real
-    assert.ok((r.puntuacion ?? 0) >= 0.8, `puntuación ${r.puntuacion}: la cobertura no distingue ejecutar de comprobar`);
-    // El único dato honesto está en el reparto: todo lo detectado sale de archivos de guardia
-    const detectadasEnGuardias = (r.porArchivo ?? []).filter((x) => x.ruta.startsWith("src/g/")).reduce((s, x) => s + x.detectadas, 0);
-    assert.equal(detectadasEnGuardias, r.detectadas);
+    // Antes de la corrección esto daba 9/10 = 90 %: la guardia que salta se contaba como «fallo de prueba».
+    // Ahora solo cuenta un fallo de aserción: unas pruebas sin aserciones no detectan nada.
+    assert.equal(r.detectadas, 0, JSON.stringify(eventos.map((e) => [e.alteracion.ruta, e.resultado, e.motivo])));
+    assert.equal(r.puntuacion ?? 0, 0);
+    const deGuardia = eventos.filter((e) => e.alteracion.ruta.startsWith("src/g/"));
+    assert.ok(deGuardia.length > 0, "se probaron alteraciones de los archivos de guardia");
+    assert.ok(deGuardia.every((e) => e.resultado === "no_concluyente" && e.motivo === "excepcion_no_asercion"), JSON.stringify(deGuardia.map((e) => [e.alteracion.ruta, e.resultado, e.motivo])));
+    assert.equal(r.noConcluyentes, deGuardia.length);
+    // lo concluyente es lo honesto: la suma real sobrevive
+    assert.ok(eventos.filter((e) => e.alteracion.ruta === "src/suma.js").every((e) => e.resultado === "sobrevive"));
+  });
+
+  test("N-02: el control con aserciones fuertes sigue dando 100 %", async () => {
+    const { cwd } = proyectoDeGuardias();
+    writeFileSync(join(cwd, "tests/suma.test.js"), L(
+      "import { test } from 'node:test';", "import assert from 'node:assert/strict';", "import { suma } from '../src/suma.js';",
+      "test('suma', () => {", "  assert.equal(suma(1, 2), 3);", "  assert.equal(suma(2, 2), 4);", "  assert.equal(suma(5, 0), 5);", "});"));
+    const r = await medirMutacion({ cwd, archivos: ["src/suma.js"], runner: ejecutorNodeReal(), max: 10 });
+    assert.ok(r);
+    assert.ok((r.probadas ?? 0) >= 1, JSON.stringify(r));
+    assert.equal(r.puntuacion, 1, JSON.stringify(r.sobrevivientes));
+  });
+
+  test("N-02: LÍMITE DOCUMENTADO — una guardia que lanza deliberadamente un AssertionError sí cuenta como detección", async () => {
+    const cwd = escribir(tmp("forge-mcob-n02-adv-"), {
+      "package.json": "{\"type\":\"module\"}",
+      "src/g.js": L("import assert from 'node:assert';", "const K = 1;", "export function guardia() { if (K !== 1) throw new assert.AssertionError({ message: 'guardia' }); }"),
+      "src/suma.js": L("import { guardia } from './g.js';", "export function suma(a, b) {", "  guardia();", "  return a + b;", "}"),
+      "tests/suma.test.js": L("import { test } from 'node:test';", "import { suma } from '../src/suma.js';", "test('suma se puede llamar', () => { suma(1, 2); });"),
+    });
+    const r = await medirMutacion({ cwd, archivos: ["src/g.js", "src/suma.js"], runner: ejecutorNodeReal(), max: 10 });
+    assert.ok(r);
+    // Es un implementador adversario que finge ser una aserción: indistinguible por clase. Si esta prueba
+    // cambia, hay que actualizar ADR-20 (N-02), que declara este límite.
+    assert.ok(r.detectadas >= 1, JSON.stringify(r));
   });
 });
 
@@ -394,7 +425,7 @@ describe("N4-06 — el módulo bajo prueba no puede suplantar un fallo de prueba
   test("el reconocimiento por texto ya no acepta el reporter spec ni un resumen que no cuadra", async () => {
     const { senalDeFallo } = await import("../core/ciclo/mutacion.js");
     assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve el total (0.5ms)\nℹ fail 1\n", "javascript"), "sin_senal");
-    const bloque = "not ok 1 - suma\n  ---\n  duration_ms: 1\n  failureType: 'testCodeFailure'\n  ...\n";
+    const bloque = "not ok 1 - suma\n  ---\n  duration_ms: 1\n  failureType: 'testCodeFailure'\n  code: 'ERR_ASSERTION'\n  ...\n";
     assert.equal(senalDeFallo(bloque, "javascript"), "sin_senal");
     assert.equal(senalDeFallo(`${bloque}1..1\n# fail 1\n`, "javascript"), "prueba");
   });
