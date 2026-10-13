@@ -527,6 +527,17 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 | N-13 | `init` acababa con una traza ante destinos raros (directorio, archivo, tubería) | `f70e641` | `tests/escritura-global.test.js` |
 | N-14 | `init --global` con `~/.claude/commands` como unión a los dotfiles no instalaba nada | `f70e641` (solo en lo global, por decisión explícita y avisándolo; en un proyecto no se sigue ningún enlace) | `tests/escritura-global.test.js` |
 
+**Cuarta revisión (REV-4), hallazgos N4-03 a N4-09** (los N4-01, N4-02, N4-06 y N4-10 los lleva otra tarea)
+
+| Id | Qué era | Estado | Prueba |
+|---|---|---|---|
+| N4-03 | `redactarFormatos` dejaba pasar 17 de 24 secretos realistas en código | **Mitigado**: regla por valor (nombre de secreto Y literal largo, sin espacios, con 3 clases de caracteres o hexadecimal largo) y contraseñas de cadenas de conexión (`password=`/`Pwd=` tras otro par, `redis://:clave@`, `Authorization: Basic`). Sigue sin cubrir contraseñas cortas o de una sola clase (`"supersecret"`); no es una frontera | `tests/revision4-correcciones.test.js` (20 secretos, 20 códigos legítimos) |
+| N4-04 | El cuerpo de una clave privada llegaba al modelo por tramo, sin `END` o con `buscar` | **Corregido** en `leer_archivo` y `buscar`: se oculta sobre el archivo entero, antes del tramo | `tests/revision4-correcciones.test.js` |
+| N4-05 | Un archivo con BOM perdía el BOM al editarse y tras un corte se informaba «no se sabe» | **Corregido**: un solo decodificador que conserva el BOM | `tests/revision4-correcciones.test.js` |
+| N4-07 | Un corte durante `escribirArchivo` dejaba temporales `.forge-tmp-*` | **Mitigado**: se barren al escribir en ese directorio si tienen más de 1 h y nombre exacto; entre medias siguen ahí y no están en `.gitignore` | `tests/revision4-correcciones.test.js` |
+| N4-08 | `import`, `export` y `runner` escribían directo, a través de enlaces | **Corregido**: pasan por `escritura-segura`; prueba estática que impide volver a escribir directo en `cli/` | `tests/revision4-correcciones.test.js` |
+| N4-09 | `editar` rechazaba cualquier texto con `[REDACTADO`, aunque fuera contenido del archivo | **Corregido**: se permite lo que el archivo ya contiene; los marcadores nuevos siguen rechazados | `tests/revision4-correcciones.test.js` |
+
 **Siguen abiertos de esa revisión:** N-02 (P-10), N-06 (G-10), N-10 (M-10) y N-11 (G-9).
 
 **Hallazgos de las ejecuciones con un modelo real (EVID, H1 a H14)**

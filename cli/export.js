@@ -12,10 +12,11 @@
  */
 
 import {
-  existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync,
+  existsSync, mkdirSync, readFileSync, readdirSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { validateArtefacto } from '../core/schemas/index.js';
+import { crearDirectorio, escribirArchivo } from '../core/escritura-segura.js';
 
 const FORGE_VERSION = '4.0.0';
 
@@ -243,16 +244,23 @@ export async function cmdExport(args, cwd = process.cwd()) {
     }
   }
 
-  mkdirSync(outDir, { recursive: true });
+  // Raíz de escritura: el proyecto si la salida cae dentro; si no, la propia carpeta de salida que eligió la persona.
+  // En ambos casos ningún componente por debajo puede ser un enlace.
+  const rel = relative(resolve(cwd), outDir);
+  const interno = rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+  if (!interno) mkdirSync(outDir, { recursive: true });
+  const raizSalida = interno ? resolve(cwd) : outDir;
+  crearDirectorio(raizSalida, outDir);
+  const escribir = (nombre, contenido) => escribirArchivo(raizSalida, join(outDir, nombre), contenido);
 
   if (format === 'speckit') {
-    writeFileSync(join(outDir, 'spec.md'),  irASpecKit(ir, estado));
-    writeFileSync(join(outDir, 'plan.md'),  planASpecKit(spec ?? plan, ir));
-    writeFileSync(join(outDir, 'tasks.md'), tareasASpecKit(tareas, ir));
+    escribir('spec.md', irASpecKit(ir, estado));
+    escribir('plan.md', planASpecKit(spec ?? plan, ir));
+    escribir('tasks.md', tareasASpecKit(tareas, ir));
     if (adrs.length > 0) {
-      writeFileSync(join(outDir, 'decisions.md'), adrsAMarkdown(adrs));
+      escribir('decisions.md', adrsAMarkdown(adrs));
     }
-    writeFileSync(join(outDir, 'README.md'), `# ${ir?.product?.name ?? 'Proyecto'} — Spec Kit Export
+    escribir('README.md', `# ${ir?.product?.name ?? 'Proyecto'} — Spec Kit Export
 
 Exportado desde FORGE v${FORGE_VERSION} el ${new Date().toISOString().slice(0, 10)}.
 
@@ -279,7 +287,7 @@ ${adrs.length > 0 ? '| `decisions.md` | Architecture Decision Records |\n' : ''}
 
   if (format === 'openspec') {
     const data = exportarOpenSpec(ir, estado, tareas, adrs);
-    writeFileSync(join(outDir, 'openspec.json'), JSON.stringify(data, null, 2));
+    escribir('openspec.json', JSON.stringify(data, null, 2));
     console.log(`✅ Exportado en formato OpenSpec → ${outDir}/openspec.json`);
     return outDir;
   }
