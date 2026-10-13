@@ -12,10 +12,11 @@
  */
 
 import {
-  existsSync, mkdirSync, readFileSync, writeFileSync,
+  existsSync, readFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { validateArtefacto } from '../core/schemas/index.js';
+import { crearDirectorio, escribirArchivo } from '../core/escritura-segura.js';
 
 const FORGE_VERSION = '4.0.0';
 
@@ -140,16 +141,16 @@ function escribirIR(cwd, ir, merge) {
         nice_to_have: existente.features?.nice_to_have?.length ? existente.features.nice_to_have : ir.features.nice_to_have,
       },
     };
-    writeFileSync(path, JSON.stringify(fusionado, null, 2));
+    escribirArchivo(cwd, path, JSON.stringify(fusionado, null, 2));
     return;
   }
-  writeFileSync(path, JSON.stringify(ir, null, 2));
+  escribirArchivo(cwd, path, JSON.stringify(ir, null, 2));
 }
 
 function escribirADRs(cwd, adrs, merge) {
   if (!adrs.length) return;
   const path = join(cwd, '.sdd', 'arquitectura', 'ADRs.jsonl');
-  mkdirSync(join(cwd, '.sdd', 'arquitectura'), { recursive: true });
+  crearDirectorio(cwd, join(cwd, '.sdd', 'arquitectura'));
 
   if (merge && existsSync(path)) {
     // En merge: solo añadir ADRs que no existan (por decisión)
@@ -160,11 +161,11 @@ function escribirADRs(cwd, adrs, merge) {
       .map(a => a.decision);
     const nuevos = adrs.filter(a => !existentes.includes(a.decision));
     if (nuevos.length) {
-      writeFileSync(path, readFileSync(path, 'utf8') + nuevos.map(a => JSON.stringify(a)).join('\n') + '\n');
+      escribirArchivo(cwd, path, readFileSync(path, 'utf8') + nuevos.map(a => JSON.stringify(a)).join('\n') + '\n');
     }
     return;
   }
-  writeFileSync(path, adrs.map(a => JSON.stringify(a)).join('\n') + '\n');
+  escribirArchivo(cwd, path, adrs.map(a => JSON.stringify(a)).join('\n') + '\n');
 }
 
 function actualizarEstado(cwd, pipeline_step, ir) {
@@ -185,7 +186,7 @@ function actualizarEstado(cwd, pipeline_step, ir) {
       ir_confidence: ir?.confidence ?? null,
     },
   };
-  writeFileSync(path, JSON.stringify(actualizado, null, 2));
+  escribirArchivo(cwd, path, JSON.stringify(actualizado, null, 2));
 }
 
 // ── Importar desde Spec Kit ───────────────────────────────────────────────────
@@ -204,7 +205,7 @@ async function importarSpecKit(dir, cwd, merge) {
     console.warn('⚠️  IR importado tiene advertencias:', v.errors.join('; '));
   }
 
-  mkdirSync(join(cwd, '.sdd'), { recursive: true });
+  crearDirectorio(cwd, join(cwd, '.sdd'));
   escribirIR(cwd, ir, merge);
 
   // Importar plan.md si existe y hay contenido real
@@ -213,10 +214,10 @@ async function importarSpecKit(dir, cwd, merge) {
     const planContent = readFileSync(planPath, 'utf8');
     const esVacio = planContent.includes('no ha sido generado');
     if (!esVacio) {
-      mkdirSync(join(cwd, '.sdd', 'arquitectura'), { recursive: true });
+      crearDirectorio(cwd, join(cwd, '.sdd', 'arquitectura'));
       const planDest = join(cwd, '.sdd', 'arquitectura', `plan-importado.md`);
       if (!merge || !existsSync(planDest)) {
-        writeFileSync(planDest, planContent);
+        escribirArchivo(cwd, planDest, planContent);
         console.log('   plan.md importado → .sdd/arquitectura/plan-importado.md');
       }
     }
@@ -275,7 +276,7 @@ async function importarOpenSpec(filePath, cwd, merge) {
     console.warn('⚠️  IR OpenSpec tiene advertencias:', v.errors.join('; '));
   }
 
-  mkdirSync(join(cwd, '.sdd'), { recursive: true });
+  crearDirectorio(cwd, join(cwd, '.sdd'));
   escribirIR(cwd, ir, merge);
 
   // Importar ADRs si existen
@@ -288,7 +289,7 @@ async function importarOpenSpec(filePath, cwd, merge) {
   if (data.tasks?.length) {
     const tareasPath = join(cwd, '.sdd', 'estado-tareas.json');
     if (!merge || !existsSync(tareasPath)) {
-      writeFileSync(tareasPath, JSON.stringify({ tareas: data.tasks }, null, 2));
+      escribirArchivo(cwd, tareasPath, JSON.stringify({ tareas: data.tasks }, null, 2));
       console.log(`   ${data.tasks.length} tarea(s) importadas → .sdd/estado-tareas.json`);
     }
   }

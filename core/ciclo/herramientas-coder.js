@@ -21,7 +21,7 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { aplicarArchivos, validarRuta } from './protocolo-archivos.js';
-import { cola, redactarFormatos } from './redactar.js';
+import { cola, ocultarCuerposDeClave, redactarFormatos } from './redactar.js';
 import { clasificar } from './router.js';
 import { MOTIVOS as MOTIVOS_RUTA } from '../mcp/herramientas.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
@@ -167,6 +167,16 @@ function calcularSustitucion(actual, buscar, reemplazar) {
   if (veces > 1) return { ok: false, motivo: 'fragmento_repetido', veces };
   return { ok: true, nuevo: actual.slice(0, primera) + hacia + actual.slice(primera + desde.length) };
 }
+const MARCADOR = '[REDACTADO';
+const contar = (texto, trozo) => texto.split(trozo).length - 1;
+
+/** Decodifica UTF-8 CONSERVANDO el BOM (como `buffer.toString('utf8')`); null si no es UTF-8 válido (N4-05). */
+function decodificar(buffer) {
+  if (buffer.includes(0)) return null;
+  try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buffer); } catch { return null; }
+}
+const tieneBom = (buffer) => buffer.length >= 3 && buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF;
+const BOM = '\uFEFF';
 const esLinea = (v) => v === undefined || (Number.isInteger(v) && v >= 1);
 
 /** Recorta por una frontera de línea para que el texto quepa en `maxBytes`. */
@@ -245,6 +255,27 @@ export function crearHerramientasCoder(opciones) {
     return { ok: true, prefijo: v.rutaPosix + '/' };
   }
 
+  /** ¿El archivo actual empieza con BOM? */
+  function conBom(ruta) {
+    try {
+      const v = validarRuta(cwd, ruta, { vetadas: [...vetadas] });
+      if (v.ok === false) return false;
+      const fd = fs.openSync(v.absoluta, 'r');
+      try { const b = Buffer.alloc(3); fs.readSync(fd, b, 0, 3, 0); return tieneBom(b); } finally { fs.closeSync(fd); }
+    } catch { return false; }
+  }
+
+  /** Texto actual de un archivo que se podría escribir, o null (no existe, no es texto, demasiado grande). */
+  function textoActual(ruta) {
+    try {
+      const v = validarRuta(cwd, ruta, { vetadas: [...vetadas] });
+      if (v.ok === false) return null;
+      const info = fs.statSync(v.absoluta);
+      if (!info.isFile() || info.size > MAX_ARCHIVO_BYTES) return null;
+      return decodificar(fs.readFileSync(v.absoluta));
+    } catch { return null; }
+  }
+
   const HERRAMIENTAS = {
     /** @returns {Promise<ResultadoHerramienta>} */
     async leer_archivo({ ruta, desde, hasta }) {
@@ -263,6 +294,9 @@ export function crearHerramientasCoder(opciones) {
 
       const lineas = buffer.toString('utf8').replace(/^﻿/, '').split(/\r?\n/);
       if (lineas.length > 1 && lineas[lineas.length - 1] === '') lineas.pop();
+      // El cuerpo de una clave privada se oculta sobre el archivo ENTERO, antes de tomar el tramo (N4-04):
+      // un tramo que empieza dentro del bloque ya no tiene la cabecera a la vista
+      if (buffer.includes('PRIVATE KEY')) lineas.splice(0, lineas.length, ...ocultarCuerposDeClave(lineas).lineas);
       const total  = lineas.length;
       const inicio = Math.min(desde ?? 1, Math.max(total, 1));
       const fin    = Math.min(hasta ?? total, total);
@@ -323,8 +357,9 @@ export function crearHerramientasCoder(opciones) {
         try { contenido = fs.readFileSync(a.abs, 'utf8'); } catch { continue; }
         if (!contenido.includes(texto)) continue;
         const partes = contenido.split(/\r?\n/);
+        const ocultas = contenido.includes('PRIVATE KEY') ? ocultarCuerposDeClave(partes).ocultas : new Set();
         for (let i = 0; i < partes.length; i++) {
-          if (!partes[i].includes(texto)) continue;
+          if (!partes[i].includes(texto) || ocultas.has(i)) continue;
           const linea = `${a.ruta}:${i + 1}: ${partes[i].trim().slice(0, MAX_LINEA_BUSQUEDA)}`;
           bytes += Buffer.byteLength(linea, 'utf8') + 1;
           if (lineas.length >= tope || bytes > MAX_RESULTADO_BYTES) { hayMas = true; break busqueda; }
@@ -343,9 +378,19 @@ export function crearHerramientasCoder(opciones) {
       if (sustituir && contenido !== undefined) return fallo('Usa "buscar" y "reemplazar", o "contenido": no las dos formas a la vez. No se cambió nada.');
       if (!sustituir && contenido === undefined) return fallo('Indica qué cambiar: "buscar" y "reemplazar" para sustituir un fragmento, o "contenido" para escribir el archivo entero.');
 
-      // El marcador de redacción no es código: si el modelo lo copió de un resultado, escribirlo dañaría el archivo
-      for (const t of [buscar, reemplazar, contenido]) {
-        if (esTexto(t) && t.includes('[REDACTADO')) {
+      // El marcador de redacción no es código: si el modelo lo copió de un resultado, escribirlo dañaría el
+      // archivo. Pero un archivo puede contener ese literal de verdad (un redactor, un fixture, una
+      // documentación): se permite lo que el archivo ya tiene (N4-09). `buscar` solo puede llevarlo si
+      // el archivo lo lleva, y lo que se escribe no puede llevar más marcadores que lo que se sustituye
+      // (o que el archivo entero, si se reemplaza todo).
+      if ([buscar, reemplazar, contenido].some((t) => esTexto(t) && t.includes(MARCADOR))) {
+        const actualTexto = textoActual(ruta);
+        const enActual = actualTexto === null ? 0 : contar(actualTexto, MARCADOR);
+        const esBuscar = esTexto(buscar) ? contar(buscar, MARCADOR) : 0;
+        const permitido = (esBuscar === 0 || (actualTexto !== null && actualTexto.includes(buscar)))
+          && (esTexto(reemplazar) ? contar(reemplazar, MARCADOR) <= esBuscar : true)
+          && (esTexto(contenido) ? contar(contenido, MARCADOR) <= enActual : true);
+        if (!permitido) {
           return fallo('El texto contiene "[REDACTADO": ese marcador no es parte del archivo. Lee el archivo de nuevo y usa el texto tal cual está. No se cambió nada.');
         }
       }
@@ -364,8 +409,8 @@ export function crearHerramientasCoder(opciones) {
           if (info.size > MAX_ARCHIVO_BYTES) return escrituraRechazada(ruta, 'demasiado_grande');
           const buffer = fs.readFileSync(v.absoluta);
           if (buffer.includes(0)) return escrituraRechazada(ruta, 'no_es_texto');
-          try { actual = new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
-          catch { return escrituraRechazada(ruta, 'no_es_texto'); }
+          actual = decodificar(buffer);
+          if (actual === null) return escrituraRechazada(ruta, 'no_es_texto');
         } catch { return escrituraRechazada(ruta, 'archivo_inexistente'); }
 
         const c = calcularSustitucion(actual, buscar, reemplazar);
@@ -377,6 +422,8 @@ export function crearHerramientasCoder(opciones) {
       } else if (!esTexto(contenido)) {
         return fallo('"contenido" debe ser un texto. No se cambió nada.');
       }
+      // Reemplazar un archivo que tenía BOM no lo quita (N4-05): `estadoDeEscritura` predice lo mismo
+      if (!sustituir && esTexto(nuevo) && !nuevo.startsWith(BOM) && conBom(ruta)) nuevo = BOM + nuevo;
       if (Buffer.byteLength(nuevo, 'utf8') > MAX_ARCHIVO_BYTES) return escrituraRechazada(ruta, 'demasiado_grande');
 
       // El único camino de escritura: el mismo que el modo de bloque (ADR-07)
@@ -461,9 +508,9 @@ export function crearHerramientasCoder(opciones) {
       // archivo «cambió», y un cambio ajeno (un formateador, una persona) pasaría por la edición.
       let despues = null;
       if (esTexto(entrada.contenido) && entrada.buscar === undefined && entrada.reemplazar === undefined) {
-        despues = sha256(entrada.contenido);
+        despues = sha256(buffer && tieneBom(buffer) && !entrada.contenido.startsWith(BOM) ? BOM + entrada.contenido : entrada.contenido);
       } else if (buffer && esTexto(entrada.buscar) && esTexto(entrada.reemplazar) && entrada.buscar !== '') {
-        const c = calcularSustitucion(buffer.toString('utf8'), entrada.buscar, entrada.reemplazar);
+        const c = calcularSustitucion(decodificar(buffer) ?? buffer.toString('utf8'), entrada.buscar, entrada.reemplazar);
         if (c.ok) despues = sha256(c.nuevo);
       }
       return { ruta: v.rutaPosix, sha256: buffer ? sha256(buffer) : 'ausente', despues };
