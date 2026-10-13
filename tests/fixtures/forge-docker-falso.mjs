@@ -51,7 +51,11 @@ const ejecutar = (args) => new Promise((resolver) => {
   setTimeout(() => {
     // Sin NODE_TEST_CONTEXT: heredado del test que nos lanzó, cambiaría el formato de la salida
     const { NODE_TEST_CONTEXT: _omitida, ...env } = process.env;
-    const p = spawn(process.execPath, ["--test"], { cwd: copia, env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    // «El contenedor» ejecuta el comando que se le pidió (node --test con el reporter TAP y, a veces, con cobertura)
+    // (`--entrypoint node <imagen> --test ...`; con `npm test` se ejecuta `node --test` a secas)
+    const ie = args.indexOf("--entrypoint");
+    const restoNode = ie !== -1 && args[ie + 1] === "node" ? args.slice(ie + 3) : ["--test"];
+    const p = spawn(process.execPath, restoNode, { cwd: copia, env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     let stdout = "";
     let stderr = "";
     p.stdout.on("data", (d) => { stdout += d; });

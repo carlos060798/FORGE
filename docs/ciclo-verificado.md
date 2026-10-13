@@ -35,6 +35,7 @@ motor:
   mutacion: informar       # medir cuánto detectan las pruebas tras un pase: no | informar | exigir
   mutacion_minima: 0.6     # con exigir: proporción mínima de cambios detectados (de 0 a 1)
   mutacion_max: 10         # cambios concluyentes por tarea, como mucho
+  mutacion_max_archivos: 5  # archivos que se miden por tarea, como mucho (los de más líneas cambiadas)
   mutacion_min_concluyentes: 3  # con exigir: cambios concluyentes mínimos para que la puntuación valga
   mutacion_timeout_s: 300  # tiempo máximo de la medición por tarea
   contexto_max_bytes: 65536
@@ -80,7 +81,7 @@ precios:                         # USD por millón de tokens
 - El gasto cuenta cuatro tipos de token, cada uno a su precio: entrada, salida y, con la caché de prompts, lo guardado y lo reutilizado (ver abajo). No contempla el tramo caro de Claude Haiku 5.5 (peticiones de más de 100 000 tokens de entrada, 5 veces más caras).
 - Un precio más bajo que el real hace que el ciclo gaste más de lo que cree: el tope es tan bueno como los precios.
 
-`motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. Lo mismo con `motor.mutacion` (solo `no`, `informar` o `exigir`), `motor.mutacion_minima` (un número entre 0 y 1) y `motor.mutacion_max`, `motor.mutacion_min_concluyentes` y `motor.mutacion_timeout_s` (enteros mayores o iguales que 1): un valor mal escrito impide empezar, con un mensaje que nombra la clave. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
+`motor.sin_progreso` debe ser un entero mayor o igual que 0; con otro valor el ciclo no arranca. Lo mismo con `motor.mutacion` (solo `no`, `informar` o `exigir`), `motor.mutacion_minima` (un número entre 0 y 1) y `motor.mutacion_max`, `motor.mutacion_max_archivos`, `motor.mutacion_min_concluyentes` y `motor.mutacion_timeout_s` (enteros mayores o iguales que 1): un valor mal escrito impide empezar, con un mensaje que nombra la clave. `FORGE_BUDGET_USD` sustituye a `presupuesto.tope_usd`. Solo puede haber **un ciclo a la vez por proyecto**: un segundo `forge run --motor ciclo` se rechaza mientras el primero siga en marcha.
 
 ### Caché de prompts
 
@@ -152,6 +153,8 @@ Tras un pase, el ciclo hace cambios pequeños y deliberados en los archivos que 
 - **Primero se ejecuta la copia sin alterar** (línea base). Si no pasa (una prueba inestable, un archivo que la copia no lleva, un contenedor matado por memoria), no se mide: sin una línea base en verde, «fallar» no significaría nada. Queda anotado como `linea_base` o `infraestructura`, sin puntuación.
 - **Solo cuentan los cambios concluyentes.** Un cambio que **no compila ni parsea** (`[build failed]` en Go, `SyntaxError` en Python, errores de TypeScript), uno que **impide cargar el módulo** (un error al importar, no una prueba que falla) y uno que **mata el contenedor** (código 137 o 139) no son «detectados» ni «no detectados»: son **no concluyentes**, quedan fuera del denominador y se sustituyen por otros de una reserva (hasta `mutacion_max` más). Un cambio solo cuenta como detectado si el ejecutor informa del fallo de una **prueba concreta** (`not ok 3 - nombre` en node:test, `FAILED` en pytest, `--- FAIL:` en Go…) o si las pruebas agotan el tiempo. Si el ejecutor falla sin que se reconozca ninguna prueba fallida, el cambio es no concluyente: ante la duda, no se cuenta a favor.
 - **La muestra se reparte por archivo.** Cada archivo recibe una parte igual de los cambios (lo que uno no usa pasa a los demás): un archivo con muchísimos cambios posibles no diluye la puntuación de los otros.
+- **Solo se altera lo que las pruebas ejecutan, y como mucho en 5 archivos.** Con la cobertura de la línea base (`node --test`, `go test`, Python con `coverage` si la imagen ya lo tiene) se descartan los cambios en líneas y archivos que ninguna prueba ejecuta, y se miden como mucho `mutacion_max_archivos` archivos (5), los de más líneas cambiadas. Con jest, vitest u otro ejecutor sin cobertura, la medición se marca **SIN COBERTURA** (en el registro y en `forge status`) y con `exigir` no cuenta como evidencia: la tarea se pausa.
+- **`exigir` no es una garantía frente a un implementador adversario.** La cobertura mide ejecución, no comprobación: código que llama a funciones con comprobaciones internas que lanzan un error puede dar una puntuación alta con pruebas sin aserciones. Revisa el código si no te fías de quien lo escribe.
 - **La copia es privada y no queda basura.** Vive en una carpeta temporal con permisos `0700` (sin 777 ni 666), marcada como de FORGE; al empezar se barren las `forge-mutacion-*` que dejó un proceso cortado hace más de 6 horas, sin tocar nada que no sea de FORGE.
 - **Si no hay nada que cambiar** (el implementador no escribió código en un lenguaje cubierto, o su código no tiene comparaciones, constantes, condiciones ni valores devueltos), la medición **se omite** y queda anotado (evento `ciclo:mutacion_omitida`). No se inventa una puntuación.
 

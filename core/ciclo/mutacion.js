@@ -630,12 +630,16 @@ const COLOR_ANSI = /\u001b\[[0-9;]*m/g;
 function senalJs(salida) {
   /** @type {string[]} */
   const nombres = [];
-  // node:test. Se exige la estructura que escribe el ejecutor, no solo el prefijo: un módulo puede imprimir
-  // `not ok 1 - x` o `✖ x (1ms)` con console.log y, sin esto, contaría como una prueba fallida (N-09).
-  //  - reporter TAP: `not ok 3 - nombre`, seguido del bloque YAML del ejecutor (`---`, y `duration_ms:` o `failureType:`)
-  //  - reporter spec: `✖ nombre (1.2ms)` en la sección final «failing tests:», que cada fallo abre con `test at archivo:línea:col`
+  // node:test. La medición ejecuta SIEMPRE con el reporter TAP fijado (`comandoConReporterTap`): el ejecutor
+  // antepone `# ` a lo que escribe el módulo, así que este análisis no se puede suplantar con console.log.
+  // Se exige la estructura del ejecutor y su resumen (N-09, N4-06):
+  //  - bloques `not ok 3 - nombre` seguidos del YAML del ejecutor (`---`, y `duration_ms:` o `failureType:`)
+  //  - el resumen `# fail N` con N ≥ 1 y no más que los bloques encontrados
+  // El reporter spec, dot o junit NO se reconoce: sin señal (falla cerrado; nada cuenta como detectado).
   for (const m of salida.matchAll(/^([ \t]*)not ok \d+ - (.+?)(?:[ \t]+#.*)?\r?\n\1[ \t]+---[ \t]*\r?\n(?:\1[ \t]+\S.*\r?\n){0,3}?\1[ \t]+(?:duration_ms|failureType):/gm)) nombres.push(m[2].trim());
-  for (const m of salida.matchAll(/^test at .+:\d+:\d+[ \t]*\r?\n[ \t]*[✖✗×] (.+?) \(\d+(?:\.\d+)?ms\)[ \t]*$/gmu)) nombres.push(m[1].trim());
+  const resumen = [...salida.matchAll(/^# fail (\d+)[ \t]*$/gm)].pop();
+  const falloDelEjecutor = resumen !== undefined && Number(resumen[1]) >= 1 && nombres.length >= Number(resumen[1]);
+  if (!falloDelEjecutor) nombres.length = 0;
   // Un fallo de CARGA aparece como una «prueba» que se llama como el archivo: ninguna prueba llegó a ejecutarse
   if (nombres.some((n) => !ES_ARCHIVO_JS.test(n))) return 'prueba';
   // jest: `● suite › prueba` y `Tests: 2 failed`; vitest: `FAIL  archivo > prueba` y `Tests  2 failed`
@@ -738,7 +742,7 @@ export function escribirMarcaCopia(madre) {
  * @param {string} madre
  * @returns {{ pid: number } | null}
  */
-function leerMarca(madre) {
+export function leerMarca(madre) {
   try {
     const abs = path.join(madre, MARCA_COPIA);
     const st = fs.lstatSync(abs);
@@ -754,7 +758,7 @@ function leerMarca(madre) {
  * pueda estar en marcha. Un pid reutilizado por otro proceso solo retrasa el barrido hasta que la copia envejezca.
  * @param {number} pid
  */
-function procesoVivo(pid) {
+export function procesoVivo(pid) {
   if (pid === process.pid) return true;
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try { process.kill(pid, 0); return true; }
@@ -788,7 +792,10 @@ export function barrerMutacionesHuerfanas(dir = os.tmpdir(), opciones = {}) {
       const marca = leerMarca(abs);
       if (!marca) continue;
       // Un proceso muerto (SIGKILL, corte de luz) no va a terminar su medición: su copia sobra ya
-      if (procesoVivo(marca.pid) && ahora() - st.mtimeMs < antiguedadMs) continue;
+      // Un proceso VIVO no pierde su copia nunca por antigüedad (equipo suspendido, medición lenta): N4-02.
+      // Un pid reutilizado por otro programa solo retrasa el barrido hasta que ese programa termine.
+      if (procesoVivo(marca.pid)) continue;
+      void antiguedadMs; void ahora;
       if (eliminarCopia(abs)) borradas++;
     } catch { /* otro proceso la tocó a la vez: se deja */ }
   }
@@ -905,6 +912,54 @@ export function parsearCoberturaGo(salida, modulo = '') {
 const comillas = (p) => (p !== '' && !/[\s"']/.test(p) ? p : !p.includes('"') ? `"${p}"` : `'${p}'`);
 
 /**
+ * Las palabras de un comando `node --test` (directo o por un script de package.json) con el reporter
+ * TAP fijado: se quita cualquier `--test-reporter` del proyecto y se pone `--test-reporter=tap`.
+ * @param {string[]} partes
+ * @param {string} testCmd
+ * @param {string|null|undefined} packageJson
+ * @returns {{ partes: string[] } | { motivo: string }}
+ */
+function partesNodeTest(partes, testCmd, packageJson) {
+  let p = [...partes];
+  if (['npm', 'yarn', 'pnpm'].includes(p[0])) {
+    const esTest = p[1] === 'test' || (p[1] === 'run' && p[2] === 'test');
+    if (!esTest) return { motivo: `el comando «${testCmd}» no es un script de pruebas conocido` };
+    let script = null;
+    try { script = JSON.parse(packageJson ?? 'null')?.scripts?.test; } catch { /* sin package.json legible */ }
+    if (typeof script !== 'string') return { motivo: 'no se pudo leer el script «test» de package.json' };
+    try { p = dividirComando(script); } catch (err) { return { motivo: `el script «test» no se puede analizar: ${err instanceof Error ? err.message : err}` }; }
+  }
+  if (p[0] === 'npx') return { motivo: `el ejecutor «${p.find((x, i) => i > 0 && !x.startsWith('-')) ?? 'npx'}» no ofrece cobertura sin dependencias adicionales` };
+  if (p[0] !== 'node') return { motivo: `el ejecutor «${p[0]}» no es node --test` };
+  const i = p.indexOf('--test');
+  if (i === -1) return { motivo: 'el comando node no usa --test' };
+  const limpio = [];
+  for (let k = 0; k < p.length; k++) {
+    const x = p[k];
+    if (/^--test-reporter(?:-destination)?=/.test(x)) continue;
+    if (x === '--test-reporter' || x === '--test-reporter-destination') { k++; continue; }
+    limpio.push(x);
+  }
+  limpio.splice(limpio.indexOf('--test') + 1, 0, '--test-reporter=tap');
+  return { partes: limpio };
+}
+
+/**
+ * El comando de pruebas con el reporter TAP fijado explícitamente (N4-06), si es `node --test`.
+ * Con otro ejecutor (jest, vitest, pytest, go) no cambia nada: `{ motivo }`.
+ * @param {{ lenguaje?: string, testCmd?: string, packageJson?: string|null }} e
+ * @returns {{ comando: string } | { motivo: string }}
+ */
+export function comandoConReporterTap(e) {
+  if (e.lenguaje !== 'javascript' && e.lenguaje !== 'typescript') return { motivo: 'no es node --test' };
+  if (typeof e.testCmd !== 'string' || e.testCmd.trim() === '') return { motivo: 'no hay comando de pruebas' };
+  let partes;
+  try { partes = dividirComando(e.testCmd); } catch (err) { return { motivo: err instanceof Error ? err.message : String(err) }; }
+  const n = partesNodeTest(partes, e.testCmd, e.packageJson);
+  return 'motivo' in n ? n : { comando: n.partes.map(comillas).join(' ') };
+}
+
+/**
  * El comando de pruebas del proyecto pasado a su variante con cobertura, o por qué no hay.
  * Solo se usa lo que el propio ejecutor ya trae: nunca se instala nada.
  *  - `node --test` (también por un script de package.json): `--experimental-test-coverage`;
@@ -923,20 +978,10 @@ export function comandoConCobertura(e) {
   try { partes = dividirComando(testCmd); } catch (err) { return { motivo: err instanceof Error ? err.message : String(err) }; }
 
   if (lenguaje === 'javascript' || lenguaje === 'typescript') {
-    if (['npm', 'yarn', 'pnpm'].includes(partes[0])) {
-      const esTest = partes[1] === 'test' || (partes[1] === 'run' && partes[2] === 'test');
-      if (!esTest) return { motivo: `el comando «${testCmd}» no es un script de pruebas conocido` };
-      let script = null;
-      try { script = JSON.parse(e.packageJson ?? 'null')?.scripts?.test; } catch { /* sin package.json legible */ }
-      if (typeof script !== 'string') return { motivo: 'no se pudo leer el script «test» de package.json' };
-      try { partes = dividirComando(script); } catch (err) { return { motivo: `el script «test» no se puede analizar: ${err instanceof Error ? err.message : err}` }; }
-    }
-    if (partes[0] === 'npx') return { motivo: `el ejecutor «${partes.find((p, i) => i > 0 && !p.startsWith('-')) ?? 'npx'}» no ofrece cobertura sin dependencias adicionales` };
-    if (partes[0] !== 'node') return { motivo: `el ejecutor «${partes[0]}» no ofrece cobertura sin dependencias adicionales` };
-    const i = partes.indexOf('--test');
-    if (i === -1) return { motivo: 'el comando node no usa --test' };
-    if (!partes.includes('--experimental-test-coverage')) partes.splice(i + 1, 0, '--experimental-test-coverage');
-    return { formato: 'node', comando: partes.map(comillas).join(' ') };
+    const nodo = partesNodeTest(partes, testCmd, e.packageJson);
+    if ('motivo' in nodo) return nodo;
+    if (!nodo.partes.includes('--experimental-test-coverage')) nodo.partes.splice(nodo.partes.indexOf('--test-reporter=tap') + 1, 0, '--experimental-test-coverage');
+    return { formato: 'node', comando: nodo.partes.map(comillas).join(' ') };
   }
 
   if (lenguaje === 'python') {
@@ -1121,6 +1166,21 @@ export async function medirMutacion(entrada) {
 
   const contenidoDe = new Map(fuentes.map((f) => [f.ruta, f.contenido]));
   const lenguajes = new Map(fuentes.map((f) => [f.ruta, lenguajeDe(f.ruta)]));
+
+  // N4-06: con node:test la medición ejecuta siempre con el reporter TAP, que el módulo bajo prueba no puede suplantar
+  let medidor = runner;
+  const propio = /** @type {any} */ (runner);
+  if (propio?.o && typeof propio.o.testCmd === 'string') {
+    let packageJson = null;
+    try { packageJson = fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'); } catch { /* sin package.json */ }
+    const t = comandoConReporterTap({ lenguaje: propio.o.lenguaje, testCmd: propio.o.testCmd, packageJson });
+    if ('comando' in t && t.comando !== propio.o.testCmd) {
+      try {
+        const clon = typeof propio.conComando === 'function' ? propio.conComando(t.comando) : new propio.constructor({ ...propio.o, testCmd: t.comando, runId: `${propio.o.runId}-tap`, cli: propio.cli ?? propio.o.cli });
+        if (clon && typeof clon.test === 'function') medidor = clon;
+      } catch { /* se mide con el ejecutor tal cual: el reconocimiento por texto falla cerrado */ }
+    }
+  }
   const maxArchivos = Math.max(1, Math.floor(entrada.maxArchivos ?? MAX_ARCHIVOS));
   /** Líneas que la tarea cambió en un archivo (o las no vacías, si es nuevo): la prioridad para el tope de archivos. */
   const lineasDe = (ruta) => alcances.get(ruta)?.size ?? /** @type {string} */ (contenidoDe.get(ruta)).split('\n').filter((l) => l.trim() !== '').length;
@@ -1285,7 +1345,7 @@ export async function medirMutacion(entrada) {
       const t0 = ahora();
 
       // Línea base: la copia sin alterar tiene que pasar. Si no, «fallar» no significaría nada (H-05)
-      const base = await runner.test(copia);
+      const base = await medidor.test(copia);
       const catBase = clasificar(base, { hayPruebas: true, pruebasIntactas: true });
       if (catBase === 'infra_error' || esMuerteDeEntorno(base)) {
         r.lineaBase = 'infraestructura';
@@ -1320,7 +1380,7 @@ export async function medirMutacion(entrada) {
         fs.mkdirSync(path.dirname(destino), { recursive: true });
         fs.writeFileSync(destino, aplicarAlteracion(original, a), 'utf8');
         try {
-          ejecucion = await runner.test(copia);
+          ejecucion = await medidor.test(copia);
         } finally {
           // La copia vuelve a quedar como el proyecto: la siguiente alteración parte de código sin alterar
           fs.writeFileSync(destino, original, 'utf8');
@@ -1341,6 +1401,7 @@ export async function medirMutacion(entrada) {
         anotar(i, h, false);
       }
     } finally {
+      if (medidor !== runner && Array.isArray(/** @type {any} */ (medidor).copiasSinBorrar) && Array.isArray(propio?.copiasSinBorrar)) propio.copiasSinBorrar.push(.../** @type {any} */ (medidor).copiasSinBorrar);
       if (!eliminarCopia(madre)) r.copiaSinBorrar = true;
     }
   }

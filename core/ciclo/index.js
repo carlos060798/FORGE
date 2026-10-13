@@ -16,7 +16,7 @@ import { Diario, claveDe, LibroDeGasto } from './diario.js';
 import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
-import { costoDe, estadoDe } from './presupuesto.js';
+import { costoDe, estadoDe, MAX_TOKENS_ESTIMADOS } from './presupuesto.js';
 import { esRecuentoValido, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
 import { Respaldo } from './respaldo.js';
 
@@ -344,7 +344,7 @@ export class CicloVerificado {
    * @param {string} taskId @param {any} r
    */
   _anotarCanceladasPrevias(taskId, r) {
-    if (!(r?.tokensEstimadosCancelados > 0) || !esRecuentoValido(r.tokensEstimadosCancelados)) return;
+    if (!(r?.tokensEstimadosCancelados > 0) || !esRecuentoValido(r.tokensEstimadosCancelados) || r.tokensEstimadosCancelados > MAX_TOKENS_ESTIMADOS) return;
     this._anotarAbortada(taskId, { abortada: true, tokensEstimados: r.tokensEstimadosCancelados, intentosCancelados: r.intentosCancelados, modelo: r.modelo, proveedor: r.proveedor });
   }
 
@@ -357,7 +357,7 @@ export class CicloVerificado {
    * @param {any} r
    */
   _anotarAbortada(taskId, r) {
-    if (r?.abortada !== true || !esRecuentoValido(r.tokensEstimados)) return;
+    if (r?.abortada !== true || !esRecuentoValido(r.tokensEstimados) || r.tokensEstimados > MAX_TOKENS_ESTIMADOS) return;
     const usd = costoDe({ proveedor: r.proveedor, modelo: r.modelo, inputTokens: r.tokensEstimados, outputTokens: 0 }, { precios: this.o.config?.precios });
     this.libro.anotar({ taskId, usd, inputTokens: r.tokensEstimados, outputTokens: 0, estimado: true });
     this.o.log?.append('ciclo:llamada_abortada', {

@@ -113,6 +113,11 @@ const CASOS = [
     pruebas: "tests/test_clasificar.py", fuertes: PY_FUERTES, sinAserciones: PY_SIN_ASERCIONES,
   },
   {
+    nombre: "Python con pytest y coverage", lenguaje: "python", testCmd: "python -m pytest", fuente: "clasificar.py",
+    base: { "requirements.txt": "pytest==9.1.1\ncoverage>=7\n", "clasificar.py": PY },
+    pruebas: "tests/test_clasificar.py", fuertes: PY_FUERTES, sinAserciones: PY_SIN_ASERCIONES, conCobertura: true,
+  },
+  {
     nombre: "TypeScript con vitest", lenguaje: "typescript", testCmd: "npx vitest run", fuente: "src/clasificar.ts",
     base: { "package.json": JSON.stringify({ name: "demo", private: true, type: "module", devDependencies: { vitest: "5.0.3", vite: "8.3.4" } }, null, 2) + "\n", "tsconfig.json": TSCONFIG, "src/clasificar.ts": TS },
     pruebas: "tests/clasificar.test.ts", fuertes: tsFuertes(VITEST, "expect"), sinAserciones: tsSinAserciones(VITEST),
@@ -121,6 +126,7 @@ const CASOS = [
     nombre: "TypeScript con node --test (npm test, sin dependencias)", lenguaje: "typescript", testCmd: "npm test", fuente: "src/clasificar.ts",
     base: { "package.json": JSON.stringify({ name: "demo", private: true, type: "module", scripts: { test: "node --test" } }, null, 2) + "\n", "tsconfig.json": TSCONFIG, "src/clasificar.ts": TS },
     pruebas: "tests/clasificar.test.ts", fuertes: tsFuertes(NODE_TEST, "assert"), sinAserciones: tsSinAserciones(NODE_TEST),
+    conCobertura: true,
   },
   {
     nombre: "TypeScript con jest y ts-jest", lenguaje: "typescript", testCmd: "npx jest", fuente: "src/clasificar.ts",
@@ -178,6 +184,9 @@ describe("medición por mutación con Docker real — Python y TypeScript", { sk
         assert.ok(r.puntuacion !== null && r.puntuacion >= 0.9, `puntuación ${r.puntuacion}: ${JSON.stringify(r.sobrevivientes)}`);
         assert.ok(eventos.filter((e) => e.resultado === "detectada").every((e) => e.motivo === "prueba_fallida"), detalle);
         const ejecuciones = eventos.length + 1;
+        // N-02: con node --test (y con coverage, si la imagen lo tiene) la medición filtra por cobertura; con vitest y jest queda sin ella
+        console.log(`  ${caso.nombre} · cobertura: ${r.sinCobertura ? `SIN COBERTURA (${r.motivoSinCobertura})` : `sí, ${r.fueraDeCobertura ?? 0} fuera de cobertura, ${r.candidatas} candidatas`}`);
+        if (caso.conCobertura) assert.equal(r.sinCobertura, undefined, `debía haber cobertura: ${r.motivoSinCobertura}`);
         console.log(`  ${caso.nombre} · pruebas fuertes: ${r.detectadas}/${r.probadas} detectadas (${Math.round((r.puntuacion ?? 0) * 100)} %), ${r.noConcluyentes} no concluyentes`
           + ` · medición ${ms} ms (${ejecuciones} ejecuciones, ${Math.round(ms / ejecuciones)} ms cada una) · una ejecución suelta ${base.durationMs} ms`);
       });

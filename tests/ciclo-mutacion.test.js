@@ -348,7 +348,11 @@ function ejecutorFalso() {
   return {
     vistas,
     o: { lenguaje: "javascript", testCmd: "node --test", runId: "falso" },
-    conComando: () => ({ test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }),
+    conComando(comando) {
+      return /--experimental-test-coverage/.test(comando)
+        ? { test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }
+        : { test: (dir) => this.test(dir) };
+    },
     test: async (dir) => {
       const rutaSrc = join(dir, "src", "suma.js");
       const src = existsSync(rutaSrc) ? readFileSync(rutaSrc, "utf8") : null;

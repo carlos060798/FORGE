@@ -133,6 +133,8 @@ describe("restos de un ciclo cortado — barridos al empezar el siguiente", () =
     return Number(r.stdout);
   }
   /** Carpeta como las que crea la medición por mutación: nombre, marca con el pid y una copia dentro. */
+  /** La marca real que escribe la medición: JSON con la clave de FORGE, un nonce y el pid (N4-01). */
+  const marcaReal = (pid) => JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
   function copiaDeMutacion(dir, nombre, marca) {
     mkdirSync(join(dir, nombre, "copia", "src"), { recursive: true });
     writeFileSync(join(dir, nombre, "copia", "src", "a.js"), "export const a = 1;\n");
@@ -142,7 +144,7 @@ describe("restos de un ciclo cortado — barridos al empezar el siguiente", () =
 
   test("la copia de una medición cuyo proceso murió se borra sin esperar seis horas", () => {
     const dir = tmp("forge-restos-");
-    const huerfana = copiaDeMutacion(dir, "forge-mutacion-AbC123", `${pidMuerto()}\n`);
+    const huerfana = copiaDeMutacion(dir, "forge-mutacion-AbC123", marcaReal(pidMuerto()));
     assert.equal(barrerMutacionesDeProcesosMuertos(dir), 1);
     assert.ok(!existsSync(huerfana));
   });
@@ -152,14 +154,14 @@ describe("restos de un ciclo cortado — barridos al empezar el siguiente", () =
     const fuera = tmp("forge-restos-fuera-");
     writeFileSync(join(fuera, "valioso.txt"), "no me borres");
     const intactas = [
-      copiaDeMutacion(dir, "forge-mutacion-Vivo01", `${process.pid}\n`),          // otra medición en marcha (otro proyecto)
+      copiaDeMutacion(dir, "forge-mutacion-Vivo01", marcaReal(process.pid)),          // otra medición en marcha (otro proyecto)
       copiaDeMutacion(dir, "forge-mutacion-SinMar"),                              // sin marca: no se sabe de quién es
       copiaDeMutacion(dir, "forge-mutacion-Vacia1", ""),                          // marca a medio escribir
       copiaDeMutacion(dir, "forge-mutacion-Texto1", "no es un pid\n"),
       copiaDeMutacion(dir, "forge-mutacion-Cero01", "0\n"),
       copiaDeMutacion(dir, "forge-mutacion-Negat1", "-1\n"),
-      copiaDeMutacion(dir, "forge-mutacion-demasiado-largo", `${pidMuerto()}\n`), // no es el nombre que crea FORGE
-      copiaDeMutacion(dir, "otra-herramienta-AbC123", `${pidMuerto()}\n`),
+      copiaDeMutacion(dir, "forge-mutacion-demasiado-largo", marcaReal(pidMuerto())), // no es el nombre que crea FORGE
+      copiaDeMutacion(dir, "otra-herramienta-AbC123", marcaReal(pidMuerto())),
     ];
     writeFileSync(join(dir, "forge-mutacion-Fich01"), "un archivo, no una carpeta");
     // Un enlace con el nombre de FORGE que apunta fuera: ni se sigue ni se borra su destino
@@ -376,10 +378,10 @@ describe("corte real del proceso — con el Docker falso", () => {
     const total = medidas(referencia).length;
     assert.ok(total >= 2, `hacen falta al menos dos alteraciones para cortar entre ellas (hay ${total})`);
 
-    // Ejecuciones: 1 rojo, 2 verde, 3 línea base, 4 primera alteración, 5 segunda (aquí se corta)
+    // Ejecuciones: 1 rojo, 2 verde, 3 línea base, 4 cobertura, 5 primera alteración, 6 segunda (aquí se corta)
     const e = escenario();
-    const p = lanzar(e, RUN, { env: { FALSO_PARAR_EN_EJECUCION: "5" } });
-    await esperar(() => lineas(e.docker).some((l) => l.orden === "run" && l.n === 5), { que: "la segunda alteración", proceso: p });
+    const p = lanzar(e, RUN, { env: { FALSO_PARAR_EN_EJECUCION: "6" } });
+    await esperar(() => lineas(e.docker).some((l) => l.orden === "run" && l.n === 6), { que: "la segunda alteración", proceso: p });
     await matar(p);
     assert.equal(medidas(e).length, 1, "una alteración quedó medida antes del corte");
 

@@ -84,6 +84,12 @@ export function costoDe(llamada, opciones = {}) {
  * @returns {import('./estado.js').Presupuesto}
  */
 /**
+ * Cota de la estimación de una llamada cancelada: por encima de esto no es una estimación de entrada
+ * creíble (ninguna ventana de contexto llega) y se trata como no informada (N4-10).
+ */
+export const MAX_TOKENS_ESTIMADOS = 2_000_000;
+
+/**
  * Presupuesto tras una llamada cancelada por tiempo: suma la estimación de la entrada (el proveedor
  * pudo procesarla y cobrarla). Si no hay estimación válida, el presupuesto no cambia.
  * @param {import('./estado.js').Presupuesto} p
@@ -92,7 +98,7 @@ export function costoDe(llamada, opciones = {}) {
  * @returns {import('./estado.js').Presupuesto}
  */
 export function trasAbortada(p, r, opciones = {}) {
-  if (r?.abortada !== true || !Number.isInteger(r.tokensEstimados) || Number(r.tokensEstimados) < 0) return p;
+  if (r?.abortada !== true || !Number.isInteger(r.tokensEstimados) || Number(r.tokensEstimados) < 0 || Number(r.tokensEstimados) > MAX_TOKENS_ESTIMADOS) return p;
   try {
     return registrar(p, { proveedor: String(r.proveedor), modelo: String(r.modelo), inputTokens: r.tokensEstimados, outputTokens: 0 }, opciones);
   } catch { return p; }

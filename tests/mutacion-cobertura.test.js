@@ -52,14 +52,16 @@ const NODE_ARBOL = L(
 /** Un ejecutor de prueba que ofrece cobertura y cuenta cuántas veces se le pidió. */
 function ejecutorConCobertura({ ejecucion = PASE, informe, cobertura }) {
   const llamadas = { normal: 0, cobertura: 0 };
-  return {
+  const e = {
     llamadas,
     o: { lenguaje: "javascript", testCmd: "node --test", runId: "falso" },
     test: async () => { llamadas.normal++; return typeof ejecucion === "function" ? ejecucion() : { ...ejecucion }; },
-    conComando: () => ({
-      test: async () => { llamadas.cobertura++; return cobertura ?? { exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }; },
-    }),
+    // La medición pide dos variantes del comando: con el reporter TAP fijado (lo de siempre) y con cobertura
+    conComando: (comando) => (/--experimental-test-coverage/.test(comando)
+      ? { test: async () => { llamadas.cobertura++; return cobertura ?? { exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }; } }
+      : { test: (dir) => e.test(dir) }),
   };
+  return e;
 }
 
 // ── Analizadores de informes ─────────────────────────────────────────────────
@@ -107,9 +109,9 @@ describe("informes de cobertura", () => {
 
 describe("comandoConCobertura — solo lo que el ejecutor ya trae", () => {
   test("node --test, también por un script de package.json", () => {
-    assert.deepEqual(comandoConCobertura({ lenguaje: "javascript", testCmd: "node --test" }), { formato: "node", comando: "node --test --experimental-test-coverage" });
+    assert.deepEqual(comandoConCobertura({ lenguaje: "javascript", testCmd: "node --test" }), { formato: "node", comando: "node --test --test-reporter=tap --experimental-test-coverage" });
     assert.deepEqual(comandoConCobertura({ lenguaje: "typescript", testCmd: "npm test", packageJson: '{"scripts":{"test":"node --test tests/"}}' }),
-      { formato: "node", comando: "node --test --experimental-test-coverage tests/" });
+      { formato: "node", comando: "node --test --test-reporter=tap --experimental-test-coverage tests/" });
   });
   test("jest, vitest y scripts que no son node --test: sin cobertura, con el motivo", () => {
     for (const testCmd of ["npx vitest run", "npx jest"]) {
@@ -309,9 +311,10 @@ function ejecutorNodeReal() {
   return {
     o: { lenguaje: "javascript", testCmd: "node --test", runId: "real" },
     test: correr([]),
+    // Siempre con el reporter TAP fijado (N4-06); la variante con cobertura, además, la cobertura
     conComando: (comando) => {
-      assert.equal(comando, "node --test --experimental-test-coverage");
-      return { test: correr(["--experimental-test-coverage"]) };
+      assert.match(comando, /^node --test --test-reporter=tap( --experimental-test-coverage)?$/);
+      return { test: correr(comando.split(" ").slice(1)) };
     },
   };
 }
@@ -366,3 +369,66 @@ describe("node --test real", () => {
     assert.equal(detectadasEnGuardias, r.detectadas);
   });
 });
+
+// ── N4-06: la medición fija el reporter TAP y exige el resumen del ejecutor ──
+
+describe("N4-06 — el módulo bajo prueba no puede suplantar un fallo de prueba", () => {
+  test("un módulo que imprime la salida del reporter spec y falla al cargar: nada se cuenta como detectado", async () => {
+    const falsa = "test at tests/suma.test.js:3:1\\n✖ suma devuelve el total (0.5ms)\\nℹ fail 1";
+    const cwd = escribir(tmp("forge-mcob-tap-"), {
+      "package.json": "{\"type\":\"module\"}",
+      "src/suma.js": L("export function suma(a, b) {", "  return a + b;", "}"),
+      "src/guardia.js": L(
+        "import { suma } from './suma.js';",
+        `if (suma(1, 1) !== 2) { console.log("${falsa}"); process.exitCode = 1; }`,
+        "export const ok = true;",
+      ),
+      "tests/suma.test.js": L("import { test } from 'node:test';", "import '../src/guardia.js';", "import { suma } from '../src/suma.js';", "test('se puede llamar', () => { suma(1, 2); });"),
+    });
+    const r = await medirMutacion({ cwd, archivos: ["src/suma.js", "src/guardia.js"], runner: ejecutorNodeRealSpec(), max: 10 });
+    assert.ok(r);
+    assert.equal(r.detectadas, 0, JSON.stringify(r));
+    assert.equal(r.puntuacion === null || r.puntuacion === 0, true);
+  });
+
+  test("el reconocimiento por texto ya no acepta el reporter spec ni un resumen que no cuadra", async () => {
+    const { senalDeFallo } = await import("../core/ciclo/mutacion.js");
+    assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve el total (0.5ms)\nℹ fail 1\n", "javascript"), "sin_senal");
+    const bloque = "not ok 1 - suma\n  ---\n  duration_ms: 1\n  failureType: 'testCodeFailure'\n  ...\n";
+    assert.equal(senalDeFallo(bloque, "javascript"), "sin_senal");
+    assert.equal(senalDeFallo(`${bloque}1..1\n# fail 1\n`, "javascript"), "prueba");
+  });
+});
+
+/** Un ejecutor que, si la medición no le impone el reporter TAP, usa el spec (el de Node sin TTY). */
+function ejecutorNodeRealSpec() {
+  const correr = (args) => async (dir) => {
+    const { NODE_TEST_CONTEXT, ...env } = process.env;
+    const r = spawnSync(process.execPath, ["--test", ...args], { cwd: dir, encoding: "utf8", timeout: 60_000, env });
+    return { exitCode: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", timedOut: false, infraError: false, durationMs: 0 };
+  };
+  return {
+    o: { lenguaje: "javascript", testCmd: "node --test --test-reporter=spec", runId: "real-spec" },
+    test: correr(["--test-reporter=spec"]),
+    conComando: (comando) => ({ test: correr(comando.split(" ").slice(2)) }),
+  };
+}
+
+// ── N4-10: la estimación de una llamada cancelada tiene cota ────────────────
+
+describe("N4-10 — tokensEstimados acotado", () => {
+  test("1e300, MAX_SAFE_INTEGER y más de 2 000 000 no tocan el presupuesto; una estimación razonable sí", async () => {
+    const { trasAbortada, MAX_TOKENS_ESTIMADOS } = await import("../core/ciclo/presupuesto.js");
+    assert.equal(MAX_TOKENS_ESTIMADOS, 2_000_000);
+    const p = { tope_usd: 1, gastado_usd: 0, llamadas: 0, tokens_in: 0, tokens_out: 0, estado: "ok" };
+    const r = (tokensEstimados) => ({ abortada: true, tokensEstimados, proveedor: "anthropic", modelo: "claude-sonnet-4-6" });
+    const opciones = { precios: { "claude-sonnet-4-6": { input: 3, output: 15 } } };
+    for (const malo of [1e300, Number.MAX_SAFE_INTEGER, MAX_TOKENS_ESTIMADOS + 1, -1, 1.5, Infinity, NaN, "99999999"]) {
+      assert.deepEqual(trasAbortada(/** @type {any} */ (p), r(malo), opciones), p, String(malo));
+    }
+    const ok = trasAbortada(/** @type {any} */ (p), r(1000), opciones);
+    assert.equal(ok.tokens_in, 1000);
+    assert.equal(ok.llamadas, 1);
+  });
+});
+

@@ -97,7 +97,9 @@ function conCobertura(runner, ruta) {
   const informe = ["ℹ start of coverage report", "ℹ file | line % | branch % | funcs % | uncovered lines", `ℹ ${ruta} | 100.00 | 100.00 | 100.00 | `, "ℹ end of coverage report", ""].join("\n");
   return Object.assign(runner, {
     o: { lenguaje: "javascript", testCmd: "node --test", runId: "falso" },
-    conComando: () => ({ test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }),
+    conComando: (comando) => (/--experimental-test-coverage/.test(comando)
+      ? { test: async () => ({ exitCode: 0, stdout: informe, stderr: "", timedOut: false, infraError: false, durationMs: 1 }) }
+      : { test: (dir) => runner.test(dir) }),
   });
 }
 

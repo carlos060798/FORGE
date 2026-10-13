@@ -52,7 +52,11 @@ const IMPL = "export function suma(a, b) {\n  if (a < 0) {\n    return 0;\n  }\n
 const proyecto = (extra = {}) => escribir(tmp("forge-mrev-"), { "package.json": "{\"type\":\"module\"}", "src/suma.js": IMPL, "tests/suma.test.js": "// nada\n", ...extra });
 
 /** Marca que escribe `escribirMarcaCopia`: la clave de FORGE, un nonce de 32 hexadecimales y el pid. */
-const MARCA_VALIDA = JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid: process.pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
+const marcaDe = (pid) => JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
+/** Un pid que acaba de terminar: el proceso hijo ya no existe. */
+const PID_MUERTO = Number(spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" }).stdout);
+const MARCA_VALIDA = marcaDe(PID_MUERTO);
+const MARCA_VIVA = marcaDe(process.pid);
 
 // ── H-02: un fallo al cargar el módulo no es una detección ───────────────────
 
@@ -60,12 +64,20 @@ describe("H-02 — fallo de carga frente a fallo de prueba", () => {
   test("node:test (TAP y spec): una prueba con nombre propio que falla es un fallo de prueba; un «fallo» llamado como el archivo es un fallo de carga", () => {
     // Estructura real del reporter TAP (línea + bloque YAML del ejecutor) y del spec («test at» + línea ✖)
     const tap = (nombre, sangria = "") => `${sangria}not ok 1 - ${nombre}\n${sangria}  ---\n${sangria}  duration_ms: 1.2\n${sangria}  failureType: 'testCodeFailure'\n`;
-    assert.equal(senalDeFallo(tap("suma devuelve 3"), "javascript"), "prueba");
-    assert.equal(senalDeFallo(tap("dentro de un describe", "    "), "javascript"), "prueba");
-    assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "prueba");
-    assert.notEqual(senalDeFallo(tap("tests/suma.test.js"), "javascript"), "prueba");
+    const resumen = (n) => `1..1\n# tests 1\n# pass 0\n# fail ${n}\n`;
+    assert.equal(senalDeFallo(tap("suma devuelve 3") + resumen(1), "javascript"), "prueba");
+    assert.equal(senalDeFallo(tap("dentro de un describe", "    ") + resumen(1), "javascript"), "prueba");
+    // N4-06: el spec ya no se reconoce (un módulo lo puede imprimir con console.log): sin señal, falla cerrado
+    assert.equal(senalDeFallo("test at tests/suma.test.js:3:1\n✖ suma devuelve 3 (2.2ms)\nℹ fail 1\n", "javascript"), "sin_senal");
+    // Bloques con su YAML pero sin el resumen del ejecutor, o con un resumen que no cuadra: no cuentan
+    assert.equal(senalDeFallo(tap("suma devuelve 3"), "javascript"), "sin_senal");
+    assert.equal(senalDeFallo(tap("suma devuelve 3") + resumen(0), "javascript"), "sin_senal");
+    assert.equal(senalDeFallo(tap("suma devuelve 3") + resumen(2), "javascript"), "sin_senal");
+    // El módulo bajo prueba imprime el bloque Y el resumen: el ejecutor antepone «# » a todo, y no hay resumen propio
+    assert.equal(senalDeFallo(`# ${tap("suma devuelve 3").split("\n").join("\n# ")}\n# # fail 1\n`, "javascript"), "sin_senal");
+    assert.notEqual(senalDeFallo(tap("tests/suma.test.js") + resumen(1), "javascript"), "prueba");
+    assert.equal(senalDeFallo(tap("tests/suma.test.js") + resumen(1), "javascript"), "no_carga");
     assert.notEqual(senalDeFallo("test at tests/suma.test.js:1:1\n✖ suma.test.js (115.6ms)\nℹ fail 1\n", "javascript"), "prueba");
-    assert.notEqual(senalDeFallo("test at C:\\proy\\tests\\suma.test.mjs:1:1\n✖ C:\\proy\\tests\\suma.test.mjs (9ms)\n", "javascript"), "prueba");
     // N-09: un módulo que imprime el prefijo con console.log NO es una prueba fallida
     assert.notEqual(senalDeFallo("not ok 1 - suma devuelve 3\n", "javascript"), "prueba");
     assert.notEqual(senalDeFallo("    not ok 2 - dentro de un describe\n", "javascript"), "prueba");
@@ -377,11 +389,11 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
   const HACE_UN_DIA = () => new Date(Date.now() - 24 * 3600 * 1000);
 
   /** @param {string} base @param {string} nombre @param {{ marca?: boolean, antigua?: boolean }} o */
-  function carpeta(base, nombre, { marca = true, antigua = true } = {}) {
+  function carpeta(base, nombre, { marca = true, antigua = true, viva = false } = {}) {
     const dir = join(base, nombre);
     mkdirSync(join(dir, "copia"), { recursive: true });
     writeFileSync(join(dir, "copia", "a.js"), "x");
-    if (marca) writeFileSync(join(dir, ".forge-mutacion"), MARCA_VALIDA);
+    if (marca) writeFileSync(join(dir, ".forge-mutacion"), viva ? MARCA_VIVA : MARCA_VALIDA);
     if (antigua) utimesSync(dir, HACE_UN_DIA(), HACE_UN_DIA());
     return dir;
   }
@@ -390,7 +402,9 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
     const base = tmp("forge-mrev-barrer-");
     const huerfana = carpeta(base, "forge-mutacion-abc123");
     const sinMarca = carpeta(base, "forge-mutacion-def456", { marca: false });
-    const reciente = carpeta(base, "forge-mutacion-ghi789", { antigua: false });
+    const reciente = carpeta(base, "forge-mutacion-ghi789", { antigua: false, viva: true });
+    // N4-02: un proceso vivo no pierde su copia por antigüedad (equipo suspendido, medición lenta)
+    const vivaAntigua = carpeta(base, "forge-mutacion-viv000", { viva: true });
     const ajena = carpeta(base, "otra-herramienta-abc123");
     const nombreRaro = carpeta(base, "forge-mutacion-uno");
     const fichero = join(base, "forge-mutacion-fil123");
@@ -398,7 +412,7 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
 
     assert.equal(barrerMutacionesHuerfanas(base), 1);
     assert.equal(existsSync(huerfana), false);
-    for (const d of [sinMarca, reciente, ajena, nombreRaro, fichero]) assert.equal(existsSync(d), true, d);
+    for (const d of [sinMarca, reciente, vivaAntigua, ajena, nombreRaro, fichero]) assert.equal(existsSync(d), true, d);
     assert.equal(barrerMutacionesHuerfanas(join(base, "no-existe")), 0, "una carpeta que no existe no es un error");
   });
 

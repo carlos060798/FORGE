@@ -14,7 +14,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { procesoVivo } from './candado.js';
+import { leerMarca, procesoVivo } from './mutacion.js';
 import { eliminarCopia } from '../sandbox/staging.js';
 
 const SESION_VALIDA = /^\w[\w.-]*$/;
@@ -79,8 +79,9 @@ export function barrerMutacionesDeProcesosMuertos(dir = os.tmpdir()) {
     try {
       const st = fs.lstatSync(abs);
       if (!st.isDirectory() || st.isSymbolicLink()) continue;
-      const marca = fs.readFileSync(path.join(abs, MARCA_MUTACION), 'utf8').trim();
-      if (!/^[1-9]\d{0,9}$/.test(marca) || procesoVivo(Number(marca))) continue;
+      // La marca real (JSON con clave de FORGE, nonce y pid) la valida `leerMarca`: la misma que usa la medición (N4-01)
+      const marca = leerMarca(abs);
+      if (!marca || procesoVivo(marca.pid)) continue;
       if (eliminarCopia(abs)) borradas++;
     } catch { /* sin marca, o alguien la tocó a la vez: se deja */ }
   }

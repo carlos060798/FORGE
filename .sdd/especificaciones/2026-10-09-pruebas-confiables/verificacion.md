@@ -161,3 +161,58 @@ La tercera pasada (`../2026-10-09-validacion-modelo-real/revision-independiente-
 - ❌ **N-02 sigue abierto:** pruebas sin aserciones dan hasta 90 % si el código bajo prueba llama a funciones con `if (K !== N) throw` repartidas en muchos archivos. No se filtra por cobertura. `mutacion: exigir` no es una garantía frente a un implementador adversario.
 - ⚠️ Python y TypeScript con Docker real: `tests/mutacion-docker-lenguajes.test.js` está escrito; sin resultado confirmado al cerrar la tanda.
 
+## Cobertura y tope de archivos (N-02), reporter fijado (N4-06) y Docker real en Python y TypeScript (2026-10-13)
+
+Windows 11, Node 24.20.0 en el anfitrión, Docker 29.7.2, imágenes `node:22-alpine` y Python de la imagen preparada. Pruebas: `tests/mutacion-cobertura.test.js` (22), y ajustados `ciclo-mutacion`, `mutacion-revision`, `mutacion-lineas-cambiadas`, `corte-real` (274 tests de esos archivos y los de salidas reales: 273 pasan, 1 omitido). No se ejecutó la suite completa.
+
+### Qué cambió
+
+- ✅ **Cobertura de la línea base.** `node --test` (`--experimental-test-coverage`, informe en árbol de Node 24 y plano de Node 22, con prefijo `ℹ ` o `# `), `go test -coverprofile=/dev/stdout` y Python con el módulo `coverage` si la imagen ya lo tiene. Se descartan las alteraciones en líneas y archivos que ninguna prueba ejecuta (`fueraDeCobertura`).
+- ✅ **Sin cobertura** (jest, vitest, Python sin `coverage`, o un comando que falle): comportamiento anterior y `sinCobertura: true` en el resultado, el evento `ciclo:mutacion` y `forge status` («SIN COBERTURA: no cuenta como evidencia»). Con `exigir` y una puntuación que antes valía, el nodo guarda `puntuacion: null` y `omitida` con el motivo: el router pide revisión `pruebas_debiles` (insuficiente) con el detalle; nunca éxito.
+- ✅ **Tope de archivos** `motor.mutacion_max_archivos` (5, entero ≥ 1 validado): los de más líneas cambiadas; el resto en `archivosOmitidos`. Se añade `porArchivo`.
+- ✅ **Avance**: la cobertura se guarda con el avance; reanudar no la repite ni repite la línea base si no falta nada.
+- ✅ **N4-06**: la medición ejecuta siempre con `--test-reporter=tap` (se clona el `SandboxRunner` con otro comando) y `senalJs` exige el resumen `# fail N` (N ≥ 1, no más que los bloques `not ok` con su YAML). El reporter spec ya no se reconoce (sin señal).
+- ✅ **N4-01**: `restos.js` usa `leerMarca` y `procesoVivo` de `mutacion.js` (la marca JSON real); `corte-real.test.js` usa la marca real. **N4-02**: un pid vivo no se borra nunca por antigüedad. **N4-10**: `MAX_TOKENS_ESTIMADOS` = 2 000 000 en `presupuesto.js` y en `_anotarAbortada` (1e300 no toca el presupuesto).
+
+### El caso de la revisión (N-02) — NO queda resuelto, y no se dice que sí
+
+Nueve archivos `src/g/gN.js` (`const K = N; export function cN() { if (K !== N) throw ... }`) llamados desde `suma()` por `comprobar()`, pruebas sin aserciones, con `node --test` real sobre una copia:
+
+| Configuración | Resultado |
+|---|---|
+| Sin cobertura, sin tope de archivos | 9/10 = **90 %** (guardias 9/9, `suma.js` 0/1) |
+| Con cobertura y tope de 5 archivos | 9/10 = **90 %** (4 guardias 9/9, `suma.js` 0/1; 5 archivos omitidos) |
+| Sin cobertura, tope 5 | 9/10 = **90 %** |
+
+La cobertura no ayuda: las guardias se ejecutan y su fallo es un fallo de prueba real. El tope tampoco, porque el código real solo tiene una alteración y las guardias rellenan la muestra. Lo que sí queda: el reparto `porArchivo` deja ver que todo lo detectado sale de archivos de guardia y que `suma.js` tiene 0 detectadas; la prueba fija este límite. `mutacion: exigir` **no es una garantía frente a un implementador adversario** (ADR-20 y `docs/ciclo-verificado.md`).
+
+### Docker real (`FORGE_TEST_DOCKER=1 node --test tests/mutacion-docker-lenguajes.test.js`)
+
+13 alteraciones posibles por módulo, tope por defecto 10. Tiempos en un equipo con otras cargas.
+
+| Caso | Con aserciones | Sin aserciones | Medición | Cobertura |
+|---|---|---|---|---|
+| Python con pytest | 10/10 (100 %) | 0/10 (0 %) | 52 s y 54 s (11 ejecuciones, ~4,7 s cada una) | sin cobertura: `coverage` no está en la imagen |
+| Python con pytest y `coverage` | 10/10 | 0/10 | 61 s y 59 s (~5,5 s cada una) | sí (13 candidatas, 0 fuera) |
+| TypeScript con vitest | 10/10 | 0/10 | 65 s y 61 s (~5,9 s cada una) | sin cobertura: vitest no ofrece cobertura sin dependencias |
+| TypeScript con `node --test` (`npm test`, sin dependencias) | 10/10 | 0/10 | 52 s y 51 s (~4,8 s cada una) | sí (13 candidatas) |
+| TypeScript con jest y ts-jest | 8/8, 5 no concluyentes (`return null` no pasa TS2322) | 0/8, 5 no concluyentes | 193 s y 175 s (~13,8 s cada una, 14 ejecuciones) | sin cobertura |
+| Ciclo completo Python, `informar` | éxito con 10/10 | — | tarea 59,3 s; nodo `sandbox` 4,2 s; nodo `mutacion` 50,4 s | — |
+
+No hubo que corregir patrones de salida ni la preparación de imagen: los 9 tests (y los dos de cobertura añadidos) pasan. TypeScript tiene formas soportadas en el entorno aislado (vitest, `node --test` con Node ≥ 22.18, jest + ts-jest); no se probó `tsc` ni otro transformador.
+
+### Tests existentes modificados
+
+- `tests/ciclo-mutacion.test.js`: `ejecutorFalso()` ofrece cobertura (`o` + `conComando`) y tres ejecutores envueltos usan `{ ...base, test }`: con `exigir`, un ejecutor falso sin cobertura ya no da éxito.
+- `tests/mutacion-lineas-cambiadas.test.js`: el ejecutor del ciclo con `exigir` ofrece cobertura.
+- `tests/mutacion-revision.test.js`: el spec ya no es `prueba` (N4-06) y el TAP necesita su resumen; las carpetas de prueba del barrido usan un pid muerto, y una de proceso vivo antigua ya no se borra (N4-02).
+- `tests/corte-real.test.js` y `tests/fixtures/forge-docker-falso.mjs`: marca real (N4-01); el Docker falso ejecuta el comando pedido (`--entrypoint node` con TAP y cobertura) y la ejecución del corte a mitad de medición pasa de la 5 a la 6 (la cobertura es la 4).
+
+### Lo que queda sin hacer o sin comprobar
+
+- ❌ N-02 en su forma de cables trampa dentro de funciones: sin solución con cobertura; haría falta distinguir fallos de aserción de excepciones o revisión humana.
+- ⚠️ `go test` con cobertura: el analizador y el comando se prueban con salidas escritas a mano, **no** con Docker real (la compilación de Go tarda ~13 min por caso).
+- ⚠️ jest y vitest sin cobertura (exigirían dependencias que no se instalan).
+- ⚠️ La cobertura añade una ejecución por medición (un contenedor más).
+- ⚠️ `forge status` se probó por su función `textoMutacion`, no lanzando el comando.
+- ⚠️ N4-10: no se acotó a la ventana de contexto real de cada modelo, solo a 2 000 000.
