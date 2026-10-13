@@ -22,8 +22,8 @@ Leyenda de quién: **A** agente · **D** dueño (necesita algo suyo) · **A+D** 
 
 | # | Tarea | Quién | Depende de |
 |---|---|---|---|
-| 1.1 | Publicación con vista previa y aprobación, cola de pendientes, idempotencia (F3) | A | — |
-| 1.2 | `forge integraciones leer/publicar/aprobar/estado/apagar` y diagnóstico en `forge doctor` (F4) | A | 1.1 |
+| 1.1 | ✅ Publicación con vista previa y aprobación, cola de pendientes, idempotencia (F3). Hecha 2026-10-12, sin cuenta real | A | — |
+| 1.2 | ✅ `forge integraciones leer/publicar/aprobar/estado/apagar` y diagnóstico en `forge doctor` (F4). Hecha 2026-10-12 | A | 1.1 |
 | 1.3 | Revisión de seguridad independiente de núcleo y adaptadores (F1, F2) | A | — |
 | 1.4 | Corregir los hallazgos altos de 1.3 | A | 1.3 |
 | 1.5 | Prueba de no filtración de token y de que ningún camino lleva del modelo a la red, de extremo a extremo (F5.1 a F5.3) | A | 1.2 |
