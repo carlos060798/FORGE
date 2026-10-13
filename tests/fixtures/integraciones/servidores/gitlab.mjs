@@ -41,6 +41,7 @@ import { createServer } from 'node:http';
  * @property {number} [porPagina]                         tope de elementos por página de notas
  * @property {boolean} [respetarDraft]                    la API marca como borrador si el título empieza por «Draft:»
  * @property {boolean} [aceptarParametroDraft]            además acepta draft: true
+ * @property {string|null} [usuario]                      nombre de usuario de la cuenta del token (GET /user); null = 404
  */
 
 /**
@@ -92,6 +93,11 @@ export async function crearServidorGitLab(o) {
       if (seg[1] !== 'api' || seg[2] !== 'v4') { responder(404, { message: '404 Not Found' }); return; }
       const resto = seg.slice(3);
 
+      if (metodo === 'GET' && resto.join('/') === 'user') {
+        if (o.usuario === null) { responder(404, { message: '404 Not Found' }); return; }
+        responder(200, { id: 9, username: o.usuario ?? 'forge-bot-ejemplo', state: 'active' });
+        return;
+      }
       if (metodo === 'GET' && resto.join('/') === 'personal_access_tokens/self') {
         if (o.tipoToken === 'proyecto') { responder(404, { message: '404 Not Found' }); return; }
         responder(200, { id: 9, name: 'forge-test', revoked: false, active: true, scopes: o.ambitos ?? ['api'], expires_at: '2027-01-01' });
@@ -135,7 +141,7 @@ export async function crearServidorGitLab(o) {
         }
         if (sub[2] === 'notes' && sub.length === 3 && metodo === 'POST') {
           if (!cuerpo || typeof cuerpo.body !== 'string') { responder(400, { message: 'body is missing' }); return; }
-          const nota = { id: siguienteId++, body: cuerpo.body, system: false, author: { username: 'forge-bot-ejemplo' } };
+          const nota = { id: siguienteId++, body: cuerpo.body, system: false, author: { username: o.usuario ?? 'forge-bot-ejemplo' } };
           inc.notas = [...(inc.notas ?? []), nota];
           responder(201, { id: nota.id, body: nota.body, author: nota.author, system: false, created_at: '2026-10-11T12:00:00.000Z' });
           return;

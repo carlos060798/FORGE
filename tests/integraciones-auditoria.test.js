@@ -166,8 +166,8 @@ describe('F1.5 auditoría: interruptor', () => {
     assert.equal(ev[0].payload.resultado, 'rechazado:apagado');
   });
 
-  test('otro valor de la variable no apaga', async () => {
-    const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: { FORGE_INTEGRACIONES: 'encendido' } });
+  test('el valor «normal» (o la variable vacía) no apaga; cualquier otro valor SÍ apaga (R10)', async () => {
+    const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: { FORGE_INTEGRACIONES: 'normal' } });
     assert.equal(await au.ejecutar(A()), 'hecho');
   });
 

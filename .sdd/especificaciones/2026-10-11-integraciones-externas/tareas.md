@@ -61,3 +61,15 @@
 ## F6 — Opcional, solo con decisión del dueño
 
 - [ ] **F6.1** Transporte MCP de solo lectura detrás del mismo puerto, con lista de herramientas permitidas una a una.
+
+
+## Correcciones de la revisión independiente 1
+
+- [x] **R1** variables `FORGE_*`, `FORGE_INTEGRACIONES_HOSTS`, vetos de host, doctor. Prueba: `integraciones-revision1` (R1).
+- [x] **R2** DoS de CPU en ADF, confianza y redactar. Prueba: R2.
+- [x] **R3/R8/R14/R15** rutas comunes, título, ruta HTTP. Pruebas: R3, R13 y R14, R15.
+- [x] **R4/R5** modo y auditoría obligatorios. Prueba: R4 y R5.
+- [x] **R6** contador atómico. Prueba: R6 (8 procesos).
+- [x] **R7** marcador de la cuenta propia. Prueba: R7.
+- [x] **R9/R10/R11/R12/R13** interruptor, valores, reintentos, base local, rellenos. Pruebas: R9 a R13.
+- [ ] Segunda revisión independiente (pendiente).

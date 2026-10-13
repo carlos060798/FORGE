@@ -26,6 +26,11 @@
  */
 
 import { pedir as pedirHttp } from '../http.js';
+import { MODOS } from '../puerto.js';
+import { exigirHostAutorizado } from '../hosts.js';
+import { motivoRutaVetada } from '../rutas.js';
+import { derivarMarcador } from '../marcador.js';
+import { leerBaseLocal } from '../pruebas-internas.js';
 
 export const PROVEEDOR = 'github';
 export const BASE_POR_DEFECTO = 'api.github.com';
@@ -54,6 +59,8 @@ const MARCADOR = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const SEGMENTO_RAMA = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const SHA = /^[0-9a-f]{40}$/;
 const CONTROL = /[\u0000-\u001F\u007F-\u009F\u2028\u2029]/;
+/** Título: ni controles ni formato (bidi, ancho cero) ni rellenos invisibles (R14). */
+const TITULO_PROHIBIDO = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\u2028\u2029\u3164\u2800\u034F\u115F\u1160\uFFA0]/u;
 
 export class ErrorGitHub extends Error {
   /**
@@ -82,9 +89,10 @@ export class ErrorGitHub extends Error {
  * @typedef {Object} OpcionesGitHub
  * @property {string} token
  * @property {string[]} destinos            `owner/repo`, lista cerrada
+ * @property {'apagado'|'solo_lectura'|'comentar'|'proponer'} modo  OBLIGATORIO: cada operación exige su modo mínimo (R4)
  * @property {typeof pedirHttp} [http]      sustituible en pruebas; por defecto el cliente de http.js
- * @property {{ ejecutar: Function }} [auditoria]
- * @property {string} [baseUrl]             solo pruebas: `http://127.0.0.1:<puerto>`
+ * @property {{ ejecutar: Function, comprobarInterruptor?: Function }} [auditoria]  OBLIGATORIA para escribir (R5)
+ * @property {Record<string, string|undefined>} [env]  entorno del que sale FORGE_INTEGRACIONES_HOSTS (por defecto process.env)
  */
 
 // ── Validación (sin red) ────────────────────────────────────────────────────────────────────
@@ -93,18 +101,15 @@ export class ErrorGitHub extends Error {
 const esObjeto = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 /**
- * @param {string|undefined} baseUrl
+ * R1/R12: solo api.github.com por HTTPS; un servidor local únicamente por el interruptor interno de pruebas.
+ * @param {Record<string | symbol, unknown>} opciones
+ * @param {Record<string, string|undefined>} env
  * @returns {{ host: string, local: boolean }}
  */
-function resolverBase(baseUrl) {
-  if (baseUrl === undefined) return { host: BASE_POR_DEFECTO, local: false };
-  let u;
-  try { u = new URL(String(baseUrl)); } catch { throw new TypeError('baseUrl no es una URL válida'); }
-  const limpia = !u.username && !u.password && (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash;
-  const local = u.hostname === '127.0.0.1' || u.hostname === 'localhost';
-  if (limpia && local && u.protocol === 'http:') return { host: u.host, local: true };
-  if (limpia && !local && u.protocol === 'https:' && u.host === BASE_POR_DEFECTO) return { host: BASE_POR_DEFECTO, local: false };
-  throw new TypeError('baseUrl no admitida: solo https://api.github.com o, en pruebas, http://127.0.0.1:<puerto>');
+function resolverBase(opciones, env) {
+  const local = leerBaseLocal(opciones, (m) => new TypeError(m));
+  if (local) return { host: local.host, local: true };
+  return { host: exigirHostAutorizado('github', BASE_POR_DEFECTO, env), local: false };
 }
 
 /**
@@ -126,17 +131,8 @@ const rutaDeRama = (rama) => rama.split('/').map(encodeURIComponent).join('/');
  * @returns {string|null} motivo del rechazo, o null si es válida
  */
 function motivoRutaInvalida(ruta) {
-  if (typeof ruta !== 'string' || ruta === '') return 'la ruta no es un texto';
-  if (ruta.length > 255) return 'la ruta supera 255 caracteres';
-  if (CONTROL.test(ruta)) return 'la ruta tiene caracteres de control';
-  if (ruta.includes('\\')) return 'la ruta contiene «\\»';
-  if (ruta.startsWith('/') || /^[A-Za-z]:/.test(ruta)) return 'la ruta es absoluta';
-  const segmentos = ruta.split('/');
-  if (segmentos.some((s) => s === '' || s === '.' || s === '..')) return 'la ruta tiene segmentos vacíos, «.» o «..»';
-  if (segmentos.some((s) => s.toLowerCase() === '.git')) return 'la ruta toca el directorio .git';
-  // Cambiar flujos de CI con un agente es una escalada clásica; se bloquea hasta que el dueño decida otra cosa
-  if (/^\.github\/workflows(?:\/|$)/i.test(ruta)) return 'la ruta está en .github/workflows (no se proponen cambios de CI)';
-  return null;
+  // Lista COMÚN con GitLab (R3, R8): CI de las plataformas, .git y sus variantes, nombres de Windows…
+  return motivoRutaVetada(ruta);
 }
 
 // ── Fábrica ─────────────────────────────────────────────────────────────────────────────────
@@ -144,7 +140,12 @@ function motivoRutaInvalida(ruta) {
 /**
  * @param {OpcionesGitHub} opciones
  */
-export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl } = /** @type {any} */ ({})) {
+export function crearProveedorGitHub(opciones = /** @type {any} */ ({})) {
+  const { token, destinos, http, auditoria, env = process.env } = opciones ?? {};
+  const modo = opciones?.modo;
+  if (!(/** @type {readonly string[]} */ (MODOS)).includes(modo)) {
+    throw new TypeError(`modo: es obligatorio y debe ser uno de ${MODOS.join(', ')} (sin valor por defecto: ninguno es permisivo por omisión)`);
+  }
   if (typeof token !== 'string' || token.trim() === '' || CONTROL.test(token)) {
     throw new TypeError('token: se esperaba el valor del token como texto no vacío, sin caracteres de control');
   }
@@ -156,7 +157,7 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
     if (!m || !OWNER.test(m[1]) || !REPO.test(m[2])) throw new TypeError('destinos: cada destino debe tener la forma owner/repo (sin comodines)');
     permitidos.push(d.toLowerCase());
   }
-  const base = resolverBase(baseUrl);
+  const base = resolverBase(opciones, env);
   const cliente = http ?? pedirHttp;
   const secreto = token.trim();
   const cabeceras = Object.freeze({
@@ -207,6 +208,8 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
    * @param {string} metodo @param {string} ruta @param {object} [cuerpo]
    */
   async function peticion(metodo, ruta, cuerpo) {
+    // R9: el interruptor se mira antes de CADA petición de escritura, no solo al empezar la operación
+    if (metodo !== 'GET' && metodo !== 'HEAD') auditoria?.comprobarInterruptor?.();
     return cliente({
       host: base.host,
       ruta,
@@ -317,6 +320,32 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
     return auditoria.ejecutar({ proveedor: PROVEEDOR, operacion, destino, accion });
   }
 
+  /** R4: cada operación exige su modo mínimo; sin red. @param {'solo_lectura'|'comentar'|'proponer'} minimo */
+  function exigirModo(minimo) {
+    if (modo === 'apagado') throw fallo('modo', 'la integración con GitHub está apagada');
+    if (MODOS.indexOf(modo) < MODOS.indexOf(minimo)) throw fallo('modo', `la operación pide el modo «${minimo}» y GitHub está en «${modo}»`);
+  }
+
+  /** R5: escribir sin auditoría (interruptor, tope y registro) no es posible: fallo cerrado. */
+  function exigirAuditoria() {
+    if (!auditoria || typeof auditoria.ejecutar !== 'function') {
+      throw fallo('auditoria_obligatoria', 'escribir en GitHub exige una auditoría (interruptor, tope y registro); no hay ninguna');
+    }
+  }
+
+  /**
+   * Cuenta propia (el dueño del token), en minúsculas, o null si no se puede comprobar. R7.
+   * @returns {Promise<string|null>}
+   */
+  async function cuentaPropia() {
+    try {
+      const r = await peticion('GET', '/user');
+      if (!r.ok) return null;
+      const v = JSON.parse(r.texto);
+      return esObjeto(v) && typeof v.login === 'string' && v.login !== '' ? v.login.toLowerCase() : null;
+    } catch { return null; }
+  }
+
   // ── Operaciones ───────────────────────────────────────────────────────────────────────────
 
   /**
@@ -324,6 +353,7 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
    * @returns {Promise<ElementoGitHub>}
    */
   async function leerElemento(referencia) {
+    exigirModo('solo_lectura');
     const t = validarReferencia(referencia);
     return auditar('leer_elemento', t.destino, async () => {
       const que = 'leer la incidencia';
@@ -377,21 +407,35 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
    * @returns {Promise<ComentarioPublicado>}
    */
   async function comentar(referencia, texto, opciones) {
+    exigirModo('comentar');
+    exigirAuditoria();
     const t = validarReferencia(referencia);
     const marcador = validarMarcador(opciones?.marcador);
     if (typeof texto !== 'string' || texto.trim() === '') throw fallo('texto_no_valido', 'el texto del comentario debe ser un texto no vacío');
-    const marca = etiqueta(marcador);
-    const completo = `${texto}\n\n${marca}`;
-    if (completo.length > MAX_TEXTO) {
+    if (/<!--\s*forge:/i.test(texto)) throw fallo('texto_no_valido', 'el comentario no puede traer marcadores propios de FORGE');
+    const completoMax = `${texto}\n\n${etiqueta(marcador)}`;
+    if (completoMax.length > MAX_TEXTO) {
       throw fallo('texto_demasiado_largo', `el comentario supera ${MAX_TEXTO} caracteres (tope conservador propio; GitHub no documenta el límite)`);
     }
     return auditar('comentar', t.destino, async () => {
+      const yo = await cuentaPropia();
       const lista = await listarComentarios(t);
-      // Solo cuenta si el marcador cierra el cuerpo: es donde lo pone este adaptador
-      const previo = lista.items.find((c) => c.cuerpo.trimEnd().endsWith(marca));
-      if (previo) {
-        return { id: String(previo.id), url: `https://github.com/${t.owner}/${t.repo}/issues/${t.numero}#issuecomment-${previo.id}`, existente: true };
+      // R7: solo vale el comentario que escribió la cuenta del propio token. Si el marcador está en un
+      // comentario AJENO (o no se sabe de quién es), se publica uno propio con un marcador derivado:
+      // quien copia el marcador solo puede provocar una publicación adicional, nunca suprimirla.
+      let m = marcador;
+      for (let i = 0; i <= lista.items.length; i++) {
+        const marca = etiqueta(m);
+        // Solo cuenta si el marcador cierra el cuerpo: es donde lo pone este adaptador
+        const hallados = lista.items.filter((c) => c.cuerpo.trimEnd().endsWith(marca));
+        const previo = yo === null ? undefined : hallados.find((c) => c.autor.toLowerCase() === yo);
+        if (previo) {
+          return { id: String(previo.id), url: `https://github.com/${t.owner}/${t.repo}/issues/${t.numero}#issuecomment-${previo.id}`, existente: true };
+        }
+        if (hallados.length === 0) break;
+        m = derivarMarcador(m);
       }
+      const completo = `${texto}\n\n${etiqueta(m)}`;
       if (!lista.completo) {
         // No se vieron todos los comentarios: publicar podría duplicar
         throw fallo('idempotencia_no_comprobable', 'la incidencia tiene demasiados comentarios para comprobar si ya se publicó; no se publica para no duplicar');
@@ -408,6 +452,8 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
    * @returns {Promise<CambioPropuesto>}
    */
   async function proponerCambio(p) {
+    exigirModo('proponer');
+    exigirAuditoria();
     if (!esObjeto(p)) throw fallo('propuesta_no_valida', 'la propuesta debe ser un objeto');
     const d = validarDestino(p.destino);
     const marcador = validarMarcador(p.marcador);
@@ -436,8 +482,8 @@ export function crearProveedorGitHub({ token, destinos, http, auditoria, baseUrl
     }
     if (bytes > MAX_BYTES_ARCHIVOS) throw fallo('archivos_no_validos', `el contenido total supera ${MAX_BYTES_ARCHIVOS} bytes`);
 
-    if (typeof p.titulo !== 'string' || p.titulo.trim() === '' || p.titulo.length > 256 || CONTROL.test(p.titulo)) {
-      throw fallo('titulo_no_valido', 'el título debe ser un texto de una línea, de 1 a 256 caracteres');
+    if (typeof p.titulo !== 'string' || p.titulo.trim() === '' || p.titulo.length > 256 || TITULO_PROHIBIDO.test(p.titulo)) {
+      throw fallo('titulo_no_valido', 'el título debe ser un texto de una línea, de 1 a 256 caracteres, sin controles, bidireccionales ni caracteres de ancho cero');
     }
     const descripcion = typeof p.descripcion === 'string' ? p.descripcion : '';
     if (p.descripcion !== undefined && typeof p.descripcion !== 'string') throw fallo('texto_no_valido', 'la descripción debe ser texto');

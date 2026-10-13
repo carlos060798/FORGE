@@ -18,9 +18,7 @@ const NOMBRE_SECRETO = '(?:api[_-]?key|apikey|secret|token|passw(?:or)?d|passwd|
  * @type {([RegExp, string] | [RegExp, string, 'nombre'])[]}
  */
 const PATRONES = [
-  // Clave privada completa, o empezada y cortada (el recorte puede haber perdido el final)
-  [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTADO: clave privada]'],
-  [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*$/g, '[REDACTADO: clave privada]'],
+  // Clave privada: ver `quitarClavesPrivadas` (recorrido lineal; una expresión con `[\s\S]*?` era cuadrática)
   // Credenciales dentro de una URL: https://usuario:clave@servidor
   [/(\b[a-z][a-z0-9+.-]{0,30}:\/\/)[^/\s:@]*:[^/\s@]+@/gi, '$1[REDACTADO]@'],
   // JSON: "password": "valor"
@@ -58,12 +56,64 @@ const PATRONES = [
 /** Tope de caracteres que se redactan en `cola`; el resto se descarta por el principio. */
 const LIMITE_ENTRADA = 64 * 1024;
 
+/**
+ * Invisibles que parten un token sin cambiar cómo se ve: ancho cero, guion blando, BOM, rellenos
+ * (U+3164 hangul, U+115F, U+1160, U+FFA0), braille en blanco (U+2800), CGJ (U+034F), controles bidi y
+ * marcas de dirección. Solo se quitan ENTRE dos caracteres de token ASCII (R13).
+ */
+const ENTRE_TOKEN = /(?<=[A-Za-z0-9_-])[\u200B-\u200F\u2060-\u2064\uFEFF\u00AD\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E\u061C\u202A-\u202E\u2066-\u2069]+(?=[A-Za-z0-9_-])/g;
+
+const CABECERA_PRIVADA = /-----BEGIN [A-Z ]*PRIVATE KEY-----/y;
+const FIN_PRIVADA = /-----END [A-Z ]*PRIVATE KEY-----/y;
+
+/**
+ * Sustituye los bloques de clave privada en UNA pasada: cada posición se visita una vez, sin
+ * retroceso (`indexOf` localiza cabecera y cierre). Un bloque sin cierre (el recorte pudo perder el
+ * final) se sustituye hasta el final del texto solo si `cortada` es true.
+ * @param {string} texto
+ * @param {boolean} cortada
+ */
+function quitarClavesPrivadas(texto, cortada) {
+  if (!texto.includes('PRIVATE KEY-----')) return texto;
+  let salida = '';
+  let desde = 0;
+  let pos = 0;
+  for (;;) {
+    const ini = texto.indexOf('-----BEGIN ', pos);
+    if (ini === -1) break;
+    CABECERA_PRIVADA.lastIndex = ini;
+    const cab = CABECERA_PRIVADA.exec(texto);
+    if (!cab) { pos = ini + 11; continue; }
+    // Cierre: el primer «-----END …PRIVATE KEY-----» después de la cabecera
+    let fin = -1;
+    let busca = ini + cab[0].length;
+    for (;;) {
+      const e = texto.indexOf('-----END ', busca);
+      if (e === -1) break;
+      FIN_PRIVADA.lastIndex = e;
+      const m = FIN_PRIVADA.exec(texto);
+      if (m) { fin = e + m[0].length; break; }
+      busca = e + 9;
+    }
+    if (fin === -1) {
+      // Sin cierre: tampoco habrá cierre para una cabecera posterior
+      if (!cortada) break;
+      salida += texto.slice(desde, ini) + MARCA_CLAVE;
+      return salida;
+    }
+    salida += texto.slice(desde, ini) + MARCA_CLAVE;
+    desde = fin;
+    pos = fin;
+  }
+  return salida + texto.slice(desde);
+}
+
 /** @param {string} texto */
 export function redactar(texto) {
   // Un carácter invisible metido dentro de un token lo parte para las expresiones de abajo y el
   // token seguiría valiendo para quien lo copie. Solo se quita entre dos caracteres de token
   // ASCII: no toca los emojis compuestos ni la escritura de otros alfabetos
-  let limpio = texto.replace(/(?<=[A-Za-z0-9_-])[\u200B-\u200D\u2060\uFEFF\u00AD]+(?=[A-Za-z0-9_-])/g, '');
+  let limpio = quitarClavesPrivadas(texto.replace(ENTRE_TOKEN, ''), true);
   for (const [patron, sustitucion] of PATRONES) limpio = limpio.replace(patron, sustitucion);
   return limpio;
 }
@@ -82,10 +132,9 @@ export function redactar(texto) {
  * @param {string} texto
  */
 export function redactarFormatos(texto) {
-  let limpio = texto.replace(/(?<=[A-Za-z0-9_-])[\u200B-\u200D\u2060\uFEFF\u00AD]+(?=[A-Za-z0-9_-])/g, '');
+  let limpio = quitarClavesPrivadas(texto.replace(ENTRE_TOKEN, ''), false);
   for (const [patron, sustitucion, clase] of PATRONES) {
     if (clase === 'nombre') continue;
-    if (patron.source.endsWith('[\\s\\S]*$')) continue;
     limpio = limpio.replace(patron, sustitucion);
   }
   return redactarPorValor(limpio);
@@ -126,14 +175,16 @@ export function pareceSecreto(v) {
 
 const PREFIJO_NOMBRE = '[\\w.$-]{0,64}';
 /** nombre + separador (`=`, `:`, `:=`, `=>`) + literal entre comillas */
+// R2: sin el prefijo `[\w.$-]{0,64}` delante del nombre: solo se conserva en el reemplazo (`$1`), así que
+// quitarlo da el mismo resultado y evita probar 64 posiciones de prefijo en cada carácter de la entrada.
 const RE_LITERAL = new RegExp(
-  `(${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64})(["'\`]?\\s*(?::=|=>|[:=])\\s*)(["'\`])([^"'\`\\n]{12,200})\\3`, 'gi');
+  `(${NOMBRE_SECRETO}[\\w.-]{0,64})(["'\`]?[ \\t]*(?::=|=>|[:=])[ \\t]*)(["'\`])([^"'\`\\n]{12,200})\\3`, 'gi');
 /** nombre=valor sin comillas, con símbolos (export DB_PASSWORD=Zq8!kLm2#xP9, \`const password = Zq8!kLm2#xP9;\`) */
 const RE_SIN_COMILLAS = new RegExp(
-  `(${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}\\s*(?::=|[:=])\\s*)([^\\s"'\`,;(){}<>=\\[\\]]{12,200})`, 'gi');
+  `(${NOMBRE_SECRETO}[\\w.-]{0,64}[ \\t]*(?::=|[:=])[ \\t]*)([^\\s"'\`,;(){}<>=\\[\\]]{12,200})`, 'gi');
 /** línea de entorno: NOMBRE=valor, sin espacios y sin nada más */
 const RE_ENTORNO = new RegExp(
-  `^(\\s*(?:export\\s+)?${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}=)([^\\s"'\`$<{(]{12,200})\\s*$`, 'gim');
+  `^([ \\t]*(?:export[ \\t]+)?${PREFIJO_NOMBRE}${NOMBRE_SECRETO}[\\w.-]{0,64}=)([^\\s"'\`$<{(]{12,200})[ \\t]*\\r?$`, 'gim');
 const RE_AUTORIZACION = /(\bAuthorization["']?\s*[:=]\s*["']?\s*)(Basic|Bearer|Token)(\s+)([A-Za-z0-9+/=._~-]{8,})/gi;
 const RE_CONEXION = /(\b(?:password|pwd|passwd)\s*=\s*)([^;\s"'`<>${}(),]{3,})/gi;
 

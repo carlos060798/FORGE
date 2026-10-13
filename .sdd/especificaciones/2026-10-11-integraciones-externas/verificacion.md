@@ -323,3 +323,25 @@ Cambios fuera de los archivos nuevos: `cli/index.js` (enrutado `integraciones` y
 ### 10.5 Totales
 
 `npm run typecheck`: 0 errores. `tests/integraciones-*.test.js`: 454 pruebas, 0 fallos (la suite completa la ejecuta quien integra).
+
+
+## Correcciones de la revisión independiente 1 (R1 a R15)
+
+Prueba: `tests/integraciones-revision1.test.js` (y los cambios en las pruebas existentes). Todo en local, sin red real.
+
+| Hallazgo | Estado | Prueba |
+|---|---|---|
+| R1 bloqueante | corregido (variables `FORGE_*`, lista de hosts del usuario, vetos siempre, host validado en adaptadores, doctor) | «R1 el repositorio hostil no elige variable ni host» |
+| R2 | corregido (recorridos lineales y presupuesto) | «R2 denegación de servicio por CPU» |
+| R3, R8 | corregido (`rutas.js` común) | «R3 y R8 rutas vetadas» |
+| R4, R5 | corregido (modo y auditoría obligatorios) | «R4 y R5» |
+| R6 | corregido (reserva atómica; 8 procesos, tope 3, 3 ejecuciones) | «R6» |
+| R7 | corregido (autor verificado; marcador derivado) | «R7» |
+| R9 | corregido (interruptor antes de cada escritura) | «R9» |
+| R10 | corregido (solo `normal`/`apagado`) | «R10» |
+| R11 | corregido (POST no se reintenta tras 503) | «R11» |
+| R12 | corregido (símbolo interno de pruebas) | «R12» |
+| R13, R14 | corregido (rellenos invisibles; título rechazado) | «R13 y R14» |
+| R15 | corregido (rutas normalizables rechazadas) | «R15» |
+
+Límites abiertos: las nuevas protecciones se probaron con servidores falsos; HTTPS real, DNS y proxies siguen sin comprobarse. Se requiere nueva revisión independiente (la 2) antes de publicar.

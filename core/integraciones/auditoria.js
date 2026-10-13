@@ -16,6 +16,8 @@
  * entre los comandos de `forge integraciones`, que son procesos distintos.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomBytes } from 'node:crypto';
 import { appendFileSync, lstatSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { crearDirectorio, crearArchivo, verificarRuta } from '../escritura-segura.js';
@@ -28,11 +30,16 @@ export const OPERACIONES_AUDITADAS = Object.freeze(['leer_elemento', 'comentar',
 
 const PROVEEDOR = /^[a-z][a-z0-9_-]{0,30}$/;
 
+/** Auditorías con una operación en curso en el contexto asíncrono actual (para no contar dos veces). */
+const almacenActivas = new AsyncLocalStorage();
+
 export class ErrorIntegracionesApagadas extends Error {
-  /** @param {'variable'|'archivo'} origen */
-  constructor(origen) {
+  /** @param {'variable'|'archivo'} origen @param {boolean} [valorNoReconocido] */
+  constructor(origen, valorNoReconocido = false) {
     super(origen === 'variable'
-      ? 'Las integraciones están apagadas (FORGE_INTEGRACIONES=apagado). No se hace ninguna operación; para volver a activarlas, quita la variable.'
+      ? (valorNoReconocido
+        ? 'Las integraciones están apagadas por seguridad: el valor de FORGE_INTEGRACIONES no se reconoce (solo «normal» o «apagado»; ante la duda se apaga). No se hace ninguna operación; corrige el valor o quita la variable.'
+        : 'Las integraciones están apagadas (FORGE_INTEGRACIONES=apagado). No se hace ninguna operación; para volver a activarlas, quita la variable.')
       : 'Las integraciones están apagadas (existe .sdd/integraciones/apagado). No se hace ninguna operación; para volver a activarlas, borra ese archivo o usa «forge integraciones encender».');
     this.name = 'ErrorIntegracionesApagadas';
     this.codigo = 'apagado';
@@ -57,12 +64,21 @@ const ARCHIVO_APAGADO = (cwd) => join(DIR(cwd), 'apagado');
 
 /**
  * ¿Están apagadas las integraciones? Mira la variable (la ÚNICA que lee este módulo) y el archivo.
+ * La variable solo admite `apagado` y `normal`; sin definir (o vacía) vale como `normal`. Cualquier otro
+ * valor (`off`, `0`, `1`, `true`, `apagada`…) APAGA por seguridad (fallo cerrado) y lo dice (R10).
  * @param {string} cwd
  * @param {Record<string, string|undefined>} [env]
- * @returns {{ apagado: boolean, origen?: 'variable'|'archivo' }}
+ * @returns {{ apagado: boolean, origen?: 'variable'|'archivo', valorNoReconocido?: boolean, aviso?: string }}
  */
 export function estadoInterruptor(cwd, env = process.env) {
-  if (String(env.FORGE_INTEGRACIONES ?? '').trim().toLowerCase() === 'apagado') return { apagado: true, origen: 'variable' };
+  const v = String(env.FORGE_INTEGRACIONES ?? '').trim().toLowerCase();
+  if (v === 'apagado') return { apagado: true, origen: 'variable' };
+  if (v !== '' && v !== 'normal') {
+    return {
+      apagado: true, origen: 'variable', valorNoReconocido: true,
+      aviso: 'FORGE_INTEGRACIONES tiene un valor que no se reconoce (solo «normal» o «apagado»): por seguridad las integraciones quedan APAGADAS. Corrige el valor o quita la variable.',
+    };
+  }
   try {
     lstatSync(ARCHIVO_APAGADO(cwd));            // lstat: un enlace también cuenta como presente
     return { apagado: true, origen: 'archivo' };
@@ -96,7 +112,8 @@ export class AuditoriaIntegraciones {
     this.cwd = cwd;
     this.tope = tope;
     this.env = env;
-    this.sesion = String(sesion ?? `proceso-${process.pid}-${Date.now().toString(36)}`).replace(/[^\w.-]/g, '_');
+    // R6: la sesión por defecto es POR DÍA, no por proceso: cada invocación de la CLI es otro proceso
+    this.sesion = String(sesion ?? `dia-${new Date().toISOString().slice(0, 10)}`).replace(/[^\w.-]/g, '_');
     this.eventos = eventLog ?? new EventLog(join(cwd, '.sdd'));
     this.archivoSesion = join(DIR(cwd), 'sesiones', `${this.sesion}.jsonl`);
   }
@@ -128,10 +145,43 @@ export class AuditoriaIntegraciones {
     });
   }
 
-  _contar(proveedor) {
+  /**
+   * R6. Cuenta ATÓMICAMENTE entre procesos: primero se añade una línea con identificador único (una
+   * sola escritura con O_APPEND, que el sistema operativo serializa) y después se relee el archivo.
+   * El orden de las líneas decide quién cabe: solo ejecutan las `tope` primeras de cada proveedor.
+   * No hay «comprobar y luego contar», así que no hay carrera. Devuelve si esta operación cabe.
+   * @param {string} proveedor
+   * @returns {boolean}
+   */
+  _reservar(proveedor) {
     crearDirectorio(this.cwd, join(DIR(this.cwd), 'sesiones'));
     const ruta = verificarRuta(this.cwd, this.archivoSesion);
-    appendFileSync(ruta, JSON.stringify({ ts: new Date().toISOString(), proveedor }) + '\n', 'utf8');
+    const id = randomBytes(8).toString('hex');
+    appendFileSync(ruta, JSON.stringify({ ts: new Date().toISOString(), proveedor, id }) + '\n', 'utf8');
+    let posicion = 0;
+    let texto = '';
+    try { texto = readFileSync(ruta, 'utf8'); } catch { return false; }       // fallo cerrado
+    for (const linea of texto.split('\n')) {
+      if (!linea) continue;
+      try {
+        const o = JSON.parse(linea);
+        if (o.id === id) return posicion < this.tope;
+        if (String(o.proveedor) === proveedor) posicion++;
+      } catch { /* línea cortada */ }
+    }
+    return false;                                                              // no aparece la propia línea: cerrado
+  }
+
+  /**
+   * Comprueba el interruptor ahora. Los adaptadores lo llaman antes de CADA petición de escritura:
+   * apagar detiene también lo que queda de una operación en curso (R9).
+   * @throws {ErrorIntegracionesApagadas}
+   */
+  comprobarInterruptor() {
+    const sw = estadoInterruptor(this.cwd, this.env);
+    if (sw.apagado) {
+      throw new ErrorIntegracionesApagadas(/** @type {'variable'|'archivo'} */ (sw.origen), sw.valorNoReconocido === true);
+    }
   }
 
   /**
@@ -141,6 +191,15 @@ export class AuditoriaIntegraciones {
    * @returns {Promise<T>}
    */
   async ejecutar({ proveedor, operacion, destino, accion }) {
+    // Anidada en una operación de ESTA misma auditoría (la CLI envuelve la operación y el adaptador,
+    // que exige auditoría, vuelve a pasar por ella): la exterior ya comprobó, contó y dejó constancia
+    const activas = almacenActivas.getStore();
+    if (activas?.has(this)) return accion();
+    return almacenActivas.run(new Set([...(activas ?? []), this]), () => this._ejecutarPropia({ proveedor, operacion, destino, accion }));
+  }
+
+  /** @template T @param {{ proveedor: string, operacion: string, destino: string, accion: () => Promise<T> }} o @returns {Promise<T>} */
+  async _ejecutarPropia({ proveedor, operacion, destino, accion }) {
     if (typeof proveedor !== 'string' || !PROVEEDOR.test(proveedor)) throw new TypeError('proveedor no válido');
     if (!(/** @type {readonly string[]} */ (OPERACIONES_AUDITADAS)).includes(operacion)) {
       throw new TypeError(`operación no auditable: ${campo(operacion)}. Las operaciones son un conjunto cerrado: ${OPERACIONES_AUDITADAS.join(', ')}`);
@@ -149,15 +208,15 @@ export class AuditoriaIntegraciones {
     const sw = estadoInterruptor(this.cwd, this.env);
     if (sw.apagado) {
       this._evento(proveedor, operacion, destino, 'rechazado:apagado', 0);
-      throw new ErrorIntegracionesApagadas(/** @type {'variable'|'archivo'} */ (sw.origen));
+      throw new ErrorIntegracionesApagadas(/** @type {'variable'|'archivo'} */ (sw.origen), sw.valorNoReconocido === true);
     }
 
-    if ((this.contadores()[proveedor] ?? 0) >= this.tope) {
+    // Se cuenta antes de ejecutar: una ráfaga de fallos también tiene que cortarse. Si ya está en el tope
+    // ni siquiera se añade línea; la reserva atómica cubre la carrera entre procesos (R6).
+    if ((this.contadores()[proveedor] ?? 0) >= this.tope || !this._reservar(proveedor)) {
       this._evento(proveedor, operacion, destino, 'rechazado:tope_operaciones', 0);
       throw new ErrorTopeIntegraciones(proveedor, this.tope);
     }
-    // Se cuenta antes de ejecutar: una ráfaga de fallos también tiene que cortarse
-    this._contar(proveedor);
 
     const t0 = Date.now();
     try {

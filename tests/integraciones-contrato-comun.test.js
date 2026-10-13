@@ -13,11 +13,13 @@
  * Todo contra servidores falsos locales: ninguna petición sale del equipo.
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { validarProveedor } from '../core/integraciones/puerto.js';
 import { pedir } from '../core/integraciones/http.js';
+import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { crearProveedorGitHub } from '../core/integraciones/proveedores/github.js';
 import { crearProveedorGitLab } from '../core/integraciones/proveedores/gitlab.js';
 import { crearProveedorJira } from '../core/integraciones/proveedores/jira.js';
@@ -62,17 +64,17 @@ async function montar() {
   return [
     {
       nombre: 'github', token: TOKEN_GH, referencia: 'org/repo#7', fuera: 'otra/cosa#1',
-      prov: crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], baseUrl: gh.baseUrl }),
+      prov: crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'proponer', auditoria: auditoriaDePrueba(), [BASE_LOCAL]: gh.baseUrl }),
       escrituras: () => gh.escrituras().length, peticiones: () => gh.peticiones.length, secretos: [TOKEN_GH],
     },
     {
       nombre: 'gitlab', token: TOKEN_GL, referencia: 'empresa/web#7', fuera: 'empresa/otro#1',
-      prov: crearProveedorGitLab({ token: TOKEN_GL, destinos: ['empresa/web'], baseUrl: gl.baseUrl, modo: 'comentar', _esperar: async () => {} }),
+      prov: crearProveedorGitLab({ token: TOKEN_GL, destinos: ['empresa/web'], [BASE_LOCAL]: gl.baseUrl, modo: 'comentar', auditoria: auditoriaDePrueba(), _esperar: async () => {} }),
       escrituras: () => gl.escrituras().length, peticiones: () => gl.peticiones.length, secretos: [TOKEN_GL],
     },
     {
       nombre: 'jira', token: TOKEN_JIRA, referencia: 'ABC-7', fuera: 'XYZ-1',
-      prov: crearProveedorJira({ sitio: 'ejemplo.atlassian.net', usuario: USUARIO_JIRA, token: TOKEN_JIRA, destinos: ['ABC'], baseUrl: ji.baseUrl, http: sinEspera }),
+      prov: crearProveedorJira({ sitio: 'ejemplo.atlassian.net', usuario: USUARIO_JIRA, token: TOKEN_JIRA, destinos: ['ABC'], modo: 'comentar', auditoria: auditoriaDePrueba(), [BASE_LOCAL]: ji.baseUrl, http: sinEspera }),
       escrituras: () => ji.peticiones.filter((p) => p.metodo !== 'GET').length, peticiones: () => ji.peticiones.length,
       secretos: [TOKEN_JIRA, USUARIO_JIRA, Buffer.from(`${USUARIO_JIRA}:${TOKEN_JIRA}`).toString('base64')],
     },

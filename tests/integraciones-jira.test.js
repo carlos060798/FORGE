@@ -5,6 +5,8 @@
  * Ninguna prueba toca la red ni usa credenciales reales: el token es un centinela inventado.
  */
 
+import { BASE_LOCAL } from '../core/integraciones/pruebas-internas.js';
+import { auditoriaDePrueba } from './fixtures/integraciones/auditoria-prueba.mjs';
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
@@ -57,7 +59,7 @@ const TICKETS = () => ({
 /** @param {Partial<Parameters<typeof crearProveedorJira>[0]>} [extra] */
 function proveedor(extra = {}) {
   return crearProveedorJira({
-    sitio: SITIO, usuario: USUARIO, token: TOKEN, destinos: ['ABC'], baseUrl: srv.baseUrl, http: sinEspera, ...extra,
+    modo: 'proponer', auditoria: auditoriaDePrueba(), sitio: SITIO, usuario: USUARIO, token: TOKEN, destinos: ['ABC'], [BASE_LOCAL]: srv.baseUrl, http: sinEspera, ...extra,
   });
 }
 
@@ -300,7 +302,7 @@ describe('F2.3 / F2.6 jira: comentar', () => {
   });
 
   test('el marcador se busca en todas las páginas de comentarios', async () => {
-    srv.tickets['ABC-2'].comments = Array.from({ length: 7 }, (_, i) => ({ id: String(50000 + i), autor: 'x', body: adfParrafo(i === 6 ? 'resultado\n\nFORGE-ID: viejo-1' : `c${i}`) }));
+    srv.tickets['ABC-2'].comments = Array.from({ length: 7 }, (_, i) => ({ id: String(50000 + i), autor: 'x', cuenta: i === 6 ? 'cuenta-forge' : undefined, body: adfParrafo(i === 6 ? 'resultado\n\nFORGE-ID: viejo-1' : `c${i}`) }));
     const r = await proveedor().comentar('ABC-2', 'otra vez', { marcador: 'viejo-1' });
     assert.equal(r.yaExistia, true);
     assert.equal(r.id, '50006');
@@ -423,7 +425,7 @@ describe('F2.3 jira: proponerCambio y alcance', () => {
 
 describe('F2.3 jira: errores de la plataforma y secretos', () => {
   test('401 con un token equivocado: error tipado y ningún secreto', async () => {
-    const p = crearProveedorJira({ sitio: SITIO, usuario: USUARIO, token: 'otro-token-equivocado-1234', destinos: ['ABC'], baseUrl: srv.baseUrl, http: sinEspera });
+    const p = crearProveedorJira({ modo: 'proponer', auditoria: auditoriaDePrueba(), sitio: SITIO, usuario: USUARIO, token: 'otro-token-equivocado-1234', destinos: ['ABC'], [BASE_LOCAL]: srv.baseUrl, http: sinEspera });
     const e = await fallo(p.leerElemento('ABC-1'));
     assert.equal(e.codigo, 'no_autenticado');
     assert.ok(!e.message.includes('otro-token-equivocado-1234'));

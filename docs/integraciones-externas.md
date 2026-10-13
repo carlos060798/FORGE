@@ -214,3 +214,16 @@ Lo que la spec y el plan prometen para ese flujo y **todavía no existe**: la co
 - `.sdd/arquitectura/ADR-22-integraciones-externas-sin-herramientas-para-el-modelo.md`.
 - [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md), sección «Integraciones externas».
 - [INTEGRACIONES.md](INTEGRACIONES.md): los servidores MCP de Claude Code (otro documento).
+
+
+## Dónde viven las decisiones de seguridad (revisión 1)
+
+La configuración del proyecto no es de confianza. Por eso:
+
+- **Variables**: `*_token_env` y `jira_usuario_env` solo admiten nombres `FORGE_` + mayúsculas, dígitos y `_` (por ejemplo `FORGE_GITHUB_TOKEN`). Se rechazan variables ajenas (`AWS_SECRET_ACCESS_KEY`, `PATH`...) y las que FORGE ya usa (`FORGE_BUDGET_USD`, `FORGE_LLM_PROVIDER`, `FORGE_INTEGRACIONES`...).
+- **Hosts**: `api.github.com` y `gitlab.com` son los de defecto. Un GitLab autoalojado o cualquier sitio de Jira solo recibe credenciales si lo autorizas TÚ en tu entorno: `FORGE_INTEGRACIONES_HOSTS=gitlab.empresa.com,tuempresa.atlassian.net` (lista separada por comas, comparación exacta). Si falta, el error dice qué definir y no se lee ningún token ni se hace ninguna petición.
+- **Siempre rechazados**, aunque estén en la lista: `localhost`, `*.localhost`, `*.internal`, `*.local`, IP literales, `metadata.*` y puertos distintos de 443.
+- **Interruptor**: `FORGE_INTEGRACIONES` solo admite `normal` y `apagado`; cualquier otro valor apaga y avisa.
+- **Tope por sesión**: un archivo por sesión y recuento atómico entre procesos; la sesión por defecto es por día.
+- **Rutas de `proponerCambio`**: lista común (`.github/`, `.gitlab/`, CI, `.gitmodules`, `.gitattributes`, `.gitignore`, `CODEOWNERS`, `.git` y variantes).
+- **Marcador de idempotencia**: solo vale el comentario que escribió la cuenta del propio token; si lo escribió otro (o no se puede comprobar), se publica uno propio con un marcador derivado. Quien copia el marcador solo puede provocar una publicación adicional, nunca suprimirla.

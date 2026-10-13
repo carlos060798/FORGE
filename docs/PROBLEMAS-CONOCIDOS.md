@@ -558,3 +558,9 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 - La comprobación de tipos: de 36 errores a 0 (PL-4).
 - `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
 - Pruebas frágiles estabilizadas (`docker info`, rendimiento, doctor).
+
+
+## Integraciones externas: revisión de seguridad 1 (2026-10-12)
+
+- **Corregido**: R1 a R15 (ver `verificacion.md` de la especificación de integraciones). Para usar un GitLab autoalojado o Jira hay que definir `FORGE_INTEGRACIONES_HOSTS` en tu entorno; las variables de token deben llamarse `FORGE_*`.
+- **Sigue abierto**: no hay segunda revisión independiente; HTTPS real, DNS y proxies no se han probado (solo servidores falsos); el recuento atómico se probó en Windows; la lista de rutas vetadas puede dar falsos positivos (`docs/.github/`).
