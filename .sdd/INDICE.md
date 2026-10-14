@@ -3,10 +3,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 10
+- Total: 13
 - Completadas: 0
 - En progreso: 10
-- En borrador: 0
+- En borrador: 3
 
 ## Especificaciones
 
@@ -23,9 +23,14 @@
 | 2026-10-09-pruebas-confiables | Pruebas confiables | en_implementacion (aprobada por delegación del dueño; implementada sin plan ni tareas formales; autoevaluada, sin revisión independiente ni modelo real) | mediano | ✅ | — | — | ⚠️ autoevaluación (20 de 20 criterios con test) | 2026-10-09 |
 | 2026-10-09-puesta-al-dia | Puesta al día | en_implementacion (aprobada por delegación del dueño; autoevaluada, sin revisión independiente; ahorro de la caché sin medir y revisión nueva del protocolo sin probar con un cliente real) | mediano | ✅ | — | — | ⚠️ autoevaluación (17 de 19 criterios con prueba) | 2026-10-09 |
 | 2026-10-11-integraciones-externas | Integraciones con GitHub, GitLab y Jira con el mínimo privilegio | en_implementacion (por instrucción del dueño; ADR-22 propuesta; spikes primero) | grande | ✅ | ✅ | ✅ | — | 2026-10-11 |
+| 2026-10-13-instalacion-agnostica | Instalación agnóstica de herramienta: integraciones por clave y comandos como skills | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
+| 2026-10-13-verificar-sin-modelo | `forge verificar`: veredicto aislado sin llamar a un modelo | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
+| 2026-10-13-proveedores-agnosticos | Proveedores agnósticos: conformidad, herramientas en OpenAI y Ollama, niveles neutrales | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 
 ## Previstas (sin especificar todavía)
 
-Ver el roadmap en `PLAN-MOTOR-AGENTICO.md`: S5 Ciclo por defecto.
+Las tres specs del 2026-10-13 siguen `PLAN-INCREMENTAL.md` (incrementos I1 a I6); las previstas a continuación (el ciclo por MCP, contrato público, paralelismo) están en su sección 6 y en `PLAN-ESCALADO.md`.
+
+Ver el roadmap en `PLAN-MOTOR-AGENTICO.md`: S5 Ciclo por defecto (ya implementado, ADR-17).
 
 Las cuatro specs del 2026-10-09 siguen el roadmap de `PLAN-CIERRE-BRECHAS.md` (FASES 6 a 9). ADR-19, ADR-20 y ADR-21 están aceptadas por delegación del dueño (2026-10-09) y pendientes de su ratificación.

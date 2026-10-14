@@ -50,7 +50,7 @@ Cada incremento es pequeño, se puede fusionar solo y deja el proyecto funcionan
 | **I2** | **Comandos como skills y perfil corto.** Una sola fuente genera el comando de Claude Code y la skill; perfil por defecto de 5 comandos, perfil completo opcional | OpenSpec, BMAD | `commands/`, `skills/`, `presets/` | Los 39 comandos existen como skills generadas; una prueba falla si las dos formas divergen | 3–4 días |
 | **I3** | **`forge verificar`.** Ejecuta el comando de pruebas del proyecto en el sandbox y devuelve veredicto, sin llamar a ningún modelo | Aider | Sandbox, enrutador, mutación | Funciona en un proyecto que nunca usó FORGE; salida 0, 1 o 4 como `forge run`; mide mutación si se pide | 3–5 días |
 | **I4** | **Conformidad de proveedores y OpenAI con herramientas** (E1.1, E1.2) | — | `provider-interface.js`, `stub-provider.js` | Una suite común pasa con los cuatro proveedores; el implementador por turnos completa una tarea contra un servidor falso | 4–5 días |
-| **I5** | **Precios con fallo cerrado y niveles neutrales** (E1.4, E1.5) | — | `core/precios.js`, `modelos:` | Sin precio conocido el ciclo no arranca y dice qué falta | 2 días |
+| **I5** | **Gasto fuera de Anthropic y niveles neutrales** (E1.4, E1.5) | — | `core/precios.js`, `modelos:` | Coste cero solo si se declara; aviso de modelo sin precio; `alto`, `medio` y `economico` equivalen a los alias actuales | 2 días |
 | **I6** | **Validación con un segundo proveedor real** (E1.6) | — | `scripts/pruebas-independientes.mjs` | Tres proyectos en éxito; evidencia registrada | Dueño: clave y presupuesto |
 | **I7** | **El ciclo por MCP** (E2.2) y su revisión de seguridad | Tessl | `core/mcp/` | Un cliente MCP lanza, consulta y decide; pasa una revisión independiente | 5 días más revisión |
 | **I8** | **Contrato público versionado** (E2.1) | — | `core/ciclo/estado.js`, `core/tareas.js` | Esquemas en `docs/contrato/` y una prueba que los compara con el código | 3 días |
@@ -70,11 +70,47 @@ Cada incremento es pequeño, se puede fusionar solo y deja el proyecto funcionan
 
 Hay que confirmar en la documentación de cada herramienta la carpeta exacta donde lee las skills. Esta investigación solo confirmó, por la página de Spec Kit, que Copilot usa `.github/skills/` y que Codex y Zed usan `.agents/skills`. Las demás rutas no están verificadas.
 
-## 6. Reglas de ejecución
+## 6. Especificaciones creadas
+
+Los incrementos se llevan por el ciclo de especificaciones del proyecto. Las tres primeras están redactadas **en borrador**: ninguna se implementa hasta que el dueño la apruebe (Principio II).
+
+| Especificación | Incrementos | Tamaño | Gasta en modelos | Necesita revisión independiente |
+|---|---|---|---|---|
+| `2026-10-13-instalacion-agnostica` | I1, I2 | mediano | No | No (escritura segura ya revisada; se reutiliza) |
+| `2026-10-13-verificar-sin-modelo` | I3 | mediano | No | Sí: aislamiento y proyectos de terceros |
+| `2026-10-13-proveedores-agnosticos` | I4, I5, I6 | mediano | Solo I6, con clave del dueño | Sí: gasto y credenciales |
+
+Cada carpeta tiene `spec.md` (historias y criterios de aceptación), `plan.md` (módulos, fases, riesgos) y `tareas.md` (spikes primero, prueba antes que código).
+
+### Orden de ejecución propuesto
+
+| Paso | Qué | Quién | Depende de |
+|---|---|---|---|
+| 1 | Aprobar o corregir las tres especificaciones y responder sus preguntas abiertas | Dueño | — |
+| 2 | Abrir la solicitud de cambio de `feature/motor-agentico` y dejar la integración continua en verde | Dueño | — |
+| 3 | Spikes S0 de las tres especificaciones, en paralelo: son solo lectura | Agentes | 1 |
+| 4 | `instalacion-agnostica` F1 a F3 y `verificar-sin-modelo` F1 y F2, en ramas separadas | Agentes | 3 |
+| 5 | `proveedores-agnosticos` F1 y F2 | Agentes | 3 |
+| 6 | Resto de fases, revisiones independientes y verificación | Agentes | 4, 5 |
+| 7 | Validación con un segundo proveedor real | Dueño y agentes | 5 |
+
+Las tres especificaciones tocan archivos distintos salvo `cli/index.js`: se trabajan en ramas separadas y se integran una a una, con la suite completa entre medias.
+
+### Especificaciones previstas, sin redactar
+
+| Especificación | Incrementos | Por qué espera |
+|---|---|---|
+| El ciclo por MCP | I7 | Abre una superficie de ataque nueva; conviene tener antes `forge verificar` |
+| Contrato público versionado | I8 | Mejor cuando `verificar` fije la primera forma de resultado |
+| Corrección con «lo que no debe cambiar» | I9 | Pequeña; cuando haya hueco |
+| Oleadas en paralelo en el ciclo | I10 | Toca garantías revisadas; con usuarios de la beta |
+| Propiedades desde criterios de aceptación | I11 | Experimento |
+
+## 7. Reglas de ejecución
 
 Las mismas que en `PLAN-EJECUCION-FINAL.md`: un incremento por rama; se sube solo con la suite en 0 fallos y los tipos en 0; no se ejecuta la suite completa en paralelo; lo que toca seguridad, gasto o aislamiento pasa por una revisión independiente; publicar y gastar son decisiones del dueño.
 
-## 7. Fuentes
+## 8. Fuentes
 
 Consultadas el 2026-10-13.
 

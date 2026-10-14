@@ -8,7 +8,7 @@
 
 | Objetivo | Punto de partida que ya existe | Lo que falta de verdad |
 |---|---|---|
-| Agnóstico de modelo | Interfaz de proveedor con una conversación neutra; cuatro proveedores | OpenAI y Ollama no conversan con herramientas, no tienen precios y nunca se probaron con un modelo real |
+| Agnóstico de modelo | Interfaz de proveedor con una conversación neutra; cuatro proveedores | OpenAI y Ollama no conversan con herramientas y nunca se probaron con un modelo real; un modelo sin precio se cuenta al más caro conocido, lo que frena a un modelo local |
 | Agnóstico de herramienta | Servidor MCP, API HTTP local, adaptadores, exportación a Spec Kit y OpenSpec, `AGENTS.md` | El ciclo verificado no se ofrece por MCP; no hay contrato público versionado; los agentes están en formato de Claude Code |
 | Orquestador | Niveles topológicos y ejecución en paralelo en `core/orchestrator.js`; copias de trabajo; candado; registro de eventos | El ciclo fuerza la ejecución en serie porque el área de trabajo y el presupuesto son compartidos; no hay cola ni servicio |
 
@@ -23,7 +23,7 @@
 | Proveedor OpenAI y compatibles (Azure, GitHub Models, cualquier `base_url`) | `core/llm-providers/openai-provider.js` | Solo `complete`; `admiteHerramientas` es `false`; alias fijados a `gpt-4o` | E1 |
 | Proveedor Ollama | `core/llm-providers/ollama-provider.js` | Solo `complete`; sin herramientas | E1 |
 | Proveedor de pruebas con guion | `core/llm-providers/stub-provider.js` | Hecho | Pruebas de conformidad de E1 |
-| Niveles `modelos:` y `precios:` configurables (ADR-19) | `core/ciclo/config.js`, `core/precios.js` | La lista de precios solo trae modelos de Anthropic | E1 |
+| Niveles `modelos:` y `precios:` configurables (ADR-19) | `core/ciclo/config.js`, `core/precios.js` | La lista trae Anthropic y dos modelos de OpenAI (`gpt-4o`, `gpt-4o-mini`); a un modelo sin precio se le aplica el más caro conocido (`precioMasCaro`) | E1 |
 | Motor propio del ciclo, sin dependencias | `core/ciclo/`, `core/ciclo/motores/propio.js` | Validado | Base de todo |
 | Orquestador con niveles topológicos y `_runParallel` | `core/orchestrator.js:36-102` | El paralelo se desactiva con el ciclo (`orchestrator.js:56`) | E3 |
 | Copia de trabajo aislada | `core/sandbox/staging.js` (`crearCopia`, `eliminarCopia`) | Hecha, usada por el sandbox | E3 |
@@ -47,7 +47,7 @@
 | Brecha | Consecuencia hoy | Solución con lo que hay |
 |---|---|---|
 | OpenAI y Ollama no implementan `conversar` | Con ellos el implementador por turnos no funciona: el ciclo cae al modo de bloque | Traducir la conversación neutra a `tools` y `tool_calls` de la API de chat, como ya hace `anthropic-provider.js` con `aBloqueApi` y `deBloqueApi` |
-| Sin precios fuera de Anthropic | El tope de gasto no puede calcular el coste | Añadir entradas a `core/precios.js` o exigir `precios:` en la configuración y **fallar cerrado** si falta |
+| Un modelo sin precio se cuenta al más caro conocido | Es prudente, pero un modelo local sin coste agota el tope sin gastar, y un modelo nuevo se sobrevalora sin avisar | Coste cero solo por declaración explícita en `precios:`, aviso de la clave que falta y una opción para no arrancar sin precio |
 | Alias `opus/sonnet/haiku` fijados a `gpt-4o` | Nombres de Anthropic para modelos de otro proveedor; modelos anticuados | Nombrar niveles neutrales (alto, medio, económico) y dejar los actuales como alias; `modelos:` ya permite fijarlos |
 | Sin prueba de conformidad | Cada proveedor se prueba aparte | Una sola suite que cualquier proveedor debe pasar, con el proveedor de pruebas como referencia |
 | Nunca probados con modelo real | No se sabe si resuelven tareas | `scripts/pruebas-independientes.mjs` con `--proveedor`; hace falta clave del dueño |
@@ -92,7 +92,7 @@ Viene de `PLAN-EJECUCION-FINAL.md`. No se construye encima de algo sin validar.
 | E1.1 Suite de conformidad de proveedores | `stub-provider.js` | Una misma suite pasa con los cuatro proveedores contra servidores falsos |
 | E1.2 `conversar` en OpenAI | La forma neutra y el patrón de `anthropic-provider.js` | El implementador por turnos completa una tarea con un servidor falso de la API de chat |
 | E1.3 `conversar` en Ollama | Igual | Igual; si el modelo local no admite herramientas, se avisa y se usa el modo de bloque |
-| E1.4 Precios y fallo cerrado | `core/precios.js`, `precios:` | Sin precio conocido el ciclo no arranca y explica qué clave falta |
+| E1.4 Gasto fuera de Anthropic | `core/precios.js`, `precios:` | Coste cero explícito para modelos locales; aviso de modelo sin precio; opción para no arrancar sin precio |
 | E1.5 Niveles neutrales | `modelos:` (ADR-19) | `alto`, `medio` y `economico` funcionan; los alias antiguos siguen valiendo |
 | E1.6 Validación con modelo real | `scripts/pruebas-independientes.mjs` | Tres proyectos en éxito con un segundo proveedor; evidencia registrada. Necesita clave y presupuesto del dueño |
 
