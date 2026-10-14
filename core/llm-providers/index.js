@@ -38,6 +38,7 @@ import { OpenAIProvider }    from './openai-provider.js';
 import { OllamaProvider }    from './ollama-provider.js';
 import { StubProvider }      from './stub-provider.js';
 import { leerModelosDe }     from '../ciclo/config.js';
+import { leerVariable, leerVariableRestrictiva } from '../entorno.js';
 
 /** Lee la sección llm: de sdd.config.yaml de forma simple (sin parser YAML completo) */
 function leerConfigLlm(cwd) {
@@ -94,7 +95,7 @@ export function destinoDeModeloPermitido(direccion, env = process.env) {
   if (u.protocol === 'http:') return local;
   if (u.protocol !== 'https:') return false;
   if (local) return true;
-  const permitidos = String(env[VARIABLE_HOSTS_LLM] ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const permitidos = String(leerVariableRestrictiva('LLM_HOSTS', env, '') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   return permitidos.includes(u.hostname.toLowerCase()) || permitidos.includes(u.host.toLowerCase());
 }
 
@@ -145,7 +146,8 @@ export function leerTimeoutLlmMs(cwd = process.cwd()) {
  * Se usa cuando no hay config explícita.
  */
 function detectarProvider() {
-  if (process.env.FORGE_LLM_PROVIDER) return process.env.FORGE_LLM_PROVIDER;
+  const delEntorno = leerVariable('LLM_PROVIDER');
+  if (delEntorno) return delEntorno;
   if (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY) return 'anthropic';
   if (process.env.OPENAI_API_KEY)    return 'openai';
   if (process.env.OLLAMA_BASE_URL)   return 'ollama';
@@ -167,7 +169,7 @@ export function crearProvider(opts = {}) {
   const config     = { ...configYaml, ...opts.config, modelos };
 
   const nombreProvider = (
-    process.env.FORGE_LLM_PROVIDER ??
+    leerVariable('LLM_PROVIDER') ??
     config.provider ??
     detectarProvider()
   ).toLowerCase();

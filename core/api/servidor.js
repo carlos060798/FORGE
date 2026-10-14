@@ -26,6 +26,7 @@ import { cola } from '../ciclo/redactar.js';
 import { createStateStore } from '../state-store.js';
 import { PipelineStateMachine } from '../state-machine.js';
 import { EventLog } from '../event-log.js';
+import { sinVariable } from '../entorno.js';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'cli', 'index.js');
 const MAX_CUERPO = 64 * 1024;
@@ -49,7 +50,7 @@ function igual(a, b) {
  */
 export function lanzarCli(cwd, args, { timeoutMs = TIEMPO_MAX_MS, alLanzar = (/** @type {any} */ _proceso) => {} } = {}) {
   // El hijo no necesita el secreto de la API: no se le pasa
-  const { FORGE_API_TOKEN: _omitido, ...env } = process.env;
+  const env = sinVariable('API_TOKEN', process.env);
   const proc = spawn(process.execPath, [CLI, ...args, '--cwd', cwd], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   alLanzar(proc);
   // Un proceso colgado no puede dejar la API bloqueada para siempre

@@ -28,6 +28,9 @@ import { leerSeccion } from '../ciclo/config.js';
 import { redactar } from '../ciclo/redactar.js';
 import { MODOS } from './puerto.js';
 import { ErrorHostNoAutorizado, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, exigirHostAutorizado, motivoHostVetado } from './hosts.js';
+import { leerVariable as leerDelEntorno, leerVariableRestrictiva } from '../entorno.js';
+/** Con conflicto entre los dos nombres de DESTINOS no se permite ningún destino (centinela que no es un destino válido). */
+const CONFLICTO_DESTINOS = '\u0000sin-destinos';
 
 export { ErrorHostNoAutorizado, HOSTS_POR_DEFECTO, VARIABLE_HOSTS, exigirHostAutorizado };
 
@@ -150,17 +153,18 @@ export function pareceTokenLiteral(v) {
  * Las variables de credenciales de FORGE viven en un espacio propio: `FORGE_` + mayúsculas, dígitos y «_».
  * El repositorio no puede apuntar a `AWS_SECRET_ACCESS_KEY`, `ANTHROPIC_API_KEY`, `PATH`… (R1).
  */
-export const NOMBRE_VARIABLE = /^FORGE_[A-Z0-9_]{1,58}$/;
+export const NOMBRE_VARIABLE = /^(?:FORGE|FRAGUA)_[A-Z0-9_]{1,58}$/;
 
 /** Variables que FORGE ya usa para otra cosa: nunca pueden ser el token de una integración. */
-export const VARIABLES_RESERVADAS = Object.freeze([
-  'FORGE_BUDGET_USD', 'FORGE_BUDGET_BLOCK_USD', 'FORGE_BUDGET_WARN_USD', 'FORGE_API_TOKEN', 'FORGE_DOCKER_TIMEOUT_S',
-  'FORGE_IMPLEMENTADOR', 'FORGE_INTEGRACIONES', VARIABLE_HOSTS, 'FORGE_LEDGER_MAX_BYTES', 'FORGE_LLM_PROVIDER',
-  'FORGE_MOTOR_GRAFO', 'FORGE_NIVEL_MAXIMO', 'FORGE_RUNTIMES_PERMITIDOS', 'FORGE_STUB_GUION', 'FORGE_TOOL_MAX_BYTES',
-  'FORGE_UI_PORT', 'FORGE_VERSION',
-]);
+const SUFIJOS_RESERVADOS = [
+  'BUDGET_USD', 'BUDGET_BLOCK_USD', 'BUDGET_WARN_USD', 'API_TOKEN', 'DOCKER_TIMEOUT_S', 'HOME',
+  'IMPLEMENTADOR', 'INTEGRACIONES', 'INTEGRACIONES_HOSTS', 'LEDGER_MAX_BYTES', 'LLM_PROVIDER', 'LLM_HOSTS',
+  'MOTOR_GRAFO', 'NIVEL_MAXIMO', 'RUNTIMES_PERMITIDOS', 'STUB_GUION', 'TOOL_MAX_BYTES',
+  'UI_PORT', 'VERSION', 'TEST_INTEGRACIONES', 'TIER',
+];
+export const VARIABLES_RESERVADAS = Object.freeze(SUFIJOS_RESERVADOS.flatMap((s) => [`FORGE_${s}`, `FRAGUA_${s}`]));
 /** Prefijos reservados para variables futuras de presupuesto, modelos y API. */
-const PREFIJOS_RESERVADOS = Object.freeze(['FORGE_BUDGET', 'FORGE_LLM', 'FORGE_API', 'FORGE_INTEGRACIONES']);
+const PREFIJOS_RESERVADOS = Object.freeze(['BUDGET', 'LLM', 'API', 'INTEGRACIONES'].flatMap((p) => [`FORGE_${p}`, `FRAGUA_${p}`]));
 
 /**
  * @param {unknown} nombre
@@ -168,10 +172,10 @@ const PREFIJOS_RESERVADOS = Object.freeze(['FORGE_BUDGET', 'FORGE_LLM', 'FORGE_A
  */
 export function motivoVariableNoPermitida(nombre) {
   if (typeof nombre !== 'string' || !NOMBRE_VARIABLE.test(nombre)) {
-    return 'debe empezar por «FORGE_» y seguir con mayúsculas, dígitos y «_» (por ejemplo FORGE_GITHUB_TOKEN): una variable arbitraria del entorno no se puede leer';
+    return 'debe empezar por «FRAGUA_» (o «FORGE_», el nombre antiguo) y seguir con mayúsculas, dígitos y «_» (por ejemplo FRAGUA_GITHUB_TOKEN): una variable arbitraria del entorno no se puede leer';
   }
   if (VARIABLES_RESERVADAS.includes(nombre) || PREFIJOS_RESERVADOS.some((p) => nombre === p || nombre.startsWith(`${p}_`))) {
-    return 'es el de una variable que FORGE usa para otra cosa (presupuesto, modelos, API, interruptor…); elige otro nombre, por ejemplo FORGE_GITHUB_TOKEN';
+    return 'es el de una variable que FORGE usa para otra cosa (presupuesto, modelos, API, interruptor…); elige otro nombre, por ejemplo FRAGUA_GITHUB_TOKEN';
   }
   return null;
 }
@@ -407,8 +411,8 @@ function listaDelUsuario(v) {
  */
 export function aplicarPoliticaDelUsuario(config, env = process.env) {
   if (!config.activa) return config;            // todo apagado: ninguna lectura del entorno (CA-005-01)
-  const escritura = new Set(listaDelUsuario(env[VARIABLE_ESCRITURA]) ?? []);
-  const destinosUsuario = listaDelUsuario(env[VARIABLE_DESTINOS]);
+  const escritura = new Set(listaDelUsuario(leerVariableRestrictiva('INTEGRACIONES_ESCRITURA', env, '')) ?? []);
+  const destinosUsuario = listaDelUsuario(leerVariableRestrictiva('INTEGRACIONES_DESTINOS', env, CONFLICTO_DESTINOS));
   const avisos = [...config.avisos];
   /** @type {Record<string, ConfigProveedor>} */
   const proveedores = {};
@@ -468,7 +472,7 @@ function leerVariable(proveedor, nombre, env) {
   if (!nombre) return null;
   const motivo = motivoVariableNoPermitida(nombre);
   if (motivo !== null) throw new Error(`La variable «${String(nombre).slice(0, 40)}» de ${proveedor.nombre} no se puede leer: ${motivo}`);
-  const v = env[nombre];
+  const v = leerDelEntorno(nombre.replace(/^(?:FORGE|FRAGUA)_/, ''), env);
   return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
 }
 

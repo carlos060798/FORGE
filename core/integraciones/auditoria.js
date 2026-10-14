@@ -28,6 +28,7 @@ import { EventLog } from '../event-log.js';
 import { redactar } from '../ciclo/redactar.js';
 import { TOPE_POR_DEFECTO } from './config.js';
 import { directorioDeEstado } from './estado-usuario.js';
+import { ErrorVariableEnConflicto, leerVariable } from '../entorno.js';
 
 /** Tope diario por proveedor: lo que no reinicia fabricar otro `sesion.json` (H9). Múltiplo del tope por sesión, con techo. */
 export const topeDiarioDe = (/** @type {number} */ tope) => Math.min(tope * 5, 200);
@@ -78,7 +79,14 @@ const ARCHIVO_APAGADO = (cwd) => join(DIR(cwd), 'apagado');
  * @returns {{ apagado: boolean, origen?: 'variable'|'archivo', valorNoReconocido?: boolean, aviso?: string }}
  */
 export function estadoInterruptor(cwd, env = process.env) {
-  const v = String(env.FORGE_INTEGRACIONES ?? '').trim().toLowerCase();
+  let v;
+  try {
+    v = String(leerVariable('INTEGRACIONES', env) ?? '').trim().toLowerCase();
+  } catch (e) {
+    // Dos nombres con valores distintos: nunca se elige; las integraciones quedan APAGADAS (fallo cerrado)
+    if (!(e instanceof ErrorVariableEnConflicto)) throw e;
+    return { apagado: true, origen: 'variable', valorNoReconocido: true, aviso: `${e.message} Por seguridad las integraciones quedan APAGADAS.` };
+  }
   if (v === 'apagado') return { apagado: true, origen: 'variable' };
   if (v !== '' && v !== 'normal') {
     return {

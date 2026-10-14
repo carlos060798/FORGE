@@ -7,6 +7,7 @@
 
 import { spawn } from 'node:child_process';
 import { ETIQUETA } from './politica.js';
+import { leerVariableRestrictiva } from '../entorno.js';
 
 /**
  * @typedef {Object} ResultadoProceso
@@ -82,7 +83,7 @@ const TIMEOUT_CONSULTA_MAX_MS = 600_000;
  * @returns {number} milisegundos
  */
 export function timeoutConsultaMs(env = process.env) {
-  const texto = String(env[VARIABLE_TIMEOUT] ?? '').trim();
+  const texto = String(leerVariableRestrictiva('DOCKER_TIMEOUT_S', env, '') ?? '').trim();
   const s = texto === '' ? NaN : Number(texto);
   if (!Number.isFinite(s) || s <= 0) return TIMEOUT_CONSULTA_MS;
   return Math.min(Math.max(Math.round(s * 1000), TIMEOUT_CONSULTA_MIN_MS), TIMEOUT_CONSULTA_MAX_MS);

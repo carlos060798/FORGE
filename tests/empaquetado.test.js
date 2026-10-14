@@ -78,7 +78,7 @@ describe("empaquetado", () => {
     for (const args of [["help"], ["run", "--help"]]) {
       const h = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", cwd: dir });
       assert.equal(h.status, 0, args.join(" ") + ": " + h.stderr);
-      assert.match(h.stdout, /forge adr/);
+      assert.match(h.stdout, /(forge|fragua) adr/);
     }
   });
 

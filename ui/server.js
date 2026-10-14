@@ -25,6 +25,7 @@ import { createServer } from "node:http";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { join, resolve, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import { leerVariable } from "../core/entorno.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const UI_DIR    = __dirname;           // directorio ui/
@@ -313,6 +314,6 @@ export function startServer(port = 3001) {
 // ─── Arranque directo (node ui/server.js [port]) ─────────────────────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const port = parseInt(process.env.FORGE_UI_PORT ?? process.argv[2] ?? "3001", 10);
+  const port = parseInt(leerVariable('UI_PORT') ?? process.argv[2] ?? "3001", 10);
   startServer(port);
 }

@@ -40,7 +40,9 @@ export function validarRuntime(valor) {
 }
 
 /** Variable de entorno con los mecanismos de aislamiento que el usuario autoriza, separados por comas. */
-export const VARIABLE_RUNTIMES = 'FORGE_RUNTIMES_PERMITIDOS';
+import { leerVariableRestrictiva } from '../entorno.js';
+
+export const VARIABLE_RUNTIMES ='FORGE_RUNTIMES_PERMITIDOS';
 
 /** Siempre permitido: es el mecanismo estándar de Docker. Vacío (sin `sandbox.runtime`) es el de por defecto. */
 export const RUNTIMES_SIEMPRE_PERMITIDOS = Object.freeze(['runc']);
@@ -56,7 +58,7 @@ export const RUNTIMES_SIEMPRE_PERMITIDOS = Object.freeze(['runc']);
  */
 export function runtimePermitido(runtime, env = process.env) {
   if (!runtime || RUNTIMES_SIEMPRE_PERMITIDOS.includes(runtime)) return { ok: true };
-  const lista = String(env[VARIABLE_RUNTIMES] ?? '').split(',').map((r) => r.trim()).filter(Boolean);
+  const lista = String(leerVariableRestrictiva('RUNTIMES_PERMITIDOS', env, '') ?? '').split(',').map((r) => r.trim()).filter(Boolean);
   if (lista.includes(runtime)) return { ok: true };
   return {
     ok: false,

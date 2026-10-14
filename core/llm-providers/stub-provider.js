@@ -18,6 +18,7 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { LlmProvider } from './provider-interface.js';
+import { leerVariable } from '../entorno.js';
 
 /**
  * Las reglas que exige una API real: empieza el usuario, los roles alternan y cada herramienta pedida
@@ -62,8 +63,9 @@ export class StubProvider extends LlmProvider {
     let completar = c.completar ?? null;
     let registro = c.registro ?? null;
     let registrarPrompts = c.registrarPrompts === true;
-    if (!guion && !completar && process.env.FORGE_STUB_GUION) {
-      const leido = JSON.parse(readFileSync(process.env.FORGE_STUB_GUION, 'utf8'));
+    const archivoGuion = leerVariable('STUB_GUION');
+    if (!guion && !completar && archivoGuion) {
+      const leido = JSON.parse(readFileSync(archivoGuion, 'utf8'));
       // Una lista es el guion de conversación de siempre; un objeto lleva además las reglas de `complete`
       const objeto = leido && typeof leido === 'object' && !Array.isArray(leido);
       guion = objeto ? leido.conversar ?? null : leido;
