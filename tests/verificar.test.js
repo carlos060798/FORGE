@@ -130,10 +130,10 @@ describe("forge verificar: entrada", () => {
     assert.equal(JSON.parse(r.salida).comando, "node --test");
   });
 
-  test("opciones de fases posteriores se rechazan con un mensaje claro", () => {
+  test("--mutacion sin --archivos ni --desde se rechaza con un mensaje claro", () => {
     const r = verificar(proyecto(PASA), ["--mutacion"]);
     assert.equal(r.codigo, 1);
-    assert.match(r.errores, /todavía no está disponible/);
+    assert.match(r.errores, /--archivos/);
     assert.equal(r.runs.length, 0);
   });
 });

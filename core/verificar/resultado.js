@@ -6,6 +6,7 @@
  */
 
 import { cola, redactar } from '../ciclo/redactar.js';
+import { AVISO_ADVERSARIO } from './mutacion.js';
 
 /** Versión del formato del objeto; sube si cambia algún campo. */
 export const FORMATO = 1;
@@ -47,6 +48,7 @@ export function codigoDeSalida(veredicto) {
  *   cortePorMemoria?: boolean,
  *   salida?: string,
  *   avisos?: string[],
+ *   mutacion?: Record<string, any>|null,
  * }} datos
  */
 export function crearResultado(datos) {
@@ -67,6 +69,10 @@ export function crearResultado(datos) {
     // `cola` redacta ANTES de recortar: un secreto partido por el recorte no pasa
     salida: cola(datos.salida ?? '', SALIDA_MAX_BYTES),
     avisos: (datos.avisos ?? []).map((a) => redactar(String(a))),
+    // null si no se pidió --mutacion; con --mutacion es siempre un objeto (core/verificar/mutacion.js)
+    mutacion: datos.mutacion ?? null,
+    // Con --registrar: { id, archivo } o { error }; null si no se pidió
+    registro: /** @type {null | { id?: string, archivo?: string, error?: string }} */ (null),
   };
 }
 
@@ -89,6 +95,26 @@ export function textoDelResultado(r) {
   if (r.cortePorTiempo) l.push('Las pruebas se cortaron por tiempo.');
   if (r.cortePorMemoria) l.push('Las pruebas se cortaron por memoria.');
   for (const a of r.avisos) l.push(`Aviso: ${a}`);
+  if (r.mutacion) l.push(...textoDeMutacion(r.mutacion));
+  if (r.registro) l.push(r.registro.error ? `Registro: NO se pudo registrar: ${r.registro.error}` : `Registro: ${r.registro.archivo}`);
   if (r.salida) l.push('--- salida de las pruebas (acotada y redactada) ---', r.salida.trimEnd());
   return l.join('\n');
+}
+
+/** @param {Record<string, any>} m */
+function textoDeMutacion(m) {
+  const pct = (/** @type {number} */ x) => `${Math.round(x * 100)} %`;
+  const etiqueta = /** @type {Record<string, string>} */ ({
+    medida: 'medida', cumple_el_minimo: 'CUMPLE el mínimo', bajo_el_minimo: 'BAJO el mínimo',
+    no_concluyente: 'NO CONCLUYENTE (no cuenta como éxito)',
+  })[m.veredicto] ?? m.veredicto;
+  const detalle = m.concluyente && m.puntuacion !== null ? ` · detecta ${m.detectadas} de ${m.probadas} (${pct(m.puntuacion)})` : '';
+  const minima = m.minima !== null ? ` · mínimo ${pct(m.minima)}` : '';
+  const l = [`Mutación: ${etiqueta}${detalle}${minima}`];
+  if (m.archivos?.length) l.push(`  Archivos: ${m.archivos.join(', ')}`);
+  for (const x of m.motivos ?? []) l.push(`  No concluyente: ${x}`);
+  for (const x of m.rechazadas ?? []) l.push(`  Rechazado: ${x.ruta} (${x.motivo})`);
+  for (const s of m.sobrevivientes ?? []) l.push(`  Sin detectar: ${s.ruta}:${s.linea} (${s.operador}) «${s.antes}» → «${s.despues}»`);
+  l.push(`  ${AVISO_ADVERSARIO}`);
+  return l;
 }
