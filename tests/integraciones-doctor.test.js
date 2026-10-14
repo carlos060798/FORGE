@@ -264,7 +264,7 @@ describe('el resto de la información', () => {
     const { env, lecturas } = entornoVigilado({ ...U, FORGE_GITHUB_TOKEN: TOKEN_GH, FORGE_GITLAB_TOKEN: TOKEN_GL, FORGE_JIRA_TOKEN: TOKEN_JI, ...HOSTS });
     const cwd = proyecto('integraciones:\n  github_modo: solo_lectura\n  github_token_env: FORGE_GITHUB_TOKEN\n  github_destinos: org/repo\n  gitlab_modo: apagado\n  gitlab_token_env: FORGE_GITLAB_TOKEN\n');
     await diagnosticarIntegraciones({ cwd, env, crearProveedor: () => crearProveedorGitHub({ token: TOKEN_GH, destinos: ['org/repo'], modo: 'solo_lectura' }) });
-    const permitidas = ['FORGE_GITHUB_TOKEN', 'FORGE_INTEGRACIONES', 'FORGE_INTEGRACIONES_HOSTS', 'FORGE_INTEGRACIONES_ESCRITURA', 'FORGE_INTEGRACIONES_DESTINOS', 'FORGE_HOME', 'LOCALAPPDATA'];
+    const permitidas = ['FORGE_GITHUB_TOKEN', 'FORGE_INTEGRACIONES', 'FORGE_INTEGRACIONES_HOSTS', 'FORGE_INTEGRACIONES_ESCRITURA', 'FORGE_INTEGRACIONES_DESTINOS', 'FORGE_HOME', 'LOCALAPPDATA'].flatMap((k) => (k.startsWith('FORGE_') ? [k, k.replace('FORGE_', 'FRAGUA_')] : [k]));
     assert.ok(lecturas.every((k) => permitidas.includes(k)), `se leyó: ${lecturas.join(', ')}`);
     assert.ok(!lecturas.includes('FORGE_GITLAB_TOKEN'));
   });

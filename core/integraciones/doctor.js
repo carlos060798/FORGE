@@ -26,6 +26,7 @@ import { hostsDelUsuario } from './hosts.js';
 import { AuditoriaIntegraciones, estadoInterruptor } from './auditoria.js';
 import { escribirAlcance, leerAlcance, listarNoAutenticados, listarPendientes, sesionDeIntegraciones } from './aprobacion.js';
 import { VARIABLE_DESTINOS, VARIABLE_ESCRITURA } from './config.js';
+import { leerVariableRestrictiva } from '../entorno.js';
 
 /** @typedef {{ nivel: 'ok'|'aviso'|'error'|'info', texto: string }} LineaDoctor */
 
@@ -78,8 +79,8 @@ export async function diagnosticarIntegraciones(o) {
   const autorizados = hostsDelUsuario(env);
   info(`${VARIABLE_HOSTS} (hosts adicionales que TÚ autorizas; el proyecto no puede): ${autorizados.length > 0 ? autorizados.join(', ') : '(no definida)'}`);
   info(`Tope de operaciones por sesión y proveedor: ${config.topes.operacionesPorSesion} (y ${auditoria.topeDiario} al día, que no reinicia otra sesión)`);
-  info(`${VARIABLE_ESCRITURA} (proveedores en los que TÚ permites escribir; el proyecto no puede): ${(env[VARIABLE_ESCRITURA] ?? '').trim() || '(no definida: solo lectura)'}`);
-  info(`${VARIABLE_DESTINOS} (destinos que TÚ permites, aunque el proyecto liste más): ${(env[VARIABLE_DESTINOS] ?? '').trim() || '(no definida: los del proyecto)'}`);
+  info(`${VARIABLE_ESCRITURA} (proveedores en los que TÚ permites escribir; el proyecto no puede): ${(leerVariableRestrictiva('INTEGRACIONES_ESCRITURA', env, '(las dos formas del nombre difieren: se ignoran)') ?? '').trim() || '(no definida: solo lectura)'}`);
+  info(`${VARIABLE_DESTINOS} (destinos que TÚ permites, aunque el proyecto liste más): ${(leerVariableRestrictiva('INTEGRACIONES_DESTINOS', env, '(las dos formas del nombre difieren: no se permite ningún destino)') ?? '').trim() || '(no definida: los del proyecto)'}`);
 
   for (const nombre of /** @type {const} */ (['github', 'gitlab', 'jira'])) {
     const cfg = config.proveedores[nombre];

@@ -4,6 +4,7 @@
 
 import { bus } from './event-bus.js';
 import { precioMasCaro, preciosCache, preciosCachePorDefecto, tablaPorToken } from './precios.js';
+import { leerVariableRestrictiva } from './entorno.js';
 
 // Los precios viven en core/precios.js (ADR-19): aquí solo se leen
 const TABLA_POR_TOKEN = tablaPorToken();
@@ -168,5 +169,5 @@ export class SessionBudget {
 }
 
 export const sessionBudget = new SessionBudget(
-  Number(process.env['FORGE_BUDGET_USD'] ?? 1.0),
+  Number(leerVariableRestrictiva('BUDGET_USD', process.env, '0') ?? 1.0),
 );

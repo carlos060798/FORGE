@@ -36,7 +36,7 @@ describe("CLI — forge --version", () => {
 
   test("--help menciona 'forge ui'", () => {
     const out = execSync(`node ${join(ROOT, "cli", "index.js")} --help`, { encoding: "utf8" });
-    assert.ok(out.includes("forge ui"), "forge ui no aparece en --help");
+    assert.ok(/(forge|fragua) ui/.test(out), "la orden ui no aparece en --help");
   });
 
   test("--help menciona '--preset'", () => {

@@ -24,6 +24,13 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { leerForgeConfig } from './shared/config.js';
+import { leerVariableRestrictiva } from './shared/entorno.js';
+
+/** Umbral numérico del entorno; ante conflicto entre FRAGUA_* y FORGE_* o valor no numérico, el de por defecto. */
+function umbral(sufijo, defecto) {
+  const n = Number(leerVariableRestrictiva(sufijo, process.env, undefined) ?? defecto);
+  return Number.isFinite(n) ? n : defecto;
+}
 
 const CWD = process.cwd();
 
@@ -31,13 +38,13 @@ const CWD = process.cwd();
 
 const CONFIG_DEFAULTS = {
   /** Presupuesto USD máximo antes de emitir alerta de tier */
-  budget_usd_warning: Number(process.env['FORGE_BUDGET_WARN_USD'] ?? 0.50),
+  budget_usd_warning: umbral('BUDGET_WARN_USD', 0.50),
   /** Presupuesto USD máximo antes de bloquear agentes Opus */
-  budget_usd_block_opus: Number(process.env['FORGE_BUDGET_BLOCK_USD'] ?? 1.00),
+  budget_usd_block_opus: umbral('BUDGET_BLOCK_USD', 1.00),
   /** Bytes máximos de un tool-result antes de truncarlo */
-  tool_result_max_bytes: Number(process.env['FORGE_TOOL_MAX_BYTES'] ?? 50_000),
+  tool_result_max_bytes: umbral('TOOL_MAX_BYTES', 50_000),
   /** Tamaño máximo del ledger antes de rotar (bytes) */
-  ledger_max_bytes: Number(process.env['FORGE_LEDGER_MAX_BYTES'] ?? 5_000_000),
+  ledger_max_bytes: umbral('LEDGER_MAX_BYTES', 5_000_000),
 };
 
 // Precios USD/token (actualizados para Claude 4.x)
@@ -183,7 +190,7 @@ function evaluarPresupuesto(state) {
       mensaje:
         `⚠️  [context-manager] Presupuesto al ${porcentaje}%: $${costo.toFixed(4)} / $${CONFIG_DEFAULTS.budget_usd_block_opus} USD\n`
         + `   Estrategias disponibles:\n`
-        + `   • Degradar a Haiku: export FORGE_TIER=low\n`
+        + `   • Reducir el gasto: acorta la sesión o baja el umbral con export FRAGUA_BUDGET_BLOCK_USD=0.5\n`
         + `   • Ver consumo por agente: node cli/index.js logs --last=20\n`
         + `   • Cargar resumen en lugar de historial: .sdd/observabilidad/context-summary.md`,
     };

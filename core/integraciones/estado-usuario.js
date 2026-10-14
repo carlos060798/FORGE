@@ -24,6 +24,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, linkSync, lstatSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { leerVariable } from '../entorno.js';
 import { isAbsolute, join, resolve, sep } from 'node:path';
 
 export const VARIABLE_HOME = 'FORGE_HOME';
@@ -43,7 +44,7 @@ export function canonico(v) {
  * @param {Record<string, string|undefined>} [env]
  */
 export function raizDeEstado(env = process.env) {
-  const home = String(env[VARIABLE_HOME] ?? '').trim();
+  const home = String(leerVariable('HOME', env) ?? '').trim();
   if (home !== '') return join(resolve(home), 'integraciones');
   if (process.platform === 'win32') {
     const declarada = String(env.LOCALAPPDATA ?? '').trim();

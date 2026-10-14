@@ -212,7 +212,7 @@ describe('F1.5 auditoría: interruptor', () => {
     const au = new AuditoriaIntegraciones({ cwd: proyecto(), env: /** @type {any} */ (env) });
     await au.ejecutar(A());
     // FORGE_HOME (y LOCALAPPDATA en Windows): dónde está el estado del usuario (contadores); ninguna otra
-    const esperadas = ['FORGE_HOME', 'FORGE_INTEGRACIONES', ...(process.platform === 'win32' ? ['LOCALAPPDATA'] : [])];
+    const esperadas = ['FORGE_HOME', 'FRAGUA_HOME', 'FORGE_INTEGRACIONES', 'FRAGUA_INTEGRACIONES', ...(process.platform === 'win32' ? ['LOCALAPPDATA'] : [])];
     assert.deepEqual([...new Set(lecturas)].sort(), esperadas.sort());
   });
 });

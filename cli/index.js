@@ -25,6 +25,8 @@ import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
+import { leerVariable } from "../core/entorno.js";
+import { ordenInvocada, debeAvisarOrdenAntigua } from "../core/nombres.js";
 import { detectStack } from "../core/stack-detector.js";
 import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo, leerArchivo } from "../core/escritura-segura.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
@@ -34,6 +36,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_DIR = join(__dirname, "..");
 
 // ─── Colores (degradan a texto plano si no hay TTY) ─────────────────────────────
+
+// Orden con la que se invocó el programa (fragua, forge o sdd-es): la ayuda y los mensajes la usan.
+const ORDEN = ordenInvocada(process.argv[1]);
+const ORDEN_EN_TEXTO = /\b(npx )?forge (?=(?:init|update|doctor|ui|status|step|config|logs|export|import|reset|adr|aprobar|run|resume|api|mcp|probar-modelo|state|validate|--version|--help)\b)/g;
+if (ORDEN !== 'forge') {
+  for (const metodo of ['log', 'error']) {
+    const original = console[metodo].bind(console);
+    console[metodo] = (...partes) => original(...partes.map((p) => (typeof p === 'string' ? p.replace(ORDEN_EN_TEXTO, (_m, npx) => `${npx ?? ''}${ORDEN} `) : p)));
+  }
+}
 
 const tty = process.stdout.isTTY;
 const c = {
@@ -845,7 +857,7 @@ function cmdUpdate(global) {
 
 async function cmdDoctorLlm(apiKey, { problemas }) {
   // 0. Provider activo
-  const providerActivo = process.env.FORGE_LLM_PROVIDER ?? 'anthropic (default)';
+  const providerActivo = leerVariable('LLM_PROVIDER') ?? 'anthropic (default)';
   info(`Provider LLM activo: ${providerActivo}`);
   info("  Cambiar: FORGE_LLM_PROVIDER=ollama|openai|stub  o  llm.provider en sdd.config.yaml");
   const { lineaRevision } = await import("../core/precios.js");
@@ -1894,7 +1906,7 @@ async function main() {
       // API HTTP local con token (spec 2026-10-03-api-http). Por stdout sale una sola línea JSON con la URL y el token.
       const valor = (flag) => { const i = args.indexOf(flag); return i !== -1 && args[i + 1] ? args[i + 1] : undefined; };
       const { crearServidorApi } = await import("../core/api/servidor.js");
-      const api = crearServidorApi({ cwd: valor("--cwd") ?? process.cwd(), token: process.env.FORGE_API_TOKEN || undefined });
+      const api = crearServidorApi({ cwd: valor("--cwd") ?? process.cwd(), token: leerVariable('API_TOKEN') || undefined });
       const { url } = await api.escuchar(valor("--port") === undefined ? 3002 : Number(valor("--port")));
       console.log(JSON.stringify({ url, token: api.token }));
       process.stderr.write(`FORGE API en ${url}. Envía el token en la cabecera "Authorization: Bearer ...". Ctrl+C para parar.\n`);

@@ -16,6 +16,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CicloVerificado, sesionActual } from './ciclo/index.js';
 import { cola } from './ciclo/redactar.js';
+import { leerVariable, sinVariable } from './entorno.js';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'cli', 'index.js');
 
@@ -32,7 +33,7 @@ const TAREA = {
 export async function probarModelo(opciones = {}) {
   const env = { ...process.env, ...opciones.env };
   const tope = opciones.tope ?? 0.5;
-  const proveedor = env.FORGE_LLM_PROVIDER || (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY ? 'anthropic' : 'stub');
+  const proveedor = leerVariable('LLM_PROVIDER', env) || (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY ? 'anthropic' : 'stub');
   if (proveedor === 'stub' && !opciones.permitirStub) {
     return { ok: false, motivoNoEjecutada: 'No hay ningún proveedor de modelos real: define ANTHROPIC_API_KEY (o FORGE_LLM_PROVIDER). Con el proveedor de pruebas no se demuestra nada.' };
   }
@@ -48,7 +49,7 @@ export async function probarModelo(opciones = {}) {
 
   const { codigo, salida } = await new Promise((resolver) => {
     const proc = spawn(process.execPath, [CLI, 'run', '--motor', 'ciclo', '--tasks', 'tareas.json', '--cwd', dir], {
-      cwd: dir, env: { ...env, FORGE_BUDGET_USD: String(tope) }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+      cwd: dir, env: { ...sinVariable('BUDGET_USD', env), FORGE_BUDGET_USD: String(tope), FRAGUA_BUDGET_USD: String(tope) }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
     });
     let texto = '';
     const juntar = (d) => { texto = (texto + d).slice(-64 * 1024); };

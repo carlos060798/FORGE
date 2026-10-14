@@ -12,6 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { validarRuntime } from '../sandbox/politica.js';
+import { leerVariable } from '../entorno.js';
 
 export const POR_DEFECTO = {
   motor: {
@@ -274,11 +275,13 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   config.precios = leerPrecios(yaml);
 
   if (overrides.motor) config.motor.modo = overrides.motor;
-  if (process.env.FORGE_MOTOR_GRAFO) config.motor.grafo = process.env.FORGE_MOTOR_GRAFO;
+  const grafoEnv = leerVariable('MOTOR_GRAFO');
+  if (grafoEnv) config.motor.grafo = grafoEnv;
   if (!GRAFOS.includes(config.motor.grafo)) {
     throw new Error(`motor.grafo desconocido: "${config.motor.grafo}". Valores válidos: ${GRAFOS.join(', ')}`);
   }
-  if (process.env.FORGE_NIVEL_MAXIMO) config.motor.nivel_maximo = process.env.FORGE_NIVEL_MAXIMO;
+  const nivelEnv = leerVariable('NIVEL_MAXIMO');
+  if (nivelEnv) config.motor.nivel_maximo = nivelEnv;
   if (!NIVELES.includes(config.motor.nivel_maximo)) {
     throw new Error(`motor.nivel_maximo desconocido: "${config.motor.nivel_maximo}". Valores válidos: ${NIVELES.join(', ')}`);
   }
@@ -288,7 +291,8 @@ export function leerConfigCiclo(cwd, overrides = {}) {
     throw new Error(`motor.sin_progreso no válido: "${sinProgreso ?? config.motor.sin_progreso}". Debe ser un entero ≥ 0 (0 desactiva la detección).`);
   }
   // ADR-21. FORGE_IMPLEMENTADOR permite probar el modo por turnos con un modelo real sin editar el proyecto
-  if (process.env.FORGE_IMPLEMENTADOR) config.motor.implementador = process.env.FORGE_IMPLEMENTADOR;
+  const implEnv = leerVariable('IMPLEMENTADOR');
+  if (implEnv) config.motor.implementador = implEnv;
   if (!IMPLEMENTADORES.includes(config.motor.implementador)) {
     throw new Error(`motor.implementador desconocido: "${config.motor.implementador}". Valores válidos: ${IMPLEMENTADORES.join(', ')}`);
   }
@@ -313,8 +317,9 @@ export function leerConfigCiclo(cwd, overrides = {}) {
       throw new Error(`motor.${clave} no válido: "${texto ?? config.motor[clave]}". Debe ser un entero ≥ 1.`);
     }
   }
-  if (process.env.FORGE_BUDGET_USD) {
-    const tope = Number(process.env.FORGE_BUDGET_USD);
+  const topeEnv = leerVariable('BUDGET_USD');
+  if (topeEnv) {
+    const tope = Number(topeEnv);
     if (Number.isFinite(tope) && tope >= 0) config.presupuesto.tope_usd = tope;
   }
 

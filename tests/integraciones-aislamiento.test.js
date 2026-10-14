@@ -90,7 +90,7 @@ describe('F1.6 carga perezosa: prueba estática', () => {
   test('el propio paquete solo depende de módulos de Node y de módulos internos conocidos (sin dependencias nuevas)', () => {
     const dir = join(RAIZ, 'core', 'integraciones');
     // Módulos de core/ que el paquete puede importar, como rutas absolutas (valen desde proveedores/ también)
-    const internos = new Set(['ciclo/redactar.js', 'ciclo/config.js', 'ciclo/checkpoint-archivos.js', 'ciclo/estado.js','ciclo/protocolo-archivos.js', 'escritura-segura.js', 'event-log.js'].map((r) => join(RAIZ, 'core', r)));
+    const internos = new Set(['ciclo/redactar.js', 'ciclo/config.js', 'ciclo/checkpoint-archivos.js', 'ciclo/estado.js','ciclo/protocolo-archivos.js', 'escritura-segura.js', 'event-log.js', 'entorno.js'].map((r) => join(RAIZ, 'core', r)));
     for (const f of archivosJs(dir)) {
       const texto = readFileSync(f, 'utf8');
       for (const m of texto.matchAll(ESPECIFICADORES)) {

@@ -19,6 +19,8 @@
 
 /** Variable de entorno del usuario con los hosts adicionales autorizados. */
 export const VARIABLE_HOSTS = 'FORGE_INTEGRACIONES_HOSTS';
+import { leerVariableRestrictiva } from '../entorno.js';
+// La lectura va por core/entorno.js: acepta también FRAGUA_INTEGRACIONES_HOSTS (en conflicto: sin hosts extra).
 
 /** Hosts de defecto por proveedor (Jira no tiene: es siempre un sitio de un cliente). */
 export const HOSTS_POR_DEFECTO = Object.freeze({ github: 'api.github.com', gitlab: 'gitlab.com' });
@@ -73,7 +75,7 @@ export function motivoHostVetado(host) {
  * @returns {string[]}
  */
 export function hostsDelUsuario(env = process.env) {
-  const crudo = env?.[VARIABLE_HOSTS];
+  const crudo = env ? leerVariableRestrictiva('INTEGRACIONES_HOSTS', env, '') : undefined;
   if (typeof crudo !== 'string' || crudo.trim() === '') return [];
   const salida = [];
   for (const parte of crudo.split(',')) {

@@ -125,7 +125,7 @@ describe('F1.2 config: sección válida', () => {
     const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: 'x' });
     const cfg = leerConfigIntegraciones(proyecto(VALIDA), { env });
     assert.equal(cfg.activa, true);
-    assert.deepEqual([...lecturas].sort(), ['FORGE_INTEGRACIONES_DESTINOS', 'FORGE_INTEGRACIONES_ESCRITURA']);
+    assert.deepEqual([...lecturas].sort(), ['FORGE_INTEGRACIONES_DESTINOS', 'FORGE_INTEGRACIONES_ESCRITURA', 'FRAGUA_INTEGRACIONES_DESTINOS', 'FRAGUA_INTEGRACIONES_ESCRITURA']);
   });
 
   test('gitlab sin host usa gitlab.com; un puerto escrito de forma explícita se admite', () => {
@@ -258,7 +258,7 @@ describe('F1.2 config: credenciales y destinos', () => {
     const cfg = interpretarIntegraciones(VALIDA);
     const { env, lecturas } = entornoVigilado({ FORGE_GITHUB_TOKEN: 'valor-secreto', OTRA: 'no', FORGE_INTEGRACIONES_HOSTS: 'gitlab.empresa.com' });
     assert.equal(leerToken(cfg.proveedores.github, env), 'valor-secreto');
-    assert.deepEqual(lecturas, ['FORGE_GITHUB_TOKEN']);
+    assert.deepEqual([...lecturas].sort(), ['FORGE_GITHUB_TOKEN', 'FRAGUA_GITHUB_TOKEN']);   // las dos formas del nombre, y ninguna otra
     assert.equal(leerToken(cfg.proveedores.gitlab, env), null);   // variable no definida
     const apagado = interpretarIntegraciones(con(['github_modo: apagado', 'github_token_env: FORGE_GITHUB_TOKEN']));
     const v2 = entornoVigilado({ FORGE_GITHUB_TOKEN: 'valor-secreto' });
