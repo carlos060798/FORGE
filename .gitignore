@@ -28,3 +28,8 @@ sdd-lite/mcp-figma/dist/
 .env.local
 
 FORGE/
+
+# La skill generada del comando «forge» vive en skills-generadas/forge/: en sistemas que no distinguen
+# mayúsculas el patrón anterior la ignoraría y la skill no se versionaría.
+!skills-generadas/forge/
+!skills-generadas/forge/**
