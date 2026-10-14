@@ -25,15 +25,15 @@
 
 ## F3 — Mutación
 
-- [ ] **F3.1** `--mutacion --archivos`. Tests: detección alta y baja; rechazo sin `--archivos` ni `--desde`. Cubre CA-003-01, CA-003-02.
-- [ ] **F3.2** `--desde`, según la decisión de S0.2. Cubre CA-003-01.
-- [ ] **F3.3** `--mutacion-minima` y «no concluyente» que falla cerrado. Cubre CA-003-03, CA-003-04.
-- [ ] **F3.4** Aviso del límite del adversario en el informe. Cubre CA-003-05.
+- [x] **F3.1** `--mutacion --archivos`. Tests: detección alta y baja; rechazo sin `--archivos` ni `--desde`. Cubre CA-003-01, CA-003-02.
+- [x] **F3.2** `--desde`, según la decisión de S0.2. Cubre CA-003-01.
+- [x] **F3.3** `--mutacion-minima` y «no concluyente» que falla cerrado. Cubre CA-003-03, CA-003-04.
+- [x] **F3.4** Aviso del límite del adversario en el informe. Cubre CA-003-05.
 
 ## F4 — Evidencia y concurrencia
 
-- [ ] **F4.1** `--registrar`: evento y archivo, con escritura segura. Test: sin la opción no aparece nada en el proyecto. Cubre CA-004-01, CA-004-02.
-- [ ] **F4.2** Dos verificaciones a la vez. Cubre CA-004-03.
+- [x] **F4.1** `--registrar`: evento y archivo, con escritura segura. Test: sin la opción no aparece nada en el proyecto. Cubre CA-004-01, CA-004-02.
+- [x] **F4.2** Dos verificaciones a la vez. Cubre CA-004-03.
 
 ## F5 — Cierre
 
@@ -45,3 +45,5 @@
 - [ ] **F5.6** `verificacion.md` con cada criterio y su prueba.
 
 > **2026-10-14:** S0, F1 y F2 implementadas (`core/verificar/`, `cli/verificar.js`, `core/sandbox/crear-sandbox.js`). Mutación (F3), `--desde`, `--registrar` y cierre pendientes. Sin probar con Docker real.
+
+> **2026-10-14 (2):** F3 y F4 implementadas: `core/verificar/{cambios,mutacion,registro}.js` y opciones en `cli/verificar.js`. `--desde` con la receta del spike S0.2 (prueba hostil con control negativo en `tests/verificar-cambios.test.js`); pruebas con el Docker falso en `tests/verificar-mutacion.test.js`. Sin probar con Docker real.
