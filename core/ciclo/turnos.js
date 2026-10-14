@@ -206,6 +206,14 @@ export async function coderPorTurnos(estado, deps, ayudas) {
       clave, agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal,
       extraContext: CONTRATO_CODER_TURNOS, mensajes, herramientas: herramientas.esquemas,
     });
+    // El servidor rechazó las herramientas en el primer turno (un compatible que no las admite): el proveedor
+    // ya no las declara, y esta tarea sigue en modo de bloque en lugar de pedir una revisión
+    if (!r.ok && !yaPagada && respondidos === 0 && escritos.size === 0 && deps.admiteHerramientas?.({ agente, proveedorLocal: efectivo.proveedorLocal }) !== true) {
+      deps.log.append('ciclo:implementador_sin_herramientas', {
+        iteracion: it, aviso: `El servidor de modelos rechazó las herramientas (${cola(String(r.error ?? 'sin detalle'), 300)}): esta tarea se implementa en modo de bloque.`,
+      }, meta);
+      return /** @type {any} */ ({ caerABloque: true });
+    }
     if (!r.ok) { presupuesto = trasAbortada(presupuesto, r, { precios: deps.config.precios }); errorInfra = `El proveedor de modelos falló en el turno ${n}: ${cola(String(r.error ?? 'sin detalle'), 600)}.${r.abortada ? ' El proveedor pudo procesarla y cobrarla: se anotó una estimación del costo de entrada, y la salida no se conoce. Compara el gasto con tu factura si esto se repite.' : ''}`; break; }
 
     const cuenta = contabilizar(estado, deps, presupuesto, r);

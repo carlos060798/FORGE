@@ -447,7 +447,12 @@ function leerPruebas(estado) {
  */
 export async function coder(estado, deps) {
   const { modo, marca } = modoImplementador(estado, deps);
-  if (modo === 'turnos') return coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+  if (modo === 'turnos') {
+    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+    // El servidor no admite herramientas (lo supo en el primer turno): sigue en modo de bloque
+    if (!(/** @type {any} */ (r).caerABloque)) return r;
+    return { ...(await coderEnBloque(estado, deps)), implementador: 'bloque' };
+  }
   return { ...(await coderEnBloque(estado, deps)), implementador: marca };
 }
 
