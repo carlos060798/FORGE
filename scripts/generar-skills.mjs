@@ -39,7 +39,7 @@ export function divergencias(raiz = RAIZ) {
   for (const [nombre, md] of skills) {
     const archivo = join(destino, nombre, 'SKILL.md');
     if (!existsSync(archivo)) dif.push(`falta ${nombre}/SKILL.md`);
-    else if (readFileSync(archivo, 'utf8') !== md) dif.push(`${nombre}/SKILL.md difiere del comando`);
+    else if (readFileSync(archivo, 'utf8').replace(/\r\n/g, '\n') !== md) dif.push(`${nombre}/SKILL.md difiere del comando`);
   }
   if (existsSync(destino)) {
     for (const e of readdirSync(destino, { withFileTypes: true })) {
