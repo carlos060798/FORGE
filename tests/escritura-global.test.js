@@ -95,7 +95,7 @@ describe("N-04 — cada destino con su raíz, y sin éxito si faltó algo", () =
     const r = forge(cwd, home, "update", "--global");
     assert.equal(r.status, 1, r.salida);
     assert.match(r.salida, /No se escribe/);
-    assert.match(r.salida, /forge update NO terminó bien/);
+    assert.match(r.salida, /(?:forge|fragua) update NO terminó bien/);
     assert.doesNotMatch(r.salida, /Núcleo actualizado/);
     assert.deepEqual(readdirSync(dotfiles), antes, "no se escribió a través de la unión");
   });

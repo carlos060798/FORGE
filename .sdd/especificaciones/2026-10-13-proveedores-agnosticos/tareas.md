@@ -5,9 +5,9 @@
 
 ## S0 — Spikes
 
-- [ ] **S0.1** Forma de las herramientas en la API de chat de OpenAI y en la de Ollama, desde la documentación oficial vigente, con URL y fecha. Salida: `spikes/herramientas-por-proveedor.md`.
-- [ ] **S0.2** Tarifa oficial vigente de OpenAI. Salida: sección en el mismo informe y propuesta de tabla.
-- [ ] **S0.3** Puntos del código donde se resuelven los niveles y de dónde sale `base_url` (¿puede fijarlo el proyecto?). Salida: `spikes/niveles-y-destinos.md`. Si el proyecto puede dirigir la clave a otro servidor, se abre una tarea F0 con prioridad.
+- [x] **S0.1** Forma de las herramientas en la API de chat de OpenAI y en la de Ollama, desde la documentación oficial vigente, con URL y fecha. Salida: `spikes/herramientas-por-proveedor.md`.
+- [x] **S0.2** Tarifa oficial vigente de OpenAI. Salida: sección en el mismo informe y propuesta de tabla.
+- [x] **S0.3** Puntos del código donde se resuelven los niveles y de dónde sale `base_url` (¿puede fijarlo el proyecto?). Salida: `spikes/niveles-y-destinos.md`. Si el proyecto puede dirigir la clave a otro servidor, se abre una tarea F0 con prioridad.
 
 ## F1 — Conformidad
 
@@ -57,3 +57,5 @@
 - [ ] **F7.2** Suite completa en Windows y en el contenedor Linux; tipos en 0.
 - [ ] **F7.3** Revisión independiente de gasto y credenciales; hallazgos altos corregidos.
 - [ ] **F7.4** `verificacion.md` con cada criterio y su prueba.
+
+> **2026-10-14:** spikes hechos. Hallazgo de seguridad (S0.3) **corregido** en `a0a74d9`: el proyecto ya no puede fijar `api_key` ni un `base_url` ajeno. Resto sin implementar. Cambios a la spec por los spikes: fase 0 de seguridad de destino (hecha), contrato de caché distinto en OpenAI, `normalizeModel` degrada todo a sonnet, y los modelos recientes de OpenAI exigen la API de respuestas (fuera de alcance).

@@ -5,23 +5,23 @@
 
 ## S0 — Spikes
 
-- [ ] **S0.1** Leer `core/ciclo/mutacion.js` (`medirMutacion`) y quién la llama: qué recibe, qué necesita del estado del ciclo y si puede llamarse sola. Salida: `spikes/mutacion-fuera-del-ciclo.md`.
-- [ ] **S0.2** Cómo obtener los archivos cambiados desde una referencia sin que `git` ejecute ganchos, filtros ni configuración del repositorio. Salida: `spikes/cambios-sin-ejecutar.md`, con la decisión: invocación neutralizada o solo `--archivos`.
+- [x] **S0.1** Leer `core/ciclo/mutacion.js` (`medirMutacion`) y quién la llama: qué recibe, qué necesita del estado del ciclo y si puede llamarse sola. Salida: `spikes/mutacion-fuera-del-ciclo.md`.
+- [x] **S0.2** Cómo obtener los archivos cambiados desde una referencia sin que `git` ejecute ganchos, filtros ni configuración del repositorio. Salida: `spikes/cambios-sin-ejecutar.md`, con la decisión: invocación neutralizada o solo `--archivos`.
 
 ## F1 — Comando mínimo
 
-- [ ] **F1.1** `core/verificar/index.js`: detectar lenguaje y comando. Tests: proyecto sin `.sdd/`; lenguaje no admitido rechazado sin ejecutar. Cubre CA-001-01, CA-001-06.
-- [ ] **F1.2** Ejecución con `SandboxRunner` y clasificación con el enrutador. Tests con el Docker falso: pasa, falla, infraestructura. Cubre CA-001-04, CA-002-01.
-- [ ] **F1.3** `--comando` sin intérprete de órdenes. Tests: un comando con `&&` o redirección no se interpreta. Cubre CA-001-02.
-- [ ] **F1.4** Sin Docker: código 4 y mensaje; ninguna opción para saltarlo. Cubre CA-001-05.
-- [ ] **F1.5** `cli/verificar.js` y entrada con carga perezosa en `cli/index.js`. Test estático y en proceso hijo: no se carga ningún proveedor de modelo ni módulo de integraciones; `fetch` interceptado; ninguna clave de API leída. Cubre CA-001-03, RF-03.
-- [ ] **F1.6** Barrido de copias y contenedores huérfanos al empezar. Cubre RF-04.
+- [x] **F1.1** `core/verificar/index.js`: detectar lenguaje y comando. Tests: proyecto sin `.sdd/`; lenguaje no admitido rechazado sin ejecutar. Cubre CA-001-01, CA-001-06.
+- [x] **F1.2** Ejecución con `SandboxRunner` y clasificación con el enrutador. Tests con el Docker falso: pasa, falla, infraestructura. Cubre CA-001-04, CA-002-01.
+- [x] **F1.3** `--comando` sin intérprete de órdenes. Tests: un comando con `&&` o redirección no se interpreta. Cubre CA-001-02.
+- [x] **F1.4** Sin Docker: código 4 y mensaje; ninguna opción para saltarlo. Cubre CA-001-05.
+- [x] **F1.5** `cli/verificar.js` y entrada con carga perezosa en `cli/index.js`. Test estático y en proceso hijo: no se carga ningún proveedor de modelo ni módulo de integraciones; `fetch` interceptado; ninguna clave de API leída. Cubre CA-001-03, RF-03.
+- [x] **F1.6** Barrido de copias y contenedores huérfanos al empezar. Cubre RF-04.
 
 ## F2 — Salida estable
 
-- [ ] **F2.1** `core/verificar/resultado.js`: forma del resultado con versión. Cubre CA-002-02, CA-002-05.
-- [ ] **F2.2** Cero pruebas ejecutadas no es éxito. Cubre CA-002-03.
-- [ ] **F2.3** Redacción y tope de la salida. Test con una salida que contiene un secreto con forma conocida. Cubre CA-002-04.
+- [x] **F2.1** `core/verificar/resultado.js`: forma del resultado con versión. Cubre CA-002-02, CA-002-05.
+- [x] **F2.2** Cero pruebas ejecutadas no es éxito. Cubre CA-002-03.
+- [x] **F2.3** Redacción y tope de la salida. Test con una salida que contiene un secreto con forma conocida. Cubre CA-002-04.
 
 ## F3 — Mutación
 
@@ -43,3 +43,5 @@
 - [ ] **F5.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.
 - [ ] **F5.5** Revisión independiente con la guía OWASP de agentes; hallazgos altos corregidos.
 - [ ] **F5.6** `verificacion.md` con cada criterio y su prueba.
+
+> **2026-10-14:** S0, F1 y F2 implementadas (`core/verificar/`, `cli/verificar.js`, `core/sandbox/crear-sandbox.js`). Mutación (F3), `--desde`, `--registrar` y cierre pendientes. Sin probar con Docker real.

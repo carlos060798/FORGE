@@ -11,22 +11,22 @@
 
 ## S0 — Inventarios (solo lectura)
 
-- [ ] **S0.1** Todas las lecturas de variables `FORGE_*`, con archivo y línea, clasificadas en política, configuración y pruebas. Salida: `spikes/variables.md`.
-- [ ] **S0.2** Todos los sitios donde la carpeta de estado, la etiqueta de contenedor y el nombre del paquete se usan como dato. Salida: `spikes/nombres-como-dato.md`.
+- [x] **S0.1** Todas las lecturas de variables `FORGE_*`, con archivo y línea, clasificadas en política, configuración y pruebas. Salida: `spikes/variables.md`.
+- [x] **S0.2** Todos los sitios donde la carpeta de estado, la etiqueta de contenedor y el nombre del paquete se usan como dato. Salida: `spikes/nombres-como-dato.md`.
 - [ ] **S0.3** Comprobación del nombre en npm el día de publicar.
 
 ## F2 — Nombre en un solo sitio
 
-- [ ] **F2.1** `core/nombres.js` con las formas nueva y antigua.
-- [ ] **F2.2** Ayuda y mensajes con la orden con la que se invocó el programa; ejemplos con `fragua`. Cubre CA-001-03.
-- [ ] **F2.3** Aviso al usar `forge`: una línea, nunca con `--json` ni en salida no interactiva. Cubre CA-001-04.
+- [x] **F2.1** `core/nombres.js` con las formas nueva y antigua.
+- [x] **F2.2** Ayuda y mensajes con la orden con la que se invocó el programa; ejemplos con `fragua`. Cubre CA-001-03.
+- [x] **F2.3** Aviso al usar `forge`: una línea, nunca con `--json` ni en salida no interactiva. Cubre CA-001-04.
 
 ## F3 — Variables de entorno (seguridad)
 
-- [ ] **F3.1** `core/entorno.js`: `leerVariable`. Tests: solo antigua, solo nueva, iguales, distintas (error que nombra las dos). Cubre CA-003-01, CA-003-02.
-- [ ] **F3.2** Sustituir todas las lecturas del inventario S0.1. Prueba estática: no queda ninguna lectura directa fuera de `core/entorno.js`.
+- [x] **F3.1** `core/entorno.js`: `leerVariable`. Tests: solo antigua, solo nueva, iguales, distintas (error que nombra las dos). Cubre CA-003-01, CA-003-02.
+- [x] **F3.2** Sustituir todas las lecturas del inventario S0.1. Prueba estática: no queda ninguna lectura directa fuera de `core/entorno.js`.
 - [ ] **F3.3** Una prueba por variable de política: ninguna combinación de los dos nombres amplía permisos. Cubre CA-003-03.
-- [ ] **F3.4** Prefijos admitidos en `*_token_env`. Cubre CA-003-04.
+- [x] **F3.4** Prefijos admitidos en `*_token_env`. Cubre CA-003-04.
 - [ ] **F3.5** Proyecto hostil: el repositorio no puede fijar ninguna de las dos formas. Cubre CA-003-05.
 
 ## F4 — Estado del usuario y contenedores (seguridad)
@@ -55,3 +55,5 @@
 - [ ] **F7.1** Revisión independiente de F3 y F4; hallazgos altos corregidos.
 - [ ] **F7.2** Suite completa en Windows y en el contenedor Linux; tipos en 0.
 - [ ] **F7.3** `verificacion.md` con cada criterio y su prueba.
+
+> **2026-10-14:** S0, F2 y F3 implementadas en la rama de integración (`core/nombres.js`, `core/entorno.js`, `claude-hooks/shared/entorno.js`, `tests/entorno-fragua.test.js`). Pendientes: F3.3 y F3.5 (una prueba por variable de política y proyecto hostil, a verificar en la revisión independiente), F4, F5, F6 y F7. El inventario encontró 23 lecturas de 17 variables (la spec decía 28).
