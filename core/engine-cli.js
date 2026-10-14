@@ -36,9 +36,7 @@ import { CicloVerificado, crearLlamador, dirMotorBase, lineaAislamiento, lineasE
 import { adquirir, ErrorBloqueado } from './ciclo/candado.js';
 import { barrerCopiasDeSesiones, barrerMutacionesDeProcesosMuertos } from './ciclo/restos.js';
 import { DockerCli } from './sandbox/docker-cli.js';
-import { SandboxRunner } from './sandbox/sandbox-runner.js';
-import { comprobarProyecto } from './sandbox/preparar-imagen.js';
-import { runtimePermitido } from './sandbox/politica.js';
+import { comprobarEntorno, construirSandbox } from './sandbox/crear-sandbox.js';
 
 export const SALIDA = { OK: 0, FALLO: 1, REVISION: 3, SIN_AISLAMIENTO: 4 };
 const DECISIONES = ['continuar', 'aceptar', 'abortar'];
@@ -131,38 +129,24 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = [], opci
     err(`El ciclo verificado solo se ejecuta en la etapa "code" (etapa actual: "${etapa}"). Avanza con "forge step code" o añade --force. ${SALIDA_CLASICA}`);
   }
 
-  const problema = comprobarProyecto(cwd, deps.stack.lenguaje, deps.stack.test_cmd);
-  if (problema) err(`${problema} ${SALIDA_CLASICA}`);
-
-  // El runtime lo escribe el archivo del proyecto: debe estar autorizado por el usuario (H-05)
-  const permitido = runtimePermitido(config.sandbox.runtime);
-  if (permitido.ok === false) {
-    console.error(`${c.rojo('✗')} ${permitido.error}`);
-    console.error('  ' + SALIDA_CLASICA);
-    process.exit(SALIDA.SIN_AISLAMIENTO);
-  }
-
-  const cli  = opciones.cli ?? new DockerCli();
-  const disp = await cli.disponible();
-  if (disp.ok === false) {
-    console.error(`${c.rojo('✗')} ${disp.error}`);
-    console.error('  El ciclo verificado no ejecuta código generado fuera del entorno aislado.');
-    console.error('  Arranca Docker y vuelve a intentarlo.');
-    console.error('  ' + SALIDA_CLASICA);
-    process.exit(SALIDA.SIN_AISLAMIENTO);
-  }
-
-  // Un mecanismo de aislamiento pedido que Docker no tiene: mismo desenlace que «sin aislamiento».
-  // Nunca se usa el de por defecto en su lugar.
-  if (config.sandbox.runtime) {
-    const rt = await cli.runtimeDisponible(config.sandbox.runtime);
-    if (rt.ok === false) {
-      console.error(`${c.rojo('✗')} ${rt.error}`);
+  const entorno = await comprobarEntorno({ cwd, lenguaje: deps.stack.lenguaje, testCmd: deps.stack.test_cmd, runtime: config.sandbox.runtime, cli: opciones.cli });
+  if (entorno.ok === false) {
+    if (entorno.causa === 'proyecto') err(`${entorno.error} ${SALIDA_CLASICA}`);
+    console.error(`${c.rojo('✗')} ${entorno.error}`);
+    if (entorno.causa === 'runtime_no_permitido') {
+      console.error('  ' + SALIDA_CLASICA);
+    } else if (entorno.causa === 'docker') {
+      console.error('  El ciclo verificado no ejecuta código generado fuera del entorno aislado.');
+      console.error('  Arranca Docker y vuelve a intentarlo.');
+      console.error('  ' + SALIDA_CLASICA);
+    } else {
+      // Un mecanismo de aislamiento pedido que Docker no tiene: mismo desenlace que «sin aislamiento»
       console.error('  El ciclo verificado no empieza con un aislamiento distinto del que pediste.');
       console.error('  Instala ese mecanismo en Docker, o quita sandbox.runtime de .sdd/sdd.config.yaml para usar el de Docker por defecto.');
-      process.exit(SALIDA.SIN_AISLAMIENTO);
     }
+    process.exit(SALIDA.SIN_AISLAMIENTO);
   }
+  const { cli, version } = entorno;
 
   // Un solo ciclo por proyecto: dos a la vez compartirían la copia, el gasto y el barrido de contenedores
   let liberar;
@@ -179,15 +163,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = [], opci
 
   const sesion   = nueva || !previa ? nuevaSesion(cwd) : previa;
   const dirMotor = path.join(dirMotorBase(cwd), sesion.runId);
-  const sandbox  = new SandboxRunner({
-    runId: sesion.runId, dirMotor, cli,
-    lenguaje: deps.stack.lenguaje, testCmd: deps.stack.test_cmd,
-    descargarBase: true,   // la primera vez en un equipo, la imagen base se descarga (con red) en lugar de fallar
-    limites: { cpus: config.sandbox.cpus, memoria: config.sandbox.memoria, pids: config.sandbox.pids },
-    timeoutMs: config.sandbox.timeout_s * 1000,
-    salidaMaxBytes: config.sandbox.salida_max_bytes,
-    runtime: config.sandbox.runtime,
-  });
+  const sandbox  = construirSandbox({ runId: sesion.runId, dirMotor, cli, lenguaje: deps.stack.lenguaje, testCmd: deps.stack.test_cmd, sandbox: config.sandbox });
   const barridos = await sandbox.barrerHuerfanos();
   if (barridos > 0) warn(`Se eliminaron ${barridos} contenedor(es) de una ejecución anterior.`);
   // También las de sesiones anteriores: un `forge run` tras un corte abre otra sesión, y la copia del
@@ -205,7 +181,7 @@ async function prepararCiclo(cwd, flags, deps, apiKey, nueva, taskIds = [], opci
     vetadas: leerRutasProtegidas(cwd),
     specPath: spec ? path.join(cwd, '.sdd', 'especificaciones', String(spec), 'spec.md') : undefined,
   });
-  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${(ciclo.libro.tope() ?? config.presupuesto.tope_usd).toFixed(2)} · Docker ${disp.version} · aislamiento: ${config.sandbox.runtime || 'el de Docker por defecto'}`);
+  info(`Motor: ciclo verificado · sesión ${sesion.runId} · tope $${(ciclo.libro.tope() ?? config.presupuesto.tope_usd).toFixed(2)} · Docker ${version} · aislamiento: ${config.sandbox.runtime || 'el de Docker por defecto'}`);
   return { ciclo, config, dirMotor };
 }
 

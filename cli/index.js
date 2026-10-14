@@ -1755,6 +1755,8 @@ Uso:
   npx forge import --from=speckit --dir=<dir> [--merge]
   npx forge import --from=openspec --file=<file.json> [--merge]
                                      Importa artefactos portables de vuelta a .sdd/
+  npx forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json]
+                                     Veredicto de las pruebas en contenedor aislado, sin modelo
   npx forge status                   Estado del pipeline + transiciones disponibles
   npx forge step <paso> [--force]    Avanzar el pipeline al paso indicado (sin LLM)
   npx forge state                    Volcar estado.json formateado
@@ -1888,6 +1890,12 @@ async function main() {
       // Carga perezosa: solo quien invoca este comando importa el paquete de integraciones (HU-005)
       const { cmdIntegraciones } = await import("./integraciones.js");
       await cmdIntegraciones(args.slice(1));
+      break;
+    }
+    case "verificar": {
+      // Carga perezosa: sin modelo, sin proveedores ni integraciones (spec 2026-10-13-verificar-sin-modelo)
+      const { cmdVerificar } = await import("./verificar.js");
+      process.exitCode = await cmdVerificar(args.slice(1));
       break;
     }
     case "api": {
