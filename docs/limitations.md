@@ -8,9 +8,9 @@ Este documento describe las limitaciones conocidas de FORGE: restricciones inher
 
 ### FORGE no es independiente de Claude Code
 
-FORGE requiere Claude Code para funcionar. No existe un modo de ejecución autónomo, un servidor independiente ni una API HTTP propia. Todo corre dentro de las sesiones de Claude Code.
+Las sesiones interactivas y los agentes en forma de comandos corren dentro de Claude Code. Desde 5.0.0 existen `forge api` (API HTTP local con token) y `forge mcp` (servidor MCP por stdin/stdout), y `forge run` puede lanzarse desde la terminal sin sesión de Claude Code; los agentes siguen necesitando un proveedor de modelo y las sesiones interactivas corren dentro de Claude Code.
 
-**Por qué:** Esta decisión mantiene FORGE extremadamente ligero (dos dependencias npm) y elimina la fricción de instalación. La contrapartida es que FORGE no puede ejecutarse en pipelines de CI sin Claude Code.
+**Por qué:** Esta decisión mantiene FORGE extremadamente ligero (tres dependencias npm) y elimina la fricción de instalación. La contrapartida es que el flujo interactivo completo necesita Claude Code; el ciclo verificado (`forge run`) sí puede lanzarse en un pipeline, con Docker y un proveedor de modelo.
 
 ---
 

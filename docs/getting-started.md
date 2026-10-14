@@ -8,7 +8,8 @@ Esta guía te lleva de cero a un pipeline FORGE funcionando. Tiempo estimado: 10
 
 | Requisito | Mínimo | Recomendado |
 |---|---|---|
-| Node.js | ≥18.0.0 | ≥22.5.0 (SQLite nativo) |
+| Node.js | ≥20.0.0 | ≥22.5.0 (SQLite nativo) |
+| Docker | en marcha (para `forge run` con el ciclo verificado; sin él sale con código 4) | Docker Desktop |
 | Claude Code | cualquier versión | última |
 | Git | cualquier versión | — |
 | ANTHROPIC_API_KEY | obligatoria | — |
@@ -19,11 +20,11 @@ Si usas Node ≥22.5, FORGE usa `node:sqlite` nativo para la memoria y el decisi
 
 ## Paso 1 — Instalar FORGE
 
-**Opción A — npm (recomendada):**
+**Opción A — npm:** la 5.0.0 **no está publicada en npm** (allí solo hay versiones anteriores, p. ej. 4.2.0). Con `npm install -g forja-mvp` obtendrás una versión anterior y `forge --version` no imprimirá 5.0.0. Para la 5.0.0 usa `npm install -g ./dist/forja-mvp-5.0.0.tgz` (generado con `npm pack`) o la opción B.
 
 ```bash
 npm install -g forja-mvp
-forge --version   # debe imprimir 4.2.0
+forge --version   # debe imprimir 5.0.0
 ```
 
 **Opción B — desde el repositorio:**
@@ -33,7 +34,7 @@ git clone https://github.com/carlos060798/FORGE
 cd FORGE
 npm install
 npm install -g .
-forge --version   # debe imprimir 4.2.0
+forge --version   # debe imprimir 5.0.0
 ```
 
 ---

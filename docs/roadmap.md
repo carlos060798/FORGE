@@ -1,6 +1,6 @@
 # Hoja de ruta
 
-Este documento describe el estado actual de FORGE (4.3.0, sin publicar) y las mejoras planificadas para versiones futuras.
+Este documento describe el estado actual de FORGE (5.0.0, sin publicar; la 4.3.0 nunca se publicó) y las mejoras planificadas para versiones futuras.
 
 ---
 

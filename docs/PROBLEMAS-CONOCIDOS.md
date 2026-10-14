@@ -479,12 +479,12 @@ Guía completa: [integraciones-externas.md](integraciones-externas.md). Spec `20
 - **Cómo evitarlo hoy.** Empieza con `solo_lectura`, un destino de prueba y un token de alcance mínimo.
 - **Evidencia.** INT-V, secciones 7 a 9. INT-S, «sin confirmar».
 
-### I-2 · La publicación, la aprobación y la línea de comandos no existen todavía (en construcción)
+### I-2 · La publicación con aprobación y la línea de comandos de integraciones (cerrado, sin cuenta real)
 
-- **Qué pasa.** Están hechos el núcleo (configuración, capa de confianza, cliente HTTP, auditoría) y los tres adaptadores. **Faltan** la cola de pendientes con vista previa y aprobación (F3), el comando `forge integraciones` y las comprobaciones de `forge doctor` y `forge status` (F4), y la prueba de no filtración, la prueba de que ningún camino lleva del modelo a la red y la revisión independiente (F5). Hoy ningún comando usa estos módulos.
-- **A quién afecta.** A quien lea la spec creyendo que ya se puede usar.
-- **Cómo evitarlo hoy.** No se puede activar desde la línea de comandos; no hay nada que evitar. No cuentes con esto para una publicación.
-- **Evidencia.** `tareas.md`, F3 a F5.
+- **Qué pasa.** Están hechos el núcleo, los tres adaptadores, la cola de pendientes con vista previa y aprobación autenticada, el comando `forge integraciones` y las comprobaciones de `forge doctor`; pasaron cinco revisiones independientes. **Sigue sin probarse contra GitHub, GitLab ni Jira reales**: solo con servidores falsos locales.
+- **A quién afecta.** A quien active las integraciones esperando comportamiento ya validado contra la plataforma.
+- **Cómo evitarlo hoy.** Déjalas apagadas (es el valor por defecto) o pruébalas primero con una cuenta y un repositorio de prueba.
+- **Evidencia.** `.sdd/especificaciones/2026-10-11-integraciones-externas/revision-independiente-3.md`.
 
 ### I-3 · El alcance del token no se puede comprobar en GitHub ni en Jira (abierto)
 
