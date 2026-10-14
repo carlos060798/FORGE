@@ -25,6 +25,25 @@ import { comprobarEntorno, construirSandbox } from '../sandbox/crear-sandbox.js'
 import { crearResultado } from './resultado.js';
 
 /**
+ * ¿La salida de un comando que terminó con 0 dice que no ejecutó ninguna prueba?
+ * Solo sirve para DEGRADAR un «pasa» a «sin pruebas»: nunca convierte un fallo en éxito, así que un
+ * texto manipulado no puede mejorar el veredicto. Reconoce el resumen de node:test (`tests 0`) y el
+ * de Go (todos los paquetes «[no test files]»). pytest y unittest ya se cubren con el código 5.
+ * @param {string} salida
+ * @returns {boolean}
+ */
+export function salidaSinPruebas(salida) {
+  const texto = String(salida ?? '');
+  // node:test: resumen «ℹ tests 0» (reporter spec) o «# tests 0» (TAP)
+  const resumen = [...texto.matchAll(/^\s*(?:ℹ|#)\s+tests\s+(\d+)\s*$/gm)];
+  if (resumen.length > 0) return resumen.every((m) => Number(m[1]) === 0);
+  // Go: ninguna línea «ok» y al menos un «[no test files]»
+  const sinArchivos = /\[no test files\]/.test(texto);
+  const conPruebas = /^ok\s+\S+/m.test(texto) || /^(?:---\s+)?(?:PASS|FAIL)\b/m.test(texto);
+  return sinArchivos && !conPruebas;
+}
+
+/**
  * Carpeta propia de las verificaciones de un proyecto, en el temporal del sistema.
  * @param {string} cwd  ruta absoluta del proyecto
  * @param {string} [temporal]
@@ -102,7 +121,12 @@ export async function verificar(opciones = {}) {
       veredicto = 'sin_pruebas';
       motivo = 'El comando terminó sin encontrar ninguna prueba (código 5).';
     } else if (categoria === 'pass') {
-      veredicto = 'pasa';
+      if (salidaSinPruebas([r.stdout, r.stderr].filter(Boolean).join('\n'))) {
+        veredicto = 'sin_pruebas';
+        motivo = 'El comando terminó con 0 pero su salida dice que no ejecutó ninguna prueba.';
+      } else {
+        veredicto = 'pasa';
+      }
     } else {
       veredicto = 'falla';
       if (categoria === 'timeout') motivo = 'Las pruebas superaron el tiempo máximo.';
