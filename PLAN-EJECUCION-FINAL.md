@@ -148,3 +148,5 @@ El proyecto está terminado para publicar cuando:
 - **Revisiones:** cuarta pasada hecha; revisión de seguridad de integraciones (F1, F2) y de publicación y CLI hechas, ambas RECHAZADAS y corregidas (R1 a R15, H1 a H12); N-02 cerrado con límite del adversario deliberado.
 - **Pruebas en proyectos independientes:** paquete instalado fuera del repo; 3 de 3 en éxito con modelo real (0,13 USD calculados). Ver `docs/PRUEBAS-INDEPENDIENTES.md`.
 - **Pendiente:** quinta pasada corta sobre la cola autenticada y la mutación por aserción; solicitud de cambio y CI en Linux; cuentas reales para integraciones; factura frente a gasto; decisiones del dueño; rotar la clave; publicar.
+
+- **Verificación 2026-10-13 (tras la quinta revisión):** suite completa 2989 pruebas, 2972 pasan, 14 saltadas, 3 con fallo por suspensión del equipo (duraciones de ~15 000 s); las tres (`cli-config`, `concurrencia`, `corte-real`) pasan aisladas, 39 de 39. Integraciones 604 de 604; tipos 0. Paquete `dist/forja-mvp-5.0.0.tgz` generado e instalado en carpeta limpia; `forge doctor` arranca. Documentación con diagramas: `docs/FORGE-DOCUMENTACION.html`.

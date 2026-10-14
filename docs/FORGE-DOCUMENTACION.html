@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORGE 5.0 documentación</title>
+<style>
+:root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#5f5f5a;--card:#fff;--bd:#d9d8d2;--ac:#1f5fbf;--ok:#1d7a46;--warn:#a65b00;--bad:#b3261e;--code:#f0efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--fg:#ecebe6;--mut:#a3a29b;--card:#201f1d;--bd:#3a3935;--ac:#7fb0ff;--ok:#5fcf8b;--warn:#f0a94a;--bad:#ff8a80;--code:#2a2926}}
+:root[data-theme="dark"]{--bg:#161615;--fg:#ecebe6;--mut:#a3a29b;--card:#201f1d;--bd:#3a3935;--ac:#7fb0ff;--ok:#5fcf8b;--warn:#f0a94a;--bad:#ff8a80;--code:#2a2926}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,Segoe UI,sans-serif}
+main{max-width:920px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:2rem;margin:.2em 0}h2{margin-top:2.2em;border-bottom:1px solid var(--bd);padding-bottom:.2em}
+p.sub{color:var(--mut);margin-top:0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;margin:14px 0}
+pre{background:var(--code);padding:12px;border-radius:8px;overflow-x:auto;font-size:.9rem}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;font-size:.93rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--bd);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--code)}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+svg{width:100%;height:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+svg text{fill:var(--fg);font:13px system-ui,sans-serif}
+svg .b{fill:var(--card);stroke:var(--ac);stroke-width:1.6}
+svg .g{fill:var(--card);stroke:var(--ok);stroke-width:1.6}
+svg .w{fill:var(--card);stroke:var(--warn);stroke-width:1.6}
+svg .r{fill:var(--card);stroke:var(--bad);stroke-width:1.6}
+svg .l{stroke:var(--mut);stroke-width:1.5;fill:none}
+svg .m{fill:var(--mut);font-size:11px}
+nav a{margin-right:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>FORGE 5.0</h1>
+<p class="sub">Marco de desarrollo guiado por especificaciones con un ciclo de implementación verificado. Paquete <code>forja-mvp</code> · Node 20+ · Docker para ejecutar código generado.</p>
+<nav><a href="#que">Qué es</a><a href="#ciclo">Ciclo</a><a href="#arq">Arquitectura</a><a href="#integ">Integraciones</a><a href="#ejecutar">Ejecutar</a><a href="#estado">Estado del plan</a></nav>
+
+<h2 id="que">1. Qué es</h2>
+<p>FORGE convierte una tarea en código probado sin que el modelo decida cuándo «está listo»: el control lo lleva un enrutador determinista que mira el código de salida de las pruebas ejecutadas en un contenedor aislado. Una persona aprueba el resultado al final.</p>
+<div class="card">
+<strong>Principios que se comprueban en código</strong>
+<ul>
+<li>Las pruebas las escribe un rol distinto del que escribe el código.</li>
+<li>El código generado solo se ejecuta en Docker, sin red.</li>
+<li>Hay tope de gasto, puntos de guardado y diario de respuestas: el ciclo se reanuda y se audita.</li>
+<li>La aprobación humana es el último paso; nada se publica en plataformas externas sin ella.</li>
+</ul>
+</div>
+
+<h2 id="ciclo">2. El ciclo verificado</h2>
+<svg viewBox="0 0 880 250" role="img" aria-label="Diagrama del ciclo verificado">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>
+<rect class="b" x="10" y="30" width="110" height="54" rx="8"/><text x="65" y="55" text-anchor="middle">Tarea</text><text x="65" y="72" text-anchor="middle" class="m">especificación</text>
+<rect class="b" x="160" y="30" width="110" height="54" rx="8"/><text x="215" y="55" text-anchor="middle">QA</text><text x="215" y="72" text-anchor="middle" class="m">escribe pruebas</text>
+<rect class="b" x="310" y="30" width="110" height="54" rx="8"/><text x="365" y="55" text-anchor="middle">Coder</text><text x="365" y="72" text-anchor="middle" class="m">bloque o turnos</text>
+<rect class="g" x="460" y="30" width="120" height="54" rx="8"/><text x="520" y="55" text-anchor="middle">Sandbox</text><text x="520" y="72" text-anchor="middle" class="m">Docker, sin red</text>
+<rect class="g" x="620" y="30" width="120" height="54" rx="8"/><text x="680" y="55" text-anchor="middle">Enrutador</text><text x="680" y="72" text-anchor="middle" class="m">código de salida</text>
+<rect class="w" x="620" y="150" width="120" height="54" rx="8"/><text x="680" y="175" text-anchor="middle">Mutación</text><text x="680" y="192" text-anchor="middle" class="m">no|informar|exigir</text>
+<rect class="g" x="760" y="150" width="110" height="54" rx="8"/><text x="815" y="175" text-anchor="middle">Revisión</text><text x="815" y="192" text-anchor="middle" class="m">humana</text>
+<rect class="r" x="310" y="150" width="270" height="54" rx="8"/><text x="445" y="175" text-anchor="middle">Pausa con motivo</text><text x="445" y="192" text-anchor="middle" class="m">iteraciones · sin_progreso · presupuesto · infraestructura</text>
+<path class="l" d="M120 57H160" marker-end="url(#a)"/><path class="l" d="M270 57H310" marker-end="url(#a)"/><path class="l" d="M420 57H460" marker-end="url(#a)"/><path class="l" d="M580 57H620" marker-end="url(#a)"/>
+<path class="l" d="M680 84V150" marker-end="url(#a)"/><path class="l" d="M740 177H760" marker-end="url(#a)"/>
+<path class="l" d="M620 70C590 120 450 130 380 84" marker-end="url(#a)"/><text x="500" y="130" class="m">fallan: otra iteración</text>
+<path class="l" d="M445 150V140" /><path class="l" d="M680 150V140"/>
+</svg>
+<table>
+<tr><th>Modo</th><th>Valores</th><th>Qué hace</th></tr>
+<tr><td><code>motor.implementador</code></td><td>bloque · turnos</td><td>turnos usa herramientas: leer_archivo, listar, buscar, editar, ejecutar_pruebas</td></tr>
+<tr><td><code>motor.mutacion</code></td><td>no · informar · exigir</td><td>mide si las pruebas detectan cambios; solo cuentan fallos de aserción</td></tr>
+<tr><td><code>motor.sin_progreso</code></td><td>entero</td><td>pausa si la misma salida se repite</td></tr>
+<tr><td><code>llm.cache</code> / <code>llm.timeout_s</code></td><td>—</td><td>caché de prompt y tiempo máximo por llamada</td></tr>
+<tr><td><code>sandbox.runtime</code></td><td>lista en <code>FORGE_RUNTIMES_PERMITIDOS</code></td><td>lo permitido lo decide el entorno del usuario</td></tr>
+</table>
+
+<h2 id="arq">3. Arquitectura</h2>
+<svg viewBox="0 0 880 280" role="img" aria-label="Capas de la arquitectura">
+<rect class="b" x="20" y="14" width="840" height="46" rx="8"/><text x="440" y="43" text-anchor="middle">CLI: forge init · run · resume · status · doctor · integraciones</text>
+<rect class="b" x="20" y="76" width="270" height="70" rx="8"/><text x="155" y="104" text-anchor="middle">core/ciclo</text><text x="155" y="124" text-anchor="middle" class="m">turnos · mutación · presupuesto · diario</text>
+<rect class="b" x="305" y="76" width="270" height="70" rx="8"/><text x="440" y="104" text-anchor="middle">core/agent-registry</text><text x="440" y="124" text-anchor="middle" class="m">proveedores LLM · caché · tiempos</text>
+<rect class="b" x="590" y="76" width="270" height="70" rx="8"/><text x="725" y="104" text-anchor="middle">core/integraciones</text><text x="725" y="124" text-anchor="middle" class="m">carga perezosa · puertos · aprobación</text>
+<rect class="g" x="20" y="162" width="410" height="50" rx="8"/><text x="225" y="192" text-anchor="middle">Sandbox Docker (sin red, código generado)</text>
+<rect class="w" x="445" y="162" width="415" height="50" rx="8"/><text x="652" y="192" text-anchor="middle">Estado del usuario (clave local, cola firmada) fuera del proyecto</text>
+<rect class="r" x="20" y="226" width="840" height="40" rx="8"/><text x="440" y="251" text-anchor="middle">Proyecto del usuario: se trata como no confiable (puede ser un repositorio ajeno)</text>
+</svg>
+
+<h2 id="integ">4. Integraciones externas (GitHub · GitLab · Jira)</h2>
+<p>Opcionales y apagadas por defecto: quien no las activa no carga nada. Tres operaciones fijas por puerto: <code>leerElemento</code>, <code>comentar</code>, <code>proponerCambio</code>.</p>
+<svg viewBox="0 0 880 200" role="img" aria-label="Flujo de publicación con aprobación">
+<defs><marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>
+<rect class="b" x="10" y="60" width="130" height="60" rx="8"/><text x="75" y="86" text-anchor="middle">publicar</text><text x="75" y="104" text-anchor="middle" class="m">prepara vista previa</text>
+<rect class="w" x="180" y="60" width="150" height="60" rx="8"/><text x="255" y="86" text-anchor="middle">Cola firmada</text><text x="255" y="104" text-anchor="middle" class="m">HMAC con clave local</text>
+<rect class="g" x="370" y="60" width="150" height="60" rx="8"/><text x="445" y="86" text-anchor="middle">aprobar --huella</text><text x="445" y="104" text-anchor="middle" class="m">persona confirma</text>
+<rect class="g" x="560" y="60" width="140" height="60" rx="8"/><text x="630" y="86" text-anchor="middle">Comprobaciones</text><text x="630" y="104" text-anchor="middle" class="m">alcance · destinos · tope</text>
+<rect class="b" x="740" y="60" width="130" height="60" rx="8"/><text x="805" y="86" text-anchor="middle">Plataforma</text><text x="805" y="104" text-anchor="middle" class="m">REST restringido</text>
+<path class="l" d="M140 90H180" marker-end="url(#b2)"/><path class="l" d="M330 90H370" marker-end="url(#b2)"/><path class="l" d="M520 90H560" marker-end="url(#b2)"/><path class="l" d="M700 90H740" marker-end="url(#b2)"/>
+<text x="10" y="170" class="m">Interruptor general: FORGE_INTEGRACIONES=apagado · Escritura: FORGE_INTEGRACIONES_ESCRITURA · Destinos: FORGE_INTEGRACIONES_DESTINOS</text>
+</svg>
+<table>
+<tr><th>Amenaza (OWASP Agentic 2026)</th><th>Control</th></tr>
+<tr><td>Texto de una incidencia con instrucciones</td><td>Se entrega como dato no confiable, entre delimitadores con nonce</td></tr>
+<tr><td>Repositorio hostil que se concede permisos</td><td>Modo, escritura y destinos salen del entorno del usuario, no del archivo del proyecto</td></tr>
+<tr><td>Cola de aprobaciones falsificada</td><td>Firma HMAC con clave en la carpeta del usuario; estado dentro del proyecto rechazado</td></tr>
+<tr><td>Cambios a manifiestos, CI o ganchos</td><td>Excluidos de las propuestas sin aprobación por archivo</td></tr>
+<tr><td>Fugas de credenciales</td><td>Tokens solo por variables <code>FORGE_*</code>; redacción antes de mostrar al modelo; sin tokens en archivos</td></tr>
+<tr><td>Abuso o bucle</td><td>Límites por sesión y kill-switch</td></tr>
+</table>
+
+<h2 id="ejecutar">5. Instalar y ejecutar</h2>
+<p>El paquete está empaquetado en <code>dist/forja-mvp-5.0.0.tgz</code> (generado con <code>npm pack</code>). No está publicado en npm: el instalable local es la vía de prueba.</p>
+<pre><code># 1. Instalar desde el paquete local, en cualquier carpeta
+npm install -g ./dist/forja-mvp-5.0.0.tgz
+
+# 2. Comprobar el entorno (Node, Docker, proveedores)
+forge doctor
+
+# 3. Iniciar un proyecto y ejecutar el ciclo con tareas
+forge init
+forge run --motor ciclo --tasks tareas.json --cwd mi-proyecto
+
+# Sin instalar globalmente
+npx --package ./dist/forja-mvp-5.0.0.tgz forge doctor</code></pre>
+<pre><code># Pruebas en cinco proyectos independientes
+node scripts/pruebas-independientes.mjs --modelo humo        # sin gasto
+$env:ANTHROPIC_API_KEY='...'                                  # solo en la sesión
+node scripts/pruebas-independientes.mjs --modelo real --proyectos js-nuevo --tope 0.15</code></pre>
+
+<h2 id="estado">6. Estado del plan</h2>
+<table>
+<tr><th>Bloque</th><th>Estado</th><th>Nota</th></tr>
+<tr><td>Fases 6–9 del motor</td><td class="ok">Hecho</td><td>Validación, mutación, implementador por pasos, caché/MCP/AGENTS.md/runtime</td></tr>
+<tr><td>Integraciones GitHub/GitLab/Jira</td><td class="ok">Hecho, sin cuenta real</td><td>Probadas con servidores falsos locales</td></tr>
+<tr><td>Revisiones independientes</td><td class="ok">Cinco pasadas</td><td>Sin hallazgos altos abiertos; observaciones de la quinta cerradas</td></tr>
+<tr><td>Proyectos independientes con modelo real</td><td class="ok">3 de 3</td><td>go-modulo y dos-tareas con modelo real: opcionales</td></tr>
+<tr><td>Integración continua en Linux</td><td class="warn">Sin ejecutar</td><td>Requiere abrir la solicitud de cambio a <code>main</code></td></tr>
+<tr><td>Gasto calculado frente a facturado</td><td class="warn">Pendiente</td><td>Comparar con la consola del proveedor</td></tr>
+<tr><td>Ratificación de especificaciones y ADR-19..22</td><td class="warn">Pendiente del dueño</td><td>—</td></tr>
+<tr><td>Publicación en npm y etiqueta</td><td class="bad">No hecha</td><td>Irreversible: solo el dueño y con CI en verde</td></tr>
+</table>
+<h3>Límites declarados</h3>
+<ul>
+<li>Un adversario deliberado puede imitar la señal de aserción de la mutación; la revisión humana es el control final.</li>
+<li><code>mutacion: exigir</code> pausa si hay pocos mutantes concluyentes (falla cerrado).</li>
+<li>Las integraciones no se han probado contra las plataformas reales.</li>
+<li>La clave de Anthropic usada en la validación apareció en una conversación: hay que rotarla.</li>
+</ul>
+</main>
+</body>
+</html>
