@@ -581,6 +581,16 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 - **Quién debe actuar.** Quien tuviera `api_key` en un archivo de proyecto: pasarla al entorno. Prueba: `tests/llm-destino-no-confiable.test.js`.
 - **Alcance.** Cubre OpenAI y Ollama. Anthropic usa el SDK, que lee su propia variable de entorno; no se revisó si el SDK admite otra dirección base desde el proyecto.
 
+## Revisión independiente de la integración del 2026-10-14 (variables, `verificar`, instalador)
+
+Veredicto: aprobada con observaciones. Informe: `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/revision-independiente-1.md`.
+
+- **Corregido (MEDIA).** `instalacion.carpeta_skills` de `.sdd/sdd.config.yaml` (archivo del proyecto, no confiable) permitía que `update` escribiera en la carpeta personal del usuario, sin proteger archivos ajenos y con toda la carpeta personal como raíz de escritura. Ahora una carpeta fuera del proyecto solo se acepta desde `--carpeta-skills`, la raíz es la propia carpeta y los archivos ajenos se protegen siempre fuera del proyecto. Prueba: `tests/instalacion-proyecto-hostil.test.js`.
+- **Corregido (BAJA).** El `motivo` de `verificar` se redacta; la carpeta temporal de verificación se crea con modo 0700 y se comprueba que no sea un enlace ni de otro usuario.
+- **Abierto (BAJA).** Ante dos valores distintos de `FRAGUA_*`/`FORGE_*`, los umbrales de aviso y bloqueo de contexto vuelven al valor por defecto, que puede ser más alto que el que el usuario puso.
+- **Por diseño.** `localhost` con cualquier puerto recibe la clave del modelo: es la propia máquina del usuario.
+- **No cubierto.** El revisor muestreó las skills generadas, no las leyó completas.
+
 ## Límites conocidos tras la quinta revisión (2026-10-13)
 
 - **`mutacion: exigir` y funciones con guardas `throw`:** una función con muchas guardas produce muchos mutantes no concluyentes; con menos de `mutacion_min_concluyentes` el ciclo se pausa (falla cerrado). Baja el mínimo o usa `informar`.

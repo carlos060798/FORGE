@@ -55,7 +55,8 @@ export function crearResultado(datos) {
     formato: FORMATO,
     veredicto,
     codigoSalida: codigoDeSalida(veredicto),
-    motivo: datos.motivo ?? null,
+    // El motivo puede venir de la salida de un proceso (stderr): se redacta como todo lo que sale
+    motivo: datos.motivo == null ? null : redactar(String(datos.motivo)),
     codigoPruebas: datos.codigoPruebas ?? null,
     comando: datos.comando == null ? null : redactar(datos.comando),
     lenguaje: datos.lenguaje ?? null,

@@ -339,13 +339,23 @@ function resolverInstalacion(global) {
 
   /** @type {string|null} */ let carpeta = null;
   if (integracion.clave === "generica") {
-    const v = validarCarpetaSkills(oc ?? guardada.carpeta, { proyecto: PROYECTO, personal: homedir() });
+    // La carpeta guardada en el proyecto (no confiable) solo vale dentro del proyecto; la de la línea
+    // de comandos puede estar también bajo la carpeta personal
+    const v = validarCarpetaSkills(oc ?? guardada.carpeta, { proyecto: PROYECTO, personal: homedir(), soloProyecto: oc === null });
     if (!v.ok) error(v.error);
     carpeta = /** @type {any} */ (v).ruta;
     // Una carpeta bajo la personal, fuera del proyecto, necesita su propia raíz de escritura
-    if (relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..")) raices?.push({ raiz: /** @type {any} */ (v).raiz });
+    if (relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..")) {
+      // Solo llega aquí desde --carpeta-skills (la guardada en el proyecto ya se rechazó arriba). La raíz de
+      // escritura es la propia carpeta y debe existir para fijarse como raíz.
+      mkdirSync(/** @type {string} */ (carpeta), { recursive: true });
+      raices?.push({ raiz: /** @type {any} */ (v).raiz });
+    }
   }
-  const previa = Boolean(guardada.integracion || guardada.perfil);
+  // «previa» desactiva la protección de archivos ajenos solo para el árbol del propio proyecto: un destino
+  // fuera de él se protege siempre, aunque la configuración diga que ya hubo una instalación
+  const fueraDelProyecto = carpeta !== null && relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..");
+  const previa = Boolean(guardada.integracion || guardada.perfil) && !fueraDelProyecto;
   return { integracion, perfil, carpeta, previa, explicita: oi !== null || op !== null || oc !== null };
 }
 

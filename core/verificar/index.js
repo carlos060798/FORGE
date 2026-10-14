@@ -87,6 +87,19 @@ export async function verificar(opciones = {}) {
   const runId = `verificar-${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
   const dirMotor = path.join(raiz, '.sdd', 'motor', runId);
 
+  // La carpeta de sesión es predecible (hash del proyecto): se crea privada y se comprueba que no sea un
+  // enlace ni de otro usuario, para que nadie la prepare antes en un temporal compartido
+  try {
+    fs.mkdirSync(raiz, { recursive: true, mode: 0o700 });
+    const st = fs.lstatSync(raiz);
+    const mio = typeof process.getuid !== 'function' || st.uid === process.getuid();
+    if (!st.isDirectory() || st.isSymbolicLink() || !mio) {
+      return crearResultado({ veredicto: 'infraestructura', motivo: 'La carpeta temporal de verificación no es segura (es un enlace o pertenece a otro usuario): no se usa.', comando, lenguaje, duracionMs: Date.now() - t0, avisos });
+    }
+  } catch (e) {
+    return crearResultado({ veredicto: 'infraestructura', motivo: `No se pudo preparar la carpeta temporal de verificación: ${e instanceof Error ? e.message : e}`, comando, lenguaje, duracionMs: Date.now() - t0, avisos });
+  }
+
   // Una verificación a la vez por proyecto: comparten el barrido de contenedores huérfanos
   let liberar;
   try {

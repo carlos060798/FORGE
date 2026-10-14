@@ -108,10 +108,10 @@ function dentro(raiz, ruta) {
  * Valida la carpeta de la integración genérica: debe quedar dentro del proyecto o de la carpeta
  * personal del usuario, y no puede ser la raíz de ninguna de las dos.
  * @param {unknown} ruta Valor de `--carpeta-skills` (relativo al proyecto o absoluto).
- * @param {{ proyecto: string, personal: string }} contexto
+ * @param {{ proyecto: string, personal: string, soloProyecto?: boolean }} contexto  `soloProyecto`: la ruta viene de un archivo del proyecto (no confiable) y solo vale dentro del proyecto
  * @returns {{ ok: true, ruta: string, raiz: string } | { ok: false, error: string }}
  */
-export function validarCarpetaSkills(ruta, { proyecto, personal }) {
+export function validarCarpetaSkills(ruta, { proyecto, personal, soloProyecto = false }) {
   if (typeof ruta !== 'string' || ruta.trim() === '' || ruta.includes('\0')) {
     return { ok: false, error: 'La integración genérica necesita --carpeta-skills <ruta> (dentro del proyecto o de tu carpeta personal).' };
   }
@@ -120,6 +120,10 @@ export function validarCarpetaSkills(ruta, { proyecto, personal }) {
     return { ok: false, error: `--carpeta-skills no puede ser la raíz del proyecto ni tu carpeta personal: ${ruta}` };
   }
   if (dentro(proyecto, abs)) return { ok: true, ruta: abs, raiz: resolve(proyecto) };
-  if (dentro(personal, abs)) return { ok: true, ruta: abs, raiz: resolve(personal) };
+  // Una carpeta fuera del proyecto solo la puede pedir el USUARIO en la línea de comandos: la que trae
+  // un archivo del proyecto (no confiable) haría que `update` escribiera en su carpeta personal
+  if (soloProyecto) return { ok: false, error: `La carpeta de skills guardada en el proyecto ("${ruta}") queda fuera del proyecto: un archivo del proyecto no puede dirigir escrituras a tu carpeta personal. Pásala tú con --carpeta-skills.` };
+  // La raíz de escritura es la propia carpeta, no toda la carpeta personal
+  if (dentro(personal, abs)) return { ok: true, ruta: abs, raiz: abs };
   return { ok: false, error: `--carpeta-skills debe quedar dentro del proyecto o de tu carpeta personal; "${ruta}" queda fuera.` };
 }
