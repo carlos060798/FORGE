@@ -36,7 +36,7 @@
 import { CONTRATO_CODER_TURNOS } from './contratos.js';
 import { POR_DEFECTO } from './config.js';
 import { crearHerramientasCoder } from './herramientas-coder.js';
-import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
+import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
 import { cola } from './redactar.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -134,9 +134,8 @@ function contabilizar(estado, deps, presupuesto, r) {
     if (!(e instanceof ErrorConsumo)) throw e;
     return { error: cola(String(e.message), 600) };
   }
-  if (!r.delDiario && sinPrecioConocido(r, deps.config.precios)) {
-    deps.log.append('ciclo:precio_desconocido', { modelo: r.modelo, proveedor: r.proveedor, aviso: `El modelo "${r.modelo}" no tiene precio conocido: se cobra al más caro conocido. Indica su precio en precios: de sdd.config.yaml.` }, { taskId: estado.taskId });
-  }
+  const sinPrecio = r.delDiario ? null : avisoSinPrecio(r, deps.config);
+  if (sinPrecio) deps.log.append('ciclo:precio_desconocido', sinPrecio, { taskId: estado.taskId });
   // El gasto de la sesión lo lleva el libro, llamada a llamada: un turno reproducido no se suma dos veces
   if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);
   if (presupuesto.estado === 'ok' && siguiente.estado !== 'ok') {

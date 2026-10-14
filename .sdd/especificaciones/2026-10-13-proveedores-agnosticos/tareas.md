@@ -32,8 +32,8 @@
 
 ## F4 — Gasto
 
-- [ ] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
-- [ ] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
+- [x] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
+- [x] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
 - [ ] **F4.3** `presupuesto.sin_precio`. Cubre CA-004-03.
 - [ ] **F4.4** Tabla de OpenAI revisada y fecha actualizada. Cubre CA-004-04.
 - [ ] **F4.5** Tokens de caché de otros proveedores. Cubre CA-004-05.
