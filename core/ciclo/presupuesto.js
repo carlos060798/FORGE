@@ -141,6 +141,33 @@ export function sinPrecioConocido(llamada, precios) {
   return !tienePrecio(llamada.proveedor, llamada.modelo, precios);
 }
 
+/** Modelos sin precio ya avisados, por configuración del ciclo (una sesión = un objeto de configuración). */
+const AVISADOS = new WeakMap();
+
+/**
+ * Aviso de modelo sin precio, UNA vez por sesión y modelo, con la clave de `precios:` que falta (F4).
+ * Devuelve `null` si el modelo tiene precio o ya se avisó. No cambia lo que se cobra: sigue siendo
+ * el más caro conocido; solo dice cómo declarar el precio (o el coste cero, de forma explícita).
+ * @param {{ proveedor: string, modelo: string }} llamada
+ * @param {{ precios?: Record<string, { input: number, output: number }> } | undefined} config  la del ciclo
+ * @returns {{ modelo: string, proveedor: string, aviso: string, claves: string[] } | null}
+ */
+export function avisoSinPrecio(llamada, config) {
+  if (!sinPrecioConocido(llamada, config?.precios)) return null;
+  const clave = `${llamada.proveedor}/${llamada.modelo}`;
+  if (config && typeof config === 'object') {
+    let vistos = AVISADOS.get(config);
+    if (!vistos) AVISADOS.set(config, vistos = new Set());
+    if (vistos.has(clave)) return null;
+    vistos.add(clave);
+  }
+  const claves = [`${llamada.modelo}_entrada`, `${llamada.modelo}_salida`];
+  return {
+    modelo: llamada.modelo, proveedor: llamada.proveedor, claves,
+    aviso: `El modelo "${llamada.modelo}" no tiene precio conocido: se cobra al más caro conocido. Añade ${claves.join(' y ')} (USD por millón de tokens) en precios: de sdd.config.yaml; si no cuesta nada, decláralo con 0 en ambas.`,
+  };
+}
+
 /**
  * Amplía el tope tras una revisión humana (`--presupuesto-extra`).
  * @param {import('./estado.js').Presupuesto} p

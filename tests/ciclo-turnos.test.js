@@ -754,11 +754,12 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
     assert.match((await p.complete({ model: "sonnet", systemPrompt: "s", userPrompt: "hola" })).output, /^\[stub-anthropic\]/);
   });
 
-  test("OpenAI y Ollama declaran que no la admiten", async () => {
-    for (const p of [new OpenAIProvider({ api_key: "x" }), new OllamaProvider({})]) {
+  test("Ollama declara que no la admite; OpenAI solo con clave (spec proveedores-agnosticos, F2)", async () => {
+    for (const p of [new OpenAIProvider({ api_key: "" }), new OllamaProvider({})]) {
       assert.equal(p.admiteHerramientas, false, p.nombre);
       await assert.rejects(p.conversar(/** @type {any} */ ({})), /no admite conversaciones con herramientas/);
     }
+    assert.equal(new OpenAIProvider({ api_key: "x" }).admiteHerramientas, true);
   });
 
   test("el proveedor de pruebas es guionizable: con guion admite herramientas, sin él no", async () => {

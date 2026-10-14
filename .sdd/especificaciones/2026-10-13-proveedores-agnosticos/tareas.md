@@ -11,19 +11,19 @@
 
 ## F1 — Conformidad
 
-- [ ] **F1.1** Servidores falsos de OpenAI y de Ollama en `tests/fixtures/proveedores/`.
-- [ ] **F1.2** Batería de `complete`. Cubre CA-001-01, CA-001-02.
-- [ ] **F1.3** Batería de `conversar`, que se salta en quien no declara herramientas y falla en quien las declara y no cumple. Cubre CA-001-03, CA-001-04.
-- [ ] **F1.4** Documento «cómo añadir un proveedor». Cubre CA-001-05.
+- [x] **F1.1** Servidores falsos de OpenAI y de Ollama en `tests/fixtures/proveedores/`.
+- [x] **F1.2** Batería de `complete`. Cubre CA-001-01, CA-001-02.
+- [x] **F1.3** Batería de `conversar`, que se salta en quien no declara herramientas y falla en quien las declara y no cumple. Cubre CA-001-03, CA-001-04.
+- [x] **F1.4** Documento «cómo añadir un proveedor». Cubre CA-001-05.
 
 ## F2 — OpenAI con herramientas
 
-- [ ] **F2.1** Traducción de herramientas, bloques y motivos de parada. Cubre CA-002-01.
-- [ ] **F2.2** `admiteHerramientas` condicionado. Cubre CA-002-02.
-- [ ] **F2.3** Punto compatible sin herramientas: error claro y modo de bloque. Cubre CA-002-03.
-- [ ] **F2.4** Argumentos no válidos devueltos como error de herramienta. Cubre CA-002-04.
-- [ ] **F2.5** Ciclo por turnos de punta a punta con servidor falso. Cubre CA-002-05.
-- [ ] **F2.6** Centinela de la clave. Cubre CA-002-06.
+- [x] **F2.1** Traducción de herramientas, bloques y motivos de parada. Cubre CA-002-01.
+- [x] **F2.2** `admiteHerramientas` condicionado. Cubre CA-002-02.
+- [x] **F2.3** Punto compatible sin herramientas: error claro y modo de bloque. Cubre CA-002-03.
+- [x] **F2.4** Argumentos no válidos devueltos como error de herramienta. Cubre CA-002-04.
+- [x] **F2.5** Ciclo por turnos de punta a punta con servidor falso. Cubre CA-002-05.
+- [x] **F2.6** Centinela de la clave. Cubre CA-002-06.
 
 ## F3 — Ollama con herramientas
 
@@ -32,8 +32,8 @@
 
 ## F4 — Gasto
 
-- [ ] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
-- [ ] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
+- [x] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
+- [x] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
 - [ ] **F4.3** `presupuesto.sin_precio`. Cubre CA-004-03.
 - [ ] **F4.4** Tabla de OpenAI revisada y fecha actualizada. Cubre CA-004-04.
 - [ ] **F4.5** Tokens de caché de otros proveedores. Cubre CA-004-05.

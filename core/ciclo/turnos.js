@@ -36,7 +36,7 @@
 import { CONTRATO_CODER_TURNOS } from './contratos.js';
 import { POR_DEFECTO } from './config.js';
 import { crearHerramientasCoder } from './herramientas-coder.js';
-import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
+import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
 import { cola } from './redactar.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -134,9 +134,8 @@ function contabilizar(estado, deps, presupuesto, r) {
     if (!(e instanceof ErrorConsumo)) throw e;
     return { error: cola(String(e.message), 600) };
   }
-  if (!r.delDiario && sinPrecioConocido(r, deps.config.precios)) {
-    deps.log.append('ciclo:precio_desconocido', { modelo: r.modelo, proveedor: r.proveedor, aviso: `El modelo "${r.modelo}" no tiene precio conocido: se cobra al más caro conocido. Indica su precio en precios: de sdd.config.yaml.` }, { taskId: estado.taskId });
-  }
+  const sinPrecio = r.delDiario ? null : avisoSinPrecio(r, deps.config);
+  if (sinPrecio) deps.log.append('ciclo:precio_desconocido', sinPrecio, { taskId: estado.taskId });
   // El gasto de la sesión lo lleva el libro, llamada a llamada: un turno reproducido no se suma dos veces
   if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);
   if (presupuesto.estado === 'ok' && siguiente.estado !== 'ok') {
@@ -206,6 +205,14 @@ export async function coderPorTurnos(estado, deps, ayudas) {
       clave, agente, modeloAlias: efectivo.alias, proveedorLocal: efectivo.proveedorLocal,
       extraContext: CONTRATO_CODER_TURNOS, mensajes, herramientas: herramientas.esquemas,
     });
+    // El servidor rechazó las herramientas en el primer turno (un compatible que no las admite): el proveedor
+    // ya no las declara, y esta tarea sigue en modo de bloque en lugar de pedir una revisión
+    if (!r.ok && !yaPagada && respondidos === 0 && escritos.size === 0 && deps.admiteHerramientas?.({ agente, proveedorLocal: efectivo.proveedorLocal }) !== true) {
+      deps.log.append('ciclo:implementador_sin_herramientas', {
+        iteracion: it, aviso: `El servidor de modelos rechazó las herramientas (${cola(String(r.error ?? 'sin detalle'), 300)}): esta tarea se implementa en modo de bloque.`,
+      }, meta);
+      return /** @type {any} */ ({ caerABloque: true });
+    }
     if (!r.ok) { presupuesto = trasAbortada(presupuesto, r, { precios: deps.config.precios }); errorInfra = `El proveedor de modelos falló en el turno ${n}: ${cola(String(r.error ?? 'sin detalle'), 600)}.${r.abortada ? ' El proveedor pudo procesarla y cobrarla: se anotó una estimación del costo de entrada, y la salida no se conoce. Compara el gasto con tu factura si esto se repite.' : ''}`; break; }
 
     const cuenta = contabilizar(estado, deps, presupuesto, r);

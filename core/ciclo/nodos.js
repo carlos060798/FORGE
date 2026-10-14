@@ -26,7 +26,7 @@ import * as path from 'path';
 import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
-import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, sinPrecioConocido, trasAbortada } from './presupuesto.js';
+import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
 import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
@@ -85,9 +85,8 @@ async function invocar(estado, deps, presupuesto, nodo, /** @type {PeticionAgent
     return { fallo: { presupuesto, ...pedirRevision('infraestructura', nodo, cola(String(e.message), 600)) } };
   }
   // Un modelo sin precio se cobra al más caro conocido, y se avisa con su nombre (ADR-19)
-  if (sinPrecioConocido(r, deps.config.precios)) {
-    deps.log.append('ciclo:precio_desconocido', { modelo: r.modelo, proveedor: r.proveedor, aviso: `El modelo "${r.modelo}" no tiene precio conocido: se cobra al más caro conocido. Indica su precio en precios: de sdd.config.yaml.` }, { taskId: estado.taskId });
-  }
+  const sinPrecio = avisoSinPrecio(r, deps.config);
+  if (sinPrecio) deps.log.append('ciclo:precio_desconocido', sinPrecio, { taskId: estado.taskId });
   // El gasto de la sesión suma lo de todas las tareas, también las cortadas
   if (deps.ajustarGasto) siguiente = deps.ajustarGasto(siguiente);
 
@@ -447,7 +446,12 @@ function leerPruebas(estado) {
  */
 export async function coder(estado, deps) {
   const { modo, marca } = modoImplementador(estado, deps);
-  if (modo === 'turnos') return coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+  if (modo === 'turnos') {
+    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+    // El servidor no admite herramientas (lo supo en el primer turno): sigue en modo de bloque
+    if (!(/** @type {any} */ (r).caerABloque)) return r;
+    return { ...(await coderEnBloque(estado, deps)), implementador: 'bloque' };
+  }
   return { ...(await coderEnBloque(estado, deps)), implementador: marca };
 }
 
