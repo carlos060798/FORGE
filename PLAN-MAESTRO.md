@@ -110,7 +110,7 @@ El proyecto puede **pedir y apretar, nunca conceder ni aflojar**. Un frente que 
 
 | Oleada | Contenido | Quién | Sale con |
 |---|---|---|---|
-| **0. Ahora** | Aprobar o corregir las tres especificaciones en borrador; abrir la solicitud de cambio; decidir el nombre del comando | Dueño | Especificaciones aprobadas, integración continua corriendo |
+| **0. Ahora** | Aprobar o corregir las tres especificaciones en borrador; abrir la solicitud de cambio. El nombre ya está decidido: Fragua | Dueño | Especificaciones aprobadas, integración continua corriendo |
 | **1. Agnóstico sin gasto** | Spikes de las tres; `instalacion-agnostica`; `verificar-sin-modelo`; conformidad de proveedores y herramientas en OpenAI | Agentes | FORGE usable desde otra herramienta y con otro proveedor, contra servidores falsos |
 | **2. Publicar la beta** | Integración continua en verde; guía corta y ejemplo; `5.0.0-beta.1` con la etiqueta `next`; beta cerrada de 5 a 10 personas | Dueño y agentes | Primeros usuarios reales |
 | **3. Gobierno y calidad** | Redactar y aprobar `defensa-inyeccion-y-fuga`, `perfiles-de-agente` y `puertas-de-calidad-y-evidencia`; implementarlas con revisión independiente | Agentes; el dueño aprueba | La promesa de «contención y calidad» respaldada por pruebas |
@@ -120,13 +120,31 @@ El proyecto puede **pedir y apretar, nunca conceder ni aflojar**. Un frente que 
 
 Las oleadas 1 y 3 no gastan en modelos. La 2 es la que convierte el proyecto en algo que existe para otros; sin ella, el resto es trabajo sin evidencia.
 
-## 8. Decisiones del dueño
+## 8. Arranque: qué se hace primero
+
+El cambio de nombre toca los mismos archivos que las otras especificaciones (`cli/index.js`, lectura de variables, carpeta de estado). Para no rehacer trabajo, el orden de arranque es:
+
+| Paso | Qué | Especificación | Tipo | Bloqueado por |
+|---|---|---|---|---|
+| 1 | Orden `fragua` junto a `forge` | `renombrar-a-fragua` F1 | Código | **Hecho** |
+| 2 | Inventarios: variables, carpeta de estado, etiquetas, nombre del paquete | `renombrar-a-fragua` S0 | Lectura | — |
+| 3 | Spikes de las tres especificaciones agnósticas | S0 de cada una | Lectura | Aprobación del dueño |
+| 4 | Nombre en un solo sitio; ayuda y mensajes | `renombrar-a-fragua` F2 | Código, riesgo bajo | 2 |
+| 5 | `instalacion-agnostica` F1 a F3 y `verificar-sin-modelo` F1 y F2, en ramas separadas | — | Código | 3, 4 |
+| 6 | Variables con alias y conflicto como error; carpeta de estado; etiqueta | `renombrar-a-fragua` F3, F4 | Código, **seguridad** | 2; revisión independiente antes de fusionar |
+| 7 | Conformidad de proveedores y herramientas en OpenAI | `proveedores-agnosticos` F1, F2 | Código | 3, 6 |
+| 8 | Paquete y documentación con el nombre nuevo; guía corta | `renombrar-a-fragua` F5; frente H | Código y documentos | 4 |
+| 9 | Integración continua en verde y beta con el nombre nuevo | Frente A | **Dueño** | 8 |
+
+Los pasos 2 y 3 son de solo lectura y pueden ir en paralelo. Los pasos 5 a 7 van en ramas separadas, se integran uno a uno y con la suite completa entre medias.
+
+## 9. Decisiones del dueño
 
 | Decisión | Para cuándo | Recomendación |
 |---|---|---|
 | Aprobar las tres especificaciones en borrador | Oleada 0 | Aprobar con las respuestas recomendadas en cada una |
 | Abrir la solicitud de cambio a `main` | Oleada 0 | Hacerlo ya: la integración continua en Linux nunca ha corrido |
-| Nombre del comando (`forge` choca con forgecode) | Antes de publicar | Decidirlo en la oleada 0; cambiarlo después cuesta más |
+| Nombre del comando (`forge` choca con forgecode) | **Decidido el 2026-10-13: Fragua** | Spec `2026-10-13-renombrar-a-fragua`; la orden `fragua` ya existe junto a `forge` |
 | Publicar como `5.0.0-beta.1` con `next` | Oleada 2 | Sí; `latest` sigue en 4.2.0 |
 | Posición: junto a Spec Kit, no contra él | Oleada 2 | Sí; es donde hay hueco |
 | Rotar la clave de Anthropic usada en la validación | Ya | Pendiente desde la validación |
@@ -134,7 +152,7 @@ Las oleadas 1 y 3 no gastan en modelos. La 2 es la que convierte el proyecto en 
 | Despliegue en AWS | Oleada 6 | No empezarlo antes de terminar C y D |
 | De herramienta local a servicio | Sin fecha | No ahora: toca los Principios III y IV |
 
-## 9. Fuentes
+## 10. Fuentes
 
 Consultadas el 2026-10-13.
 

@@ -1,11 +1,13 @@
 # Índice de Especificaciones
 
+> **Nombre del proyecto:** el dueño decidió el 2026-10-13 que el proyecto pasa a llamarse **Fragua** (spec `2026-10-13-renombrar-a-fragua`). Los documentos anteriores a esa fecha dicen FORGE y no se reescriben.
+
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 13
+- Total: 14
 - Completadas: 0
-- En progreso: 10
+- En progreso: 11
 - En borrador: 3
 
 ## Especificaciones
@@ -26,6 +28,7 @@
 | 2026-10-13-instalacion-agnostica | Instalación agnóstica de herramienta: integraciones por clave y comandos como skills | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-verificar-sin-modelo | `forge verificar`: veredicto aislado sin llamar a un modelo | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-proveedores-agnosticos | Proveedores agnósticos: conformidad, herramientas en OpenAI y Ollama, niveles neutrales | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
+| 2026-10-13-renombrar-a-fragua | El proyecto pasa a llamarse Fragua, sin romper a quien ya usa FORGE | en_implementacion (por instrucción del dueño; F1 hecha: orden `fragua`; F3 y F4 tocan seguridad y esperan a los inventarios y a una revisión independiente) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 
 ## Previstas (sin especificar todavía)
 

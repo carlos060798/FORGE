@@ -179,6 +179,11 @@ describe("package.json — manifiesto del paquete", () => {
     assert.equal(pkg.version, "5.0.0");
   });
 
+  test("bin incluye 'fragua' (nombre nuevo) y apunta al mismo CLI que 'forge'", () => {
+    assert.ok(pkg.bin?.fragua, "bin.fragua no definido");
+    assert.equal(pkg.bin.fragua, pkg.bin.forge);
+  });
+
   test("bin incluye 'forge'", () => {
     assert.ok(pkg.bin?.forge, "bin.forge no definido");
   });

@@ -1736,6 +1736,7 @@ function cmdLogs(args) {
 function uso() {
   console.log(`
 FORGE — CLI (v${pluginVersion()})
+El proyecto pasa a llamarse Fragua: el comando «fragua» ya equivale a «forge», que sigue funcionando.
 
 Uso:
   npx forge init [--global] [--preset lean|startup|enterprise] [--ui]

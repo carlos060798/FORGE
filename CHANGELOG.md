@@ -7,6 +7,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ## [5.0.0] — Sin publicar
 
+> **Nombre:** el proyecto pasa a llamarse **Fragua** (decisión del 2026-10-13). En esta versión la orden `fragua` equivale a `forge`, que sigue funcionando junto con `sdd-es`. El paquete, las variables `FORGE_*` y la carpeta de estado **no han cambiado todavía**: ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
+
 ### Guía de migración desde 4.2.0
 
 > La lista completa de lo que cambia sin tocar la configuración, con cómo desactivar cada cosa, está en [docs/MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Los límites conocidos, en [docs/PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md).
