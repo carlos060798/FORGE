@@ -510,7 +510,8 @@ describe("uniones hacia fuera, secretos e instrucciones dirigidas al modelo", ()
       "publico/clave.txt", "g/config", "src/../.env", "SECRETS/CLAVE.TXT", ".ENV",
     ];
     const ESCRIBIR_FUERA = [
-      "../fuera/pwned.js", "enlace-fuera/pwned.js", "src/vinculo/pwned.js", absoluta, "..\\fuera\\pwned.js",
+      // La barra invertida solo es separador en Windows; en Linux es un nombre de archivo corriente
+      "../fuera/pwned.js", "enlace-fuera/pwned.js", "src/vinculo/pwned.js", absoluta, ...(process.platform === "win32" ? ["..\\fuera\\pwned.js"] : []),
       ".env", "secrets/nuevo.txt", ".git/hooks/pre-commit", "publico/pwned.txt", "g/config",
     ];
     const c = ciclo(m, {
