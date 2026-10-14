@@ -27,6 +27,9 @@ import { execSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
 import { detectStack } from "../core/stack-detector.js";
 import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo, leerArchivo } from "../core/escritura-segura.js";
+import { CLAVES, INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/integraciones.js";
+import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../core/instalacion/perfiles.js";
+import { nombreDeSkill } from "../core/instalacion/skills-de-comandos.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -172,9 +175,9 @@ function leerSeguro(ruta) {
 // ─── Utilidades de copia ────────────────────────────────────────────────────────
 
 /** Copia todos los .md de un directorio origen a uno destino. Devuelve cuántos. */
-function copyMd(srcDir, destDir) {
+function copyMd(srcDir, destDir, incluir = null) {
   if (crearDir(destDir) === undefined) return 0;
-  const archivos = readdirSync(srcDir).filter((f) => f.endsWith(".md"));
+  const archivos = readdirSync(srcDir).filter((f) => f.endsWith(".md") && (incluir === null || incluir(f)));
   let n = 0;
   for (const f of archivos) {
     if (protegido(() => { copiarArchivo(raizPara(destDir), join(srcDir, f), join(destDir, f)); return true; }, join(destDir, f))) n++;
@@ -234,9 +237,12 @@ function banner() {
  * Copia los artefactos del plugin a CLAUDE_DIR.
  * @param {string} claudeDir destino (.claude del proyecto o global)
  */
-function copiarNucleo(claudeDir) {
+function copiarNucleo(claudeDir, inst = null) {
+  // Otra herramienta: skills y AGENTS.md, sin comandos, agentes ni hooks con cabecera de Claude Code
+  if (inst && !inst.integracion.nativa) return copiarSkillsDeIntegracion(inst);
   titulo("Copiando comandos...");
-  const nCmd = copyMd(join(PLUGIN_DIR, "commands"), join(claudeDir, "commands"));
+  const soloPerfil = inst && inst.perfil !== "completo" ? inst.perfil : null;
+  const nCmd = copyMd(join(PLUGIN_DIR, "commands"), join(claudeDir, "commands"), soloPerfil ? (f) => incluyeComando(soloPerfil, f.slice(0, -3)) : null);
   info(`Comandos instalados (${nCmd} archivos)`);
 
   titulo("Copiando agentes...");
@@ -274,6 +280,150 @@ function copiarNucleo(claudeDir) {
     }
   }
   info(`Hooks instalados (${hooksDest})`);
+}
+
+// ─── Integración por herramienta y perfil (spec 2026-10-13-instalacion-agnostica) ────
+
+/** Opciones de la línea de comandos: `--integracion`, `--perfil`, `--carpeta-skills` (las fija `main`). */
+const OPCIONES_INSTALACION = { integracion: /** @type {string|null} */ (null), perfil: /** @type {string|null} */ (null), carpetaSkills: /** @type {string|null} */ (null) };
+
+/** Lo que dejó la instalación en esta ejecución, para el resumen final. */
+const instalado = { skills: 0, generadas: 0, omitidas: /** @type {string[]} */ ([]), destino: "" };
+
+/** Integración, perfil y carpeta guardados en `.sdd/sdd.config.yaml` (sección `instalacion`). */
+function leerInstalacionGuardada() {
+  const ruta = join(PROYECTO, ".sdd", "sdd.config.yaml");
+  if (!existsSync(ruta)) return {};
+  const yaml = leerSeguro(ruta);
+  if (yaml === null) return {};
+  return {
+    integracion: yamlGet(yaml, "instalacion.integracion") ?? undefined,
+    perfil: yamlGet(yaml, "instalacion.perfil") ?? undefined,
+    carpeta: yamlGet(yaml, "instalacion.carpeta_skills") ?? undefined,
+  };
+}
+
+/**
+ * Resuelve integración y perfil: opción de la línea de comandos > configuración guardada > por defecto.
+ * Devuelve null si no hay ni opciones ni configuración: ese es el camino de siempre, sin cambios.
+ * Una clave, perfil o carpeta inválidos paran la ejecución ANTES de escribir nada.
+ * @param {boolean} global
+ */
+function resolverInstalacion(global) {
+  const { integracion: oi, perfil: op, carpetaSkills: oc } = OPCIONES_INSTALACION;
+  const guardada = global ? {} : leerInstalacionGuardada();
+  const clave = oi ?? guardada.integracion ?? null;
+  const nombrePerfil = op ?? guardada.perfil ?? null;
+  if (clave === null && nombrePerfil === null && oc === null) return null;
+
+  const ri = resolverIntegracion(clave ?? INTEGRACION_POR_DEFECTO);
+  if (!ri.ok) error(ri.error);
+  const rp = resolverPerfil(nombrePerfil ?? PERFIL_POR_DEFECTO);
+  if (!rp.ok) error(rp.error);
+  const integracion = /** @type {any} */ (ri).integracion;
+  const perfil = /** @type {any} */ (rp).perfil;
+  if (global && !integracion.nativa) error(`--global solo admite la integración claude (pediste ${integracion.clave}).`);
+  if (oc !== null && integracion.clave !== "generica") error("--carpeta-skills solo se usa con --integracion generica.");
+
+  /** @type {string|null} */ let carpeta = null;
+  if (integracion.clave === "generica") {
+    const v = validarCarpetaSkills(oc ?? guardada.carpeta, { proyecto: PROYECTO, personal: homedir() });
+    if (!v.ok) error(v.error);
+    carpeta = /** @type {any} */ (v).ruta;
+    // Una carpeta bajo la personal, fuera del proyecto, necesita su propia raíz de escritura
+    if (relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..")) raices?.push({ raiz: /** @type {any} */ (v).raiz });
+  }
+  const previa = Boolean(guardada.integracion || guardada.perfil);
+  return { integracion, perfil, carpeta, previa, explicita: oi !== null || op !== null || oc !== null };
+}
+
+/** Carpeta donde van las skills de una integración que no es Claude Code. */
+function destinoSkills(inst) {
+  return inst.carpeta ?? join(PROYECTO, ...inst.integracion.carpetaSkills.split("/"));
+}
+
+/** Copia una carpeta de skill archivo a archivo. Un archivo ajeno distinto no se pisa sin avisar. */
+function copiarCarpetaSkill(src, dest, proteger) {
+  for (const e of readdirSync(src, { withFileTypes: true })) {
+    const o = join(src, e.name), d = join(dest, e.name);
+    if (e.isDirectory()) { copiarCarpetaSkill(o, d, proteger); continue; }
+    if (proteger) {
+      let existe = false;
+      try { lstatSync(d); existe = true; } catch { /* no existe */ }
+      if (existe) {
+        let igual = false;
+        try { igual = readFileSync(d).equals(readFileSync(o)); } catch { /* ilegible: no se pisa */ }
+        if (!igual) { aviso(`Ya existe y no es de FORGE, no se pisa: ${d}`); instalado.omitidas.push(d); continue; }
+      }
+    }
+    if (crearDir(dirname(d)) === undefined) continue;
+    copiarSeguro(o, d);
+  }
+}
+
+/** Skills propias (carpetas de `skills/`) y las generadas de los comandos del perfil, en la carpeta de la herramienta. */
+function copiarSkillsDeIntegracion(inst) {
+  const destino = destinoSkills(inst);
+  instalado.destino = destino;
+  titulo(`Copiando skills para ${inst.integracion.nombre}...`);
+  if (crearDir(destino) === undefined) return;
+  const proteger = !inst.previa;
+  const propias = join(PLUGIN_DIR, "skills");
+  for (const e of readdirSync(propias, { withFileTypes: true })) {
+    if (!e.isDirectory() || !existsSync(join(propias, e.name, "SKILL.md"))) continue;
+    copiarCarpetaSkill(join(propias, e.name), join(destino, e.name), proteger);
+    instalado.skills++;
+  }
+  const generadas = join(PLUGIN_DIR, "skills-generadas");
+  for (const f of readdirSync(join(PLUGIN_DIR, "commands")).filter((x) => x.endsWith(".md"))) {
+    const comando = f.slice(0, -3);
+    if (!incluyeComando(inst.perfil, comando)) continue;
+    const nombre = nombreDeSkill(comando);
+    if (!existsSync(join(generadas, nombre, "SKILL.md"))) {
+      aviso(`Falta la skill generada de ${comando}: ejecuta 'node scripts/generar-skills.mjs'`);
+      sinEscribir.push(join(generadas, nombre));
+      continue;
+    }
+    copiarCarpetaSkill(join(generadas, nombre), join(destino, nombre), proteger);
+    instalado.generadas++;
+  }
+  info(`Skills instaladas en ${destino}: ${instalado.skills} propias + ${instalado.generadas} de comandos`);
+}
+
+/** Guarda integración y perfil en `.sdd/sdd.config.yaml` (sección `instalacion`). */
+function guardarInstalacion(inst) {
+  const ruta = join(PROYECTO, ".sdd", "sdd.config.yaml");
+  if (!existsSync(ruta)) return;
+  const yaml = leerSeguro(ruta);
+  if (yaml === null) return;
+  const carpeta = inst.carpeta ? (relative(PROYECTO, inst.carpeta).startsWith("..") ? inst.carpeta : relative(PROYECTO, inst.carpeta).replaceAll("\\", "/")) : null;
+  const bloque = [
+    "instalacion:",
+    `  integracion: "${inst.integracion.clave}"`,
+    `  perfil: "${inst.perfil}"`,
+    ...(carpeta ? [`  carpeta_skills: ${JSON.stringify(carpeta)}`] : []),
+    "",
+  ].join("\n");
+  const sin = yaml.replace(/^instalacion:[^\n]*\n(?:[ \t]+[^\n]*\n?)*/m, "");
+  escribirSeguro(ruta, sin.replace(/\n*$/, "\n\n") + bloque);
+}
+
+/** Qué se instaló, qué no y cómo invocar la primera skill. */
+function resumenInstalacion(inst) {
+  const i = inst.integracion;
+  console.log("");
+  titulo(`FORGE para ${i.nombre} — perfil ${inst.perfil}`);
+  if (i.nativa) {
+    const lista = inst.perfil === "completo" ? "todos los comandos" : "los comandos del perfil esencial";
+    info(`Instalado: ${lista}, agentes, skills, hooks, settings.json y CLAUDE.md en .claude/`);
+    info("No instalado: nada omitido.");
+  } else {
+    info(`Instalado: ${instalado.skills} skills propias y ${instalado.generadas} skills de comandos en ${instalado.destino || destinoSkills(inst)}; AGENTS.md.`);
+    info("No instalado: comandos, agentes, hooks, settings.json ni CLAUDE.md (son de Claude Code).");
+    if (instalado.omitidas.length) aviso(`${instalado.omitidas.length} archivo(s) ya existían y no se pisaron.`);
+  }
+  info(`Cómo invocar: ${i.invocacion}. Ejemplo: ${i.ejemplo}`);
+  console.log("");
 }
 
 // ─── settings.json (no sobreescribe) ────────────────────────────────────────────
@@ -558,6 +708,10 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
   banner();
   // Cada destino con su raíz: ~/.claude para lo global, el proyecto (ya sin uniones) para lo local
   const claudeDir = fijarRaices({ global });
+  // Integración y perfil: sin opciones ni configuración guardada es null y todo sigue como siempre.
+  // Se valida antes de escribir nada: una clave o carpeta inválida no deja rastro.
+  const inst = resolverInstalacion(global);
+  const esClaude = !inst || inst.integracion.nativa;
   console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${claudeDir})`);
   if (global) paso("crear ~/.claude", () => mkdirSync(claudeDir, { recursive: true }));
   if (template) console.log(`  Template: ${template}`);
@@ -569,8 +723,8 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
   if (global) avisarEnlacesGlobales(claudeDir);
 
   // Un destino raro (carpeta donde va un archivo, tubería, archivo en uso) no puede tumbar el resto
-  paso("copiar el núcleo", () => copiarNucleo(claudeDir));
-  paso("settings.json", () => copiarSettings(claudeDir));
+  paso("copiar el núcleo", () => copiarNucleo(claudeDir, inst));
+  if (esClaude) paso("settings.json", () => copiarSettings(claudeDir));
 
   if (!global) {
     const overrides = guided ? wizardGuiado() : {};
@@ -585,8 +739,10 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
     paso(`preset ${preset}`, () => aplicarPreset(preset));
   }
 
+  if (inst && !global) paso("guardar integración y perfil", () => guardarInstalacion(inst));
+
   if (!global) {
-    paso("CLAUDE.md", () => integrarClaudeMd(PROYECTO));
+    if (esClaude) paso("CLAUDE.md", () => integrarClaudeMd(PROYECTO));
     paso("AGENTS.md", () => integrarAgentsMd(PROYECTO));
   }
 
@@ -597,7 +753,9 @@ function cmdInit(global, guided = false, withUi = false, preset = null, template
   // Con algo sin escribir no se dice «instalado»: sale con código 1 y dice qué faltó
   if (!cerrarSiFalto("forge init")) return;
 
-  if (template) {
+  if (inst && (!inst.integracion.nativa || inst.explicita)) {
+    resumenInstalacion(inst);
+  } else if (template) {
     pasosFinalesConTemplate(template);
   } else {
     pasosFinales();
@@ -832,14 +990,20 @@ function cmdUpdate(global) {
   console.log("  (.sdd/ y settings.json del usuario NO se tocan)");
   console.log("");
 
-  if (!existsSync(claudeDir)) {
-    error(`No existe ${claudeDir}. Ejecuta 'npx sdd-es init' primero.`);
+  const inst = resolverInstalacion(global);
+  const esClaude = !inst || inst.integracion.nativa;
+  const carpetaNucleo = esClaude ? claudeDir : destinoSkills(inst);
+  if (!existsSync(carpetaNucleo)) {
+    error(`No existe ${carpetaNucleo}. Ejecuta 'npx sdd-es init' primero.`);
   }
   if (global) avisarEnlacesGlobales(claudeDir);
 
-  paso("copiar el núcleo", () => copiarNucleo(claudeDir));
+  paso("copiar el núcleo", () => copiarNucleo(claudeDir, inst));
+  // Solo si pidieron integración o perfil en esta ejecución: una instalación existente no cambia sola
+  if (inst && inst.explicita && !global) paso("guardar integración y perfil", () => guardarInstalacion(inst));
   if (!cerrarSiFalto("forge update")) return;
   info("Núcleo actualizado. Tu .sdd/ y settings.json se conservan.");
+  if (inst && !esClaude) resumenInstalacion(inst);
   console.log("");
 }
 
@@ -1743,6 +1907,8 @@ Uso:
                  [--template api-rest|cli-tool|saas-mvp]
                                      Instala FORGE (proyecto actual o global)
   npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
+  Opciones de init/update: --integracion <claude|generica|agents|copilot|cursor|gemini|windsurf|opencode|kiro>
+                           --perfil <esencial|completo>   --carpeta-skills <ruta> (solo generica)
   npx forge doctor                   Diagnostica la instalación y providers disponibles
   npx forge ui [--port N] [--no-open]  Abre el dashboard en el navegador
   npx forge config show [sección]    Muestra sdd.config.yaml o una sección
@@ -1841,6 +2007,14 @@ async function main() {
   const template = templateIdx !== -1
     ? (args[templateIdx].includes("=") ? args[templateIdx].split("=")[1] : args[templateIdx + 1])
     : null;
+
+  const valorDe = (nombre) => {
+    const i = args.findIndex((a) => a === nombre || a.startsWith(nombre + "="));
+    return i === -1 ? null : (args[i].includes("=") ? args[i].split("=").slice(1).join("=") : (args[i + 1] ?? ""));
+  };
+  OPCIONES_INSTALACION.integracion = valorDe("--integracion");
+  OPCIONES_INSTALACION.perfil = valorDe("--perfil");
+  OPCIONES_INSTALACION.carpetaSkills = valorDe("--carpeta-skills");
 
   switch (comando) {
     case "init":

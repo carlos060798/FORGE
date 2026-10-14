@@ -17,7 +17,8 @@
     "test:cobertura": "node --test --experimental-test-coverage tests/*.test.js",
     "init": "echo 'Instala con: npx forge init  (o npx sdd-es init)'",
     "doctor": "node cli/index.js doctor",
-    "prepublishOnly": "npm test"
+    "generar-skills": "node scripts/generar-skills.mjs",
+    "prepublishOnly": "node scripts/generar-skills.mjs && npm test"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -30,6 +31,7 @@
     "commands/",
     "agents/",
     "skills/",
+    "skills-generadas/",
     "craft/",
     "design-systems/",
     "plantillas/",
