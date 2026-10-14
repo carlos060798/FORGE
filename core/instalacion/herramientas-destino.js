@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * integraciones.js — Tabla de integraciones del instalador (spec 2026-10-13-instalacion-agnostica).
+ * herramientas-destino.js — Tabla de herramientas de destino del instalador (spec 2026-10-13-instalacion-agnostica).
  *
  * Una integración es una herramienta de código a la que `forge init --integracion <clave>` le
  * instala FORGE. Añadir una herramienta es añadir una fila: nada de código por herramienta.

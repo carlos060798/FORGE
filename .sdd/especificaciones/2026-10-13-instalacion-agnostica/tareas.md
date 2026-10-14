@@ -10,7 +10,7 @@
 
 ## F1 — Integración por clave
 
-- [ ] **F1.1** `core/instalacion/integraciones.js`: tabla con `claude` y `generica`. Tests: clave desconocida rechazada con la lista; carpeta genérica fuera del proyecto y de la carpeta personal rechazada. Cubre CA-001-02, CA-001-03.
+- [ ] **F1.1** `core/instalacion/herramientas-destino.js`: tabla con `claude` y `generica`. Tests: clave desconocida rechazada con la lista; carpeta genérica fuera del proyecto y de la carpeta personal rechazada. Cubre CA-001-02, CA-001-03.
 - [ ] **F1.2** Prueba de equivalencia: foto del árbol de `forge init` y `forge update` sin opciones, antes del cambio. Cubre CA-002-01.
 - [ ] **F1.3** `copiarNucleo` recibe la integración; `--integracion` en `init`. Tests: equivalencia en verde; con `generica`, solo skills y `AGENTS.md`. Cubre CA-001-01, CA-002-03, CA-001-06.
 - [ ] **F1.4** Escritura segura en los destinos nuevos. Tests: unión hacia fuera, enlace duro, archivo ajeno existente. Cubre CA-001-04.

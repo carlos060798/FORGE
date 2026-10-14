@@ -22,7 +22,7 @@
 
 | Módulo | Responsabilidad |
 |---|---|
-| `core/instalacion/integraciones.js` (nuevo) | Tabla de integraciones: clave, carpeta de skills, qué más se instala (comandos, agentes, hooks), forma de invocación, URL y fecha de la fuente; validación de la clave y de la carpeta genérica |
+| `core/instalacion/herramientas-destino.js` (nuevo) | Tabla de integraciones: clave, carpeta de skills, qué más se instala (comandos, agentes, hooks), forma de invocación, URL y fecha de la fuente; validación de la clave y de la carpeta genérica |
 | `core/instalacion/skills-de-comandos.js` (nuevo) | Convierte un comando de `commands/` en una carpeta de skill con `SKILL.md`; avisa de lo que no es neutral |
 | `core/instalacion/perfiles.js` (nuevo) | Perfiles `esencial` y `completo` |
 | `scripts/generar-skills.mjs` (nuevo) | Genera las skills de los comandos antes de empaquetar; lo usa también la prueba de divergencia |

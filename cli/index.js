@@ -29,7 +29,7 @@ import { leerVariable } from "../core/entorno.js";
 import { ordenInvocada, debeAvisarOrdenAntigua } from "../core/nombres.js";
 import { detectStack } from "../core/stack-detector.js";
 import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo, leerArchivo } from "../core/escritura-segura.js";
-import { CLAVES, INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/integraciones.js";
+import { CLAVES, INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/herramientas-destino.js";
 import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../core/instalacion/perfiles.js";
 import { nombreDeSkill } from "../core/instalacion/skills-de-comandos.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────

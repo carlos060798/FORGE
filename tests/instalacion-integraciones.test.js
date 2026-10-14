@@ -11,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { CLAVES, INTEGRACIONES, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/integraciones.js";
+import { CLAVES, INTEGRACIONES, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/herramientas-destino.js";
 import { PERFILES, PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../core/instalacion/perfiles.js";
 import { forge, ROOT } from "./instalacion-ayudas.js";
 
