@@ -243,3 +243,5 @@ Esta documentación se mantiene con cada versión de FORGE.
 **Fecha:** 2026-06-22  
 **Versión:** 1.0  
 **Estado:** ✅ Listo como punto de entrada principal
+
+> **Nota (2026-10-14):** FORGE pasa a llamarse **Fragua** (paquete `fragua`). Estos documentos conservan el nombre con el que se escribieron; la equivalencia está en el README.

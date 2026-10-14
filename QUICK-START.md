@@ -1,6 +1,6 @@
-# FORGE — Inicio en 5 minutos
+# Fragua (antes FORGE) — Inicio en 5 minutos
 
-FORGE es un framework SDD (Spec-Driven Development) para Claude Code. Convierte una idea en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA.
+Fragua (antes FORGE; el paquete es `fragua`, las órdenes `fragua`, `forge` y `sdd-es`) es un framework SDD (Spec-Driven Development) para Claude Code. Convierte una idea en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA.
 
 ---
 

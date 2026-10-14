@@ -17,6 +17,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { execSync } from "node:child_process";
+import { PAQUETE } from "../core/nombres.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -171,8 +172,8 @@ describe("presets/ — configuraciones", () => {
 describe("package.json — manifiesto del paquete", () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 
-  test("name es forja-mvp", () => {
-    assert.equal(pkg.name, "forja-mvp");
+  test("name es el del paquete (core/nombres.js)", () => {
+    assert.equal(pkg.name, PAQUETE);
   });
 
   test("version es 5.0.0", () => {

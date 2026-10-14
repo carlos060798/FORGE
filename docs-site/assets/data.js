@@ -55,7 +55,7 @@ const PAGES = {
       <p class="lead">FORGE es un framework de <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> para Claude Code. Convierte ideas en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA — y produce artefactos portables que cualquier otro agente puede consumir.</p>
 
       <div class="callout tip">
-        <p><strong>Instalación rápida (npm):</strong> <code>npm install -g forja-mvp</code> · <code>forge doctor</code></p>
+        <p><strong>Instalación rápida (npm):</strong> <code>npm install -g fragua</code> · <code>forge doctor</code></p>
         <p><strong>Desde el repositorio:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; cd FORGE &amp;&amp; npm install</code></p>
       </div>
 
@@ -75,7 +75,7 @@ const PAGES = {
           <tr><td><strong>Categoría</strong></td><td>Framework SDD+TDD con runner CLI portable</td></tr>
           <tr><td><strong>Host principal</strong></td><td>Claude Code CLI (Anthropic)</td></tr>
           <tr><td><strong>Runner standalone</strong></td><td><code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code> — sin Claude Code</td></tr>
-          <tr><td><strong>Distribución</strong></td><td><code>npm install -g forja-mvp</code> · o git clone desde el repo</td></tr>
+          <tr><td><strong>Distribución</strong></td><td><code>npm install -g fragua</code> · o git clone desde el repo</td></tr>
           <tr><td><strong>Dependencias runtime</strong></td><td>3 (<code>@anthropic-ai/sdk</code>, <code>acorn</code> y <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
           <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
           <tr><td><strong>Tests</strong></td><td>Más de 2000, con el runner nativo de Node (recuento fechado en docs/COBERTURA.md)</td></tr>
@@ -108,7 +108,7 @@ PORTABLE:       —               ✅          —          —</code></pre>
       <p class="lead">FORGE is a <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> framework for Claude Code. It turns natural-language ideas into specified, planned, and implemented software — and produces portable artifacts any agent can consume.</p>
 
       <div class="callout tip">
-        <p><strong>Quick install:</strong> <code>npm install -g forja-mvp</code> · or <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code></p>
+        <p><strong>Quick install:</strong> <code>npm install -g fragua</code> · or <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code></p>
       </div>
 
       <h2>Two modes of use</h2>
@@ -884,7 +884,7 @@ speckit-handoff/           ← Generado por forge dispatch
       <h2>Instalación</h2>
 
       <h3>Opción A — npm (recomendada)</h3>
-      <pre><code class="bash">npm install -g forja-mvp
+      <pre><code class="bash">npm install -g fragua
 forge doctor   # verifica instalación</code></pre>
 
       <h3>Opción B — desde el repositorio</h3>
@@ -963,7 +963,7 @@ forge dispatch --agente=arquitecto --tarea="Diseña la arquitectura" --adapter=s
       <h2>Installation</h2>
 
       <h3>Option A — npm (recommended)</h3>
-      <pre><code class="bash">npm install -g forja-mvp
+      <pre><code class="bash">npm install -g fragua
 forge doctor</code></pre>
 
       <h3>Option B — from repository</h3>

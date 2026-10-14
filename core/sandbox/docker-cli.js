@@ -220,12 +220,12 @@ export class DockerCli {
    * Elimina los contenedores de aislamiento que hayan quedado de ejecuciones anteriores.
    * Con `etiqueta` se limita a los de un proyecto: sin ella mataría también los
    * de otras sesiones de FORGE que estén corriendo en el mismo equipo.
-   * @param {string|string[]} [etiquetas] una o varias (cada una se consulta aparte: los filtros de Docker se suman);
+   * @param {string|readonly string[]} [etiquetas] una o varias (cada una se consulta aparte: los filtros de Docker se suman);
    *   por defecto las dos del sandbox (nueva y antigua). Nunca se borra lo que no lleve ninguna.
    * @returns {Promise<number>} cuántos eliminó
    */
   async barrerHuerfanos(etiquetas = ETIQUETAS) {
-    const lista = Array.isArray(etiquetas) ? etiquetas : [etiquetas];
+    const lista = typeof etiquetas === "string" ? [etiquetas] : [...etiquetas];
     const ids = new Set();
     for (const etiqueta of lista) {
       const ps = await this._consultar(['ps', '-aq', '--filter', `label=${etiqueta}`]);

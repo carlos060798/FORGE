@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { tmpdir } from "node:os";
+import { PAQUETE } from "../core/nombres.js";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -83,10 +84,10 @@ describe("empaquetado", () => {
   });
 
   test("el paquete se instala con el nombre y el comando documentados", () => {
-    assert.equal(pkg.name, "forja-mvp");
+    assert.equal(pkg.name, PAQUETE);
     assert.ok(pkg.bin.forge);
     assert.ok(statSync(join(ROOT, pkg.bin.forge)).isFile());
     assert.match(readFileSync(join(ROOT, pkg.bin.forge), "utf8"), /^#!\/usr\/bin\/env node/);
-    assert.match(readFileSync(join(ROOT, "README.md"), "utf8"), /npm install -g forja-mvp/);
+    assert.match(readFileSync(join(ROOT, "README.md"), "utf8"), /npm install -g fragua/);
   });
 });

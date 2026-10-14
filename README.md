@@ -1,6 +1,8 @@
 <div align="center">
 
-# FORGE
+# Fragua
+
+*(antes FORGE: mismo proyecto, mismas órdenes `forge` y `sdd-es`, mismas carpetas `.sdd/`)*
 
 **Desarrollo Guiado por Especificaciones para Claude Code**
 
@@ -35,7 +37,7 @@ FORGE:
 
 ## Estado
 
-> A fecha de **2026-10-12**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` sigue en 4.2.0. Lo que sigue describe la rama `feature/motor-agentico`.
+> A fecha de **2026-10-12**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` (nombre antiguo) sigue en 4.2.0; el paquete nuevo es `fragua`. Lo que sigue describe la rama `feature/motor-agentico`.
 
 **Qué es.** Un framework de desarrollo guiado por especificaciones para Claude Code. Desde 5.0.0, las tareas de código pasan por un **ciclo verificado**:
 
@@ -100,22 +102,34 @@ Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración
 ## Inicio rápido
 
 ```bash
-# Desde npm (el paquete se llama forja-mvp; el comando, forge)
-npm install -g forja-mvp
+# Desde npm (el paquete y el comando se llaman fragua; `forge` sigue funcionando)
+npm install -g fragua
 
 # O clonando el repositorio
 git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
 
 # Verificar instalación
-forge doctor
+fragua doctor
 
 # En Claude Code, dentro de tu proyecto:
 /forge
 ```
 
-> **Instala antes de usar `npx forge …`.** El paquete es `forja-mvp`: sin instalarlo, `npx forge` descargaría otro paquete de npm llamado `forge`. Si no quieres instalarlo, usa `npx -p forja-mvp forge <comando>`. Es un paquete de línea de comandos y plugin, no una librería: no tiene API para `import`.
+> **Instala antes de usar `npx forge …`.** El paquete es `fragua`: sin instalarlo, `npx forge` descargaría otro paquete de npm llamado `forge`. Si no quieres instalarlo, usa `npx -p fragua fragua <comando>`. Es un paquete de línea de comandos y plugin, no una librería: no tiene API para `import`.
 
 → Ver la [Guía de inicio](docs/getting-started.md) para un recorrido completo.
+
+### FORGE → Fragua: qué cambia y qué no
+
+| Antes | Ahora | Notas |
+|---|---|---|
+| Producto **FORGE** | **Fragua** | Solo el nombre. |
+| `npm install -g forja-mvp` | `npm install -g fragua` | El paquete antiguo no recibe la 5.x. |
+| `forge …`, `sdd-es …` | `fragua …` | `forge` y `sdd-es` siguen funcionando (con un aviso en terminal). |
+| `FORGE_*` (variables) | `FRAGUA_*` | Las antiguas se siguen leyendo; si defines las dos con valores distintos, error. |
+| Estado en `%LOCALAPPDATA%\forge` / `~/.forge` | `fragua` / `~/.fragua` | Si solo existe la antigua se sigue usando; **nunca** se copia ni mueve una clave o cola. `fragua doctor` avisa si quedan las dos. |
+| Etiquetas de contenedor `forge.*` | `fragua.*` | El barrido de huérfanos reconoce ambas. |
+| Ramas `forge/…`, marcadores `forge:` y `FORGE-ID:` | sin cambio | Lo ya publicado en GitHub, GitLab y Jira no se reescribe. |
 
 ---
 

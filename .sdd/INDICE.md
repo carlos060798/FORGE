@@ -37,3 +37,5 @@ Las tres specs del 2026-10-13 siguen `PLAN-INCREMENTAL.md` (incrementos I1 a I6)
 Ver el roadmap en `PLAN-MOTOR-AGENTICO.md`: S5 Ciclo por defecto (ya implementado, ADR-17).
 
 Las cuatro specs del 2026-10-09 siguen el roadmap de `PLAN-CIERRE-BRECHAS.md` (FASES 6 a 9). ADR-19, ADR-20 y ADR-21 están aceptadas por delegación del dueño (2026-10-09) y pendientes de su ratificación.
+
+> **Nota (2026-10-14):** el proyecto FORGE pasa a llamarse **Fragua** (paquete `fragua`, orden `fragua`; `forge` y `sdd-es` siguen funcionando). Los documentos de esta carpeta conservan el nombre con el que se escribieron. Ver `especificaciones/2026-10-13-renombrar-a-fragua/`.

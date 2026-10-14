@@ -23,6 +23,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, sep } from "node:path";
 import { mdFiles, skillNamesAll, stem, ROOT } from "./helpers.js";
+import { PAQUETE, PAQUETE_ANTIGUO } from "../core/nombres.js";
 
 const leer = (/** @type {string} */ ruta) => readFileSync(join(ROOT, ruta), "utf8").replace(/\r\n/g, "\n");
 
@@ -382,11 +383,11 @@ describe("documentos — frases que ya no son ciertas", () => {
   test("VERSIONING.md no usa el nombre antiguo del paquete en órdenes de npm", () => {
     const t = leer("VERSIONING.md");
     const pkg = JSON.parse(leer("package.json"));
-    assert.equal(pkg.name, "forja-mvp");
+    assert.equal(pkg.name, PAQUETE);
     assert.doesNotMatch(t, /npm (view|info|install|dist-tags ls|deprecate|unpublish) sdd-es/);
     assert.doesNotMatch(t, /npx sdd-es/);
     assert.doesNotMatch(t, /"name": "sdd-es"/);
-    assert.match(t, /forja-mvp/);
+    assert.ok(t.includes(PAQUETE) || t.includes(PAQUETE_ANTIGUO), "VERSIONING.md nombra el paquete");
   });
 
   test("docs/servidor-mcp.md cubre los mismos lenguajes que el ciclo, Go incluido", () => {

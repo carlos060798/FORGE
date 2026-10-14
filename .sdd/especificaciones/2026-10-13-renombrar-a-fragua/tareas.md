@@ -31,16 +31,16 @@
 
 ## F4 — Estado del usuario y contenedores (seguridad)
 
-- [ ] **F4.1** Carpeta de estado con la regla nueva/antigua, sin migración. Tests de las cuatro combinaciones. Cubre CA-004-01 a CA-004-04.
-- [ ] **F4.2** `doctor` avisa de estado antiguo sin usar. Cubre CA-004-03.
-- [ ] **F4.3** Etiqueta nueva de contenedor y barrido de las dos. Cubre CA-005-01.
-- [ ] **F4.4** Prueba de que el prefijo de rama y los marcadores de lo publicado no cambian. Cubre CA-005-02.
+- [x] **F4.1** Carpeta de estado con la regla nueva/antigua, sin migración. Tests de las cuatro combinaciones. Cubre CA-004-01 a CA-004-04.
+- [x] **F4.2** `doctor` avisa de estado antiguo sin usar. Cubre CA-004-03.
+- [x] **F4.3** Etiqueta nueva de contenedor y barrido de las dos. Cubre CA-005-01.
+- [x] **F4.4** Prueba de que el prefijo de rama y los marcadores de lo publicado no cambian. Cubre CA-005-02.
 
 ## F5 — Paquete y documentación
 
-- [ ] **F5.1** Nombre del paquete; pruebas que lo fijan; `scripts/pruebas-independientes.mjs`. Cubre CA-002-01, CA-002-03.
-- [ ] **F5.2** README, guía, primeros pasos y `QUICK-START.md` con Fragua y una sección de equivalencia. Cubre CA-006-01.
-- [ ] **F5.3** Nota del cambio en `.sdd/INDICE.md` y `docs/0-INDICE.md`; los documentos históricos no se tocan. Cubre CA-006-02.
+- [x] **F5.1** Nombre del paquete; pruebas que lo fijan; `scripts/pruebas-independientes.mjs`. Cubre CA-002-01, CA-002-03.
+- [x] **F5.2** README, guía, primeros pasos y `QUICK-START.md` con Fragua y una sección de equivalencia. Cubre CA-006-01.
+- [x] **F5.3** Nota del cambio en `.sdd/INDICE.md` y `docs/0-INDICE.md`; los documentos históricos no se tocan. Cubre CA-006-02.
 - [ ] **F5.4** Texto del producto en comandos y skills, sin cambiar sus nombres. Cubre CA-006-03.
 - [ ] **F5.5** Empaquetar e instalar en carpeta limpia con el nombre nuevo; `fragua doctor` arranca.
 
@@ -57,3 +57,4 @@
 - [ ] **F7.3** `verificacion.md` con cada criterio y su prueba.
 
 > **2026-10-14:** S0, F2 y F3 implementadas en la rama de integración (`core/nombres.js`, `core/entorno.js`, `claude-hooks/shared/entorno.js`, `tests/entorno-fragua.test.js`). Pendientes: F3.3 y F3.5 (una prueba por variable de política y proyecto hostil, a verificar en la revisión independiente), F4, F5, F6 y F7. El inventario encontró 23 lecturas de 17 variables (la spec decía 28).
+> **2026-10-14 (F4 y F5):** F4.1 a F4.4 y F5.1 a F5.3 hechas; `fragua` libre en npm (404). Pendiente F5.4 y F5.5.

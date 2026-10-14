@@ -5,7 +5,7 @@ Instrucciones para agentes de código que trabajan en este repositorio. Léelas 
 ## Qué es este proyecto
 
 FORGE convierte una idea en software especificado, construido y verificado, siguiendo una metodología de desarrollo guiado por especificaciones en español.
-Es un paquete de npm (`forja-mvp`) y un plugin de Claude Code: un motor en JavaScript (módulos ESM, Node ≥20, sin paso de compilación) más comandos, agentes y plantillas en Markdown.
+Es un paquete de npm (`fragua`; antes `forja-mvp`) y un plugin de Claude Code: un motor en JavaScript (módulos ESM, Node ≥20, sin paso de compilación) más comandos, agentes y plantillas en Markdown.
 
 ## Cómo ejecutar las pruebas
 

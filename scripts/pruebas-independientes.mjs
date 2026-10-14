@@ -110,7 +110,8 @@ if (DESDE_REPO) {
   writeFileSync(join(prefijo, 'package.json'), '{"name":"instalacion-de-prueba","private":true}\n');
   const instalar = sh('npm', ['install', '--no-audit', '--no-fund', '--silent', tgz], { cwd: prefijo });
   if (instalar.status !== 0) salir(1, `npm install del paquete falló:\n${sinSecretos(instalar.stderr)}`);
-  const pkgDir = join(prefijo, 'node_modules', 'forja-mvp');
+  const nombrePaquete = JSON.parse(readFileSync(join(RAIZ, 'package.json'), 'utf8')).name;
+  const pkgDir = join(prefijo, 'node_modules', nombrePaquete);
   if (!existsSync(join(pkgDir, 'cli', 'index.js'))) salir(1, 'El paquete instalado no contiene cli/index.js');
   CLI = join(pkgDir, 'cli', 'index.js');
   version = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).version;

@@ -21,7 +21,7 @@ Antes de enviar:
 | | |
 |---|---|
 | Versión de FORGE | <!-- npx forge --version --> |
-| Cómo lo instalaste | <!-- npm install -g forja-mvp · npx -p forja-mvp@beta · clon del repositorio (indica el commit) --> |
+| Cómo lo instalaste | <!-- npm install -g fragua · npx -p fragua@beta · clon del repositorio (indica el commit) --> |
 | Sistema operativo | <!-- Windows 11 23H2 · Ubuntu 24.04 · macOS 15.1… --> |
 | Versión de Node | <!-- node --version --> |
 | Versión de Docker | <!-- docker --version; indica si es Docker Desktop, Docker Engine, Podman u otro. Si no usas Docker, dilo --> |

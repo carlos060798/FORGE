@@ -44,7 +44,7 @@ async function cargarCore(cwd) {
   if (!base) {
     throw new Error(
       'core/ no encontrado junto al CLI.\n'
-      + 'Reinstala el paquete: npm install -g forja-mvp'
+      + 'Reinstala el paquete: npm install -g fragua'
     );
   }
 

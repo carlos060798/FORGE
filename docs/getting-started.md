@@ -20,10 +20,10 @@ Si usas Node ≥22.5, FORGE usa `node:sqlite` nativo para la memoria y el decisi
 
 ## Paso 1 — Instalar FORGE
 
-**Opción A — npm:** la 5.0.0 **no está publicada en npm** (allí solo hay versiones anteriores, p. ej. 4.2.0). Con `npm install -g forja-mvp` obtendrás una versión anterior y `forge --version` no imprimirá 5.0.0. Para la 5.0.0 usa `npm install -g ./dist/forja-mvp-5.0.0.tgz` (generado con `npm pack`) o la opción B.
+**Opción A — npm:** la 5.0.0 **no está publicada en npm** (allí solo hay versiones anteriores, p. ej. 4.2.0). Con `npm install -g forja-mvp` (nombre antiguo del paquete; el nuevo es `fragua`) obtendrás una versión anterior y `forge --version` no imprimirá 5.0.0. Para la 5.0.0 usa `npm install -g ./dist/fragua-5.0.0.tgz` (generado con `npm pack`) o la opción B.
 
 ```bash
-npm install -g forja-mvp
+npm install -g fragua
 forge --version   # debe imprimir 5.0.0
 ```
 
