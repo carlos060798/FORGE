@@ -10,14 +10,10 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync, existsSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync, existsSync } from "node:fs";
+import { join, relative } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CLI = join(ROOT, "cli", "index.js");
+import { forge, ROOT } from "./instalacion-ayudas.js";
 
 /** Rutas estables fuera de las cuatro carpetas copiadas del plugin (foto tomada antes del cambio). */
 const FOTO_ESTABLE = [
@@ -32,12 +28,6 @@ const FOTO_ESTABLE = [
 
 const temporal = (p) => realpathSync(mkdtempSync(join(tmpdir(), p)));
 
-/** Ejecuta `forge <args>` con un HOME falso en un proyecto nuevo. */
-export function forge(cwd, home, ...args) {
-  const env = { ...process.env, HOME: home, USERPROFILE: home, FORGE_LLM_PROVIDER: "stub", ANTHROPIC_API_KEY: "", CLAUDE_API_KEY: "" };
-  const r = spawnSync(process.execPath, [CLI, ...args], { cwd, env, encoding: "utf8", timeout: 180_000 });
-  return { status: r.status, salida: (r.stdout ?? "") + (r.stderr ?? "") };
-}
 
 function proyecto() {
   const d = temporal("forge-eq-");
