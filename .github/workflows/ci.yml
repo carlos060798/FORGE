@@ -83,7 +83,7 @@ jobs:
           FORGE_TEST_DOCKER: "1"
 
       - name: Sin contenedores residuales
-        run: test -z "$(docker ps -aq --filter label=forge.sandbox=1)"
+        run: test -z "$(docker ps -aq --filter label=fragua.sandbox=1; docker ps -aq --filter label=forge.sandbox=1)"
 
   # Todas las pruebas que usan Docker real, no solo la de aislamiento. Los archivos se
   # descubren con grep de FORGE_TEST_DOCKER para que una prueba nueva entre sola.
@@ -121,4 +121,4 @@ jobs:
 
       - name: Sin contenedores residuales
         if: always()
-        run: test -z "$(docker ps -aq --filter label=forge.sandbox=1)"
+        run: test -z "$(docker ps -aq --filter label=fragua.sandbox=1; docker ps -aq --filter label=forge.sandbox=1)"

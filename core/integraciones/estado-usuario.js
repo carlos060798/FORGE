@@ -6,8 +6,8 @@
  * token, los contadores de operaciones) vive aquí, en un directorio del USUARIO, fuera del árbol:
  *
  *   <FORGE_HOME>/integraciones/<hash>/            si FORGE_HOME está definida (pruebas, o quien quiera moverlo)
- *   %LOCALAPPDATA%\forge\integraciones\<hash>\    en Windows
- *   ~/.forge/integraciones/<hash>/                en el resto
+ *   %LOCALAPPDATA%\fragua\integraciones\<hash>\   en Windows (si solo existe la antigua `forge`, esa)
+ *   ~/.fragua/integraciones/<hash>/               en el resto (si solo existe la antigua `.forge`, esa)
  *
  * `<hash>` es el SHA-256 (32 primeros hex) de la ruta REAL del proyecto (en Windows, sin distinguir
  * mayúsculas). Dentro: `clave` (32 bytes aleatorios en hex, generada la primera vez, modo 0600 donde el
@@ -46,13 +46,44 @@ export function canonico(v) {
 export function raizDeEstado(env = process.env) {
   const home = String(leerVariable('HOME', env) ?? '').trim();
   if (home !== '') return join(resolve(home), 'integraciones');
+  const { nueva, antigua } = raicesPorDefecto(env);
+  // Sin migración: nunca se copia ni se mueve una clave o una cola. Manda la nueva si existe; si solo hay
+  // la antigua se sigue usando (para poder aprobar lo ya firmado); en una instalación limpia, la nueva.
+  if (esCarpeta(nueva)) return nueva;
+  if (esCarpeta(antigua)) return antigua;
+  return nueva;
+}
+
+/** @param {string} p */
+function esCarpeta(p) {
+  try { return lstatSync(p).isDirectory(); } catch { return false; }
+}
+
+/**
+ * Las dos raíces por defecto (nueva «fragua» y antigua «forge») cuando no hay FRAGUA_HOME/FORGE_HOME.
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {{ nueva: string, antigua: string }}
+ */
+export function raicesPorDefecto(env = process.env) {
   if (process.platform === 'win32') {
     const declarada = String(env.LOCALAPPDATA ?? '').trim();
     // Una ruta relativa dependería del directorio de trabajo, que puede ser el del proyecto
     const base = declarada !== '' && isAbsolute(declarada) ? declarada : join(homedir(), 'AppData', 'Local');
-    return join(base, 'forge', 'integraciones');
+    return { nueva: join(base, 'fragua', 'integraciones'), antigua: join(base, 'forge', 'integraciones') };
   }
-  return join(homedir(), '.forge', 'integraciones');
+  return { nueva: join(homedir(), '.fragua', 'integraciones'), antigua: join(homedir(), '.forge', 'integraciones') };
+}
+
+/**
+ * Carpeta de estado antigua que existe pero NO se usa (porque ya existe la nueva), para que `doctor` avise.
+ * Solo con la raíz por defecto: con FRAGUA_HOME/FORGE_HOME la elige el usuario.
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {string|null}
+ */
+export function estadoAntiguoSinUsar(env = process.env) {
+  if (String(leerVariable('HOME', env) ?? '').trim() !== '') return null;
+  const { nueva, antigua } = raicesPorDefecto(env);
+  return esCarpeta(nueva) && esCarpeta(antigua) ? antigua : null;
 }
 
 /**

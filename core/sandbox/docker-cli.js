@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { ETIQUETA } from './politica.js';
+import { ETIQUETAS } from './politica.js';
 import { leerVariableRestrictiva } from '../entorno.js';
 
 /**
@@ -196,7 +196,7 @@ export class DockerCli {
    * @returns {Promise<{ ok: boolean, error: string }>}
    */
   async build(etiqueta, contexto) {
-    const r = await this.ejecutar(['build', '-q', '-t', etiqueta, '--label', 'forge.sandbox.imagen=1', contexto], { timeoutMs: 600_000 });
+    const r = await this.ejecutar(['build', '-q', '-t', etiqueta, '--label', 'fragua.sandbox.imagen=1', contexto], { timeoutMs: 600_000 });
     return { ok: r.code === 0, error: r.error ?? r.stderr.trim().split(/\r?\n/).slice(-3).join(' | ') };
   }
 
@@ -220,14 +220,19 @@ export class DockerCli {
    * Elimina los contenedores de aislamiento que hayan quedado de ejecuciones anteriores.
    * Con `etiqueta` se limita a los de un proyecto: sin ella mataría también los
    * de otras sesiones de FORGE que estén corriendo en el mismo equipo.
-   * @param {string} [etiqueta]
+   * @param {string|string[]} [etiquetas] una o varias (cada una se consulta aparte: los filtros de Docker se suman);
+   *   por defecto las dos del sandbox (nueva y antigua). Nunca se borra lo que no lleve ninguna.
    * @returns {Promise<number>} cuántos eliminó
    */
-  async barrerHuerfanos(etiqueta = ETIQUETA) {
-    const ps = await this._consultar(['ps', '-aq', '--filter', `label=${etiqueta}`]);
-    const ids = ps.code === 0 ? ps.stdout.split(/\s+/).filter(Boolean) : [];
-    if (ids.length === 0) return 0;
+  async barrerHuerfanos(etiquetas = ETIQUETAS) {
+    const lista = Array.isArray(etiquetas) ? etiquetas : [etiquetas];
+    const ids = new Set();
+    for (const etiqueta of lista) {
+      const ps = await this._consultar(['ps', '-aq', '--filter', `label=${etiqueta}`]);
+      if (ps.code === 0) for (const id of ps.stdout.split(/\s+/).filter(Boolean)) ids.add(id);
+    }
+    if (ids.size === 0) return 0;
     await this.ejecutar(['rm', '-f', ...ids], { timeoutMs: Math.max(30_000, this.timeoutConsultaMs) });
-    return ids.length;
+    return ids.size;
   }
 }

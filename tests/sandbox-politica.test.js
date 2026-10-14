@@ -118,7 +118,7 @@ describe("argvRun — política de aislamiento", () => {
 
   test("con proyectoId añade la etiqueta del proyecto, que acota el barrido de huérfanos", () => {
     const a = argvRun({ ...BASE, proyectoId: "abc 123" });
-    assert.ok(a.includes("forge.proyecto=abc_123"));
+    assert.ok(a.includes("fragua.proyecto=abc_123"));
     assert.equal(a.filter((x) => x === "--label").length, 2);
     assert.equal(argvRun(BASE).filter((x) => x === "--label").length, 1);
   });
@@ -174,7 +174,8 @@ describe("DockerCli — con ejecutor guionizado", () => {
   test("CA-003-06: barrerHuerfanos elimina por etiqueta", async () => {
     const f = ejecutorFalso({ ps: { stdout: "abc123\ndef456\n" } });
     assert.equal(await new DockerCli(f).barrerHuerfanos(), 2);
-    assert.deepEqual(f.llamadas, [["ps", "-aq", "--filter", `label=${ETIQUETA}`], ["rm", "-f", "abc123", "def456"]]);
+    assert.deepEqual(f.llamadas, [["ps", "-aq", "--filter", `label=${ETIQUETA}`], ["ps", "-aq", "--filter", "label=forge.sandbox=1"], ["rm", "-f", "abc123", "def456"]]);
+    assert.equal(ETIQUETA, "fragua.sandbox=1");
     assert.equal(await new DockerCli(ejecutorFalso()).barrerHuerfanos(), 0);
   });
 

@@ -27,6 +27,7 @@ import { AuditoriaIntegraciones, estadoInterruptor } from './auditoria.js';
 import { escribirAlcance, leerAlcance, listarNoAutenticados, listarPendientes, sesionDeIntegraciones } from './aprobacion.js';
 import { VARIABLE_DESTINOS, VARIABLE_ESCRITURA } from './config.js';
 import { leerVariableRestrictiva } from '../entorno.js';
+import { estadoAntiguoSinUsar } from './estado-usuario.js';
 
 /** @typedef {{ nivel: 'ok'|'aviso'|'error'|'info', texto: string }} LineaDoctor */
 
@@ -196,6 +197,10 @@ export async function diagnosticarIntegraciones(o) {
   // Lo que ya está bloqueado por una comprobación anterior
   const activos = new Set(Object.values(config.proveedores).filter((c) => c.modo !== 'apagado').map((c) => c.nombre));
   const bloqueos = Object.entries(leerAlcance(cwd, env)).filter(([k, v]) => activos.has(/** @type {any} */ (k)) && v.bloqueaEscritura).map(([k]) => k);
+
+  // Estado antiguo («forge») que ya no se usa porque existe el nuevo («fragua»): nunca se migra solo
+  const antiguo = estadoAntiguoSinUsar(env);
+  if (antiguo) aviso(`Hay estado de una instalación antigua sin usar en ${antiguo}: se usa la carpeta nueva «fragua». Las aprobaciones y la clave de la antigua NO se copian solas; si ahí quedó algo pendiente, apruébalo con la versión anterior o bórralo`);
 
   // Publicaciones en cola
   const cola = listarPendientes(cwd, env);

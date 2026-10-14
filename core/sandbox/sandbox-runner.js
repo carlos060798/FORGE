@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash, randomBytes } from 'crypto';
 import { DockerCli } from './docker-cli.js';
-import { argvRun, etiquetaProyecto, nombreContenedor, validarRuntime } from './politica.js';
+import { argvRun, etiquetaProyecto, etiquetaProyectoAntigua, nombreContenedor, validarRuntime } from './politica.js';
 import { crearCopia, eliminarCopia } from './staging.js';
 import { DIR_TRABAJO, ErrorPreparacion, prepararImagen } from './preparar-imagen.js';
 
@@ -227,6 +227,6 @@ export class SandboxRunner {
 
   /** Elimina los contenedores que hayan quedado de ejecuciones anteriores de este proyecto. */
   barrerHuerfanos() {
-    return this.cli.barrerHuerfanos(etiquetaProyecto(this.proyectoId));
+    return this.cli.barrerHuerfanos([etiquetaProyecto(this.proyectoId), etiquetaProyectoAntigua(this.proyectoId)]);
   }
 }

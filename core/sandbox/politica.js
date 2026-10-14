@@ -4,7 +4,10 @@
  * Declarativa y sin efectos: se prueba comparando el argv, sin necesitar Docker.
  */
 
-export const ETIQUETA = 'forge.sandbox=1';
+export const ETIQUETA = 'fragua.sandbox=1';
+/** Etiqueta de los contenedores creados por versiones anteriores: el barrido la reconoce, nunca se emite. */
+export const ETIQUETA_ANTIGUA = 'forge.sandbox=1';
+export const ETIQUETAS = Object.freeze([ETIQUETA, ETIQUETA_ANTIGUA]);
 
 /**
  * Etiqueta que identifica los contenedores de un proyecto. El barrido de
@@ -12,6 +15,11 @@ export const ETIQUETA = 'forge.sandbox=1';
  * @param {string} proyectoId
  */
 export function etiquetaProyecto(proyectoId) {
+  return `fragua.proyecto=${String(proyectoId).replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
+}
+
+/** Forma antigua de la etiqueta de proyecto (solo para barrer). @param {string} proyectoId */
+export function etiquetaProyectoAntigua(proyectoId) {
   return `forge.proyecto=${String(proyectoId).replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
 }
 export const USUARIO  = '1000:1000';

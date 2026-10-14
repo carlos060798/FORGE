@@ -157,7 +157,7 @@ describe("forge verificar: aislamiento del proyecto y del ciclo", () => {
     const dir = proyecto(PASA, { sdd: true });
     const r = verificar(dir, ["--json"]);
     const idCiclo = createHash("sha256").update(resolve(dir)).digest("hex").slice(0, 12);
-    const filtros = r.docker.filter((l) => l.orden === "ps").flatMap((l) => l.args).filter((a) => String(a).includes("forge.proyecto="));
+    const filtros = r.docker.filter((l) => l.orden === "ps").flatMap((l) => l.args).filter((a) => String(a).includes(".proyecto="));
     assert.ok(filtros.length > 0, "el barrido filtra por proyecto");
     for (const f of filtros) assert.ok(!String(f).includes(idCiclo), `${f} comparte el id del ciclo`);
   });
