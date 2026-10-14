@@ -574,6 +574,13 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 - **Mitigado, no cerrado**: el tope de operaciones por sesión se puede reiniciar fabricando `sesion.json` hasta el tope diario (5 veces el de sesión, máximo 200). El estado del ciclo (`.sdd/motor/`) que `publicar` lee sigue en el árbol: lo contienen la vista previa y la huella obligatorias.
 - **Sigue abierto**: no hay tercera revisión independiente; solo servidores falsos; en Windows la protección de la clave es la ACL del perfil (no se aplica 0600); `forge doctor` pasa el entorno completo (incluido `FORGE_GITHUB_TOKEN`) a `where claude` y a las consultas de Docker, como cualquier proceso hijo.
 
+## Corregido el 2026-10-13: el proyecto podía dirigir la clave del modelo a otro servidor
+
+- **Qué pasaba.** `.sdd/sdd.config.yaml` del repositorio podía fijar `llm.base_url` y `llm.api_key`, y ganaban al entorno. Un repositorio ajeno con `provider: openai` y un `base_url` propio recibía `OPENAI_API_KEY` del usuario en la cabecera de autorización. Lo encontró un spike de la especificación de proveedores agnósticos; no hay constancia de que se haya explotado.
+- **Qué cambió.** `api_key` y `api_version` del archivo del proyecto se ignoran con aviso; un `base_url` o un `provider` con dirección solo valen si son de la propia máquina o si el usuario los permite en su entorno (`FORGE_LLM_HOSTS`); HTTP solo hacia la propia máquina; las llamadas no siguen redirecciones.
+- **Quién debe actuar.** Quien tuviera `api_key` en un archivo de proyecto: pasarla al entorno. Prueba: `tests/llm-destino-no-confiable.test.js`.
+- **Alcance.** Cubre OpenAI y Ollama. Anthropic usa el SDK, que lee su propia variable de entorno; no se revisó si el SDK admite otra dirección base desde el proyecto.
+
 ## Límites conocidos tras la quinta revisión (2026-10-13)
 
 - **`mutacion: exigir` y funciones con guardas `throw`:** una función con muchas guardas produce muchos mutantes no concluyentes; con menos de `mutacion_min_concluyentes` el ciclo se pausa (falla cerrado). Baja el mínimo o usa `informar`.

@@ -64,6 +64,7 @@ export class OllamaProvider extends LlmProvider {
       headers: { 'Content-Type': 'application/json' },
       body,
       signal,
+      redirect: 'error',
     });
 
     if (!res.ok) {

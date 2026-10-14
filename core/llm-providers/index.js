@@ -71,6 +71,59 @@ function leerConfigLlm(cwd) {
   return config;
 }
 
+/** Variable del ENTORNO DEL USUARIO con los servidores de modelo que acepta además de los oficiales. */
+export const VARIABLE_HOSTS_LLM = 'FORGE_LLM_HOSTS';
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+/**
+ * ¿Puede un archivo del PROYECTO dirigir las llamadas al modelo a esta dirección?
+ * El proyecto es no confiable (puede ser un repositorio ajeno): una dirección suya recibiría la clave
+ * del usuario y el contenido del proyecto. Solo vale si es la máquina local, o si el USUARIO la
+ * nombró en su entorno (`FORGE_LLM_HOSTS`, lista separada por comas de host o host:puerto), y solo
+ * por HTTPS (HTTP únicamente hacia la propia máquina).
+ * @param {string} direccion
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {boolean}
+ */
+export function destinoDeModeloPermitido(direccion, env = process.env) {
+  let u;
+  try { u = new URL(direccion); } catch { return false; }
+  if (u.username || u.password) return false;
+  const local = LOOPBACK.has(u.hostname.toLowerCase());
+  if (u.protocol === 'http:') return local;
+  if (u.protocol !== 'https:') return false;
+  if (local) return true;
+  const permitidos = String(env[VARIABLE_HOSTS_LLM] ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return permitidos.includes(u.hostname.toLowerCase()) || permitidos.includes(u.host.toLowerCase());
+}
+
+/**
+ * Quita de lo leído del archivo del proyecto todo lo que decidiría a dónde va la clave o el contenido:
+ * credenciales (solo valen por el entorno del usuario) y direcciones no permitidas. Avisa de cada cosa.
+ * @param {Record<string, string>} config
+ * @param {Record<string, string|undefined>} [env]
+ * @param {(m: string) => void} [avisar]
+ */
+export function sanearConfigDelProyecto(config, env = process.env, avisar = (m) => console.warn(m)) {
+  const limpia = { ...config };
+  for (const clave of ['api_key', 'api_version']) {
+    if (clave in limpia) {
+      delete limpia[clave];
+      avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.${clave}» se ignora. Una credencial no puede venir de un archivo del proyecto; defínela en tu entorno (ANTHROPIC_API_KEY, OPENAI_API_KEY).`);
+    }
+  }
+  if ('base_url' in limpia && !destinoDeModeloPermitido(limpia.base_url, env)) {
+    avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (${limpia.base_url}) se ignora: el proyecto no puede dirigir las llamadas al modelo a un servidor que tú no hayas permitido. Si es tuyo, añade su host a ${VARIABLE_HOSTS_LLM} en tu entorno, o define OPENAI_BASE_URL / OLLAMA_BASE_URL.`);
+    delete limpia.base_url;
+  }
+  if (typeof limpia.provider === 'string' && /^https?:/i.test(limpia.provider.trim()) && !destinoDeModeloPermitido(limpia.provider.trim(), env)) {
+    avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.provider» con una dirección (${limpia.provider}) se ignora por el mismo motivo.`);
+    delete limpia.provider;
+  }
+  return limpia;
+}
+
 /**
  * Tiempo máximo por intento de una llamada (`llm.timeout_s`, en segundos), en milisegundos.
  * Sin la clave, `null` (el llamador usa 120 s). Un valor que no sea un número entre 1 y 3600 es un error.
@@ -107,7 +160,7 @@ function detectarProvider() {
  */
 export function crearProvider(opts = {}) {
   const cwd        = opts.cwd ?? process.cwd();
-  const configYaml = leerConfigLlm(cwd);
+  const configYaml = sanearConfigDelProyecto(leerConfigLlm(cwd));
   // ADR-19: los niveles (opus/sonnet/haiku) que indique `modelos:` del proyecto mandan
   // sobre los que trae cada proveedor
   const modelos    = { ...leerModelosDe(cwd), ...opts.config?.modelos };
@@ -145,6 +198,8 @@ export function crearProvider(opts = {}) {
     default:
       // Nombre desconocido: intentar como base_url de Ollama si parece URL
       if (nombreProvider.startsWith('http')) {
+        // Llega aquí desde FORGE_LLM_PROVIDER (el usuario) o desde opts.config (el llamador): el
+        // archivo del proyecto ya no puede traer una dirección sin permiso (sanearConfigDelProyecto)
         return new OllamaProvider({ base_url: nombreProvider, ...config });
       }
       console.warn(`[FORGE] Provider desconocido: "${nombreProvider}". Usando anthropic.`);

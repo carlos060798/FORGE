@@ -28,24 +28,29 @@ idioma: español
 #     provider: anthropic
 #     model: sonnet
 #
-#   # OpenAI
+#   # OpenAI  (la clave va en tu ENTORNO: OPENAI_API_KEY; un archivo del proyecto no puede traerla)
 #   llm:
 #     provider: openai
-#     api_key: sk-...
 #     model: gpt-4o
 #
-#   # GitHub Models / Cursor / Azure (endpoint compatible con OpenAI)
+#   # GitHub Models / Azure (endpoint compatible con OpenAI)
+#   # El servidor lo fijas TÚ en tu entorno, no en el proyecto:
+#   #   OPENAI_BASE_URL=https://models.inference.ai.azure.com   (y la clave en OPENAI_API_KEY)
+#   # o lo permites por nombre:  FORGE_LLM_HOSTS=models.inference.ai.azure.com
 #   llm:
 #     provider: openai
 #     base_url: https://models.inference.ai.azure.com
-#     api_key: ghp_...
 #     model: gpt-4o
 #
-#   # Ollama local
+#   # Ollama local (una dirección de tu propia máquina se acepta sin más)
 #   llm:
 #     provider: ollama
 #     base_url: http://localhost:11434
 #     model: qwen2.5-coder:7b
+#
+#   Por seguridad, «api_key» en este archivo se ignora, y un «base_url» que no sea de tu
+#   máquina solo vale si tu entorno lo permite (FORGE_LLM_HOSTS): un repositorio ajeno no
+#   puede dirigir tu clave a otro servidor.
 # ============================================================
 llm:
   provider: anthropic

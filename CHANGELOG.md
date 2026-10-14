@@ -7,6 +7,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ## [5.0.0] — Sin publicar
 
+> **Seguridad (2026-10-13):** `.sdd/sdd.config.yaml` del proyecto ya no puede fijar `llm.api_key` ni un `llm.base_url` ajeno; antes un repositorio ajeno podía recibir la clave del usuario. Ver `docs/PROBLEMAS-CONOCIDOS.md`.
+
 > **Nombre:** el proyecto pasa a llamarse **Fragua** (decisión del 2026-10-13). En esta versión la orden `fragua` equivale a `forge`, que sigue funcionando junto con `sdd-es`. El paquete, las variables `FORGE_*` y la carpeta de estado **no han cambiado todavía**: ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
 ### Guía de migración desde 4.2.0

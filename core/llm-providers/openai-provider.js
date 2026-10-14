@@ -69,7 +69,8 @@ export class OpenAIProvider extends LlmProvider {
     });
 
     const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
-    const res = await fetch(url, { method: 'POST', headers, body, signal });
+    // redirect: 'error': una redirección no puede llevar la clave a otro servidor
+    const res = await fetch(url, { method: 'POST', headers, body, signal, redirect: 'error' });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

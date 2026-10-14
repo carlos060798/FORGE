@@ -180,6 +180,8 @@ llm:
   model: sonnet   # alias → qwen2.5-coder:7b
 ```
 
+> **Seguridad:** las claves (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) van siempre en tu entorno; «api_key» en el archivo del proyecto se ignora. Un `base_url` solo vale si es de tu propia máquina o si tu entorno lo permite con `FORGE_LLM_HOSTS` (o lo fijas con `OPENAI_BASE_URL`/`OLLAMA_BASE_URL`). Así un repositorio ajeno no puede dirigir tu clave a otro servidor.
+
 Proveedores soportados: **Anthropic** (por defecto), **OpenAI** (y compatibles: Azure, GitHub Models), **Ollama** (modelos locales), **Stub** (determinístico, para CI).
 
 `forge doctor` valida la conexión al proveedor activo, mide latencia y verifica el formato de respuesta.
