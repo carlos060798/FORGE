@@ -157,7 +157,7 @@ describe("F1.5 / F3 — integración y perfil en la configuración, respetados e
     writeFileSync(join(carpeta, "sdd-estado", "SKILL.md"), "VIEJO");
     const r = forge(cwd, home, "update");
     assert.equal(r.status, 0, r.salida);
-    assert.match(readFileSync(join(carpeta, "sdd-estado", "SKILL.md"), "utf8"), /^---\nname: sdd-estado/);
+    assert.match(readFileSync(join(carpeta, "sdd-estado", "SKILL.md"), "utf8"), /^---\r?\nname: sdd-estado/);
     assert.ok(!existsSync(join(cwd, ".claude")), "update no cambió de integración");
     assert.ok(!existsSync(join(carpeta, "sdd-qa")), "update no cambió de perfil");
   });
