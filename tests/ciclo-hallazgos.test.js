@@ -404,7 +404,8 @@ describe("hallazgos 3 y 10 — el gasto y el tope son de la sesión", () => {
   });
 
   test("el libro suma por llamada y es la fuente de verdad", () => {
-    const l = new LibroDeGasto(tmp("forge-h-"));
+    // Forma real: <proyecto>/.sdd/motor/<runId> (el tope ampliado se firma con la clave del usuario)
+    const l = new LibroDeGasto(join(tmp("forge-h-"), ".sdd", "motor", "ciclo-t"));
     l.anotar({ taskId: "T1", usd: 0.1, inputTokens: 5, outputTokens: 1 });
     l.anotar({ taskId: "T2", usd: 0.25, inputTokens: 7, outputTokens: 2 });
     assert.deepEqual(l.total(), { usd: 0.35, llamadas: 2, tokens_in: 12, tokens_out: 3 });

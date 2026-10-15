@@ -33,6 +33,9 @@ const MAX_BYTES_ARCHIVO = 4 * 1024 * 1024;
 
 /** Prefijo fijo de toda invocación: neutraliza lo que `-c` puede neutralizar. */
 export const PREFIJO_GIT = Object.freeze([
+  // Un `git replace` del repositorio podría hacer que una referencia muestre otro árbol y ocultar archivos
+  // cambiados (revisión independiente, H-3): las referencias de reemplazo no se usan nunca
+  '--no-replace-objects',
   '-c', 'core.fsmonitor=false',
   '-c', `core.hooksPath=${NULO}`,
   '-c', `core.attributesFile=${NULO}`,
@@ -51,6 +54,7 @@ export function entornoGit() {
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_CONFIG_GLOBAL: NULO,
     GIT_OPTIONAL_LOCKS: '0',
+    GIT_NO_REPLACE_OBJECTS: '1',
     GIT_TERMINAL_PROMPT: '0',
     GIT_PAGER: 'cat',
     LC_ALL: 'C',

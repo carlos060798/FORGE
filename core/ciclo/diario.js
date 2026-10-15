@@ -15,6 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
+import { claveLocal, directorioDeEstado, existeEstado, firmaValida, firmar } from '../estado-usuario.js';
 
 const nombre = (threadId) => threadId.replace(/[^\w.-]/g, '_') + '.jsonl';
 
@@ -114,11 +115,18 @@ export class Diario {
  * presupuesto: no depende de que ninguna tarea llegue a guardar su estado.
  */
 export class LibroDeGasto {
-  /** @param {string} dirMotor */
+  /** @param {string} dirMotor  `<proyecto>/.sdd/motor/<runId>` */
   constructor(dirMotor) {
     this.archivo = path.join(dirMotor, 'gasto.jsonl');
     this.extra   = path.join(dirMotor, 'tope.json');
+    // El tope ampliado va firmado con la clave local del USUARIO (fuera del proyecto): el árbol del
+    // proyecto puede ser de un repositorio ajeno y no debe poder traer un tope ya subido.
+    this.proyecto = path.resolve(dirMotor, '..', '..', '..');
+    this.runId = path.basename(dirMotor);
   }
+
+  /** Valor firmado: ata el tope a esta sesión. @param {number} tope */
+  _valorFirmado(tope) { return `tope|${this.runId}|${tope}`; }
 
   /**
    * `cacheCreationTokens` y `cacheReadTokens` solo se escriben si el proveedor los informó
@@ -181,15 +189,27 @@ export class LibroDeGasto {
     return t;
   }
 
-  /** Tope ampliado por una persona; vale para toda la sesión. */
+  /**
+   * Tope ampliado por una persona; vale para toda la sesión. Solo se acepta con una firma válida de la
+   * clave local del usuario: un `tope.json` traído por el proyecto (sin firma o con otra) se ignora.
+   */
   tope() {
-    try { return Number(JSON.parse(fs.readFileSync(this.extra, 'utf8')).tope_usd) || null; } catch { return null; }
+    try {
+      const d = JSON.parse(fs.readFileSync(this.extra, 'utf8'));
+      const valor = Number(d.tope_usd);
+      if (!Number.isFinite(valor) || valor <= 0) return null;
+      // Sin estado del usuario no hay clave con la que validar: no se crea nada al leer
+      if (!existeEstado(this.proyecto)) return null;
+      const clave = claveLocal(directorioDeEstado(this.proyecto));
+      return firmaValida(clave, this._valorFirmado(valor), d.firma) ? valor : null;
+    } catch { return null; }
   }
 
   guardarTope(tope_usd) {
     fs.mkdirSync(path.dirname(this.extra), { recursive: true });
+    const clave = claveLocal(directorioDeEstado(this.proyecto));
     const tmp = this.extra + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify({ tope_usd }), 'utf8');
+    fs.writeFileSync(tmp, JSON.stringify({ tope_usd, firma: firmar(clave, this._valorFirmado(tope_usd)) }), 'utf8');
     fs.renameSync(tmp, this.extra);
   }
 }

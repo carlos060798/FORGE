@@ -137,6 +137,30 @@ describe("verificar --desde: git neutralizado", () => {
     assert.equal(r.ok, false);
   });
 
+  test("H-3: un git replace del repositorio no oculta archivos cambiados", async () => {
+    // C1 tiene a.js = v1; el árbol de trabajo tiene v2 sin confirmar. Un reemplazo C1 -> C2 (cuyo árbol
+    // ya trae v2) haría que `ls-tree C1` mostrara v2 y a.js pareciera sin cambios.
+    const dir = join(base, `r${++n}`);
+    mkdirSync(dir);
+    git(dir, ["init", "-q"]);
+    writeFileSync(join(dir, "a.js"), "export const a = 1;\n");
+    git(dir, ["add", "."]); git(dir, ["commit", "-q", "-m", "c1"]);
+    const c1 = git(dir, ["rev-parse", "HEAD"]).trim();
+    writeFileSync(join(dir, "a.js"), "export const a = 2;\n");
+    git(dir, ["commit", "-q", "-am", "c2"]);
+    const c2 = git(dir, ["rev-parse", "HEAD"]).trim();
+    git(dir, ["reset", "-q", "--hard", c1]);
+    writeFileSync(join(dir, "a.js"), "export const a = 2;\n");   // cambio sin confirmar
+    git(dir, ["replace", c1, c2]);
+    // Control negativo: con las referencias de reemplazo activas, git sí ve el árbol de C2
+    const visto = git(dir, ["ls-tree", c1, "a.js"]);
+    const real = execFileSync("git", ["--no-replace-objects", "ls-tree", c1, "a.js"], { cwd: dir, encoding: "utf8" });
+    assert.notEqual(visto, real, "el reemplazo cambia lo que git muestra (control negativo)");
+    const r = await cambiosDesde(dir, c1);
+    assert.equal(r.ok, true);
+    assert.deepEqual(/** @type {any} */ (r).archivos, ["a.js"], "a.js sigue apareciendo como cambiado");
+  });
+
   test("idDeBlob coincide con el de git", () => {
     const { dir } = repositorioHostil();
     const git0 = execFileSync("git", ["hash-object", "--no-filters", "a.js"], { cwd: dir, encoding: "utf8", env: { PATH: process.env.PATH ?? "", SystemRoot: process.env.SystemRoot ?? "", GIT_CONFIG_NOSYSTEM: "1" } }).trim();
