@@ -83,8 +83,9 @@ describe("T004 — configuración del ciclo", () => {
       "  memoria: 1g",
       "  timeout_s: 30",
       "presupuesto:",
-      '  tope_usd: "5.00"',
-      "  umbral_degradacion_usd: 4",
+      // Por debajo del tope por defecto: un archivo del proyecto puede bajar el tope, no subirlo
+      '  tope_usd: "1.50"',
+      "  umbral_degradacion_usd: 1",
       "calidad:",
       "  max_iteraciones: 99",
     ].join("\n"));
@@ -94,8 +95,8 @@ describe("T004 — configuración del ciclo", () => {
     assert.equal(c.motor.contexto_max_bytes, 65536);
     assert.equal(c.sandbox.memoria, "1g");
     assert.equal(c.sandbox.timeout_s, 30);
-    assert.equal(c.presupuesto.tope_usd, 5);
-    assert.equal(c.presupuesto.umbral_degradacion_usd, 4);
+    assert.equal(c.presupuesto.tope_usd, 1.5);
+    assert.equal(c.presupuesto.umbral_degradacion_usd, 1);
   });
 
   test("el flag de línea de comandos manda sobre el archivo", () => {

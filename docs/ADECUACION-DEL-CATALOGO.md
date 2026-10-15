@@ -44,7 +44,10 @@
 
 ## 4. Mínimo privilegio por rol (propuesta, no aplicada)
 
-Regla: **cada agente declara las herramientas que necesita su rol y nada más**; el motor las impone, no el prompt.
+> **Corrección tras comprobarlo en el código (2026-10-14).** La lista `tools:` de la cabecera de un agente se lee en `core/agent-registry.js:102` y **no se usa en ningún otro punto del motor**. En el ciclo verificado el modelo no recibe `Bash` ni `Write`: recibe texto y un protocolo de archivos (modo bloque) o las cinco herramientas propias de `core/ciclo/herramientas-coder.js` (modo turnos). Por tanto, quitar `Bash` de una cabecera **solo cambia el flujo interactivo de Claude Code**, que es quien lo impone; no cambia lo que el ciclo permite. Y el gancho de agentes de solo lectura de `claude-hooks/pre-tool-guard.js` se desactiva si el entorno no trae `CLAUDE_AGENT_NAME` (aviso en `pre-tool-guard.js:215`).
+> La contención real del ciclo está en el protocolo de archivos y en el sandbox, no en las cabeceras. Convertir las cabeceras en una garantía del motor es el objeto de la especificación `2026-10-14-perfiles-de-agente`.
+
+Regla: **cada agente declara las herramientas que necesita su rol y nada más**, y lo que se declara debe imponerlo el motor, no el prompt ni solo la herramienta anfitriona.
 
 | Rol | Herramientas hoy | Propuesta | Condición para aplicarla |
 |---|---|---|---|
@@ -63,7 +66,7 @@ Regla: **cada agente declara las herramientas que necesita su rol y nada más**;
 | **C2. Fronteras** | `revisor`/`crítico` y `arquitecto`/`architecture-designer` con límites en la descripción; política de modelo documentada | Bajo | Agente | Descripciones sin solapamiento; prueba del catálogo comprueba que cada par se excluye |
 | **C3. Duplicados** | Elegir `deploy-vercel` o `vercel-deploy`, `indexador` o `indexar-proyecto`; redirigir comandos y manifiesto; retirar `compresion-tokens` | Medio | Agente + revisión | Ningún comando referencia una skill inexistente (prueba) |
 | **C4. Comandos largos** | Los 12 de más de 250 líneas: cuerpo corto y material a archivos de apoyo, empezando por `sdd.implementar` (679) | Medio | Agente | Mismo comportamiento; prueba de que cada referencia a un archivo de apoyo existe |
-| **C5. Mínimo privilegio** | Aplicar §4 con ganchos donde proceda | **Alto** | Agente + revisión independiente | Pruebas de que un rol de solo lectura no puede escribir |
+| **C5. Mínimo privilegio** | Aplicar §4: cabeceras mínimas para el flujo de Claude Code y, aparte, perfiles que imponga el motor (spec `perfiles-de-agente`) | **Alto** | Agente + revisión independiente | Pruebas de que un rol de solo lectura no puede escribir |
 | **C6. Evaluación** | ~20 casos con rúbrica para decidir sobre roles y modelo | Medio | Agente + dueño | Informe con medición, no opinión |
 | **C7. Skills nuevas** | Depuración, rendimiento, accesibilidad, cumplimiento | Medio | Agente | Cada una con casos de activación y evidencia |
 

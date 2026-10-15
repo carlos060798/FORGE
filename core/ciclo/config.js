@@ -14,6 +14,16 @@ import { join } from 'node:path';
 import { validarRuntime } from '../sandbox/politica.js';
 import { leerVariable } from '../entorno.js';
 
+/** Tope de gasto por defecto (USD) y techo de lo que un archivo del proyecto puede declarar. */
+export const TOPE_POR_DEFECTO_USD = 2.0;
+const topesAvisados = new Set();
+/** @param {number} pedido */
+function avisarTopeIgnorado(pedido) {
+  if (topesAvisados.has(pedido)) return;
+  topesAvisados.add(pedido);
+  console.warn(`[Fragua] .sdd/sdd.config.yaml pide presupuesto.tope_usd = ${pedido}, por encima del tope por defecto (${TOPE_POR_DEFECTO_USD}): se ignora. Un archivo del proyecto no puede subir tu tope de gasto. Si es tu proyecto, define FRAGUA_BUDGET_USD en tu entorno.`);
+}
+
 export const POR_DEFECTO = {
   motor: {
     modo: 'ciclo',              // ciclo (por defecto desde 5.0.0) | clasico
@@ -44,7 +54,7 @@ export const POR_DEFECTO = {
     runtime: '',                // mecanismo de aislamiento de Docker (--runtime); vacío = el de Docker por defecto
   },
   presupuesto: {
-    tope_usd: 2.0,
+    tope_usd: TOPE_POR_DEFECTO_USD,
     umbral_degradacion_usd: 1.5,
     degradar_a: 'escalon',      // escalon | local
   },
@@ -318,9 +328,17 @@ export function leerConfigCiclo(cwd, overrides = {}) {
     }
   }
   const topeEnv = leerVariable('BUDGET_USD');
+  let topeDelUsuario = false;
   if (topeEnv) {
     const tope = Number(topeEnv);
-    if (Number.isFinite(tope) && tope >= 0) config.presupuesto.tope_usd = tope;
+    if (Number.isFinite(tope) && tope >= 0) { config.presupuesto.tope_usd = tope; topeDelUsuario = true; }
+  }
+  // El tope de gasto protege al USUARIO: un archivo del proyecto (que puede ser de un repositorio ajeno)
+  // puede BAJARLO, nunca subirlo por encima del valor por defecto. Subirlo lo decide el usuario en su
+  // entorno (FRAGUA_BUDGET_USD / FORGE_BUDGET_USD) o con --presupuesto-extra al reanudar.
+  if (!topeDelUsuario && config.presupuesto.tope_usd > TOPE_POR_DEFECTO_USD) {
+    avisarTopeIgnorado(config.presupuesto.tope_usd);
+    config.presupuesto.tope_usd = TOPE_POR_DEFECTO_USD;
   }
 
   // Un valor que pudiera leerse como una opción de docker se rechaza aquí, antes de empezar nada

@@ -1,0 +1,75 @@
+# Tareas: puertas de calidad y evidencia
+
+> Plan: `plan.md` · Cada tarea: prueba primero, después código. `[ ]` por hacer · `[x]` hecha.
+> **Ninguna tarea empieza hasta que el dueño apruebe la spec.** Redactada por un agente por encargo del dueño.
+
+## S0 — Spikes (solo lectura, salida en `spikes/`)
+
+- [ ] **S0.1** Cómo ejecutar varias puertas con una sola preparación de imagen y si pueden ir en paralelo. Salida: `spikes/varias-ejecuciones.md`.
+- [ ] **S0.2** Digest de la imagen construida en local (`{{.Id}}` frente a `RepoDigests`) y cómo pedirlo sin red. Salida: `spikes/digest-de-imagen.md`.
+- [ ] **S0.3** Dónde constan aprobador, fecha y hash de la spec aprobada. Salida: `spikes/aprobacion-de-spec.md`.
+- [ ] **S0.4** Identidad de modelo y rol por llamada: de dónde se obtiene y qué falta. Salida: `spikes/identidad-de-modelo.md`.
+- [ ] **S0.5** Formato de `events.jsonl` y tipos admitidos; qué consumidores leen los tipos. Salida: `spikes/eventos.md`.
+- [ ] **S0.6** Qué configuraciones de herramientas (tipos, linter) puede reescribir un agente hoy (lista de `docs/ciclo-verificado.md:210-226`) y comportamiento del lector con `#` y comillas. Salida: `spikes/configuracion-protegida.md`.
+
+## F1 — Configuración
+
+- [ ] **F1.1** Prueba: `puertas:` con claves válidas se lee; clave desconocida es error con su línea. Código en `core/ciclo/config.js`. Cubre CA-001-01, CA-001-02.
+- [ ] **F1.2** Prueba exhaustiva: ninguna clave aceptada afloja una garantía fija. Cubre CA-001-03.
+- [ ] **F1.3** Prueba: sin sección, la configuración resultante es idéntica a la de hoy. Cubre CA-001-04.
+- [ ] **F1.4** Prueba: comando con `&&`, `|`, `;`, `>` rechazado. Cubre CA-001-05.
+
+## F2 — Ejecución en `forge verificar`
+
+- [ ] **F2.1** Prueba con Docker falso: cada puerta pass/fail/timeout/infra; código de salida del proceso. Código `core/ciclo/puertas.js`. Cubre CA-002-01, CA-002-02.
+- [ ] **F2.2** Prueba: pruebas en verde y puerta en rojo da `falla`; infra y timeout nunca éxito. Cubre CA-002-03.
+- [ ] **F2.3** Prueba: herramienta ausente da «puerta no ejecutable». Cubre CA-002-04.
+- [ ] **F2.4** Prueba: el resultado nombra la puerta y redacta su salida. Cubre CA-002-05.
+- [ ] **F2.5** Prueba: cobertura mínima se pasa a la herramienta; sin soporte, no disponible. Cubre CA-002-06.
+- [ ] **F2.6** Prueba: `--json` incluye las puertas y los códigos 0, 1 y 4 no cambian. Cubre CA-002-07.
+
+## F3 — Puertas en el ciclo
+
+- [ ] **F3.1** Prueba de `decidirTrasPuertas` (función pura) en `router.js`. Cubre RF-03.
+- [ ] **F3.2** Prueba del nodo y del grafo: sin sección, mismo recorrido que hoy; con puerta fallida, vuelve al implementador con su salida. Cubre CA-001-04, RF-04.
+- [ ] **F3.3** Prueba: motivo `puerta` en el estado y en `validarEstado` (`core/ciclo/estado.js:8,167`).
+- [ ] **F3.4** Prueba de regresión del ciclo completo con el Docker falso y un modelo falso.
+
+## F4 — Criterios enlazados a pruebas
+
+- [ ] **F4.1** Prueba: extrae los `CA-xxx-yy` de una spec de ejemplo. Cubre CA-003-01.
+- [ ] **F4.2** Prueba: CA sin tarea y CA con tarea sin prueba citada. Cubre CA-003-02.
+- [ ] **F4.3** Prueba estática: el módulo no importa proveedores de modelo ni ejecuta procesos. Cubre CA-003-03.
+- [ ] **F4.4** Salida en `forge status`/`verificar --criterios` y `--exigir-cobertura-de-criterios`. Cubre CA-003-04, CA-003-05.
+- [ ] **F4.5** Instrucción al agente de pruebas de citar el identificador (cambio en `core/ciclo/contratos.js:34-44`; prueba de regresión del ciclo).
+
+## F5 — Informe de evidencia
+
+- [ ] **F5.1** Prueba: el informe contiene cada campo o su `null` con motivo. Cubre CA-004-01, CA-004-02.
+- [ ] **F5.2** Prueba: redacción de un secreto en cualquier campo. Cubre CA-004-03.
+- [ ] **F5.3** Prueba: `sha256` canónico estable ante el orden de claves. Cubre CA-004-04.
+- [ ] **F5.4** Prueba: guardado exclusivo y con escritura segura (enlace en la ruta, colisión de id). Cubre CA-004-05.
+- [ ] **F5.5** Prueba: nada sale del equipo (red interceptada). Cubre CA-004-06.
+
+## F6 — Cadena y firma
+
+- [ ] **F6.1** Prueba: encadenado con `anterior`; alterar, borrar o reordenar rompe. Cubre CA-005-01.
+- [ ] **F6.2** Comando de comprobación y sus códigos. Cubre CA-005-02.
+- [ ] **F6.3** Firma y verificación opcionales con `node:crypto`; sin clave, «encadenado, no firmado». Cubre CA-005-03.
+- [ ] **F6.4** Impresión de la cabeza y texto del límite en la guía. Cubre CA-005-04, CA-005-05.
+
+## F7 — Regresión (`no_cambiar`)
+
+- [ ] **F7.1** Prueba y código: campo opcional de tarea y su validación. Cubre CA-006-01, CA-006-05.
+- [ ] **F7.2** Prueba: línea base verde antes de implementar; si no, revisión humana. Cubre CA-006-02.
+- [ ] **F7.3** Prueba: regresión tras el cambio da `falla` con la lista. Cubre CA-006-03.
+- [ ] **F7.4** Prueba: el implementador no puede modificar lo declarado. Cubre CA-006-04.
+
+## F8 — Cierre
+
+- [ ] **F8.1** Prueba de proyecto hostil: comando de puerta malicioso, salida con secretos, informe retocado.
+- [ ] **F8.2** Con Docker real, una puerta de tipos y otra de linter (`FORGE_TEST_DOCKER=1`).
+- [ ] **F8.3** Documentación: `docs/ciclo-verificado.md`, guía, `README.md`, `CHANGELOG.md`, ayuda.
+- [ ] **F8.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.
+- [ ] **F8.5** Revisión independiente (ver `plan.md`, sección 9); hallazgos altos corregidos.
+- [ ] **F8.6** `verificacion.md` con cada criterio y su prueba.
