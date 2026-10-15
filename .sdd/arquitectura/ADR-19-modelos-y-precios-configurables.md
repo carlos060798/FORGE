@@ -66,3 +66,9 @@ Si un proveedor ofrece el costo exacto en cada respuesta, se usa ese dato y la t
 
 - `.sdd/arquitectura/ADR-06-presupuesto-en-el-estado.md`
 - `PLAN-CIERRE-BRECHAS.md`, FASE 6 (6.2)
+
+## Enmienda 2026-10-14 — niveles neutrales y coste cero explícito
+
+- **Niveles.** `core/llm-providers/niveles.js` es la única fuente: `alto`, `medio`, `economico`, con `opus`, `sonnet` y `haiku` como alias equivalentes (sin aviso de obsolescencia). Valen en `modelos:`, `motor.nivel_maximo`, `FRAGUA_NIVEL_MAXIMO`/`FORGE_NIVEL_MAXIMO`, la cabecera `model:` de los agentes y la degradación por presupuesto, que conserva el juego de nombres de la entrada (`opus` baja a `sonnet`, `alto` a `medio`). Un identificador directo de modelo no es un nivel y no se toca (antes `normalizeModel` lo degradaba a `sonnet`). `forge doctor` muestra a qué modelo resuelve cada nivel por proveedor.
+- **Coste cero.** Solo por declaración: `precios:` a cero, un Ollama cuyo `base_url` es de la propia máquina (loopback), o el proveedor `stub` (de pruebas). Contra un Ollama remoto sin declarar se cuenta al precio más caro conocido y se avisa una vez. Un destino remoto en la sesión manda sobre uno local (falla cerrado).
+- **`presupuesto.sin_precio: avisar | rechazar`.** Por defecto `avisar` (comportamiento anterior). Con `rechazar`, el ciclo no llama a un modelo sin precio conocido.

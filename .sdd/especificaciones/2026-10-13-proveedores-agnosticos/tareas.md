@@ -27,23 +27,23 @@
 
 ## F3 — Ollama con herramientas
 
-- [ ] **F3.1** `conversar` en Ollama. Cubre CA-003-01.
-- [ ] **F3.2** Detección y recuerdo de modelo sin herramientas. Cubre CA-003-02.
+- [x] **F3.1** `conversar` en Ollama. Cubre CA-003-01.
+- [x] **F3.2** Detección y recuerdo de modelo sin herramientas. Cubre CA-003-02.
 
 ## F4 — Gasto
 
 - [x] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
 - [x] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
-- [ ] **F4.3** `presupuesto.sin_precio`. Cubre CA-004-03.
+- [x] **F4.3** `presupuesto.sin_precio`. Cubre CA-004-03.
 - [ ] **F4.4** Tabla de OpenAI revisada y fecha actualizada. Cubre CA-004-04.
 - [ ] **F4.5** Tokens de caché de otros proveedores. Cubre CA-004-05.
 
 ## F5 — Niveles neutrales
 
-- [ ] **F5.1** `core/llm-providers/niveles.js` y uso en todos los puntos de S0.3. Cubre CA-005-01, CA-005-02.
-- [ ] **F5.2** Prueba de equivalencia de degradación y nivel máximo. Cubre CA-005-03.
-- [ ] **F5.3** `forge doctor` muestra el modelo de cada nivel; documentación. Cubre CA-005-04.
-- [ ] **F5.4** Enmienda de ADR-19.
+- [x] **F5.1** `core/llm-providers/niveles.js` y uso en todos los puntos de S0.3. Cubre CA-005-01, CA-005-02.
+- [x] **F5.2** Prueba de equivalencia de degradación y nivel máximo. Cubre CA-005-03.
+- [x] **F5.3** `forge doctor` muestra el modelo de cada nivel; documentación. Cubre CA-005-04.
+- [x] **F5.4** Enmienda de ADR-19.
 
 ## F6 — Validación real
 

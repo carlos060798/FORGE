@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { REVISADA, TABLA, lineaRevision, precioMasCaro } from "../core/precios.js";
-import { precioDe, tienePrecio, PRECIO_DESCONOCIDO, PRECIOS_POR_PROVEEDOR, PROVEEDORES_SIN_COSTO } from "../core/session-budget.js";
+import { precioDe, tienePrecio, PRECIO_DESCONOCIDO, PRECIOS_POR_PROVEEDOR, esSinCosto, registrarDestino, olvidarDestinos, esDestinoLocal } from "../core/session-budget.js";
 import { leerConfigCiclo, leerSeccion } from "../core/ciclo/config.js";
 import { registrar } from "../core/ciclo/presupuesto.js";
 import { estadoInicial } from "../core/ciclo/estado.js";
@@ -261,9 +261,27 @@ describe("CA-002-05: sin nada indicado, el comportamiento es el de la lista incl
     assert.deepEqual(precioDe("anthropic", "claude-sonnet-4-6"), { input: 3 / M, output: 15 / M });
   });
 
-  test("los proveedores sin costo siguen sin costar", () => {
-    assert.ok(PROVEEDORES_SIN_COSTO.has("ollama") && PROVEEDORES_SIN_COSTO.has("stub"));
-    assert.deepEqual(precioDe("stub", "stub-sonnet"), { input: 0, output: 0 });
-    assert.equal(tienePrecio("ollama", "lo-que-sea"), true);
+  test("coste cero solo por declaración explícita: stub, Ollama local o precios: a cero (CA-004-01)", () => {
+    // Antes PROVEEDORES_SIN_COSTO fijaba el cero por el nombre ('ollama', 'stub'): un Ollama remoto
+    // de pago se habría contado gratis. Ahora solo el stub (de pruebas) y un destino de loopback.
+    olvidarDestinos();
+    try {
+      assert.equal(esSinCosto("stub"), true);
+      assert.deepEqual(precioDe("stub", "stub-sonnet"), { input: 0, output: 0 });
+      assert.equal(esSinCosto("ollama"), false, "sin destino declarado, no es gratis");
+      assert.equal(tienePrecio("ollama", "lo-que-sea"), false);
+      registrarDestino("ollama", "http://localhost:11434");
+      assert.equal(tienePrecio("ollama", "lo-que-sea"), true);
+      assert.deepEqual(precioDe("ollama", "lo-que-sea"), { input: 0, output: 0 });
+      registrarDestino("ollama", "https://ollama.ejemplo.com");
+      assert.equal(tienePrecio("ollama", "lo-que-sea"), false, "remoto sin declarar: al más caro, con aviso");
+      assert.equal(tienePrecio("ollama", "lo-que-sea", { "lo-que-sea": { input: 0, output: 0 } }), true, "declarado en precios:");
+      assert.deepEqual(precioDe("ollama", "lo-que-sea"), PRECIO_DESCONOCIDO);
+    } finally { olvidarDestinos(); }
+  });
+
+  test("destino local: localhost, 127.0.0.0/8 y ::1; nada más", () => {
+    for (const u of ["http://localhost:11434", "http://127.0.0.1:11434", "http://127.1.2.3", "http://[::1]:11434"]) assert.equal(esDestinoLocal(u), true, u);
+    for (const u of ["https://ollama.ejemplo.com", "http://10.0.0.5:11434", "http://localhost.evil.com", "no es una url", ""]) assert.equal(esDestinoLocal(u), false, u);
   });
 });

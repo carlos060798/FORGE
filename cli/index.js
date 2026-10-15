@@ -1036,6 +1036,16 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
   info("  Cambiar: FORGE_LLM_PROVIDER=ollama|openai|stub  o  llm.provider en sdd.config.yaml");
   const { lineaRevision } = await import("../core/precios.js");
   info(lineaRevision());
+  try {
+    const { lineasDeNiveles } = await import("../core/llm-providers/niveles.js");
+    const { AnthropicProvider, OpenAIProvider, OllamaProvider } = await import("../core/llm-providers/index.js");
+    const { leerModelosDe } = await import("../core/ciclo/config.js");
+    const modelos = leerModelosDe(process.cwd());
+    info("Modelo de cada nivel por proveedor (modelos: del proyecto manda sobre los de la tabla):");
+    for (const l of lineasDeNiveles([new AnthropicProvider({ modelos }), new OpenAIProvider({ modelos }), new OllamaProvider({ modelos })])) info(l);
+  } catch (e) {
+    aviso(`No se pudieron leer los niveles de modelo: ${e?.message ?? e}`);
+  }
 
   // 1. Detectar modo de ejecución: Claude Code (hooks) vs API directa
   const enClaudeCode = !!(

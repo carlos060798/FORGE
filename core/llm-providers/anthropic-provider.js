@@ -28,6 +28,7 @@
  */
 
 import { LlmProvider } from './provider-interface.js';
+import { modeloDeNivel } from './niveles.js';
 
 const MODELOS = {
   opus:   'claude-opus-4-8',
@@ -179,7 +180,7 @@ export class AnthropicProvider extends LlmProvider {
   }
 
   resolveModelId(alias) {
-    return this.modelos[alias] ?? MODELOS[alias] ?? alias;
+    return modeloDeNivel(alias, this.modelos, MODELOS);
   }
 
   async complete({ model, systemPrompt, systemFijo, userPrompt, maxTokens = 8192, signal }) {

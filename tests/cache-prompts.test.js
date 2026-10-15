@@ -18,7 +18,7 @@ import { AnthropicProvider, cacheActiva, sistemaConCache } from "../core/llm-pro
 import { StubProvider, crearProvider } from "../core/llm-providers/index.js";
 import { AgentRegistry, LlmAgentAdapter } from "../core/agent-registry.js";
 import { MULTIPLICADOR_ESCRITURA_5M, TABLA, preciosCache } from "../core/precios.js";
-import { precioCompletoDe } from "../core/session-budget.js";
+import { precioCompletoDe, registrarDestino, olvidarDestinos } from "../core/session-budget.js";
 import { costoDe, registrar } from "../core/ciclo/presupuesto.js";
 import { estadoInicial, validarEstado } from "../core/ciclo/estado.js";
 import { LibroDeGasto } from "../core/ciclo/diario.js";
@@ -274,8 +274,12 @@ describe("CA-001-02 y CA-001-03 — cada tipo de token a su precio", () => {
     }
   });
 
-  test("los proveedores sin costo siguen costando cero", () => {
-    assert.equal(costoDe({ proveedor: "ollama", modelo: "x", inputTokens: 10, outputTokens: 10, cacheCreationTokens: 10, cacheReadTokens: 10 }), 0);
+  test("los proveedores sin costo declarado siguen costando cero, también la caché", () => {
+    // El cero de Ollama ya no es por nombre (CA-004-01): lo da un destino de loopback registrado
+    registrarDestino("ollama", "http://localhost:11434");
+    try {
+      assert.equal(costoDe({ proveedor: "ollama", modelo: "x", inputTokens: 10, outputTokens: 10, cacheCreationTokens: 10, cacheReadTokens: 10 }), 0);
+    } finally { olvidarDestinos(); }
   });
 
   test("precios de caché propios en sdd.config.yaml: opcionales y validados", () => {
