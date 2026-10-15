@@ -591,6 +591,13 @@ Veredicto: aprobada con observaciones. Informe: `.sdd/especificaciones/2026-10-1
 - **Por diseño.** `localhost` con cualquier puerto recibe la clave del modelo: es la propia máquina del usuario.
 - **No cubierto.** El revisor muestreó las skills generadas, no las leyó completas.
 
+## Los perfiles de instalación no borran comandos ya instalados (2026-10-14)
+
+- **Qué pasa.** `--perfil esencial` solo deja de copiar los comandos que no son del perfil; no elimina los que una instalación anterior (por ejemplo con `completo`) ya dejó en `.claude/commands/` o en la carpeta de skills de la herramienta.
+- **A quién afecta.** Quien baja de `completo` a `esencial` en un proyecto ya instalado.
+- **Cómo evitarlo hoy.** Borrar a mano los comandos y skills que sobran, o instalar en una carpeta nueva. No hay opción de limpieza porque borrar archivos del usuario sin saber cuáles puso Fragua no es seguro.
+- **Evidencia.** `tests/instalacion-skills-comandos.test.js`, `core/instalacion/perfiles.js`.
+
 ## Límites conocidos tras la quinta revisión (2026-10-13)
 
 - **`mutacion: exigir` y funciones con guardas `throw`:** una función con muchas guardas produce muchos mutantes no concluyentes; con menos de `mutacion_min_concluyentes` el ciclo se pausa (falla cerrado). Baja el mínimo o usa `informar`.

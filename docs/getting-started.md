@@ -65,6 +65,8 @@ forge init
 
 Esto crea el directorio `.sdd/` con el estado inicial del pipeline, la configuración y el espacio para los artefactos.
 
+¿Usas otra herramienta que Claude Code (Cursor, Copilot, Gemini CLI…)? `forge init --integracion <clave> [--perfil esencial]` instala solo las skills en la carpeta de esa herramienta. Claves y detalles en la [guía 5.0](FORGE-5.0-GUIA.md#instalar-en-otra-herramienta---integracion---perfil---carpeta-skills).
+
 Para inicializar con un template de proyecto predefinido:
 
 ```bash

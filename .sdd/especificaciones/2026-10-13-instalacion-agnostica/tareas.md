@@ -35,9 +35,11 @@
 
 ## F5 — Cierre
 
-- [ ] **F5.1** `forge doctor` informa de integración y perfil. Cubre RF-06.
-- [ ] **F5.2** Documentación: `docs/FORGE-5.0-GUIA.md`, `docs/getting-started.md`, `README.md`, `CHANGELOG.md`.
+- [x] **F5.1** `forge doctor` informa de integración y perfil. Cubre RF-06.
+- [x] **F5.2** Documentación: `docs/FORGE-5.0-GUIA.md`, `docs/getting-started.md`, `README.md`, `CHANGELOG.md`.
 - [ ] **F5.3** Suite completa en Windows y en el contenedor Linux; tipos en 0.
 - [ ] **F5.4** `verificacion.md` con cada criterio y su prueba.
 
 > **2026-10-14:** S0, F1, F2 y F3 implementadas. El módulo de la tabla se llama `core/instalacion/herramientas-destino.js` (antes `integraciones.js`, que chocaba con las integraciones externas). Pendientes: F4 (pruebas manuales por herramienta), F5. La fila `claude` cita docs.claude.com sin confirmar en los spikes.
+
+> **2026-10-14 (F5.1 y F5.2):** `forge doctor` informa de integración y perfil (`tests/doctor-instalacion.test.js`). Documentado en `docs/FORGE-5.0-GUIA.md`, `docs/getting-started.md`, `README.md`, `CHANGELOG.md` y el límite de los perfiles en `docs/PROBLEMAS-CONOCIDOS.md`. La fila `claude` de la tabla queda CONFIRMADA el 2026-10-14 en https://code.claude.com/docs/en/skills (`.claude/skills/<nombre>/SKILL.md`, personal `~/.claude/skills/`) y https://code.claude.com/docs/en/sub-agents (`.claude/agents/`, `~/.claude/agents/`); `docs.claude.com` redirige (301) a `code.claude.com`. Quedan F5.3 (suite completa) y F5.4 (`verificacion.md`).

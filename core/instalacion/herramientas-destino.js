@@ -32,7 +32,8 @@ export const INTEGRACIONES = Object.freeze({
   claude: {
     clave: 'claude', nombre: 'Claude Code', carpetaSkills: '.claude/skills', nativa: true,
     invocacion: '/<comando> en Claude Code', ejemplo: '/forge "describe tu idea"',
-    fuente: 'https://docs.claude.com/en/docs/claude-code/skills', consultado: FECHA,
+    // Confirmada el 2026-10-14: .claude/skills/<nombre>/SKILL.md y .claude/agents/ (docs.claude.com redirige aquí)
+    fuente: 'https://code.claude.com/docs/en/skills', consultado: '2026-10-14',
   },
   generica: {
     clave: 'generica', nombre: 'Genérica (carpeta a elegir)', carpetaSkills: null, nativa: false,
