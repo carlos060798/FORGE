@@ -1,9 +1,12 @@
 ---
+name: explicame
 id: explicame
 nombre: Explícame — transparencia del pipeline en lenguaje humano
 descripcion: Lee el estado actual del proyecto y explica qué hizo FORGE, por qué, y qué sigue, sin usar jerga técnica.
 aliases: ["/forge.explicame", "/forge why", "/forge explica"]
 version: 1.0.0
+description: Lee el estado actual del proyecto y explica en lenguaje no técnico qué hizo FORGE, por qué y qué sigue. Úsala cuando el usuario pregunte qué ha pasado o pida entender el pipeline.
+allowed-tools: Read
 ---
 
 # Skill: Explícame

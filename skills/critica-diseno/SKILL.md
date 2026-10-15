@@ -1,4 +1,5 @@
 ---
+name: critica-diseno
 description: Auto-crítica del wireframe generado. Evalúa en 5 dimensiones con score 1-5. Si score < 4 y iteraciones < 3, refina el artefacto y repite. Adaptado de critique-theater de open-design.
 model: sonnet
 allowed-tools: Read, Write

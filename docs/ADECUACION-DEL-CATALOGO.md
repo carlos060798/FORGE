@@ -70,6 +70,29 @@ Regla: **cada agente declara las herramientas que necesita su rol y nada más**,
 | **C6. Evaluación** | ~20 casos con rúbrica para decidir sobre roles y modelo | Medio | Agente + dueño | Informe con medición, no opinión |
 | **C7. Skills nuevas** | Depuración, rendimiento, accesibilidad, cumplimiento | Medio | Agente | Cada una con casos de activación y evidencia |
 
+### Política de modelo actual (documentada en C2, sin cambios)
+
+Fuente: campo `model` de `agents/*.md`. Todos usan alias, nunca identificador completo. El nivel real se acota con `motor.nivel_maximo`; no se ha medido aún si algún `opus` podría ser `sonnet` (eso es C6).
+
+| Agente | Modelo | Por qué (criterio declarado en su cabecera) |
+|---|---|---|
+| `arquitecto` | opus | Decisiones de alto nivel y contratos; un error aquí se propaga a todo el ciclo |
+| `asesor-datos` | opus | Los errores de esquema son costosos de revertir |
+| `critico` | opus | Encontrar puntos ciegos requiere abstracción |
+| `revisor` | opus | La revisión profunda atrapa más bugs |
+| `seguridad` | opus | Vulnerabilidades reales con impacto; el falso negativo es caro |
+| `product-designer` | opus | Genera el diseño de producto completo del que depende lo demás |
+| `architecture-designer` | sonnet | Recomendación de stack simple y acotada |
+| `desarrollador-backend` | sonnet | Implementación siguiendo patrones existentes |
+| `desarrollador-frontend` | sonnet | Implementación siguiendo patrones existentes |
+| `disenador-api` | sonnet | Contratos acotados por la spec |
+| `documentador` | sonnet | Documentación acotada; desactivado por defecto |
+| `investigador` | sonnet | Recopilación de contexto, más amplitud que profundidad |
+| `operaciones` | sonnet | Configuración de CI/CD acotada |
+| `tester` | sonnet | Generación de pruebas con el framework detectado |
+
+Resumen: 6 en `opus` (razonamiento y riesgo), 8 en `sonnet`, ninguno en `haiku`. `haiku` solo lo piden skills mecánicas (`cache-audit`, `effort-router`, `token-budget`, `observabilidad-consumo` y las cuatro de indexado/memoria).
+
 C1 y C2 no tocan el motor ni los agentes que forman parte del ciclo verificado. C5 sí, y por eso va con revisión independiente.
 
 ## 6. Lo que NO se cambia

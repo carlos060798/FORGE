@@ -5,6 +5,7 @@ version: 1.0.0
 agents: [product-designer, desarrollador-frontend]
 inputs: [imagen_ui, descripcion_pantalla, DESIGN.md]
 outputs: [components-kit.md, tokens.css]
+allowed-tools: Read, Write
 ---
 
 # Skill: decompose-to-ui-kit

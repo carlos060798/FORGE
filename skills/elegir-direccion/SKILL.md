@@ -1,4 +1,5 @@
 ---
+name: elegir-direccion
 description: Direction picker inspirado en open-design. Selecciona 3 de las 5 direcciones visuales disponibles según el tipo de producto y audiencia del IR, y el usuario elige una antes de generar cualquier diseño.
 model: sonnet
 allowed-tools: Read, Write

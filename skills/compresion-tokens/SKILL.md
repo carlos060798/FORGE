@@ -1,5 +1,7 @@
 ---
+name: compresion-tokens
 description: DEPRECADO — La compresión gramatical del español fue reemplazada por el context manager real (claude-hooks/context-manager.js). Redirige a las herramientas correctas.
+allowed-tools: Read
 ---
 
 # Skill: Compresión de Tokens — DEPRECADO

@@ -1,5 +1,7 @@
 ---
+name: gestion-estado
 description: Gestiona el estado persistente del flujo SDD entre sesiones. Lee y escribe estado.json y .estado-tareas.json. Permite reanudar exactamente donde se dejó.
+allowed-tools: Read, Write, Bash
 ---
 
 # Skill: Gestión de Estado

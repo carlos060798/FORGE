@@ -1,5 +1,7 @@
 ---
+name: resource-selector
 description: Decide autónomamente qué agentes y skills son necesarios para la spec activa, basándose en complejidad, tipo de producto y etapa del pipeline. Evita cargar recursos innecesarios en contexto.
+allowed-tools: Read, Bash
 ---
 
 # Skill: resource-selector

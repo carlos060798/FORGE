@@ -1,7 +1,7 @@
 ---
 name: memory-compactor
-model: claude-haiku-4-5
-description: Comprime archivos de memoria de agentes cuando superan umbral (>50KB)
+model: haiku
+description: Comprime los archivos de memoria de agentes cuando superan el umbral de 50 KB, deduplicando y resumiendo. Úsala cuando la memoria de un agente crezca y consuma demasiado contexto.
 allowed-tools: Read, Write, Bash
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: architecture-designer
-description: Agente de arquitectura técnica. Lee IR + ProductDesign y recomienda el stack más simple viable - frontend, backend, BD, deploy. Explica en lenguaje del usuario, no en jerga técnica.
+description: Agente de arquitectura técnica. Lee IR + ProductDesign y recomienda el stack más simple viable - frontend, backend, BD, deploy. Explica en lenguaje del usuario, no en jerga técnica. Límite: recomienda el stack en la fase de diseño de producto, antes de la spec; el plan técnico del ciclo verificado es del arquitecto.
 model: sonnet
 color: teal
 tools: ["Read", "Write"]

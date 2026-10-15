@@ -1,4 +1,5 @@
 ---
+name: observabilidad-consumo
 description: Lee .sdd/observabilidad/consumo.jsonl y genera un reporte de actividad de agentes — invocaciones por agente, archivos tocados, picos y señales de fan-out excesivo. Referencia cruzada con orquestacion-ptc y compresion-tokens.
 model: haiku
 allowed-tools: Read, Bash

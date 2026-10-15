@@ -1,4 +1,5 @@
 ---
+name: effort-router
 description: Dado el nombre de la fase SDD actual, recomienda effort (low/medium/high/max) y modelo (Haiku/Sonnet/Opus) para cada agente. Evita pagar Opus cuando Sonnet o Haiku son suficientes — ahorro típico del 60-75% en fases mecánicas.
 model: haiku
 allowed-tools: Read

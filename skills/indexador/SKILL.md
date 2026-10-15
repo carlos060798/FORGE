@@ -1,5 +1,7 @@
 ---
+name: indexador
 description: Detecta lenguajes del proyecto y genera mapas estáticos (estructura, símbolos, dependencias) usando regex por lenguaje. Se invoca por /sdd.mapear.
+allowed-tools: Read, Write, Bash
 ---
 
 # Skill: Indexador de Proyecto

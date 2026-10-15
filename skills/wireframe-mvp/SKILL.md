@@ -1,4 +1,5 @@
 ---
+name: wireframe-mvp
 description: Genera un wireframe HTML de la pantalla P0 del MVP. Usa el DESIGN.md activo para colores, tipografía y estilo. Guarda el HTML en .sdd/diseño/ con la tool Write. Respeta {PLUGIN_DIR}/craft/anti-ai-slop.md.
 model: sonnet
 allowed-tools: Read, Write, Bash

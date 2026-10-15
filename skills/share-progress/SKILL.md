@@ -1,9 +1,12 @@
 ---
+name: share-progress
 id: share-progress
 nombre: Compartir progreso del proyecto
 descripcion: Genera un resumen compartible del estado actual del pipeline FORGE en formato Markdown con estadísticas.
 aliases: ["/forge.compartir", "/forge share", "/forge progress"]
 version: 1.0.0
+description: Genera un resumen compartible en Markdown del estado del pipeline FORGE con estadísticas de fases, tareas y agentes. Úsala cuando el usuario quiera compartir o reportar el avance del proyecto.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Compartir Progreso

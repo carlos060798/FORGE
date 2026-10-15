@@ -1,5 +1,7 @@
 ---
+name: constitucion-constraint
 description: Verifica que cualquier artefacto generado (spec, plan, código) cumple los principios de la constitución activa. Actúa como constraint explícito, no como sugerencia. Úsalo antes de entregar cualquier salida relevante.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Constitución como Constraint

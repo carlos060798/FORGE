@@ -1,6 +1,7 @@
 ---
 name: modo-guiado
 description: Conduce el flujo SDD-ES para personas que no programan (perfil guiado). Define cómo hablar sin jerga, cuándo confirmar antes de actuar, y cómo tomar las decisiones técnicas por el usuario sin bajar el rigor. Se activa cuando estado.json o sdd.config.yaml indican perfil "guiado".
+allowed-tools: Read
 ---
 
 # Skill: Modo Guiado (para no-programadores)

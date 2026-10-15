@@ -1,5 +1,7 @@
 ---
+name: verificador-implementacion
 description: Verifica que el código implementado cumple los criterios de aceptación de la spec. Lee código y tests, no asume.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Verificador de Implementación
