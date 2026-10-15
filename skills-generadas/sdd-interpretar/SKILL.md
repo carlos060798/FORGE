@@ -1,12 +1,12 @@
 ---
 name: sdd-interpretar
-description: "Punto de entrada de FORGE. Convierte una idea en texto libre a un IR JSON validado. Orquesta discovery + interpreter + validación. Primer comando para cualquier proyecto nuevo."
+description: "Punto de entrada de Fragua. Convierte una idea en texto libre a un IR JSON validado. Orquesta discovery + interpreter + validación. Primer comando para cualquier proyecto nuevo."
 allowed-tools: Read Write Bash
 metadata:
   forge-comando: "sdd.interpretar"
 ---
 
-# /sdd.interpretar — Entrada a FORGE
+# /sdd.interpretar — Entrada a Fragua
 
 **Uso:**
 ```

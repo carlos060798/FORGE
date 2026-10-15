@@ -6,7 +6,7 @@ allowed-tools: Read
 
 # Skill: Compresión de Tokens — DEPRECADO
 
-> ⚠️ **Este skill está deprecado desde FORGE v4.1.0.**
+> ⚠️ **Este skill está deprecado desde Fragua v4.1.0.**
 >
 > La compresión caveman (quitar artículos con `sed`, abreviar términos) atacaba el lugar equivocado:
 > los artículos y conectores del español representan menos del 2% del costo real de contexto.

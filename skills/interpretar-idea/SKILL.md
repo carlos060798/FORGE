@@ -9,7 +9,7 @@ allowed-tools: Read, Write
 
 ## Propósito
 
-Tomar la idea del usuario (más el contexto de discovery si existe) y convertirla en un **IR JSON válido** que alimente el pipeline FORGE. Sin que el usuario tenga que pensar en estructura, campos, o intención.
+Tomar la idea del usuario (más el contexto de discovery si existe) y convertirla en un **IR JSON válido** que alimente el pipeline Fragua. Sin que el usuario tenga que pensar en estructura, campos, o intención.
 
 ---
 

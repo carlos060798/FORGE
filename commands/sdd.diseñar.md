@@ -1,5 +1,5 @@
 ---
-description: Fase de diseño de FORGE. Orquesta direction picker → product-designer → architecture-designer → wireframe-mvp → critica-diseno. Requiere IR previo en .sdd/ir.json.
+description: Fase de diseño de Fragua. Orquesta direction picker → product-designer → architecture-designer → wireframe-mvp → critica-diseno. Requiere IR previo en .sdd/ir.json.
 allowed-tools: Read, Write, Bash, Agent
 ---
 

@@ -47,10 +47,10 @@ grep -q '^perfil: *guiado' .sdd/sdd.config.yaml 2>/dev/null && echo GUIADO
 ## Cómo traducir los pasos del flujo
 
 Hay **dos caminos**. Para alguien que no programa, el camino por defecto es el de
-**idea → producto** (FORGE). El camino clásico (para features sobre código que ya
+**idea → producto** (Fragua). El camino clásico (para features sobre código que ya
 existe) solo se usa si el usuario lo pide explícitamente.
 
-**Camino por defecto — idea → producto (FORGE):**
+**Camino por defecto — idea → producto (Fragua):**
 
 | Paso técnico interno | Cómo lo nombras al usuario |
 |----------------------|----------------------------|
@@ -75,7 +75,7 @@ existe) solo se usa si el usuario lo pide explícitamente.
 
 ## Mensajes de sistema — nunca los muestres literalmente
 
-Cuando FORGE genere estos mensajes internos, tradúcelos antes de mostrarlos al usuario:
+Cuando Fragua genere estos mensajes internos, tradúcelos antes de mostrarlos al usuario:
 
 | Mensaje técnico interno | Traducción en modo guiado |
 |---|---|
