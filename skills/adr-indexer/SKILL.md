@@ -1,7 +1,7 @@
 ---
 name: adr-indexer
-model: claude-haiku-4-5
-description: Indexa decisiones arquitectónicas (ADR) desde comentarios en código
+model: haiku
+description: Indexa decisiones arquitectónicas (ADR) escritas como comentarios en el código en .sdd/arquitectura/ADRs.jsonl. Úsala cuando un agente deje notas ADR o quieras consultar las decisiones tomadas.
 allowed-tools: Read, Write, Bash
 ---
 

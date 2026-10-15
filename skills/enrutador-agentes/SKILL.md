@@ -1,5 +1,7 @@
 ---
+name: enrutador-agentes
 description: Decide qué agente especializado activar para cada tarea según su tipo, fase y la configuración del proyecto.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Enrutador de Agentes

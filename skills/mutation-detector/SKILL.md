@@ -1,7 +1,7 @@
 ---
 name: mutation-detector
-model: claude-haiku-4-5
-description: Detecta mutaciones (cambios) en archivos para tracking de calidad
+model: haiku
+description: Detecta mutaciones (cambios) en archivos del proyecto para el seguimiento de calidad. Úsala tras implementar o verificar para saber qué archivos cambiaron y alimentar el reporte de defectos.
 allowed-tools: Read, Bash
 ---
 

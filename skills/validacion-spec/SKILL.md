@@ -1,5 +1,7 @@
 ---
+name: validacion-spec
 description: Valida silenciosamente que la spec activa cumple el mínimo de calidad antes de pasar a la siguiente fase. Se invoca internamente.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Validación de Spec

@@ -1,4 +1,5 @@
 ---
+name: descubrir-idea
 description: Discovery form de 5 preguntas para entender la idea del usuario antes de interpretar. Genera contexto estructurado que alimenta el Interpreter.
 model: opus
 allowed-tools: Write

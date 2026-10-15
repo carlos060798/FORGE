@@ -1,4 +1,5 @@
 ---
+name: interpretar-idea
 description: Convierte una idea en texto libre a un IR (Interpreted Requirement) JSON validado. Trabaja en 2 fases - razonamiento libre + extracción JSON. Lee .sdd/descubrimiento.md si existe.
 model: opus
 allowed-tools: Read, Write

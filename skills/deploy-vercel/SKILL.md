@@ -1,4 +1,5 @@
 ---
+name: deploy-vercel
 id: deploy-vercel
 nombre: Deploy a Vercel
 descripcion: Despliega el proyecto FORGE en Vercel usando el MCP de Vercel. Requiere MCP vercel instalado y autenticado.
@@ -7,6 +8,8 @@ version: 1.0.0
 requisitos:
   - mcp: vercel
     descripcion: MCP de Vercel instalado y autenticado en Claude Code
+description: Despliega el proyecto FORGE en Vercel usando el MCP de Vercel, tras comprobar que el pipeline está verificado. Úsala cuando el usuario pida /forge.deploy o desplegar en Vercel y el MCP esté autenticado.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Deploy a Vercel

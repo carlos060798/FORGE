@@ -1,7 +1,6 @@
 ---
-description: Transforma un prompt vago en versión profesional siguiendo los 7 patrones
-  de Claude Code (Contexto · Tarea · Restricciones · Formato · Verificación). Detecta
-  si el prompt solicita algo fuera de la spec activa y advierte antes de continuar.
+name: mejorar-prompt
+description: Transforma un prompt vago en versión profesional siguiendo los 7 patrones de Claude Code (Contexto · Tarea · Restricciones · Formato · Verificación). Detecta si el prompt solicita algo fuera de la spec activa y advierte antes de continuar.
 model: sonnet
 allowed-tools: Read, Bash
 ---

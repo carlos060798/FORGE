@@ -1,5 +1,7 @@
 ---
+name: deteccion-stack
 description: Detecta automáticamente el stack del proyecto (lenguaje, framework, BD, tests, build) analizando archivos de configuración. Se invoca internamente por /sdd.constitucion y otros comandos.
+allowed-tools: Read, Bash
 ---
 
 # Skill: Detección de Stack

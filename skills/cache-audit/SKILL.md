@@ -1,4 +1,5 @@
 ---
+name: cache-audit
 description: Audita los archivos de agentes (.claude/agents/*.md) para detectar bloques estables susceptibles de cache_control y los 3 patrones que invalidan caché silenciosamente (timestamps dinámicos, UUIDs, contenido JSONL embebido). Produce una lista de oportunidades de caché ordenadas por impacto.
 model: haiku
 allowed-tools: Read, Bash

@@ -1,4 +1,5 @@
 ---
+name: token-budget
 description: Dado el estado actual del proyecto (fase, tareas pendientes, historial de consumo), estima el presupuesto de tokens por fase restante y recomienda si usar PTC paralelo o serial. Reutiliza criterios de orquestacion-ptc para la recomendación de paralelización.
 model: haiku
 allowed-tools: Read

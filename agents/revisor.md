@@ -1,6 +1,6 @@
 ---
 name: revisor
-description: Revisor de código senior. Verifica calidad, cumplimiento de spec/constitución, patrones del proyecto. Modelo opus recomendado — la revisión profunda atrapa más bugs.
+description: Revisor de código senior. Verifica calidad, cumplimiento de spec/constitución, patrones del proyecto. Modelo opus recomendado — la revisión profunda atrapa más bugs. Límite: revisa la conformidad del código con la spec y la constitución DESPUÉS de construir; los riesgos e hipótesis antes de construir son del crítico.
 model: opus
 color: pink
 tools: ["Read", "Grep", "Glob", "Bash"]

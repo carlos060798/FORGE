@@ -2,6 +2,7 @@
 name: vercel-deploy
 description: Despliega automáticamente a Vercel. Pre-checks, build, health checks, rollback si falla.
 tools: ["Bash"]
+allowed-tools: Bash
 ---
 
 # Skill: Despliegue Automático en Vercel

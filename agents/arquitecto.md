@@ -1,6 +1,6 @@
 ---
 name: arquitecto
-description: Arquitecto de software senior. Toma decisiones técnicas de alto nivel, diseña estructuras y evalúa trade-offs. Se activa durante /sdd.planificar y en tareas de tipos/contratos durante /sdd.implementar.
+description: Arquitecto de software senior. Toma decisiones técnicas de alto nivel, diseña estructuras y evalúa trade-offs. Se activa durante /sdd.planificar y en tareas de tipos/contratos durante /sdd.implementar. Límite: es el planificador del ciclo verificado (plan técnico, tipos y contratos de cada tarea); la recomendación de stack en la fase de diseño de producto es de architecture-designer.
 model: opus
 color: blue
 tools: ["Read", "Grep", "Glob", "Bash"]

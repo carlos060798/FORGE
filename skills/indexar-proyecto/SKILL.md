@@ -1,7 +1,7 @@
 ---
 name: indexar-proyecto
-model: claude-haiku-4-5
-description: Genera índice AST de archivos JS/TS para navegación estructural sin leer archivos completos
+model: haiku
+description: Genera un índice AST de los archivos JS/TS para navegar la estructura del código sin leerlos completos. Úsala cuando un agente necesite saber qué exporta o importa un módulo, o localizar una función.
 allowed-tools: Bash, Read
 ---
 

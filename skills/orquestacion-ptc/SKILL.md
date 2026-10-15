@@ -1,6 +1,7 @@
 ---
 name: orquestacion-ptc
 description: Patrón Programmatic Tool Calling para despachar subagentes en paralelo y agregar solo resultados mínimos. Reduce ~85% de tokens en orquestación multi-agente. Aplica en /sdd.implementar y /sdd.analizar.
+allowed-tools: Read, Task
 ---
 
 # Skill: Orquestación PTC (Programmatic Tool Calling)

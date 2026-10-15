@@ -4,6 +4,7 @@ description: Conecta el proyecto a GitHub automáticamente. Crea repo, configura
 tools: ["Bash", "Read", "Edit", "Grep"]
 version: 1.0.0
 author: SDD-ES Orchestrator
+allowed-tools: Bash, Read, Edit, Grep
 ---
 
 # GitHub Connect Skill
