@@ -754,12 +754,14 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
     assert.match((await p.complete({ model: "sonnet", systemPrompt: "s", userPrompt: "hola" })).output, /^\[stub-anthropic\]/);
   });
 
-  test("Ollama declara que no la admite; OpenAI solo con clave (spec proveedores-agnosticos, F2)", async () => {
-    for (const p of [new OpenAIProvider({ api_key: "" }), new OllamaProvider({})]) {
-      assert.equal(p.admiteHerramientas, false, p.nombre);
-      await assert.rejects(p.conversar(/** @type {any} */ ({})), /no admite conversaciones con herramientas/);
-    }
+  test("OpenAI solo admite herramientas con clave; Ollama sí, hasta que un modelo las rechaza (spec proveedores-agnosticos, F2 y F3)", async () => {
+    // Antes Ollama declaraba que no las admitía; desde F3 (CA-003-01) conversa con las herramientas de /api/chat
+    // y solo deja de admitirlas cuando el primer error del modelo lo dice (CA-003-02, tests/ollama-conversar.test.js)
+    const sinClave = new OpenAIProvider({ api_key: "" });
+    assert.equal(sinClave.admiteHerramientas, false);
+    await assert.rejects(sinClave.conversar(/** @type {any} */ ({})), /no admite conversaciones con herramientas/);
     assert.equal(new OpenAIProvider({ api_key: "x" }).admiteHerramientas, true);
+    assert.equal(new OllamaProvider({}).admiteHerramientas, true);
   });
 
   test("el proveedor de pruebas es guionizable: con guion admite herramientas, sin él no", async () => {
@@ -808,7 +810,7 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
       process.env.FORGE_STUB_GUION = guion;
       const llamador = crearLlamador(registro, undefined, cwd);
       assert.equal(llamador.admiteHerramientas({ agente: "dev" }), true);
-      assert.equal(llamador.admiteHerramientas({ agente: "dev", proveedorLocal: true }), false, "el modelo local de la degradación (Ollama) no las admite");
+      assert.equal(llamador.admiteHerramientas({ agente: "dev", proveedorLocal: true }), true, "el modelo local de la degradación (Ollama) las admite desde F3");
 
       const r = await llamador.conversar({ agente: "dev", modeloAlias: "haiku", extraContext: CONTRATO_CODER_TURNOS, mensajes: [{ rol: "usuario", contenido: "## Tarea" }], herramientas: ESQUEMAS_HERRAMIENTAS });
       assert.deepEqual(r, { ok: true, contenido: [{ tipo: "uso_herramienta", id: "u1", nombre: "listar", entrada: {} }], stopReason: "herramientas", inputTokens: 7, outputTokens: 3, modelo: "stub-haiku", proveedor: "stub", error: undefined });
@@ -817,8 +819,8 @@ describe("Contrato de proveedor — conversar y admiteHerramientas (RF-004)", ()
       const agotado = await llamador.conversar({ agente: "dev", modeloAlias: "haiku", mensajes: [{ rol: "usuario", contenido: "x" }], herramientas: [] });
       assert.equal(agotado.ok, false);
       assert.match(agotado.error, /guion de conversación agotado/);
-      const local = await llamador.conversar({ agente: "dev", modeloAlias: "haiku", proveedorLocal: true, mensajes: [{ rol: "usuario", contenido: "x" }], herramientas: [] });
-      assert.match(local.error, /"ollama" no admite conversaciones con herramientas/);
+      // Desde F3 el modelo local conversa con herramientas: ya no devuelve «no admite»; no se llama aquí
+      // a un Ollama real (lo cubre tests/ollama-conversar.test.js con un servidor falso)
     } finally {
       if (previo.p === undefined) delete process.env.FORGE_LLM_PROVIDER; else process.env.FORGE_LLM_PROVIDER = previo.p;
       if (previo.g === undefined) delete process.env.FORGE_STUB_GUION; else process.env.FORGE_STUB_GUION = previo.g;

@@ -16,8 +16,8 @@ import { Diario, claveDe, LibroDeGasto } from './diario.js';
 import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
-import { costoDe, estadoDe, MAX_TOKENS_ESTIMADOS } from './presupuesto.js';
-import { esRecuentoValido, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
+import { costoDe, estadoDe, MAX_TOKENS_ESTIMADOS, sinPrecioConocido } from './presupuesto.js';
+import { esRecuentoValido, esSinCosto } from '../session-budget.js';
 import { Respaldo } from './respaldo.js';
 
 const ARCHIVO_SESION = 'sesion.json';
@@ -290,6 +290,8 @@ export class CicloVerificado {
       const previa = this.diario.obtener(threadId, clave);
       if (previa) return previa;
 
+      const rechazo = this._rechazoSinPrecio(peticion);
+      if (rechazo) return rechazo;
       const abierta = this._abrirIntencion(threadId, taskId, clave, peticion, estimarTokens(peticion.userPrompt, peticion.extraContext));
       const r = await this.o.llamar(peticion);
       this.diario.anotarIntencion(threadId, clave, abierta, { cerrada: true, ok: Boolean(r?.ok) });
@@ -322,7 +324,7 @@ export class CicloVerificado {
       });
       return;
     }
-    if (PROVEEDORES_SIN_COSTO.has(r.proveedor)) {
+    if (esSinCosto(r.proveedor)) {
       this.libro.anotar({ taskId, usd: 0, inputTokens: 0, outputTokens: 0 });
       return;
     }
@@ -382,7 +384,7 @@ export class CicloVerificado {
       if (i.cerrada) continue;
       const dato = i.dato ?? {};
       this.diario.anotarIntencion(threadId, clave, i.numero, { cerrada: true, huerfana: true });
-      if (!esRecuentoValido(dato.tokensEntrada) || PROVEEDORES_SIN_COSTO.has(dato.proveedor)) continue;
+      if (!esRecuentoValido(dato.tokensEntrada) || esSinCosto(dato.proveedor)) continue;
       let usd = 0;
       try { usd = costoDe({ proveedor: dato.proveedor, modelo: dato.modelo, inputTokens: dato.tokensEntrada, outputTokens: 0 }, { precios: this.o.config?.precios }); } catch { /* sin precio válido */ }
       this.libro.anotar({ taskId, usd, inputTokens: dato.tokensEntrada, outputTokens: 0, estimado: true });
@@ -401,6 +403,24 @@ export class CicloVerificado {
   }
 
   /**
+   * `presupuesto.sin_precio: rechazar` (CA-004-03): una llamada a un modelo sin precio conocido no se
+   * hace y no cuesta nada; el error dice qué claves de `precios:` faltan. Con `avisar` (por defecto)
+   * no hace nada: el modelo se cuenta al más caro conocido y se avisa.
+   * @param {any} peticion
+   * @returns {{ ok: false, error: string } | null}
+   */
+  _rechazoSinPrecio(peticion) {
+    if (this.o.config?.presupuesto?.sin_precio !== 'rechazar') return null;
+    let destino;
+    try { destino = this.o.destino?.(peticion); } catch { return null; }
+    if (!destino || !sinPrecioConocido(destino, this.o.config?.precios)) return null;
+    return {
+      ok: false,
+      error: `El modelo "${destino.modelo}" (${destino.proveedor}) no tiene precio conocido y presupuesto.sin_precio es "rechazar": no se llama. Añade ${destino.modelo}_entrada y ${destino.modelo}_salida (USD por millón de tokens) en precios: de sdd.config.yaml; si no cuesta nada, decláralo con 0 en ambas.`,
+    };
+  }
+
+  /**
    * Un turno del implementador por turnos, con diario y libro de gasto. La clave no es la huella
    * del prompt (que aquí es la conversación entera) sino la posición del turno: la pone turnos.js.
    * La respuesta se anota antes de devolverla, es decir, antes de ejecutar ninguna herramienta.
@@ -412,6 +432,8 @@ export class CicloVerificado {
       if (typeof this.o.conversar !== 'function') return { ok: false, error: 'No hay un proveedor de modelos con herramientas configurado.' };
 
       const entrada = estimarTokens(JSON.stringify(peticion.mensajes ?? []), JSON.stringify(peticion.herramientas ?? []), peticion.extraContext);
+      const rechazo = this._rechazoSinPrecio(peticion);
+      if (rechazo) return rechazo;
       const abierta = this._abrirIntencion(threadId, taskId, clave, peticion, entrada);
       const r = await this.o.conversar(peticion);
       this.diario.anotarIntencion(threadId, clave, abierta, { cerrada: true, ok: Boolean(r?.ok) });

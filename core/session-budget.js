@@ -14,8 +14,51 @@ function precioParaModelo(modelo) {
   return PRECIOS[modelo] ?? PRECIOS['claude-sonnet-4-6'];
 }
 
-/** Proveedores que no facturan por token: modelos locales y stub de pruebas. */
-export const PROVEEDORES_SIN_COSTO = new Set(['ollama', 'stub']);
+/**
+ * Coste cero solo por declaración explícita (spec proveedores-agnosticos, CA-004-01), nunca por el
+ * nombre del proveedor. Hay tres formas de declararlo:
+ *   - `precios:` del proyecto con el modelo a cero (lo resuelve `precioDe`, como cualquier precio);
+ *   - un proveedor Ollama cuyo `base_url` es de la propia máquina (loopback): lo registra su constructor;
+ *   - el proveedor `stub`, que es de pruebas y no llama a ningún servicio.
+ * Contra un Ollama remoto sin declarar se cuenta al precio más caro conocido, con aviso.
+ */
+const PROVEEDORES_DE_PRUEBAS = new Set(['stub']);
+
+/** Destino de cada proveedor de modelos locales visto en esta sesión. Un destino remoto manda sobre uno local. */
+const DESTINOS = new Map();
+
+/**
+ * ¿Es una URL de la propia máquina (localhost, 127.0.0.0/8, ::1)?
+ * @param {string} url
+ */
+export function esDestinoLocal(url) {
+  let host;
+  try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return false; }
+  host = host.replace(/^\[|\]$/g, '');
+  return host === 'localhost' || host === '::1' || /^127(\.\d{1,3}){3}$/.test(host);
+}
+
+/**
+ * Un proveedor registra a dónde llama. Solo un destino local deja el proveedor sin coste; basta uno
+ * remoto en la sesión para que se cuente (falla cerrado: nunca se cuenta de menos).
+ * @param {string} proveedor
+ * @param {string} baseUrl
+ */
+export function registrarDestino(proveedor, baseUrl) {
+  if (!esDestinoLocal(baseUrl)) DESTINOS.set(proveedor, 'remoto');
+  else if (DESTINOS.get(proveedor) !== 'remoto') DESTINOS.set(proveedor, 'local');
+}
+
+/** Solo para pruebas. */
+export function olvidarDestinos() { DESTINOS.clear(); }
+
+/**
+ * ¿Cuenta este proveedor cero por sí mismo (sin mirar `precios:`)? Solo el stub y un Ollama local registrado.
+ * @param {string} proveedor
+ */
+export function esSinCosto(proveedor) {
+  return PROVEEDORES_DE_PRUEBAS.has(proveedor) || DESTINOS.get(proveedor) === 'local';
+}
 
 /**
  * ¿Es un recuento de tokens que se puede contabilizar? Un entero finito y no negativo. Todo lo
@@ -39,19 +82,19 @@ export const PRECIO_DESCONOCIDO = precioMasCaro();
 
 /**
  * ¿Hay un precio para este modelo, en la configuración del proyecto o en la lista incluida?
- * Los proveedores sin costo siempre lo tienen (cero).
+ * Un proveedor sin costo declarado (stub, Ollama local) siempre lo tiene (cero).
  * @param {string} proveedor
  * @param {string} modelo
  * @param {Record<string, { input: number, output: number }>} [configurados]  `precios:` del proyecto, en USD por token
  */
 export function tienePrecio(proveedor, modelo, configurados = {}) {
-  return PROVEEDORES_SIN_COSTO.has(proveedor)
+  return esSinCosto(proveedor)
     || Object.hasOwn(configurados, modelo)
     || Object.hasOwn(PRECIOS_POR_PROVEEDOR[proveedor] ?? {}, modelo);
 }
 
 /**
- * Orden: proveedor sin costo → precio configurado en el proyecto → lista incluida →
+ * Orden: precio configurado en el proyecto → proveedor sin costo declarado → lista incluida →
  * precio de modelo desconocido (el más caro conocido, contando lo configurado).
  * @param {string} proveedor
  * @param {string} modelo
@@ -60,8 +103,8 @@ export function tienePrecio(proveedor, modelo, configurados = {}) {
  * @returns {{ input: number, output: number }}
  */
 export function precioDe(proveedor, modelo, desconocido, configurados = {}) {
-  if (PROVEEDORES_SIN_COSTO.has(proveedor)) return { input: 0, output: 0 };
   if (Object.hasOwn(configurados, modelo)) return configurados[modelo];
+  if (esSinCosto(proveedor)) return { input: 0, output: 0 };
   const incluidos = PRECIOS_POR_PROVEEDOR[proveedor] ?? {};
   if (Object.hasOwn(incluidos, modelo)) return incluidos[modelo];
   return desconocido ?? precioMasCaro(configurados);
@@ -83,12 +126,12 @@ export function precioDe(proveedor, modelo, desconocido, configurados = {}) {
  */
 export function precioCompletoDe(proveedor, modelo, desconocido, configurados = {}) {
   const base = precioDe(proveedor, modelo, desconocido, configurados);
-  if (PROVEEDORES_SIN_COSTO.has(proveedor)) return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   const defecto = preciosCachePorDefecto(base.input);
   if (Object.hasOwn(configurados, modelo)) {
     const cfg = configurados[modelo];
     return { input: base.input, output: base.output, cacheWrite: cfg.cacheWrite ?? defecto.escritura, cacheRead: cfg.cacheRead ?? defecto.lectura };
   }
+  if (esSinCosto(proveedor)) return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   const incluidos = preciosCache(proveedor, modelo);
   return {
     input: base.input, output: base.output,

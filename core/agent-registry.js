@@ -11,6 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { crearProvider, leerTimeoutLlmMs } from './llm-providers/index.js';
+import { esNivel } from './llm-providers/niveles.js';
 
 const DEFAULT_GLOBAL_TIMEOUT_MS = 120_000;
 
@@ -72,11 +73,20 @@ function parseFrontmatter(raw) {
   return { meta, body: match[2] };
 }
 
+/**
+ * Cabecera `model:` de un agente. Un nivel (alto|medio|economico u opus|sonnet|haiku) se conserva con
+ * el nombre escrito; un identificador que contiene opus/haiku/sonnet se reduce a ese alias; un
+ * identificador directo de otro proveedor se deja tal cual (antes se degradaba a sonnet); sin valor, sonnet.
+ */
 function normalizeModel(raw) {
-  const s = String(raw ?? '').toLowerCase();
+  const original = String(raw ?? '').trim();
+  const s = original.toLowerCase();
+  if (s === '') return 'sonnet';
+  if (esNivel(s)) return s;
   if (s.includes('opus'))  return 'opus';
   if (s.includes('haiku')) return 'haiku';
-  return 'sonnet';
+  if (s.includes('sonnet')) return 'sonnet';
+  return original;
 }
 
 export class AgentRegistry {

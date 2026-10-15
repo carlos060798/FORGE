@@ -21,6 +21,8 @@
  */
 
 import { LlmProvider } from './provider-interface.js';
+import { modeloDeNivel } from './niveles.js';
+import { registrarDestino } from '../session-budget.js';
 
 const ALIASES = {
   opus:   'deepseek-r1:14b',
@@ -92,6 +94,8 @@ export class OllamaProvider extends LlmProvider {
     this.baseUrl = config.base_url ?? process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
     /** El modelo rechazó las herramientas (primer error): se recuerda durante la sesión */
     this._sinHerramientas = false;
+    // CA-004-01: el coste cero lo da un destino de la propia máquina, no el nombre del proveedor
+    registrarDestino('ollama', this.baseUrl);
   }
 
   /**
@@ -152,7 +156,7 @@ export class OllamaProvider extends LlmProvider {
   }
 
   resolveModelId(alias) {
-    return this.modelos[alias] ?? ALIASES[alias] ?? alias;
+    return modeloDeNivel(alias, this.modelos, ALIASES);
   }
 
   async complete({ model, systemPrompt, userPrompt, maxTokens = 8192, signal }) {

@@ -35,6 +35,7 @@
  */
 
 import { LlmProvider } from './provider-interface.js';
+import { modeloDeNivel } from './niveles.js';
 
 const ALIASES = {
   opus:   'gpt-4o',
@@ -137,7 +138,7 @@ export class OpenAIProvider extends LlmProvider {
   }
 
   resolveModelId(alias) {
-    return this.modelos[alias] ?? ALIASES[alias] ?? alias;
+    return modeloDeNivel(alias, this.modelos, ALIASES);
   }
 
   /** Quita la clave (y lo que parece una) de un texto que va a un error o a un registro. */

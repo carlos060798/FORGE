@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { ampliar, ErrorConsumo, estadoDe, modeloEfectivo, puedeLlamar, registrar } from "../core/ciclo/presupuesto.js";
 import { estadoInicial } from "../core/ciclo/estado.js";
-import { precioDe, PRECIO_DESCONOCIDO, sessionBudget } from "../core/session-budget.js";
+import { precioDe, PRECIO_DESCONOCIDO, sessionBudget, registrarDestino, olvidarDestinos } from "../core/session-budget.js";
 
 const nuevo = (tope = 2, umbral = 1.5) =>
   estadoInicial({ id: "T1", agente: "tester" }, { runId: "r", cwd: "/p", tope_usd: tope, umbral_degradacion_usd: umbral }).presupuesto;
@@ -25,9 +25,18 @@ describe("precioDe — tabla por proveedor", () => {
     assert.equal(precioDe("anthropic", "claude-sonnet-4-6").input, 3 / 1_000_000);
   });
 
-  test("los proveedores locales y el stub no cuestan", () => {
-    assert.deepEqual(precioDe("ollama", "qwen2.5-coder:7b"), { input: 0, output: 0 });
+  test("el stub y un Ollama de la propia máquina no cuestan; sin destino declarado, Ollama sí (CA-004-01)", () => {
+    // Antes el cero venía del NOMBRE del proveedor. Ahora lo da un destino de loopback registrado por
+    // OllamaProvider (o un precio a cero en precios:); sin destino conocido se cuenta al más caro.
+    olvidarDestinos();
     assert.deepEqual(precioDe("stub", "stub-sonnet"), { input: 0, output: 0 });
+    assert.deepEqual(precioDe("ollama", "qwen2.5-coder:7b"), PRECIO_DESCONOCIDO);
+    registrarDestino("ollama", "http://localhost:11434");
+    assert.deepEqual(precioDe("ollama", "qwen2.5-coder:7b"), { input: 0, output: 0 });
+    registrarDestino("ollama", "http://gpu.ejemplo.com:11434");
+    assert.deepEqual(precioDe("ollama", "qwen2.5-coder:7b"), PRECIO_DESCONOCIDO, "un destino remoto manda sobre uno local");
+    assert.deepEqual(precioDe("ollama", "qwen2.5-coder:7b", undefined, { "qwen2.5-coder:7b": { input: 0, output: 0 } }), { input: 0, output: 0 }, "declarado a cero en precios:");
+    olvidarDestinos();
   });
 
   test("un modelo desconocido se cobra al precio conservador, no al de sonnet", () => {
@@ -84,6 +93,7 @@ describe("registrar — transiciones de estado", () => {
   });
 
   test("un proveedor local sin datos de consumo cuenta como gasto cero", () => {
+    registrarDestino("ollama", "http://127.0.0.1:11434");   // lo que hace el constructor de OllamaProvider con su base_url
     const p = registrar(nuevo(), { proveedor: "ollama", modelo: "llama3.2:3b" });
     assert.equal(p.gastado_usd, 0);
     assert.equal(p.llamadas, 1);

@@ -5,22 +5,11 @@
  * gasto se guarda en cada punto de guardado y sobrevive a la reanudación.
  */
 
-import { esRecuentoValido, precioCompletoDe, tienePrecio, PROVEEDORES_SIN_COSTO } from '../session-budget.js';
+import { limitarNivel, nivelInferior } from '../llm-providers/niveles.js';
+import { esRecuentoValido, precioCompletoDe, tienePrecio, esSinCosto } from '../session-budget.js';
 
-const ESCALON = { opus: 'sonnet', sonnet: 'haiku', haiku: 'haiku' };
-export const NIVELES = ['haiku', 'sonnet', 'opus'];
-
-/**
- * Limita el nivel de modelo que pide un agente (`motor.nivel_maximo`). Un identificador
- * directo de modelo, que no es un nivel, no se toca.
- * @param {string} alias
- * @param {string} [maximo]  haiku | sonnet | opus
- */
-export function limitarNivel(alias, maximo) {
-  const a = NIVELES.indexOf(alias);
-  const m = NIVELES.indexOf(String(maximo ?? ''));
-  return a !== -1 && m !== -1 && a > m ? NIVELES[m] : alias;
-}
+// Los niveles viven en un solo sitio (F5): alto|medio|economico y sus alias opus|sonnet|haiku
+export { limitarNivel };
 
 export class ErrorConsumo extends Error {
   /** @param {string} proveedor */
@@ -59,7 +48,9 @@ const entero = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n 
  * @returns {number}
  */
 export function costoDe(llamada, opciones = {}) {
-  if (PROVEEDORES_SIN_COSTO.has(llamada.proveedor)) return 0;
+  // Un proveedor sin costo declarado (stub, Ollama local) o un modelo declarado a cero en `precios:`
+  // cuenta cero; el resto, nunca por debajo de lo que cobra el proveedor.
+  if (esSinCosto(llamada.proveedor) && !Object.hasOwn(opciones.precios ?? {}, llamada.modelo)) return 0;
   // Entrada y salida inválidas (NaN, negativas, no finitas, decimales) son consumo no informado:
   // fallar cerrado, porque sumarlas haría bajar el gasto o dejarlo en NaN (revisión H-03)
   if (!esRecuentoValido(llamada.inputTokens) || !esRecuentoValido(llamada.outputTokens)) throw new ErrorConsumo(llamada.proveedor);
@@ -105,7 +96,7 @@ export function trasAbortada(p, r, opciones = {}) {
 }
 
 export function registrar(p, llamada, opciones = {}) {
-  const sinCosto = PROVEEDORES_SIN_COSTO.has(llamada.proveedor);
+  const sinCosto = esSinCosto(llamada.proveedor);
   const faltaConsumo = !esRecuentoValido(llamada.inputTokens) || !esRecuentoValido(llamada.outputTokens);
   if (faltaConsumo && !sinCosto) throw new ErrorConsumo(llamada.proveedor);
 
@@ -190,6 +181,6 @@ export function ampliar(p, extraUsd) {
 export function modeloEfectivo(alias, p, degradarA = 'escalon') {
   if (p.estado !== 'degradado') return { alias, proveedorLocal: false, degradado: false };
   if (degradarA === 'local')    return { alias, proveedorLocal: true, degradado: true };
-  const siguiente = ESCALON[alias] ?? alias;
+  const siguiente = nivelInferior(alias);
   return { alias: siguiente, proveedorLocal: false, degradado: siguiente !== alias };
 }

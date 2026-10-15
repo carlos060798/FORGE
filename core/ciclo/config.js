@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { validarRuntime } from '../sandbox/politica.js';
 import { leerVariable } from '../entorno.js';
+import { esNivel, NOMBRES_DE_NIVEL } from '../llm-providers/niveles.js';
 
 /** Tope de gasto por defecto (USD) y techo de lo que un archivo del proyecto puede declarar. */
 export const TOPE_POR_DEFECTO_USD = 2.0;
@@ -57,6 +58,7 @@ export const POR_DEFECTO = {
     tope_usd: TOPE_POR_DEFECTO_USD,
     umbral_degradacion_usd: 1.5,
     degradar_a: 'escalon',      // escalon | local
+    sin_precio: 'avisar',       // avisar | rechazar: qué hacer con un modelo sin precio conocido (CA-004-03)
   },
   // ADR-19: vacíos por defecto, es decir, la lista incluida (core/precios.js)
   modelos: /** @type {{ opus?: string, sonnet?: string, haiku?: string }} */ ({}),
@@ -66,7 +68,7 @@ export const POR_DEFECTO = {
 const MODOS = ['clasico', 'ciclo'];
 const GRAFOS = ['auto', 'langgraph', 'propio'];
 const EMBEDDINGS = ['hash', 'ollama'];
-const NIVELES = ['haiku', 'sonnet', 'opus'];
+const SIN_PRECIO = ['avisar', 'rechazar'];
 const IMPLEMENTADORES = ['bloque', 'turnos'];
 const TOPE_TURNOS = 200;
 const MUTACION = ['no', 'informar', 'exigir'];
@@ -77,7 +79,7 @@ const MUTACION = ['no', 'informar', 'exigir'];
  * @param {string} nombre @param {string} clave
  */
 function claveConocida(nombre, clave) {
-  if (nombre === 'modelos') return NIVELES.includes(clave);
+  if (nombre === 'modelos') return esNivel(clave);
   if (nombre === 'precios') return Object.keys(SUFIJOS_TODOS).some((s) => clave.endsWith(s) && clave.length > s.length);
   const defectos = /** @type {Record<string, object>} */ (POR_DEFECTO)[nombre];
   return Boolean(defectos) && Object.prototype.hasOwnProperty.call(defectos, clave);
@@ -128,8 +130,8 @@ export function leerSeccion(yaml, nombre) {
 export function leerModelos(yaml) {
   const leido = leerSeccion(yaml, 'modelos');
   for (const clave of Object.keys(leido)) {
-    if (!NIVELES.includes(clave)) {
-      throw new Error(`modelos.${clave} no es un nivel de modelo en .sdd/sdd.config.yaml. Niveles válidos: ${NIVELES.join(', ')}`);
+    if (!esNivel(clave)) {
+      throw new Error(`modelos.${clave} no es un nivel de modelo en .sdd/sdd.config.yaml. Niveles válidos: ${NOMBRES_DE_NIVEL.join(', ')}`);
     }
   }
   return leido;
@@ -292,8 +294,11 @@ export function leerConfigCiclo(cwd, overrides = {}) {
   }
   const nivelEnv = leerVariable('NIVEL_MAXIMO');
   if (nivelEnv) config.motor.nivel_maximo = nivelEnv;
-  if (!NIVELES.includes(config.motor.nivel_maximo)) {
-    throw new Error(`motor.nivel_maximo desconocido: "${config.motor.nivel_maximo}". Valores válidos: ${NIVELES.join(', ')}`);
+  if (!esNivel(config.motor.nivel_maximo)) {
+    throw new Error(`motor.nivel_maximo desconocido: "${config.motor.nivel_maximo}". Valores válidos: ${NOMBRES_DE_NIVEL.join(', ')}`);
+  }
+  if (!SIN_PRECIO.includes(config.presupuesto.sin_precio)) {
+    throw new Error(`presupuesto.sin_precio desconocido: "${config.presupuesto.sin_precio}". Valores válidos: ${SIN_PRECIO.join(', ')}`);
   }
   // Se mira el texto leído: un valor no numérico no debe convertirse en silencio en el de por defecto
   const sinProgreso = leidos.motor.sin_progreso;
