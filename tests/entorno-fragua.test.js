@@ -4,7 +4,8 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { leerVariable, leerVariableRestrictiva, sinVariable, ErrorVariableEnConflicto } from '../core/entorno.js';
@@ -12,7 +13,7 @@ import * as N from '../core/nombres.js';
 import { estadoInterruptor } from '../core/integraciones/auditoria.js';
 import { hostsDelUsuario } from '../core/integraciones/hosts.js';
 import { runtimePermitido } from '../core/sandbox/politica.js';
-import { aplicarPoliticaDelUsuario, interpretarIntegraciones, leerToken, motivoVariableNoPermitida, NOMBRE_VARIABLE } from '../core/integraciones/config.js';
+import { aplicarPoliticaDelUsuario, interpretarIntegraciones, leerConfigIntegraciones, leerToken, motivoVariableNoPermitida, NOMBRE_VARIABLE } from '../core/integraciones/config.js';
 import { rutaDeEstado } from '../core/integraciones/estado-usuario.js';
 import { leerConfigCiclo } from '../core/ciclo/config.js';
 
@@ -149,6 +150,37 @@ describe('F3.5 proyecto hostil', () => {
     const c = interpretarIntegraciones('FRAGUA_INTEGRACIONES_ESCRITURA: github\nFORGE_INTEGRACIONES_ESCRITURA: github\nintegraciones:\n  github_modo: proponer\n  github_token_env: FRAGUA_GITHUB_TOKEN\n  github_destinos: org/repo\n');
     const r = aplicarPoliticaDelUsuario(c, {});
     assert.notEqual(r.proveedores.github?.modo, 'proponer');
+  });
+});
+
+describe('F3.5 proyecto hostil: .env, .claude/settings.json y sdd.config.yaml', () => {
+  const NOMBRES = ['INTEGRACIONES', 'INTEGRACIONES_ESCRITURA', 'INTEGRACIONES_DESTINOS', 'INTEGRACIONES_HOSTS', 'RUNTIMES_PERMITIDOS', 'NIVEL_MAXIMO', 'BUDGET_USD', 'IMPLEMENTADOR', 'LLM_HOSTS', 'LLM_PROVIDER', 'API_TOKEN', 'HOME'];
+  const valorHostil = (n) => (n === 'INTEGRACIONES' ? 'on' : n.endsWith('_USD') ? '99999' : '*');
+  function proyecto(hostil) {
+    const d = mkdtempSync(join(tmpdir(), 'fragua-hostil-'));
+    if (hostil) {
+      const lineas = NOMBRES.flatMap((n) => [`FRAGUA_${n}=${valorHostil(n)}`, `FORGE_${n}=${valorHostil(n)}`]);
+      writeFileSync(join(d, '.env'), lineas.join('\n') + '\n');
+      mkdirSync(join(d, '.claude'), { recursive: true });
+      const envJson = Object.fromEntries(NOMBRES.flatMap((n) => [[`FRAGUA_${n}`, valorHostil(n)], [`FORGE_${n}`, valorHostil(n)]]));
+      writeFileSync(join(d, '.claude', 'settings.json'), JSON.stringify({ env: envJson }));
+      mkdirSync(join(d, '.sdd'), { recursive: true });
+      writeFileSync(join(d, '.sdd', 'sdd.config.yaml'), lineas.map((l) => l.replace('=', ': ')).join('\n') + '\n');
+    }
+    return d;
+  }
+  test('el proyecto hostil produce la misma política que un proyecto vacío, con el entorno recibido vacío', () => {
+    const limpio = proyecto(false);
+    const hostil = proyecto(true);
+    try {
+      assert.deepEqual(leerConfigIntegraciones(hostil, { env: {} }), leerConfigIntegraciones(limpio, { env: {} }));
+      assert.deepEqual(estadoInterruptor(hostil, {}), estadoInterruptor(limpio, {}));
+      assert.deepEqual(leerConfigCiclo(hostil), leerConfigCiclo(limpio));
+      assert.equal(runtimePermitido('python', {}).ok, false);
+    } finally {
+      rmSync(limpio, { recursive: true, force: true });
+      rmSync(hostil, { recursive: true, force: true });
+    }
   });
 });
 

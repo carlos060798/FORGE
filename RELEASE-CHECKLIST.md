@@ -15,7 +15,7 @@
 - [ ] `npm publish --access public`
 
 ## Post-publish
-- [ ] `npx -p forja-mvp@latest forge init` en proyecto de prueba (el paquete es `forja-mvp`: `npx forge@latest` descargaría otro paquete de npm llamado `forge`)
+- [ ] `npx -p fragua@latest forge init` en proyecto de prueba (el paquete es `fragua`; `npx forge@latest` descargaría otro paquete de npm llamado `forge`. Hasta el 2026-10-14 `npm view fragua name` dio 404: el nombre está libre; repítelo el día de publicar, S0.3 de `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`. El paquete anterior, `forja-mvp`, conserva las 4.x)
 - [ ] `forge doctor` sin errores críticos
 - [ ] Tag git: `git tag v5.0.0 && git push --tags`
 
@@ -23,7 +23,7 @@
 
 ## Beta
 
-Una beta es una versión para que la prueben otras personas **sin que la reciba quien instala `forja-mvp` sin más**. Se publica con la etiqueta `beta` de npm y `latest` se queda donde está (4.2.0, consultado el 2026-10-10 con `npm view forja-mvp dist-tags`).
+Una beta es una versión para que la prueben otras personas **sin que la reciba quien instala `fragua` sin más**. Se publica con la etiqueta `beta` de npm y `latest` se queda donde está (en `forja-mvp` era 4.2.0, consultado el 2026-10-10; `fragua` aún no existe en npm).
 
 Nada de esta sección se ha ejecutado. Publicar y cambiar la versión del paquete son decisiones del dueño.
 
@@ -75,21 +75,21 @@ Las tres últimas se lanzaron una tras otra con una sola orden. Durante la prime
    npm publish --tag beta --access public
    ```
 
-   **Nunca sin `--tag beta`.** Sin la etiqueta, npm asigna `latest` a lo que se publica, y quien instale `forja-mvp` recibiría la beta. (Las versiones recientes de npm se niegan a publicar una versión preliminar sin `--tag`; no lo comprobé con la 11.19.0 de este equipo. No cuentes con ello.)
+   **Nunca sin `--tag beta`.** Sin la etiqueta, npm asigna `latest` a lo que se publica, y quien instale `fragua` recibiría la beta. (Las versiones recientes de npm se niegan a publicar una versión preliminar sin `--tag`; no lo comprobé con la 11.19.0 de este equipo. No cuentes con ello.)
 6. **Comprobar que `latest` no se movió:**
 
    ```bash
-   npm view forja-mvp dist-tags
+   npm view fragua dist-tags
    # esperado: { latest: '4.2.0', beta: '5.0.0-beta.1' }
    ```
 
 7. **Probar la instalación** en una carpeta vacía:
 
    ```bash
-   npx -p forja-mvp@beta forge --version    # 5.0.0-beta.1
-   npx -p forja-mvp@beta forge init
-   npx -p forja-mvp@beta forge doctor
-   npm install forja-mvp && npx forge --version    # sigue dando 4.2.0
+   npx -p fragua@beta forge --version    # 5.0.0-beta.1
+   npx -p fragua@beta forge init
+   npx -p fragua@beta forge doctor
+   npm install fragua && npx fragua --version    # sin `latest` publicado, esto no instala la beta
    ```
 
 8. **Etiqueta de git:** `git tag -a v5.0.0-beta.1 -m "FORGE 5.0.0-beta.1"` y `git push origin v5.0.0-beta.1`.
@@ -98,5 +98,5 @@ Las tres últimas se lanzaron una tras otra con una sola orden. Durante la prime
 ### Después de la beta
 
 - **Otra beta:** `5.0.0-beta.2` con los mismos pasos. La etiqueta `beta` pasa a la nueva.
-- **Retirar una beta defectuosa:** `npm deprecate forja-mvp@5.0.0-beta.1 "motivo"` y, si hace falta, `npm dist-tag rm forja-mvp beta`. No cuentes con `npm unpublish`.
+- **Retirar una beta defectuosa:** `npm deprecate fragua@5.0.0-beta.1 "motivo"` y, si hace falta, `npm dist-tag rm fragua beta`. No cuentes con `npm unpublish`.
 - **Pasar a estable:** la sección «Pre-publish» de arriba entera, versión `5.0.0` y `npm publish --access public` sin etiqueta. Solo entonces se mueve `latest`.

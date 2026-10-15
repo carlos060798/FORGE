@@ -1291,6 +1291,22 @@ async function cmdDoctor() {
     }
   }
 
+  // ── Integración y perfil instalados (RF-06) ────────────────────────────────
+  titulo("Integración y perfil instalados...");
+  {
+    const g = leerInstalacionGuardada();
+    const ri = resolverIntegracion(g.integracion ?? INTEGRACION_POR_DEFECTO);
+    const rp = resolverPerfil(g.perfil ?? PERFIL_POR_DEFECTO);
+    if (!g.integracion && !g.perfil) {
+      info(`Integración: ${INTEGRACION_POR_DEFECTO} · perfil: ${PERFIL_POR_DEFECTO} (sin configuración guardada)`);
+    } else {
+      info(`Integración: ${ri.ok ? ri.integracion.clave : JSON.stringify(g.integracion)} · perfil: ${rp.ok ? rp.perfil : JSON.stringify(g.perfil)}`);
+      if (g.carpeta) info(`Carpeta de skills: ${JSON.stringify(g.carpeta)}`);
+      if (!ri.ok) { aviso(ri.error); problemas++; }
+      if (!rp.ok) { aviso(rp.error); problemas++; }
+    }
+  }
+
   // ── Verificar hooks registrados en settings.json ──────────────────────────
   titulo("Verificando hooks en settings.json...");
   const settingsPaths = [

@@ -2,13 +2,13 @@
 name: deploy-vercel
 id: deploy-vercel
 nombre: Deploy a Vercel
-descripcion: Despliega el proyecto FORGE en Vercel usando el MCP de Vercel. Requiere MCP vercel instalado y autenticado.
+descripcion: Despliega el proyecto Fragua en Vercel usando el MCP de Vercel. Requiere MCP vercel instalado y autenticado.
 aliases: ["/forge.deploy", "/sdd.desplegar vercel"]
 version: 1.0.0
 requisitos:
   - mcp: vercel
     descripcion: MCP de Vercel instalado y autenticado en Claude Code
-description: Despliega el proyecto FORGE en Vercel usando el MCP de Vercel, tras comprobar que el pipeline está verificado. Úsala cuando el usuario pida /forge.deploy o desplegar en Vercel y el MCP esté autenticado.
+description: Despliega el proyecto Fragua en Vercel usando el MCP de Vercel, tras comprobar que el pipeline está verificado. Úsala cuando el usuario pida /forge.deploy o desplegar en Vercel y el MCP esté autenticado.
 allowed-tools: Read, Bash
 ---
 
@@ -16,7 +16,7 @@ allowed-tools: Read, Bash
 
 ## Propósito
 
-Automatizar el despliegue del proyecto actual a Vercel cuando el pipeline FORGE ha completado la fase de verificación.
+Automatizar el despliegue del proyecto actual a Vercel cuando el pipeline Fragua ha completado la fase de verificación.
 
 ## Requisito previo
 

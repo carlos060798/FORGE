@@ -57,7 +57,7 @@ Si un aprendizaje implica un **principio nuevo** del proyecto, sugiere actualiza
 
 ## PASO 3.5 — Resumen de calidad al cierre
 
-Al final de cada sesión de implementación, antes del resumen de retro, FORGE genera automáticamente un **resumen de calidad en lenguaje de producto** (~5 líneas, sin jerga técnica). El objetivo es que el usuario entienda qué se hizo y en qué estado quedó sin leer tablas ni logs.
+Al final de cada sesión de implementación, antes del resumen de retro, Fragua genera automáticamente un **resumen de calidad en lenguaje de producto** (~5 líneas, sin jerga técnica). El objetivo es que el usuario entienda qué se hizo y en qué estado quedó sin leer tablas ni logs.
 
 ### Cómo construirlo
 

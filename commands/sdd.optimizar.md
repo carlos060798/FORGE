@@ -1,5 +1,5 @@
 ---
-description: Ciclo completo de optimización de tokens para la sesión actual — detecta fan-out, recomienda modelos por fase, comprime memoria si supera umbral, audita oportunidades de caché y proyecta presupuesto. Punto de entrada unificado para uso eficiente de tokens en FORGE.
+description: Ciclo completo de optimización de tokens para la sesión actual — detecta fan-out, recomienda modelos por fase, comprime memoria si supera umbral, audita oportunidades de caché y proyecta presupuesto. Punto de entrada unificado para uso eficiente de tokens en Fragua.
 allowed-tools: Read, Bash
 ---
 

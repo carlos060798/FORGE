@@ -119,6 +119,8 @@ fragua doctor
 
 → Ver la [Guía de inicio](docs/getting-started.md) para un recorrido completo.
 
+¿Otra herramienta además de Claude Code? `fragua init --integracion <clave>`, `--perfil esencial|completo` y `--carpeta-skills <ruta>` (con `generica`): ver la [guía 5.0](docs/FORGE-5.0-GUIA.md#instalar-en-otra-herramienta---integracion---perfil---carpeta-skills).
+
 ### FORGE → Fragua: qué cambia y qué no
 
 | Antes | Ahora | Notas |

@@ -2,10 +2,10 @@
 name: share-progress
 id: share-progress
 nombre: Compartir progreso del proyecto
-descripcion: Genera un resumen compartible del estado actual del pipeline FORGE en formato Markdown con estadísticas.
+descripcion: Genera un resumen compartible del estado actual del pipeline Fragua en formato Markdown con estadísticas.
 aliases: ["/forge.compartir", "/forge share", "/forge progress"]
 version: 1.0.0
-description: Genera un resumen compartible en Markdown del estado del pipeline FORGE con estadísticas de fases, tareas y agentes. Úsala cuando el usuario quiera compartir o reportar el avance del proyecto.
+description: Genera un resumen compartible en Markdown del estado del pipeline Fragua con estadísticas de fases, tareas y agentes. Úsala cuando el usuario quiera compartir o reportar el avance del proyecto.
 allowed-tools: Read, Bash
 ---
 
@@ -13,7 +13,7 @@ allowed-tools: Read, Bash
 
 ## Propósito
 
-Generar un resumen estructurado y visualmente atractivo del estado actual del proyecto FORGE, listo para compartir en Slack, GitHub, email o como comentario en un PR.
+Generar un resumen estructurado y visualmente atractivo del estado actual del proyecto Fragua, listo para compartir en Slack, GitHub, email o como comentario en un PR.
 
 ## Cuándo usar este skill
 
@@ -95,7 +95,7 @@ cat .sdd/ir.json 2>/dev/null | grep '"name"' | head -1
 [Descripción de qué hacer a continuación, en lenguaje humano]
 
 ---
-*Generado por FORGE — [enlace a forge.dev o repositorio]*
+*Generado por Fragua — [enlace a forge.dev o repositorio]*
 ```
 
 ## Formato de salida
@@ -148,9 +148,9 @@ cat .sdd/ir.json 2>/dev/null | grep '"name"' | head -1
 
 ## 🎯 Próximo paso
 
-Esperar a que los tests de integración finalicen. Si hay errores, FORGE
+Esperar a que los tests de integración finalicen. Si hay errores, Fragua
 los reportará y los corregirá automáticamente antes de continuar.
 
 ---
-*Generado por FORGE v5.0.0*
+*Generado por Fragua v5.0.0*
 ```

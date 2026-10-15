@@ -8,7 +8,7 @@ allowed-tools: Read, Write, Bash
 **Uso:**
 ```
 /sdd.exportar
-/sdd.exportar --completo     ← incluye todos los componentes de FORGE, no solo los usados
+/sdd.exportar --completo     ← incluye todos los componentes de Fragua, no solo los usados
 /sdd.exportar --solo-codigo  ← solo el código del proyecto (sin los archivos .sdd/)
 /sdd.exportar --zip          ← genera un archivo ZIP del bundle
 ```
@@ -105,7 +105,7 @@ if (!ir) {
 const productName = ir.product.name.toLowerCase().replace(/\s+/g, '-');
 const timestamp = new Date().toISOString().slice(0, 10);
 const BUNDLE = \`\${productName}-forge-bundle\`;
-const FORGE_ROOT = path.resolve(__dirname, '..');  // raíz del repo FORGE
+const FORGE_ROOT = path.resolve(__dirname, '..');  // raíz del repo Fragua
 
 // ── Helper: copiar archivo con creación de directorios ─────────────────────
 function cp(src, dest) {
@@ -211,7 +211,7 @@ incluidos.push('.sdd/estado.json');
 const install = [
   '# ' + ir.product.name + ' — Forge Bundle',
   '',
-  'Generado el ' + timestamp + ' con FORGE.',
+  'Generado el ' + timestamp + ' con Fragua.',
   '',
   '## Qué contiene este bundle',
   '',
@@ -234,7 +234,7 @@ const install = [
     : '(Sin wireframe en este bundle)',
   '',
   '---',
-  'Generado por FORGE — From idea to product, forged locally.',
+  'Generado por Fragua — From idea to product, forged locally.',
 ].join('\n');
 
 fs.writeFileSync(path.join(BUNDLE, 'INSTALL.md'), install);
@@ -256,11 +256,11 @@ Crear `{bundle}/INSTALL.md` con instrucciones para el destinatario:
 ```markdown
 # {product.name} — Forge Bundle
 
-Generado el {fecha} con FORGE v{version}.
+Generado el {fecha} con Fragua v{version}.
 
 ## Qué contiene este bundle
 
-- `sdd-lite/` — Comandos y agentes de FORGE para Claude Code
+- `sdd-lite/` — Comandos y agentes de Fragua para Claude Code
 - `.sdd/` — Contexto del proyecto (IR, diseño, wireframes)
 - `craft/` — Reglas de diseño
 - `design-systems/` — Sistema visual {direction}
@@ -289,7 +289,7 @@ El wireframe de la pantalla principal está en:
 {lista generada automáticamente de lo que está en el bundle}
 
 ---
-Generado por FORGE — From idea to product, forged locally.
+Generado por Fragua — From idea to product, forged locally.
 ```
 
 ---
@@ -327,7 +327,7 @@ Contenido:
   [✅ Spec y código si está completo]
   ✅ Instrucciones (INSTALL.md)
 
-Componentes FORGE incluidos:
+Componentes Fragua incluidos:
   [lista de comandos/skills/agentes copiados]
 
 ¿Qué sigue?

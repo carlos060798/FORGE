@@ -1,5 +1,5 @@
 ---
-description: Pipeline completo de FORGE. Si no hay IR, interpreta primero. Si no hay diseño, diseña. Luego mapea spec → planifica → tareas → implementa. Punto de entrada único para convertir una idea en código.
+description: Pipeline completo de Fragua. Si no hay IR, interpreta primero. Si no hay diseño, diseña. Luego mapea spec → planifica → tareas → implementa. Punto de entrada único para convertir una idea en código.
 allowed-tools: Read, Write, Bash, Agent
 ---
 
@@ -149,7 +149,7 @@ Genera el código base según las tareas.
 Durante la ejecución, muestra el progreso del pipeline:
 
 ```
-FORGE PIPELINE — [product.name]
+Fragua PIPELINE — [product.name]
 ═══════════════════════════════════════
   ✅ Idea interpretada (IR v1)
   ✅ Diseño aprobado (3 pantallas, stack: React + Node.js + SQLite)

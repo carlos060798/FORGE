@@ -2,10 +2,10 @@
 name: explicame
 id: explicame
 nombre: Explícame — transparencia del pipeline en lenguaje humano
-descripcion: Lee el estado actual del proyecto y explica qué hizo FORGE, por qué, y qué sigue, sin usar jerga técnica.
+descripcion: Lee el estado actual del proyecto y explica qué hizo Fragua, por qué, y qué sigue, sin usar jerga técnica.
 aliases: ["/forge.explicame", "/forge why", "/forge explica"]
 version: 1.0.0
-description: Lee el estado actual del proyecto y explica en lenguaje no técnico qué hizo FORGE, por qué y qué sigue. Úsala cuando el usuario pregunte qué ha pasado o pida entender el pipeline.
+description: Lee el estado actual del proyecto y explica en lenguaje no técnico qué hizo Fragua, por qué y qué sigue. Úsala cuando el usuario pregunte qué ha pasado o pida entender el pipeline.
 allowed-tools: Read
 ---
 
@@ -13,7 +13,7 @@ allowed-tools: Read
 
 ## Propósito
 
-Traducir el estado técnico del pipeline FORGE a lenguaje humano. Útil cuando el usuario no entiende qué acaba de pasar o qué debería hacer a continuación.
+Traducir el estado técnico del pipeline Fragua a lenguaje humano. Útil cuando el usuario no entiende qué acaba de pasar o qué debería hacer a continuación.
 
 ## Cuándo usar este skill
 
@@ -21,7 +21,7 @@ Traducir el estado técnico del pipeline FORGE a lenguaje humano. Útil cuando e
 - `/forge.explicame`
 - `/forge why`
 - `/forge explica`
-- Cualquier pregunta sobre "¿qué está pasando?", "¿qué hizo FORGE?", "¿qué sigue?"
+- Cualquier pregunta sobre "¿qué está pasando?", "¿qué hizo Fragua?", "¿qué sigue?"
 
 ## Cómo funciona
 
@@ -36,7 +36,7 @@ Traducir el estado técnico del pipeline FORGE a lenguaje humano. Útil cuando e
 📍 **¿Dónde estamos?**
 [Describir la fase actual del pipeline en lenguaje humano]
 
-✅ **¿Qué acabo de hacer FORGE?**
+✅ **¿Qué acabo de hacer Fragua?**
 [Resumir la acción más reciente: qué analizó, escribió o verificó]
 
 🔮 **¿Qué va a pasar a continuación?**
@@ -50,17 +50,17 @@ Traducir el estado técnico del pipeline FORGE a lenguaje humano. Útil cuando e
 
 | `pipeline_step` en estado.json | Lenguaje humano |
 |---|---|
-| `input` | FORGE está esperando que describas tu idea |
-| `ir` | FORGE acaba de entender tu idea y la ha resumido internamente |
-| `spec` | FORGE está redactando los requisitos detallados de tu proyecto |
-| `spec_aprobada` | Has aprobado los requisitos — FORGE está listo para planificar |
-| `plan` | FORGE está creando el plan de trabajo paso a paso |
-| `plan_aprobado` | Has aprobado el plan — FORGE está listo para construir |
-| `implementando` | FORGE está escribiendo el código de tu proyecto |
-| `tests` | FORGE está comprobando que el código funciona correctamente |
-| `verificando` | FORGE está revisando que todo cumple lo que pediste |
+| `input` | Fragua está esperando que describas tu idea |
+| `ir` | Fragua acaba de entender tu idea y la ha resumido internamente |
+| `spec` | Fragua está redactando los requisitos detallados de tu proyecto |
+| `spec_aprobada` | Has aprobado los requisitos — Fragua está listo para planificar |
+| `plan` | Fragua está creando el plan de trabajo paso a paso |
+| `plan_aprobado` | Has aprobado el plan — Fragua está listo para construir |
+| `implementando` | Fragua está escribiendo el código de tu proyecto |
+| `tests` | Fragua está comprobando que el código funciona correctamente |
+| `verificando` | Fragua está revisando que todo cumple lo que pediste |
 | `verificado` | Tu proyecto está completo y verificado — listo para usar |
-| `desplegando` | FORGE está preparando tu proyecto para ponerlo en producción |
+| `desplegando` | Fragua está preparando tu proyecto para ponerlo en producción |
 
 ## Traducciones de acciones de agentes
 
@@ -84,23 +84,23 @@ Cuando `pipeline_step = "spec"` y el agente `product-designer` acaba de actuar:
 
 ```
 📍 **¿Dónde estamos?**
-FORGE está redactando los requisitos de tu proyecto. Es como si un consultor 
+Fragua está redactando los requisitos de tu proyecto. Es como si un consultor 
 estuviera escribiendo el documento oficial de "qué exactamente vamos a construir" 
 antes de tocar ningún código.
 
-✅ **¿Qué acabo de hacer FORGE?**
+✅ **¿Qué acabo de hacer Fragua?**
 El diseñador de producto analizó tu idea y está creando una lista detallada de:
 - Qué funcionalidades tendrá el sistema
 - Cómo se comportará en cada situación
 - Qué no se va a construir (para no desviarse)
 
 🔮 **¿Qué va a pasar a continuación?**
-Cuando el spec esté listo, FORGE te lo presentará para que lo revises. 
+Cuando el spec esté listo, Fragua te lo presentará para que lo revises. 
 Podrás decir "sí, así está bien", "cambia esto" o "falta esto otro".
-Solo cuando apruebes el spec, FORGE pasará a crear el plan de trabajo.
+Solo cuando apruebes el spec, Fragua pasará a crear el plan de trabajo.
 
 👤 **¿Qué puedes decidir tú ahora?**
-Nada — FORGE está trabajando. Puedes ver el progreso en el dashboard 
+Nada — Fragua está trabajando. Puedes ver el progreso en el dashboard 
 (`forge ui`) o esperar a que te presente el spec para revisarlo.
 ```
 
@@ -108,7 +108,7 @@ Nada — FORGE está trabajando. Puedes ver el progreso en el dashboard
 
 Al recibir `/forge.explicame` o `/forge why`:
 
-1. Lee `.sdd/estado.json`. Si no existe, responde: "FORGE aún no está inicializado en este directorio. Escribe `/forge 'tu idea'` para empezar."
+1. Lee `.sdd/estado.json`. Si no existe, responde: "Fragua aún no está inicializado en este directorio. Escribe `/forge 'tu idea'` para empezar."
 
 2. Identifica el `pipeline_step` y busca la traducción en la tabla de estados.
 

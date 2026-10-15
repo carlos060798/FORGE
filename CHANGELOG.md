@@ -9,7 +9,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Seguridad (2026-10-13):** `.sdd/sdd.config.yaml` del proyecto ya no puede fijar `llm.api_key` ni un `llm.base_url` ajeno; antes un repositorio ajeno podía recibir la clave del usuario. Ver `docs/PROBLEMAS-CONOCIDOS.md`.
 
-> **Nombre:** el proyecto pasa a llamarse **Fragua** (decisión del 2026-10-13). En esta versión la orden `fragua` equivale a `forge`, que sigue funcionando junto con `sdd-es`. El paquete, las variables `FORGE_*` y la carpeta de estado **no han cambiado todavía**: ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
+> **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
+
+### Novedades de la oleada del 2026-10-14
+
+- **Verificar.** Comprobación del trabajo del ciclo con pruebas y mutación (`core/verificar/`); el motivo se redacta y la carpeta temporal se crea con modo 0700.
+- **Instalación agnóstica.** `forge init` y `forge update` aceptan `--integracion`, `--perfil` y `--carpeta-skills` para instalar las skills en Claude Code, Cursor, Copilot, Gemini CLI, Windsurf, opencode, Kiro, `.agents/skills` o una carpeta a elegir. `forge doctor` informa de la integración y el perfil instalados. La carpeta de skills de `claude` se confirmó en la documentación oficial el 2026-10-14. Límite: los perfiles no borran comandos ya instalados.
+- **Nombres y variables.** Las variables se leen por un único punto (`core/entorno.js`): ningún par `FRAGUA_*`/`FORGE_*` con valores distintos amplía un permiso, y un proyecto no puede fijar ninguna de las dos formas desde `.env`, `.claude/settings.json` ni `sdd.config.yaml`. El texto de comandos, skills y agentes dice Fragua.
+- **Seguridad.** El destino del modelo (`llm.base_url`) y la carpeta de skills (`instalacion.carpeta_skills`) de un archivo de proyecto ya no pueden dirigir la clave ni la escritura fuera de lo autorizado por el usuario; el tope de gasto se lee del entorno del usuario y un conflicto entre nombres falla cerrado.
+- **Catálogo y validador.** `skills-generadas/` se regenera con `node scripts/generar-skills.mjs` y una prueba comprueba que no diverge de `commands/`.
 
 ### Guía de migración desde 4.2.0
 

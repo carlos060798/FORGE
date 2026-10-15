@@ -13,7 +13,7 @@
 
 - [x] **S0.1** Todas las lecturas de variables `FORGE_*`, con archivo y línea, clasificadas en política, configuración y pruebas. Salida: `spikes/variables.md`.
 - [x] **S0.2** Todos los sitios donde la carpeta de estado, la etiqueta de contenedor y el nombre del paquete se usan como dato. Salida: `spikes/nombres-como-dato.md`.
-- [ ] **S0.3** Comprobación del nombre en npm el día de publicar.
+- [x] **S0.3** Comprobación del nombre en npm el día de publicar.
 
 ## F2 — Nombre en un solo sitio
 
@@ -25,9 +25,9 @@
 
 - [x] **F3.1** `core/entorno.js`: `leerVariable`. Tests: solo antigua, solo nueva, iguales, distintas (error que nombra las dos). Cubre CA-003-01, CA-003-02.
 - [x] **F3.2** Sustituir todas las lecturas del inventario S0.1. Prueba estática: no queda ninguna lectura directa fuera de `core/entorno.js`.
-- [ ] **F3.3** Una prueba por variable de política: ninguna combinación de los dos nombres amplía permisos. Cubre CA-003-03.
+- [x] **F3.3** Una prueba por variable de política: ninguna combinación de los dos nombres amplía permisos. Cubre CA-003-03.
 - [x] **F3.4** Prefijos admitidos en `*_token_env`. Cubre CA-003-04.
-- [ ] **F3.5** Proyecto hostil: el repositorio no puede fijar ninguna de las dos formas. Cubre CA-003-05.
+- [x] **F3.5** Proyecto hostil: el repositorio no puede fijar ninguna de las dos formas. Cubre CA-003-05.
 
 ## F4 — Estado del usuario y contenedores (seguridad)
 
@@ -41,8 +41,8 @@
 - [x] **F5.1** Nombre del paquete; pruebas que lo fijan; `scripts/pruebas-independientes.mjs`. Cubre CA-002-01, CA-002-03.
 - [x] **F5.2** README, guía, primeros pasos y `QUICK-START.md` con Fragua y una sección de equivalencia. Cubre CA-006-01.
 - [x] **F5.3** Nota del cambio en `.sdd/INDICE.md` y `docs/0-INDICE.md`; los documentos históricos no se tocan. Cubre CA-006-02.
-- [ ] **F5.4** Texto del producto en comandos y skills, sin cambiar sus nombres. Cubre CA-006-03.
-- [ ] **F5.5** Empaquetar e instalar en carpeta limpia con el nombre nuevo; `fragua doctor` arranca.
+- [x] **F5.4** Texto del producto en comandos y skills, sin cambiar sus nombres. Cubre CA-006-03.
+- [x] **F5.5** Empaquetar e instalar en carpeta limpia con el nombre nuevo; `fragua doctor` arranca.
 
 ## F6 — Dueño
 
@@ -58,3 +58,10 @@
 
 > **2026-10-14:** S0, F2 y F3 implementadas en la rama de integración (`core/nombres.js`, `core/entorno.js`, `claude-hooks/shared/entorno.js`, `tests/entorno-fragua.test.js`). Pendientes: F3.3 y F3.5 (una prueba por variable de política y proyecto hostil, a verificar en la revisión independiente), F4, F5, F6 y F7. El inventario encontró 23 lecturas de 17 variables (la spec decía 28).
 > **2026-10-14 (F4 y F5):** F4.1 a F4.4 y F5.1 a F5.3 hechas; `fragua` libre en npm (404). Pendiente F5.4 y F5.5.
+
+> **2026-10-14 (cierres):**
+> - S0.3: `npm view fragua name` dio 404 (nombre libre) el 2026-10-14. Repetir el día de publicar.
+> - F3.3: `tests/entorno-fragua.test.js` ya cubría cada variable de política (INTEGRACIONES, _ESCRITURA, _DESTINOS, _HOSTS, RUNTIMES_PERMITIDOS, HOME, NIVEL_MAXIMO, BUDGET_USD, IMPLEMENTADOR, LLM_HOSTS, LLM_PROVIDER, API_TOKEN); no faltaba ninguna.
+> - F3.5: se añadió `describe('F3.5 proyecto hostil: .env, .claude/settings.json y sdd.config.yaml')`: con las dos formas en los tres archivos, la política y el ciclo salen iguales que en un proyecto vacío.
+> - F5.4: «FORGE» pasa a «Fragua» en 19 archivos de `commands/`, `skills/` y `agents/` (solo la palabra suelta; no `FORGE_*`, `/forge`, `forge.config.json`). `skills-generadas/` regenerada. `tests/catalogo.test.js`, `consistencia-cifras`, `agents-md`, `ciclo-turnos` y `ciclo-motor` en verde.
+> - F5.5: `npm pack` dio `fragua-5.0.0.tgz` (422 archivos, 1,1 MB). Instalado en una carpeta temporal limpia fuera del repositorio: `fragua --version` imprime 5.0.0; `fragua doctor` y `forge doctor` arrancan y dan la misma salida (integridad del plugin correcta: 39 comandos, 14 agentes, 31 skills). Observación: el banner de `doctor` aún dice «FORGE — Tu equipo técnico en Claude Code» y «Diagnóstico de SDD-ES». No se publicó nada.

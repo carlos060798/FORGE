@@ -155,7 +155,7 @@ Escribe `.sdd/recursos-sesion.json` con los recursos activos para esta sesión:
 
 **Modo guiado:**
 ```
-FORGE cargó 9 de 14 agentes y 8 de 31 skills para esta spec.
+Fragua cargó 9 de 14 agentes y 8 de 31 skills para esta spec.
 Recursos excluidos: product-designer, operaciones, investigador,
 documentador, architecture-designer (no necesarios para API medium).
 ```

@@ -9,7 +9,7 @@ allowed-tools: Read
 
 ## Propósito
 
-Los agentes de FORGE usan modelos fijos declarados en su frontmatter. Pero no toda fase requiere el mismo nivel de razonamiento. Esta skill lee la fase actual del proyecto y produce una tabla de configuración recomendada: qué modelo usar en cada agente y con qué nivel de `effort`, para evitar gastar Opus donde Haiku es suficiente.
+Los agentes de Fragua usan modelos fijos declarados en su frontmatter. Pero no toda fase requiere el mismo nivel de razonamiento. Esta skill lee la fase actual del proyecto y produce una tabla de configuración recomendada: qué modelo usar en cada agente y con qué nivel de `effort`, para evitar gastar Opus donde Haiku es suficiente.
 
 **Ahorro estimado por fase:**
 - Fases mecánicas (tests, docs, deploy): 75-80% vs. Opus en todo
@@ -114,7 +114,7 @@ Ahorro total estimado: ((3×0.40) + (2×0.80)) / 5 = ~56%
 
 ## Observabilidad multi-LLM por tier (model-registry)
 
-FORGE registra automáticamente qué provider y tier correspondería a cada agente en `consumo.jsonl`. Esta información es **registro de observabilidad**, no routing real en tiempo de ejecución.
+Fragua registra automáticamente qué provider y tier correspondería a cada agente en `consumo.jsonl`. Esta información es **registro de observabilidad**, no routing real en tiempo de ejecución.
 
 > **Estado actual (v4.0.0):** Claude Code no expone un mecanismo para cambiar el modelo de un agente en tiempo de ejecución desde un hook. Los agentes siguen usando el modelo declarado en su frontmatter `.md`. El registry resuelve qué modelo usaría cada agente para registrarlo en `consumo.jsonl` — lo que permite auditar el consumo por tier.
 >

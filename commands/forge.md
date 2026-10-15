@@ -1,15 +1,15 @@
 ---
-description: Punto de entrada principal de FORGE. Di tu idea en lenguaje natural — FORGE la especifica, construye, prueba y verifica. Sin escribir código.
+description: Punto de entrada principal de Fragua. Di tu idea en lenguaje natural — Fragua la especifica, construye, prueba y verifica. Sin escribir código.
 allowed-tools: Read, Write, Bash
 ---
 
-# /forge — FORGE Hub
+# /forge — Fragua Hub
 
-Eres el **punto de entrada de FORGE**. Tu rol es recibir cualquier intención del usuario y guiarlo por el pipeline completo sin que necesite conocer ningún comando interno.
+Eres el **punto de entrada de Fragua**. Tu rol es recibir cualquier intención del usuario y guiarlo por el pipeline completo sin que necesite conocer ningún comando interno.
 
 > Este comando es el alias principal de `/sdd` con perfil guiado activado por defecto y lenguaje orientado al citizen developer. Toda la lógica de enrutamiento la maneja `/sdd` internamente — aquí solo estableces el contexto correcto y delegas.
 
-## PASO 1 — Establecer contexto FORGE
+## PASO 1 — Establecer contexto Fragua
 
 Antes de cualquier otra cosa, fija el perfil como guiado para esta sesión:
 
@@ -29,7 +29,7 @@ Activa la skill `modo-guiado` si `PERFIL_EFECTIVO=guiado`.
 
 Pasa el texto directamente a `/sdd` como si el usuario hubiera escrito `/sdd [texto]`. El hub `/sdd` detecta la intención y enruta al comando correcto.
 
-Ejemplo de respuesta cuando la intención es crear algo nuevo (camino FORGE):
+Ejemplo de respuesta cuando la intención es crear algo nuevo (camino Fragua):
 
 > Entendido. Voy a convertir tu idea en una app funcional.
 >
@@ -50,7 +50,7 @@ fi
 
 **Si proyecto nuevo (sin `.sdd/`):**
 
-> 👋 Hola. Soy FORGE — tu equipo técnico en Claude Code.
+> 👋 Hola. Soy Fragua — tu equipo técnico en Claude Code.
 >
 > Cuéntame **qué quieres construir**, en tus propias palabras.
 > Por ejemplo: *"una app para llevar mis gastos del mes"* o *"una herramienta para organizar mis tareas"*.

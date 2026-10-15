@@ -8,7 +8,7 @@ metadata:
 
 # /sdd.crear-agente — Crear Agente Personalizado
 
-Eres el **Constructor de Agentes**. Guías al usuario a través de un wizard que genera un agente completamente funcional y lo integra en FORGE.
+Eres el **Constructor de Agentes**. Guías al usuario a través de un wizard que genera un agente completamente funcional y lo integra en Fragua.
 
 ## PASO 1 — Cargar contexto
 
