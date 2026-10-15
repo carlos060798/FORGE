@@ -34,6 +34,7 @@ const CLAVE = 'sk-conformidad-0000';
  * @property {boolean} errorServidor      ¿puede el servidor falso devolver un error?
  * @property {boolean} cancelacion        ¿respeta `signal`?
  * @property {boolean} argumentosComoTexto  ¿los argumentos de herramienta llegan como texto JSON?
+ * @property {boolean} [sinRechazo]   la API no tiene un motivo de rechazo (Ollama): el caso no aplica
  * @property {boolean} idsEnResultados    ¿el resultado de herramienta lleva el id de la llamada?
  * @property {'devuelve'|'ignora'|null} opaco
  * @property {(escenarios: any[]) => Promise<Montaje>} montar
@@ -69,7 +70,7 @@ const ADAPTADORES = [
       .map((m) => ({ id: m.tool_call_id, contenido: String(m.content), esError: String(m.content).startsWith('ERROR: ') })),
   },
   {
-    nombre: 'ollama', declara: false, errorServidor: true, cancelacion: true,
+    nombre: 'ollama', declara: true, sinRechazo: true, errorServidor: true, cancelacion: true,
     argumentosComoTexto: false, idsEnResultados: false, opaco: 'ignora',
     async montar(escenarios) {
       const s = await servidorFalso('ollama', escenarios);
@@ -236,7 +237,7 @@ const CASOS_CONVERSAR = /** @type {[string, (a: Adaptador) => boolean, (a: Adapt
     const r = await m.provider.conversar({ ...BASE, mensajes: [{ rol: 'usuario', contenido: 'escribe mucho' }] });
     assert.equal(r.stopReason, 'max_tokens');
   })],
-  ['rechazo: parada «rechazo»', () => true, (a) => con(a, [{ parada: 'rechazo', texto: 'No puedo ayudar con eso.' }], async (m) => {
+  ['rechazo: parada «rechazo»', (a) => !a.sinRechazo, (a) => con(a, [{ parada: 'rechazo', texto: 'No puedo ayudar con eso.' }], async (m) => {
     const r = await m.provider.conversar({ ...BASE, mensajes: [{ rol: 'usuario', contenido: 'haz algo prohibido' }] });
     assert.equal(r.stopReason, 'rechazo');
   })],
