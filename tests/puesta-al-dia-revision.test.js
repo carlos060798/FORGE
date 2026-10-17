@@ -31,6 +31,7 @@ import { dirname, join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { registrarDestino, olvidarDestinos } from "../core/session-budget.js";
 
 import { limpiar, generarAgentsMd, neutralizar, unaLinea, bloqueDeCodigo } from "../core/agents-md.js";
 import { redactar } from "../core/ciclo/redactar.js";
@@ -415,11 +416,16 @@ describe("H-03 — entrada y salida inválidas son consumo no informado", () => 
   });
 
   test("un proveedor sin costo (ollama) con valores rotos no corrompe el acumulador", () => {
-    const p = registrar(P0, { proveedor: "ollama", modelo: "llama3", inputTokens: NaN, outputTokens: -4 });
-    assert.equal(p.gastado_usd, 0);
-    assert.equal(p.tokens_in, 0);
-    assert.equal(p.tokens_out, 0);
-    assert.equal(costoDe({ proveedor: "ollama", modelo: "x", inputTokens: NaN, outputTokens: NaN }), 0);
+    // El coste cero lo da un destino de la propia máquina, que registra el constructor de OllamaProvider
+    olvidarDestinos();
+    registrarDestino("ollama", "http://localhost:11434");
+    try {
+      const p = registrar(P0, { proveedor: "ollama", modelo: "llama3", inputTokens: NaN, outputTokens: -4 });
+      assert.equal(p.gastado_usd, 0);
+      assert.equal(p.tokens_in, 0);
+      assert.equal(p.tokens_out, 0);
+      assert.equal(costoDe({ proveedor: "ollama", modelo: "x", inputTokens: NaN, outputTokens: NaN }), 0);
+    } finally { olvidarDestinos(); }
   });
 
   test("el caso válido sigue cobrándose igual (1000 + 1000 de sonnet-4-6 = 0,018 USD)", () => {

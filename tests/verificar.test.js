@@ -179,6 +179,12 @@ describe("forge verificar: sin modelo, sin claves, sin red", () => {
     }
     const rutas = [...visto].map((f) => f.slice(RAIZ.length).replace(/\\/g, "/"));
     for (const r of rutas) {
+      // llm-providers/niveles.js es una tabla pura de nombres (no importa nada: ni proveedores ni red): se admite,
+      // con la condición de que siga sin importar nada
+      if (r === "/core/llm-providers/niveles.js") {
+        assert.ok(!/^\s*import\b/m.test(readFileSync(join(RAIZ, r), "utf8")), "niveles.js debe seguir sin importar nada");
+        continue;
+      }
       assert.ok(!/llm-providers|integraciones|orchestrator|engine-cli|ciclo\/index\.js|nodos\.js|api\//.test(r), `importa ${r}`);
     }
     for (const f of [...visto].filter((x) => /[\/](verificar)[\/]|cli[\/]verificar.js$/.test(x))) {

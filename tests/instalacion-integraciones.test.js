@@ -27,7 +27,7 @@ describe("F1.1 — tabla de integraciones", () => {
   test("cada fila cita su URL y su fecha de consulta", () => {
     for (const i of Object.values(INTEGRACIONES)) {
       assert.match(i.fuente, /^https:\/\//, i.clave);
-      assert.match(i.consultado, /^2026-10-13$/, i.clave);
+      assert.match(i.consultado, /^2026-10-1[34]$/, i.clave);
       assert.ok(i.invocacion && i.nombre);
     }
     assert.equal(INTEGRACIONES.windsurf.carpetaSkills, ".devin/skills");

@@ -206,7 +206,7 @@ export const VARIABLE_PRECIOS_CERO = 'PRECIOS_CERO';
  */
 export function limitarPreciosDelProyecto(precios, o = {}) {
   const avisar = o.avisar ?? ((m) => { if (!preciosAvisados.has(m)) { preciosAvisados.add(m); console.warn(m); } });
-  const permitidosCero = new Set(String((o.env ? o.env[`FRAGUA_${VARIABLE_PRECIOS_CERO}`] ?? o.env[`FORGE_${VARIABLE_PRECIOS_CERO}`] : leerVariable(VARIABLE_PRECIOS_CERO)) ?? '')
+  const permitidosCero = new Set(String(leerVariable(VARIABLE_PRECIOS_CERO, o.env ?? process.env) ?? '')
     .split(',').map((x) => x.trim()).filter(Boolean));
   const tabla = tablaPorToken();
   const enTabla = (/** @type {string} */ id) => Object.values(tabla).map((m) => m[id]).find(Boolean);
