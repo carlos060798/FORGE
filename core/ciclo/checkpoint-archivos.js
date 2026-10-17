@@ -24,6 +24,9 @@ export class ErrorHiloEnUso extends Error {
 
 const huella = (texto) => createHash('sha256').update(texto).digest('hex');
 
+/** Un punto de guardado más grande que esto no se lee: el estado del ciclo es pequeño (S-3 de la revisión). */
+const MAX_BYTES_PUNTO = 16 * 1024 * 1024;
+
 /**
  * Los identificadores de hilo llevan ":" (runId:taskId), inválido en nombres de
  * archivo de Windows. Se añade una huella corta: "a/b" y "a_b" no deben compartir carpeta.
@@ -93,9 +96,25 @@ export class GuardadorArchivos {
       const archivo = archivos[i];
       let punto;
       try {
-        punto = JSON.parse(fs.readFileSync(path.join(this.dirHilo(threadId), archivo), 'utf8'));
+        const ruta = path.join(this.dirHilo(threadId), archivo);
+        if (fs.statSync(ruta).size > MAX_BYTES_PUNTO) {
+          descartados.push({ archivo, motivo: 'demasiado grande para ser un punto de guardado' });
+          continue;
+        }
+        punto = JSON.parse(fs.readFileSync(ruta, 'utf8'));
       } catch {
         descartados.push({ archivo, motivo: 'no es JSON válido' });
+        continue;
+      }
+      // `null`, un número o una lista también son JSON válido y no son un punto (S-2)
+      if (punto === null || typeof punto !== 'object' || Array.isArray(punto)) {
+        descartados.push({ archivo, motivo: 'no es un punto de guardado' });
+        continue;
+      }
+      // El sello cubre el `seq`, pero el orden lo da el NOMBRE del archivo: sin esta comprobación, copiar
+      // `000001.json` a `000009.json` reabriría una iteración antigua con un sello legítimo (S-1)
+      if (punto.seq !== Number(archivo.slice(0, 6))) {
+        descartados.push({ archivo, motivo: 'la secuencia firmada no coincide con el nombre del archivo' });
         continue;
       }
       if (huella(JSON.stringify(punto.estado)) !== punto.sha256) {

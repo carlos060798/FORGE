@@ -161,3 +161,40 @@ describe('sello', () => {
     assert.ok(!raiz.some((r) => /(^|[\\/])clave$/.test(r)), 'la clave vive en el estado del usuario, no en el proyecto');
   });
 });
+
+describe('revisión 2: secuencia, forma y tamaño del punto', () => {
+  test('S-1: copiar un punto legítimo a un número de secuencia mayor no reabre una iteración antigua', () => {
+    const cwd = proyecto();
+    const g = new GuardadorArchivos(join(cwd, '.sdd', 'motor', 'r1'));
+    g.guardar('r1:T1', { nodo: 'planner', siguiente: 'qa', estado: estado(cwd) });
+    g.guardar('r1:T1', { nodo: 'qa', siguiente: 'coder', estado: estado(cwd) });
+    const dir = g.dirHilo('r1:T1');
+    // El atacante copia el punto 1 (sello legítimo) encima de un número mayor
+    writeFileSync(join(dir, '000009.json'), readFileSync(join(dir, '000001.json')));
+    const { punto, descartados } = g.ultimo('r1:T1');
+    assert.equal(punto?.seq, 2, 'el último válido sigue siendo el 2');
+    assert.ok(descartados.some((d) => d.archivo === '000009.json' && /secuencia/.test(d.motivo)));
+  });
+
+  test('S-2: un archivo cuyo JSON es null (o un número, o una lista) se salta sin lanzar', () => {
+    const cwd = proyecto();
+    const g = new GuardadorArchivos(join(cwd, '.sdd', 'motor', 'r1'));
+    g.guardar('r1:T1', { nodo: 'planner', siguiente: 'qa', estado: estado(cwd) });
+    const dir = g.dirHilo('r1:T1');
+    for (const [n, contenido] of [['000002.json', 'null'], ['000003.json', '42'], ['000004.json', '[]']]) writeFileSync(join(dir, n), contenido);
+    const r = g.ultimo('r1:T1');
+    assert.equal(r.punto?.seq, 1, 'vuelve al punto válido anterior');
+    assert.equal(r.descartados.length, 3);
+  });
+
+  test('S-3: un punto enorme no se lee', () => {
+    const cwd = proyecto();
+    const g = new GuardadorArchivos(join(cwd, '.sdd', 'motor', 'r1'));
+    g.guardar('r1:T1', { nodo: 'planner', siguiente: 'qa', estado: estado(cwd) });
+    const dir = g.dirHilo('r1:T1');
+    writeFileSync(join(dir, '000002.json'), Buffer.alloc(17 * 1024 * 1024, 0x20));
+    const r = g.ultimo('r1:T1');
+    assert.equal(r.punto?.seq, 1);
+    assert.ok(r.descartados.some((d) => /demasiado grande/.test(d.motivo)));
+  });
+});
