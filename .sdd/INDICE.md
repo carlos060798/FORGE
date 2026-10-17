@@ -5,9 +5,9 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 14
+- Total: 15
 - Completadas: 0
-- En progreso: 11
+- En progreso: 12
 - En borrador: 3
 
 ## Especificaciones
@@ -29,6 +29,7 @@
 | 2026-10-13-verificar-sin-modelo | `forge verificar`: veredicto aislado sin llamar a un modelo | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-proveedores-agnosticos | Proveedores agnósticos: conformidad, herramientas en OpenAI y Ollama, niveles neutrales | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-renombrar-a-fragua | El proyecto pasa a llamarse Fragua, sin romper a quien ya usa FORGE | en_implementacion (por instrucción del dueño; F1 hecha: orden `fragua`; F3 y F4 tocan seguridad y esperan a los inventarios y a una revisión independiente) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
+| 2026-10-14-ciclo-por-mcp | Ciclo por MCP: otra herramienta delega en Fragua la verificación sin gastar ni escribir | en_implementacion (aprobada por delegación del dueño el 2026-10-17; SOLO la fase 1 (`verificar` por MCP, sin gasto); fases 2 y 3 sin implementar; sin revisión independiente todavía) | grande | ✅ | ✅ | ✅ | — | 2026-10-17 |
 
 ## Previstas (sin especificar todavía)
 

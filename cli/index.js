@@ -1984,8 +1984,10 @@ Uso:
   npx forge api [--port N] [--cwd <ruta>]
                                      API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
                                      estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
-  npx forge mcp [--cwd <ruta>]       Servidor MCP por stdin/stdout con tres herramientas: ejecutar pruebas
+  npx forge mcp [--cwd <ruta>] [--perfil completo|verificacion]
+                                     Servidor MCP por stdin/stdout con tres herramientas: ejecutar pruebas
                                      en el entorno aislado, leer y escribir archivos con las reglas del ciclo.
+                                     --perfil verificacion expone solo "verificar" (para otra herramienta; ver docs/mcp-verificar.md).
                                      Configúralo en tu cliente: {"mcpServers":{"forge":{"command":"npx","args":["forge","mcp"]}}}
   npx forge run [--tasks <json>] [--motor clasico|ciclo] [--force]
                                      Ejecuta las tareas. Con --motor ciclo, cada tarea de código
@@ -2147,8 +2149,14 @@ async function main() {
     case "mcp": {
       // Servidor MCP por stdin/stdout: nada más que mensajes del protocolo debe salir por stdout
       const i = args.indexOf("--cwd");
+      const ip = args.indexOf("--perfil");
       const { iniciarServidor } = await import("../core/mcp/servidor.js");
-      await iniciarServidor({ cwd: i !== -1 && args[i + 1] ? args[i + 1] : undefined });
+      try {
+        await iniciarServidor({ cwd: i !== -1 && args[i + 1] ? args[i + 1] : undefined, perfil: ip !== -1 ? (args[ip + 1] ?? "") : undefined });
+      } catch (e) {
+        process.stderr.write(`[forge mcp] ${e instanceof Error ? e.message : e}\n`);
+        process.exitCode = 1;
+      }
       break;
     }
     case "adr": {

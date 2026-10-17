@@ -75,19 +75,48 @@ const MAX_LINEA = 10 * 1024 * 1024;
  * @property {(args: any, senal?: AbortSignal) => Promise<{ texto: string, error?: boolean }>} ejecutar
  */
 
+/**
+ * Comprueba UN valor contra su definición: string, boolean, integer, number y array (con `items`,
+ * `minItems`, `maxItems`). Devuelve el problema o null. Los arrays se validan elemento a elemento.
+ */
+function validarValor(def, valor, nombre) {
+  if (def.type === 'string' && typeof valor !== 'string') return `"${nombre}" debe ser texto`;
+  if (def.type === 'boolean' && typeof valor !== 'boolean') return `"${nombre}" debe ser verdadero o falso`;
+  if (def.type === 'integer' || def.type === 'number') {
+    if (typeof valor !== 'number' || !Number.isFinite(valor) || (def.type === 'integer' && !Number.isInteger(valor))) {
+      return `"${nombre}" debe ser un número${def.type === 'integer' ? ' entero' : ''}`;
+    }
+    if (typeof def.minimum === 'number' && valor < def.minimum) return `"${nombre}" debe ser al menos ${def.minimum}`;
+    if (typeof def.maximum === 'number' && valor > def.maximum) return `"${nombre}" debe ser como máximo ${def.maximum}`;
+  }
+  if (def.type === 'array') {
+    if (!Array.isArray(valor)) return `"${nombre}" debe ser una lista`;
+    if (typeof def.minItems === 'number' && valor.length < def.minItems) return `"${nombre}" necesita al menos ${def.minItems} elemento(s)`;
+    if (typeof def.maxItems === 'number' && valor.length > def.maxItems) return `"${nombre}" admite como máximo ${def.maxItems} elemento(s)`;
+    if (def.items) {
+      for (let i = 0; i < valor.length; i++) {
+        const p = validarValor(def.items, valor[i], `${nombre}[${i}]`);
+        if (p) return p;
+      }
+    }
+  }
+  if (def.enum && !def.enum.includes(valor)) return `"${nombre}" debe ser uno de: ${def.enum.join(', ')}`;
+  if (def.maxLength && typeof valor === 'string' && valor.length > def.maxLength) return `"${nombre}" supera el máximo de ${def.maxLength} caracteres`;
+  return null;
+}
+
 /** Comprueba los argumentos contra el subconjunto de JSON Schema que usan las herramientas. */
 export function validarArgumentos(schema, args) {
   if (args === undefined) args = {};
   if (args === null || typeof args !== 'object' || Array.isArray(args)) return 'los argumentos deben ser un objeto';
   for (const campo of schema.required ?? []) {
-    if (!(campo in args)) return `falta el argumento "${campo}"`;
+    if (!Object.hasOwn(args, campo)) return `falta el argumento "${campo}"`;
   }
   for (const [campo, valor] of Object.entries(args)) {
-    const def = schema.properties?.[campo];
+    const def = Object.hasOwn(schema.properties ?? {}, campo) ? schema.properties[campo] : undefined;
     if (!def) return `argumento desconocido: "${campo}"`;
-    if (def.type === 'string' && typeof valor !== 'string') return `"${campo}" debe ser texto`;
-    if (def.enum && !def.enum.includes(valor)) return `"${campo}" debe ser uno de: ${def.enum.join(', ')}`;
-    if (def.maxLength && typeof valor === 'string' && valor.length > def.maxLength) return `"${campo}" supera el máximo de ${def.maxLength} caracteres`;
+    const p = validarValor(def, valor, campo);
+    if (p) return p;
   }
   return null;
 }
