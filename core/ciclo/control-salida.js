@@ -294,7 +294,7 @@ function buscarDestinos(rutaPosix, contenido, permitidos) {
   const avisos = [];
   const ctx = {
     plantilla: EXT_PLANTILLA.test(path.posix.basename(rutaPosix)),
-    hayRed: lineas.some((l, i) => !comentario[i] && (RE_LLAMADA_CON_ARGUMENTO.test(l) || /imports*(/.test(l) || (RE_EJECUTAR_COMANDO.test(l) && RE_COMANDO_RED.test(l)))),
+    hayRed: lineas.some((l, i) => !comentario[i] && (RE_LLAMADA_CON_ARGUMENTO.test(l) || /\bimport\s*\(/.test(l) || (RE_EJECUTAR_COMANDO.test(l) && RE_COMANDO_RED.test(l)))),
   };
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
