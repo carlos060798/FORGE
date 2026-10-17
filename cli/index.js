@@ -26,7 +26,7 @@ import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
 import { leerVariable } from "../core/entorno.js";
-import { ordenInvocada, debeAvisarOrdenAntigua } from "../core/nombres.js";
+import { ordenInvocada, debeAvisarOrdenAntigua, PRODUCTO } from "../core/nombres.js";
 import { detectStack } from "../core/stack-detector.js";
 import { copiarArbol, copiarArchivo, crearArchivo, crearDirectorio, ErrorEnlace, escribirArchivo, leerArchivo } from "../core/escritura-segura.js";
 import { CLAVES, INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/herramientas-destino.js";
@@ -237,7 +237,8 @@ function banner() {
   console.log("");
   console.log("  ╔══════════════════════════════════════════════════════╗");
   console.log("  ║                                                      ║");
-  console.log("  ║              FORGE — Tu equipo técnico en Claude Code ║");
+  const rotulo = `${PRODUCTO} — Tu equipo técnico en Claude Code`;
+  console.log(`  ║${rotulo.padStart(Math.floor((54 + rotulo.length) / 2)).padEnd(54)}║`);
   console.log("  ║                                                      ║");
   console.log("  ╚══════════════════════════════════════════════════════╝");
   console.log("");
@@ -1189,10 +1190,27 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
 
 async function cmdDoctor() {
   banner();
-  console.log("  Diagnóstico de SDD-ES");
+  console.log(`  Diagnóstico de ${PRODUCTO}`);
   console.log("");
 
   let problemas = 0;
+
+  // Servidor MCP propio: perfil y límites efectivos (solo del entorno del usuario; carga perezosa, sin integraciones)
+  try {
+    const { resolverPerfil } = await import("../core/mcp/perfiles.js");
+    const { leerLimites, estadoInterruptor } = await import("../core/mcp/limites.js");
+    const p = resolverPerfil({ env: process.env });
+    const l = leerLimites(process.env);
+    const apagado = estadoInterruptor(process.env);
+    if (p.ok) {
+      info(`MCP: perfil ${p.perfil} (${p.herramientas.join(", ")}) · ciclo ${apagado.apagado ? "apagado" : "activo"} · ${l.timeout_s} s por llamada, ${l.salida_max_bytes} bytes de salida, ${l.por_hora}/hora, ${l.por_dia}/día ✓`);
+    } else {
+      aviso(`MCP: perfil no válido en FRAGUA_MCP_PERFIL; ${p.error}`);
+      problemas++;
+    }
+  } catch (e) {
+    aviso(`MCP: no se pudo leer el perfil (${e instanceof Error ? e.message : e})`);
+  }
 
   // Node
   const nodeMajor = Number(process.versions.node.split(".")[0]);
@@ -1947,7 +1965,7 @@ function cmdLogs(args) {
 
 function uso() {
   console.log(`
-FORGE — CLI (v${pluginVersion()})
+${PRODUCTO} — CLI (v${pluginVersion()})
 El proyecto pasa a llamarse Fragua: el comando «fragua» ya equivale a «forge», que sigue funcionando.
 
 Uso:
