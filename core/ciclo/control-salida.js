@@ -73,6 +73,9 @@ const EXT_DOCUMENTACION = /\.(?:md|markdown|mdx|txt|rst|adoc|csv|log)$/i;
 const EXT_MARCADO = /\.(?:html?|xhtml|svg)$/i;   // el navegador los ejecuta: son código (revisión nº 1, H-3)
 const EXT_SCRIPT = /\.(?:sh|bash|zsh|fish|ps1|psm1|bat|cmd)$/i;
 const EXT_CONFIG = /\.(?:json|jsonc|json5|ya?ml|toml|ini|cfg|conf|properties|xml|tf|env|plist)$/i;
+/** Plantillas: el servidor o el navegador las ejecutan y cargan lo que dicen sus etiquetas (revisión nº 2, C-3). */
+const EXT_PLANTILLA = /\.(?:vue|svelte|jsx|tsx|php|phtml|erb|ejs|hbs|njk|twig|astro|shtml|mht)$/i;
+const RE_ETIQUETA_DE_CARGA = /<(?:img|script|link|iframe|embed|source|video|audio|object|input|image|use)\b/i;
 const NOMBRES_SCRIPT = /^(?:makefile|gnumakefile|dockerfile(?:\..*)?|.*\.dockerfile|jenkinsfile|vagrantfile)$/i;
 
 /** @returns {'documentacion' | 'marcado' | 'script' | 'configuracion' | 'codigo'} */
@@ -97,6 +100,8 @@ const ESPACIOS_DE_NOMBRES = new Set([
 
 /** Llamadas de red en código. */
 const RE_LLAMADA_RED = /\b(?:fetch|axios|got|superagent|ky|requests?|urllib\d?|urlopen|httpx|aiohttp|http\.(?:get|post|put|request|newrequest|client)|https\.(?:get|request)|net\.(?:connect|createconnection)|createconnection|socket\.connect|websocket|eventsource|xmlhttprequest|httpclient|webclient|restclient|resttemplate|reqwest|curl_init|file_get_contents|open-uri|net::http|dial(?:context)?|sendbeacon|importscripts|new\s+image|window\.open)\b|\bimport\s*\(|\.(?:src|href)\s*=|\burl\s*\(|@import\b|\bxlink:href\b/i;
+/** Una llamada de red de verdad: el nombre seguido de «(», «.», comillas o «=» (no la palabra suelta en prosa). */
+const RE_LLAMADA_CON_ARGUMENTO = new RegExp(`(?:${RE_LLAMADA_RED.source})\\s*[(.\`'"=]`, 'i');
 /** Comandos de red en scripts. */
 const RE_COMANDO_RED = /\b(?:curl|wget|nc|ncat|netcat|ssh|scp|sftp|rsync|telnet|ftp|invoke-webrequest|invoke-restmethod|iwr|irm|git\s+clone|git\s+remote\s+add|git\s+fetch|git\s+pull|git\s+push)\b/i;
 /** Ejecución de un comando desde código: `exec("curl …")`, `spawn("wget", …)`, `os.system(…)`. */
@@ -133,6 +138,7 @@ function estiloDeComentario(rutaPosix, tipo) {
     linea.push('//');
     bloque.push(['/*', '*/']);
     if (EXT_ALMOHADILLA.test(base)) linea.push('#');
+    if (EXT_PLANTILLA.test(base)) bloque.push(['<!--', '-->']);
     if (EXT_PUNTO_Y_COMA.test(base)) ambiguos.push(';');
     if (EXT_PORCENTAJE.test(base)) ambiguos.push('%');
     if (EXT_DOBLE_GUION.test(base)) ambiguos.push('--');
@@ -241,9 +247,10 @@ function hostsDeCarga(linea) {
  * Destinos que una línea de código/script/configuración contacta.
  * @param {string} linea @param {string} previa  línea anterior (una llamada puede partirse en dos)
  * @param {'script'|'configuracion'|'codigo'|'marcado'} tipo
+ * @param {{ hayRed?: boolean, plantilla?: boolean }} [ctx]  hayRed: el archivo tiene alguna llamada de red o importación dinámica
  * @returns {string[]}
  */
-function destinosDeLinea(linea, previa, tipo) {
+function destinosDeLinea(linea, previa, tipo, ctx = {}) {
   /** @type {string[]} */
   const hosts = [];
   if (tipo === 'configuracion') return hostsDeUrl(linea);
@@ -256,7 +263,9 @@ function destinosDeLinea(linea, previa, tipo) {
     if (c) hosts.push(c[1].toLowerCase());
     return hosts.filter((x) => x !== '' && !x.startsWith('-') && !/^\d+$/.test(x) && !x.startsWith('$'));
   }
-  if (tipo === 'marcado') hosts.push(...hostsDeCarga(linea));
+  if (tipo === 'marcado' || ctx.plantilla || (tipo === 'codigo' && RE_ETIQUETA_DE_CARGA.test(linea))) hosts.push(...hostsDeCarga(linea));
+  // Una URL asignada a una constante y usada en otra línea (C-2): con una llamada de red en el archivo, toda URL literal cuenta
+  if (tipo === 'codigo' && ctx.hayRed) hosts.push(...hostsDeUrl(linea));
   // código: una URL con esquema en una línea que llama a la red (o la sigue de cerca)
   if (RE_LLAMADA_RED.test(linea) || RE_LLAMADA_RED.test(previa)) {
     hosts.push(...hostsDeUrl(linea));
@@ -283,10 +292,14 @@ function buscarDestinos(rutaPosix, contenido, permitidos) {
   const lineas = contenido.split(/\r?\n/);
   const comentario = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
   const avisos = [];
+  const ctx = {
+    plantilla: EXT_PLANTILLA.test(path.posix.basename(rutaPosix)),
+    hayRed: lineas.some((l, i) => !comentario[i] && (RE_LLAMADA_CON_ARGUMENTO.test(l) || /imports*(/.test(l) || (RE_EJECUTAR_COMANDO.test(l) && RE_COMANDO_RED.test(l)))),
+  };
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
     if (comentario[i]) continue;
-    for (const host of destinosDeLinea(linea, i > 0 && !comentario[i - 1] ? lineas[i - 1] : '', tipo)) {
+    for (const host of destinosDeLinea(linea, i > 0 && !comentario[i - 1] ? lineas[i - 1] : '', tipo, ctx)) {
       if (esReservado(host) || destinoPermitido(host, permitidos)) continue;
       return { destino: { host: host.slice(0, 100), linea: i + 1 }, avisos };
     }
