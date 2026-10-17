@@ -15,6 +15,7 @@ import { LlmAgentAdapter, estimarTokens, tiempoPorIntento } from "../core/agent-
 import { leerTimeoutLlmMs } from "../core/llm-providers/index.js";
 import { POR_DEFECTO } from "../core/ciclo/config.js";
 import { CicloVerificado } from "../core/ciclo/index.js";
+import { registrarDestino, olvidarDestinos } from "../core/session-budget.js";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "forge-gasto-"));
 const def = (extra = {}) => /** @type {any} */ ({ name: "x", systemPrompt: "s".repeat(300), model: "sonnet", timeout_ms: 40, ...extra });
@@ -220,11 +221,16 @@ describe("ciclo — consumo no informado, tope e intención", () => {
   });
 
   test("N-06: un proveedor sin costo (local) sin consumo sigue contando cero", async () => {
-    const llamar = async () => ({ ok: true, output: "x", modelo: "llama3", proveedor: "ollama" });
-    const e = entorno(llamar);
-    await e.ciclo.ejecutar(TAREA);
-    assert.equal(e.ciclo.libro.total().usd, 0);
-    assert.ok(!e.eventos.some((ev) => ev.type === "ciclo:consumo_estimado"));
+    // El coste cero lo da un destino de la propia máquina, que registra el constructor de OllamaProvider
+    olvidarDestinos();
+    registrarDestino("ollama", "http://localhost:11434");
+    try {
+      const llamar = async () => ({ ok: true, output: "x", modelo: "llama3", proveedor: "ollama" });
+      const e = entorno(llamar);
+      await e.ciclo.ejecutar(TAREA);
+      assert.equal(e.ciclo.libro.total().usd, 0);
+      assert.ok(!e.eventos.some((ev) => ev.type === "ciclo:consumo_estimado"));
+    } finally { olvidarDestinos(); }
   });
 
   test("intentos cancelados antes de una respuesta correcta se anotan como estimación", async () => {

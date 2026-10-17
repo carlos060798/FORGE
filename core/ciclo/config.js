@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { validarRuntime } from '../sandbox/politica.js';
 import { leerVariable } from '../entorno.js';
+import { tablaPorToken } from '../precios.js';
 import { esNivel, NOMBRES_DE_NIVEL } from '../llm-providers/niveles.js';
 
 /** Tope de gasto por defecto (USD) y techo de lo que un archivo del proyecto puede declarar. */
@@ -187,6 +188,48 @@ export function leerPrecios(yaml) {
   return /** @type {Record<string, { input: number, output: number }>} */ (precios);
 }
 
+const preciosAvisados = new Set();
+
+/**
+ * Variable del ENTORNO del usuario: ids de modelo (separados por comas) cuyo precio 0 acepta aunque lo
+ * declare el proyecto. Es la forma explícita de decir «este modelo no me cuesta» (CA-004-01).
+ */
+export const VARIABLE_PRECIOS_CERO = 'PRECIOS_CERO';
+
+/**
+ * Aplica «el proyecto puede apretar, nunca aflojar» a los precios declarados:
+ *  - modelo de la tabla incluida: vale el MAYOR entre el del proyecto y el de la tabla (entrada y salida);
+ *  - modelo que no está en la tabla: un precio 0 se descarta (queda sin precio conocido, y se cuenta al
+ *    más caro) salvo que el usuario nombre el modelo en `FRAGUA_PRECIOS_CERO`.
+ * @param {Record<string, { input: number, output: number, cacheWrite?: number, cacheRead?: number }>} precios USD por token
+ * @param {{ avisar?: (m: string) => void, env?: Record<string, string|undefined> }} [o]
+ */
+export function limitarPreciosDelProyecto(precios, o = {}) {
+  const avisar = o.avisar ?? ((m) => { if (!preciosAvisados.has(m)) { preciosAvisados.add(m); console.warn(m); } });
+  const permitidosCero = new Set(String((o.env ? o.env[`FRAGUA_${VARIABLE_PRECIOS_CERO}`] ?? o.env[`FORGE_${VARIABLE_PRECIOS_CERO}`] : leerVariable(VARIABLE_PRECIOS_CERO)) ?? '')
+    .split(',').map((x) => x.trim()).filter(Boolean));
+  const tabla = tablaPorToken();
+  const enTabla = (/** @type {string} */ id) => Object.values(tabla).map((m) => m[id]).find(Boolean);
+  /** @type {typeof precios} */
+  const salida = {};
+  for (const [id, p] of Object.entries(precios)) {
+    const incluido = enTabla(id);
+    if (incluido) {
+      const input = Math.max(p.input, incluido.input);
+      const output = Math.max(p.output, incluido.output);
+      if (input !== p.input || output !== p.output) {
+        avisar(`[Fragua] .sdd/sdd.config.yaml: el precio de «${id}» está por debajo de la tabla incluida y se ignora: un archivo del proyecto no puede bajar un precio (el gasto contaría menos del real).`);
+      }
+      salida[id] = { ...p, input, output };
+    } else if ((p.input <= 0 || p.output <= 0) && !permitidosCero.has(id)) {
+      avisar(`[Fragua] .sdd/sdd.config.yaml: «${id}» declara precio 0 y no está en la tabla incluida: se ignora (se contará al precio más caro conocido). Si de verdad no te cuesta, nómbralo en FRAGUA_${VARIABLE_PRECIOS_CERO} en tu entorno.`);
+    } else {
+      salida[id] = p;
+    }
+  }
+  return salida;
+}
+
 /**
  * Claves de una sección escritas sin valor (`clave:` y nada más).
  * @param {string} yaml
@@ -284,7 +327,9 @@ export function leerConfigCiclo(cwd, overrides = {}) {
 
   // ADR-19: lo que indique el proyecto manda sobre la lista incluida (core/precios.js)
   config.modelos = leerModelos(yaml);
-  config.precios = leerPrecios(yaml);
+  // El proyecto (que puede ser de un repositorio ajeno) solo puede SUBIR un precio de la tabla incluida,
+  // nunca bajarlo: con un precio 0 declarado el gasto no contaría y el tope no se alcanzaría (revisión H-2)
+  config.precios = limitarPreciosDelProyecto(leerPrecios(yaml));
 
   if (overrides.motor) config.motor.modo = overrides.motor;
   const grafoEnv = leerVariable('MOTOR_GRAFO');

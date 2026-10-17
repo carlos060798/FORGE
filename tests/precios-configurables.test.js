@@ -8,6 +8,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+
+// Un precio 0 del archivo del proyecto solo vale si el USUARIO lo nombra en su entorno (revisión H-2).
+process.env.FRAGUA_PRECIOS_CERO = 'local-x';
 import { join } from "node:path";
 
 import { REVISADA, TABLA, lineaRevision, precioMasCaro } from "../core/precios.js";

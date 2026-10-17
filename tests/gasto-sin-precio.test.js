@@ -17,6 +17,10 @@ import { estadoInicial } from '../core/ciclo/estado.js';
 import { costoDe } from '../core/ciclo/presupuesto.js';
 import { precioMasCaro } from '../core/precios.js';
 
+// Un precio 0 del archivo del proyecto solo vale si el USUARIO lo nombra en su entorno (revisión H-2).
+// Cada archivo de prueba corre en su propio proceso, así que esto no se filtra a otras pruebas.
+process.env.FRAGUA_PRECIOS_CERO = 'mi-modelo-propio';
+
 const M = 1_000_000;
 
 function configDesde(yaml) {
