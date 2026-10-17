@@ -115,18 +115,41 @@ describe('crearProvider con un proyecto hostil', () => {
     assert.equal(s.recibido.length, 0);
   });
 
-  test('OpenAI: ni siquiera una dirección «local» del proyecto con la clave del entorno la recibe si es de otro puerto del usuario', async () => {
-    // Una dirección local SÍ está permitida (la propia máquina); la clave va allí, por diseño: es la
-    // máquina del usuario. Lo que debe cumplirse es que la clave sea la del ENTORNO, nunca la del archivo
+  test('H-4: un base_url loopback del proyecto NO recibe la clave de un proveedor remoto', async () => {
     const s = await servidor(); abiertos.push(s.srv);
     const cwd = proyecto(`llm:\n  provider: openai\n  api_key: sk-del-repositorio\n  base_url: http://127.0.0.1:${s.puerto}/v1\n`);
-    await conEntorno({ OPENAI_API_KEY: CENTINELA, FORGE_LLM_PROVIDER: undefined, OPENAI_BASE_URL: undefined }, async () => {
+    await conEntorno({ OPENAI_API_KEY: CENTINELA, FORGE_LLM_PROVIDER: undefined, OPENAI_BASE_URL: undefined, FORGE_LLM_HOSTS: undefined }, async (avisos) => {
       const p = crearProvider({ cwd });
-      assert.equal(p.apiKey, CENTINELA, 'la clave es la del entorno, no la del archivo');
+      assert.equal(p.baseUrl, 'https://api.openai.com/v1', 'volvió al servidor oficial');
+      assert.ok(avisos.some((a) => a.includes('base_url')));
+    });
+    assert.equal(s.recibido.length, 0, 'la clave no salió hacia el loopback del proyecto');
+  });
+
+  test('H-4: OPENAI_BASE_URL del usuario manda siempre sobre el base_url del proyecto', async () => {
+    const espia = await servidor(); abiertos.push(espia.srv);
+    const cwd = proyecto(`llm:\n  provider: openai\n  base_url: http://127.0.0.1:${espia.puerto}/v1\n`);
+    await conEntorno({ OPENAI_API_KEY: CENTINELA, OPENAI_BASE_URL: 'https://mio.example/v1', FORGE_LLM_PROVIDER: undefined }, async () => {
+      assert.equal(crearProvider({ cwd }).baseUrl, 'https://mio.example/v1');
+    });
+    assert.equal(espia.recibido.length, 0);
+  });
+
+  test('H-4: el usuario puede autorizar un loopback del proyecto con FRAGUA_LLM_HOSTS', async () => {
+    const s = await servidor(); abiertos.push(s.srv);
+    const cwd = proyecto(`llm:\n  provider: openai\n  base_url: http://127.0.0.1:${s.puerto}/v1\n`);
+    await conEntorno({ OPENAI_API_KEY: CENTINELA, FORGE_LLM_PROVIDER: undefined, OPENAI_BASE_URL: undefined, FRAGUA_LLM_HOSTS: '127.0.0.1:' + s.puerto }, async () => {
+      const p = crearProvider({ cwd });
       await p.complete({ model: 'sonnet', systemPrompt: 's', userPrompt: 'u' });
     });
     assert.equal(s.recibido.length, 1);
-    assert.equal(s.recibido[0].headers.authorization, `Bearer ${CENTINELA}`);
+  });
+
+  test('H-4: con Ollama (sin clave) el loopback del proyecto vale, salvo que OLLAMA_BASE_URL fije otro', () => {
+    const r1 = sanearConfigDelProyecto({ provider: 'ollama', base_url: 'http://localhost:9999' }, {}, () => {});
+    assert.equal(r1.base_url, 'http://localhost:9999');
+    const r2 = sanearConfigDelProyecto({ provider: 'ollama', base_url: 'http://localhost:9999' }, { OLLAMA_BASE_URL: 'http://localhost:11434' }, () => {});
+    assert.equal(r2.base_url, undefined);
   });
 
   test('Ollama: una dirección ajena en provider o en base_url se descarta', async () => {
