@@ -594,7 +594,10 @@ Tres fallos de la misma familia (el proyecto, que puede ser de un repositorio aj
 
 **Qué cambia para quien ya tenía estos valores en el archivo de su propio proyecto:** verá un aviso y se aplicará el límite hasta que defina la variable. Pruebas: `tests/tope-gasto-no-confiable.test.js`, `tests/tope-ampliado-no-confiable.test.js`, `tests/precios-no-confiables.test.js` y `tests/sandbox-techos-no-confiables.test.js`.
 
-**Abiertos, de baja gravedad (revisión independiente):** un `base_url` loopback del proyecto gana a `OPENAI_BASE_URL` y recibe la clave (H-4); `directorioDeEstado` no comprueba el propietario de una carpeta existente (H-5). Además, `presupuestoExtra` de la API local no tiene techo aguas abajo (hasta 1000 USD por llamada, repetible): lo hace quien tiene el token, no el proyecto, pero conviene acotarlo antes de exponer el ciclo por MCP.
+**Cerrados (revisión independiente, baja gravedad):**
+- **H-4:** lo que el usuario fija en su entorno (`OPENAI_BASE_URL`, `OLLAMA_BASE_URL`) manda siempre sobre el `llm.base_url` del proyecto, y un `base_url` loopback del proyecto ya no recibe la clave de un proveedor remoto (otro servicio local podría leerla) salvo que el usuario nombre ese host:puerto en `FRAGUA_LLM_HOSTS`. Con Ollama (sin clave) el loopback del proyecto sigue valiendo. Prueba: `tests/llm-destino-no-confiable.test.js`.
+- **H-5:** `directorioDeEstado` rechaza una carpeta de estado existente que no sea del propio usuario o que tenga permisos de grupo u otros (POSIX). **Límite en Windows:** Node no expone el propietario, así que solo se comprueba que no sea enlace ni unión; la protección real es la ACL heredada de `%LOCALAPPDATA%`. Prueba: `tests/estado-propietario.test.js` (el caso de otro uid se prueba con la función pura; no se puede crear una carpeta de otro usuario sin privilegios).
+- **`presupuestoExtra` de la API local:** ahora tiene techo por llamada (`FRAGUA_API_PRESUPUESTO_EXTRA_MAX`, 5 USD) y por sesión de la API (`FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL`, 20 USD), fijados en el entorno de quien arranca la API. Ver `docs/api-http.md`.
 
 ## Revisión independiente de la integración del 2026-10-14 (variables, `verificar`, instalador)
 
