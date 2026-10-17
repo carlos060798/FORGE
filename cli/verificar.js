@@ -11,12 +11,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CON_VALOR = new Set(['cwd', 'comando', 'archivos', 'desde', 'mutacion-minima']);
-const BOOLEANAS = new Set(['json', 'mutacion', 'registrar']);
-const USO = 'Uso: forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json] [--registrar] [--mutacion (--archivos <a,b> | --desde <ref>) [--mutacion-minima <0..1>]]';
+const BOOLEANAS = new Set(['json', 'mutacion', 'registrar', 'comprobar-evidencia']);
+const USO = 'Uso: forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json] [--registrar] [--mutacion (--archivos <a,b> | --desde <ref>) [--mutacion-minima <0..1>]]\n       forge verificar --comprobar-evidencia [--cwd <dir>] [--json]';
 const NUMERO_0_1 = /^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/;
 
 /**
- * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean,
+ * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean, comprobarEvidencia?: boolean,
  *   mutacion?: { archivos?: string[], desde?: string, minima?: number } }} OpcionesCli
  */
 
@@ -44,6 +44,13 @@ export function leerOpciones(argv) {
   const o = { json: activas.has('json'), registrar: activas.has('registrar') };
   if (v.cwd !== undefined) o.cwd = v.cwd;
   if (v.comando !== undefined) o.comando = v.comando;
+  if (activas.has('comprobar-evidencia')) {
+    // Solo lectura: no se combina con nada que ejecute o registre
+    const otras = ['comando', 'archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
+    if (activas.has('registrar') || activas.has('mutacion') || otras.length > 0) return { error: '--comprobar-evidencia solo lee: no se combina con --registrar, --mutacion, --comando, --archivos, --desde ni --mutacion-minima.' };
+    o.comprobarEvidencia = true;
+    return o;
+  }
 
   const sueltas = ['archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
   if (!activas.has('mutacion')) {
@@ -84,10 +91,28 @@ export async function cmdVerificar(argv, deps = {}) {
   const cwd = path.resolve(o.cwd ?? process.cwd());
   if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) { errores(`✗ --cwd no es una carpeta: ${cwd}`); return 1; }
 
+  if (o.comprobarEvidencia) {
+    const { comprobarEvidencia } = await import('../core/evidencia/cadena.js');
+    const c = comprobarEvidencia(cwd);
+    salida(o.json ? JSON.stringify(c) : textoComprobacion(c));
+    return c.ok ? 0 : 1;
+  }
+
   // Carga diferida: ni el comando ni sus dependencias se cargan hasta aquí
   const { verificar } = await import('../core/verificar/index.js');
   const { textoDelResultado } = await import('../core/verificar/resultado.js');
   const r = await verificar({ cwd, comando: o.comando, cli: deps.cli, mutacion: o.mutacion, registrar: o.registrar });
   salida(o.json ? JSON.stringify(r) : textoDelResultado(r));
   return r.codigoSalida;
+}
+
+/** @param {import('../core/evidencia/cadena.js').ResultadoComprobacion} c */
+function textoComprobacion(c) {
+  const nivel = { firmada: 'íntegra y firmada', encadenada_sin_firma: 'encadenada, NO firmada', firmas_no_verificables: 'encadenada; las firmas no se pueden comprobar aquí (sin la clave local)', rota: 'ROTA', vacia: 'sin informes encadenados' }[c.nivel];
+  const l = [`Cadena de evidencia: ${nivel} (${c.informes} informe(s)).`];
+  if (c.cabeza) l.push(`Cabeza: ${c.cabeza}`);
+  l.push(`Cabeza guardada en tu estado de usuario: ${c.cabezaGuardada}.`);
+  for (const e of c.errores) l.push(`  ✗ [${e.tipo}]${e.id ? ` ${e.id}:` : ''} ${e.detalle}`);
+  for (const a of c.avisos) l.push(`  ! ${a}`);
+  return l.join('\n');
 }

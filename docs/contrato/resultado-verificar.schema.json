@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge-sdd.dev/contrato/resultado-verificar/1.0",
+  "$id": "https://forge-sdd.dev/contrato/resultado-verificar/1.1",
   "title": "Resultado de forge verificar (formato 1)",
   "description": "Salida de `forge verificar --json` (core/verificar/resultado.js). Version del artefacto: el campo `formato` (entero). El archivo guardado con --registrar lleva ademas `id` en la raiz.",
   "type": "object",
@@ -66,6 +66,26 @@
         },
         "copiaSinBorrar": { "type": "boolean", "x-interno": true },
         "aviso": { "type": "string", "x-interno": true }
+      }
+    },
+    "evidencia": {
+      "type": "object",
+      "description": "Solo en el archivo de .sdd/verificaciones/ (--registrar); no sale en --json. Cadena de evidencia: cada informe lleva el sha256 del anterior y, si hay clave local, una firma HMAC. Detalle y limites en docs/cadena-de-evidencia.md. Lo que afirma (spec aprobada, modelo) lo declara el proyecto o el cliente: la cadena prueba que no se retoco despues.",
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "fragua": { "type": ["string", "null"], "description": "Version de Fragua que escribio el informe." },
+        "spec": { "type": ["object", "null"], "description": "{ id, sha256, aprobada, fecha } de la spec activa declarada en .sdd/estado.json; null con motivo en `omitidos`. aprobada es una afirmacion del proyecto." },
+        "commit": { "type": ["string", "null"], "description": "HEAD leido sin ejecutar nada del repositorio." },
+        "pruebas": { "type": ["object", "null"], "description": "{ sha256, archivos, truncado } sobre los archivos de pruebas encontrados." },
+        "imagen": { "type": ["object", "null"], "description": "{ etiqueta, id, repoDigests }: Id local de la imagen; repoDigests vacia si se construyo aqui." },
+        "modelos": { "type": "array", "items": { "type": "object" }, "description": "Pares {rol, agente, proveedor, modelo, modeloServido, llamadas} PEDIDOS al proveedor; [] con motivo en `omitidos` si no hubo llamadas." },
+        "aprobador": { "type": "null", "description": "Siempre null mientras el proyecto no registre quien aprueba." },
+        "omitidos": { "type": "object", "description": "Motivo de cada campo null o vacio." },
+        "firmado": { "type": "boolean", "description": "false si no habia clave local: no se firma ni se inventa." },
+        "anterior": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "sha256 del informe previo; null en el primero." },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 del informe sin evidencia.sha256 ni evidencia.firma, en JSON canonico." },
+        "firma": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "HMAC-SHA256 con la clave local del usuario; null si firmado es false." }
       }
     },
     "registro": {

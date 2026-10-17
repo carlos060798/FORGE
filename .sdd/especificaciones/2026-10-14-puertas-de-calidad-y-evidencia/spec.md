@@ -2,7 +2,7 @@
 id: 2026-10-14-puertas-de-calidad-y-evidencia
 titulo: "Puertas de calidad declarables, criterios de aceptación enlazados a pruebas e informe de evidencia por tarea a prueba de alteraciones"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-14
 actualizada: 2026-10-14
 autor: humano  # humano | importado
@@ -12,7 +12,9 @@ etiquetas: [calidad, evidencia, puertas, trazabilidad, sandbox, determinista]
 
 # Especificación: puertas de calidad y evidencia
 
-> **Estado: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde al frente D de `PLAN-MAESTRO.md` (sección 5). Cada afirmación sobre el código cita `archivo:línea` leído el 2026-10-14; lo que no se pudo confirmar está marcado «sin confirmar».
+> **Estado (2026-10-17): aprobada por delegación del dueño ("avanzar"), SOLO la fase A: evidencia encadenada (CA-004-xx y CA-005-xx en lo que cubre `plan.md`, sección 16). Puertas declarables, criterios enlazados y `no_cambiar` siguen en borrador.**
+>
+> **Estado original: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde al frente D de `PLAN-MAESTRO.md` (sección 5). Cada afirmación sobre el código cita `archivo:línea` leído el 2026-10-14; lo que no se pudo confirmar está marcado «sin confirmar».
 
 ## 1. Contexto y Motivación
 
@@ -246,3 +248,4 @@ Una tarea de corrección declara `no_cambiar: tests/facturas.test.js`. El arregl
 ## 15. Historial de Aclaraciones
 
 - 2026-10-14: creada en borrador a partir de la investigación de estándares y del frente D del plan maestro.
+- 2026-10-17: aprobada por delegación del dueño solo en la fase A (evidencia encadenada). Los siete informes de `spikes/` mandan sobre este texto cuando difieren: `aprobador` es siempre `null`; la imagen se registra como `{ etiqueta, id, repoDigests }` (no `digest`); los modelos son una lista de pares pedidos; la firma deja de ser opcional cuando hay clave local; CA-005-04: el truncado de los últimos informes solo se detecta con la cabeza guardada del lado del usuario.

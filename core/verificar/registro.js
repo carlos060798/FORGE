@@ -12,20 +12,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import { crearArchivo, crearDirectorio, verificarRuta, ErrorEnlace } from '../escritura-segura.js';
+import { registrarEncadenado } from '../evidencia/cadena.js';
 
 /**
  * @param {string} cwd
  * @param {Record<string, any>} resultado  ya redactado
+ * @param {{ env?: Record<string, string|undefined>, modelos?: unknown }} [opciones]
  * @returns {{ ok: true, id: string, archivo: string, eventos: string } | { ok: false, error: string }}
  */
-export function registrarVerificacion(cwd, resultado) {
+export function registrarVerificacion(cwd, resultado, opciones = {}) {
   const raiz = path.resolve(cwd);
   const id = `${new Date().toISOString().replace(/[-:.]/g, '').replace('T', '-').slice(0, 19)}-${randomBytes(4).toString('hex')}`;
   const archivo = path.posix.join('.sdd', 'verificaciones', `${id}.json`);
   const eventos = path.posix.join('.sdd', 'events.jsonl');
   try {
-    const contenido = JSON.stringify({ id, ...resultado }, null, 2) + '\n';
-    if (crearArchivo(raiz, path.join(raiz, archivo), contenido) !== true) return { ok: false, error: `No se pudo crear ${archivo}: ya existe.` };
+    // Bloque `evidencia` (cadena de hashes + firma si hay clave local): core/evidencia/cadena.js
+    registrarEncadenado(raiz, id, resultado, (informe) => crearArchivo(raiz, path.join(raiz, archivo), JSON.stringify(informe, null, 2) + '\n'), { env: opciones.env ?? process.env, modelos: opciones.modelos });
 
     const destino = verificarRuta(raiz, path.join(raiz, eventos));
     crearDirectorio(raiz, path.dirname(destino));
