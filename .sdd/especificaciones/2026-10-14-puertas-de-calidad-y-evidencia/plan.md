@@ -109,3 +109,16 @@ Orden por valor y riesgo: F1 a F3 y F5 a F6 son la parte central; F7 es pequeña
 ## 9. Revisión
 
 Toca aislamiento, firma y la superficie de configuración que decide un veredicto: **necesita revisión independiente** con la guía OWASP de agentes (`PLAN-MAESTRO.md:72`), en concreto: (1) que ninguna clave afloje una garantía, (2) la ejecución de comandos del proyecto, (3) la integridad y los límites de la cadena y la firma, (4) el tratamiento de la clave, (5) la protección contra debilitar configuraciones de herramientas.
+
+## 16. Fase A: evidencia encadenada (2026-10-17, implementada)
+
+Los spikes mandan sobre las secciones anteriores. Lo que cambia:
+
+- Módulo `core/evidencia/cadena.js` (reutiliza `canonico`, `claveLocal`, `firmar`, `firmaValida` de `core/estado-usuario.js`; sin primitivas nuevas). `core/verificar/registro.js` lo usa en `--registrar`.
+- El informe no cambia `formato: 1`: los campos nuevos van en un bloque opcional `evidencia` (esquema `resultado-verificar` 1.1). Sustituye al `formato: 2` de la sección 5 para esta fase.
+- `spec{id,sha256,aprobada,fecha}`; `aprobador: null` con motivo. `imagen{etiqueta,id,repoDigests}`. `modelos` es una lista de pares pedidos, vacía con motivo en `forge verificar`.
+- Firma: siempre que haya clave local (ya no es «opcional P2»). Sin clave: no se firma, se declara. Con clave o con algún informe firmado, un informe sin firma es error.
+- Cabeza de la cadena en `<estado>/cadena-cabeza.json` (estado del usuario, firmada): único modo de detectar el truncado de los últimos informes. Límite documentado en `docs/cadena-de-evidencia.md`.
+- Comando de solo lectura: `fragua verificar --comprobar-evidencia` (`cli/verificar.js`).
+- `core/evidencia/protegidos.js`: lista de configuración protegida (spike S0.6). Cableado a `protocolo-archivos.js`: fase siguiente.
+- Pendiente de la fase siguiente: candado de proyecto al leer la cabeza y escribir (hoy una carrera bifurca la cadena y se detecta); `ciclo:llamada` y `modeloServido`; `DockerCli.identidadImagen` dentro de `prepararImagen` (hoy la identidad se consulta con `docker image inspect` al registrar, y puede diferir de la imagen usada si la etiqueta se movió entre medias); sellar la aprobación de la spec con la clave local.

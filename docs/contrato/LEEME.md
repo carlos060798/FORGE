@@ -6,7 +6,7 @@ Esta carpeta publica la forma **estable** de lo que Fragua entrega a otras herra
 
 | Archivo | Describe | Versión del artefacto |
 |---|---|---|
-| `resultado-verificar.schema.json` | Salida de `fragua verificar --json` y el archivo de `--registrar` | campo `formato` (entero `1`) |
+| `resultado-verificar.schema.json` | Salida de `fragua verificar --json` y el archivo de `--registrar` (este último con el bloque opcional `evidencia`, `$id` 1.1; ver `docs/cadena-de-evidencia.md`) | campo `formato` (entero `1`) |
 | `veredicto.schema.json` | Vocabulario del veredicto de verificación y su mapa a otros vocabularios | `$id` |
 | `estado-ciclo.schema.json` | Estado de una tarea del ciclo verificado (puntos de guardado) | campo `schemaVersion` (`"1.0"`) |
 | `estado-pipeline.schema.json` | `.sdd/estado.json` real del proyecto | `schemaVersion` opcional (`"1.0"`) |

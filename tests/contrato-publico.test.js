@@ -108,7 +108,7 @@ describe("resultado-verificar: la salida REAL de `forge verificar --json` valida
 
   test("con --mutacion (pruebas fuertes y debiles) y con --registrar", () => {
     const dir = proyecto(FUERTES);
-    const fuerte = verificarJson(dir, ["--mutacion", "--archivos", "src/calc.js", "--mutacion-minima", "0.6", "--registrar"]);
+    const fuerte = verificarJson(dir, ["--mutacion", "--archivos", "src/calc.js", "--mutacion-minima", "0.6", "--registrar"], { FORGE_HOME: join(base, "home-evidencia") });
     assert.deepEqual(validar(e, fuerte.json), [], fuerte.bruto);
     assert.ok(fuerte.json.mutacion && fuerte.json.registro?.archivo, fuerte.bruto);
     resultados.push(fuerte.json);

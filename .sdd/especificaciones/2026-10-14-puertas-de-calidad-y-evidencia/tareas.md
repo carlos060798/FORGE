@@ -1,16 +1,16 @@
 # Tareas: puertas de calidad y evidencia
 
 > Plan: `plan.md` · Cada tarea: prueba primero, después código. `[ ]` por hacer · `[x]` hecha.
-> **Ninguna tarea empieza hasta que el dueño apruebe la spec.** Redactada por un agente por encargo del dueño.
+> **Aprobada por delegación del dueño el 2026-10-17, solo la fase A (evidencia: S0, F5 y F6 parciales).** Redactada por un agente por encargo del dueño. Las demás fases esperan.
 
 ## S0 — Spikes (solo lectura, salida en `spikes/`)
 
-- [ ] **S0.1** Cómo ejecutar varias puertas con una sola preparación de imagen y si pueden ir en paralelo. Salida: `spikes/varias-ejecuciones.md`.
-- [ ] **S0.2** Digest de la imagen construida en local (`{{.Id}}` frente a `RepoDigests`) y cómo pedirlo sin red. Salida: `spikes/digest-de-imagen.md`.
-- [ ] **S0.3** Dónde constan aprobador, fecha y hash de la spec aprobada. Salida: `spikes/aprobacion-de-spec.md`.
-- [ ] **S0.4** Identidad de modelo y rol por llamada: de dónde se obtiene y qué falta. Salida: `spikes/identidad-de-modelo.md`.
-- [ ] **S0.5** Formato de `events.jsonl` y tipos admitidos; qué consumidores leen los tipos. Salida: `spikes/eventos.md`.
-- [ ] **S0.6** Qué configuraciones de herramientas (tipos, linter) puede reescribir un agente hoy (lista de `docs/ciclo-verificado.md:210-226`) y comportamiento del lector con `#` y comillas. Salida: `spikes/configuracion-protegida.md`.
+- [x] **S0.1** Cómo ejecutar varias puertas con una sola preparación de imagen y si pueden ir en paralelo. Salida: `spikes/varias-ejecuciones.md`.
+- [x] **S0.2** Digest de la imagen construida en local (`{{.Id}}` frente a `RepoDigests`) y cómo pedirlo sin red. Salida: `spikes/digest-de-imagen.md`.
+- [x] **S0.3** Dónde constan aprobador, fecha y hash de la spec aprobada. Salida: `spikes/aprobacion-de-spec.md`.
+- [x] **S0.4** Identidad de modelo y rol por llamada: de dónde se obtiene y qué falta. Salida: `spikes/identidad-de-modelo.md`.
+- [x] **S0.5** Formato de `events.jsonl` y tipos admitidos; qué consumidores leen los tipos. Salida: `spikes/eventos.md`.
+- [x] **S0.6** Qué configuraciones de herramientas (tipos, linter) puede reescribir un agente hoy (lista de `docs/ciclo-verificado.md:210-226`) y comportamiento del lector con `#` y comillas. Salida: `spikes/configuracion-protegida.md`.
 
 ## F1 — Configuración
 
@@ -45,18 +45,24 @@
 
 ## F5 — Informe de evidencia
 
-- [ ] **F5.1** Prueba: el informe contiene cada campo o su `null` con motivo. Cubre CA-004-01, CA-004-02.
-- [ ] **F5.2** Prueba: redacción de un secreto en cualquier campo. Cubre CA-004-03.
-- [ ] **F5.3** Prueba: `sha256` canónico estable ante el orden de claves. Cubre CA-004-04.
-- [ ] **F5.4** Prueba: guardado exclusivo y con escritura segura (enlace en la ruta, colisión de id). Cubre CA-004-05.
-- [ ] **F5.5** Prueba: nada sale del equipo (red interceptada). Cubre CA-004-06.
+- [x] **F5.1** Prueba: el informe contiene cada campo o su `null` con motivo. Cubre CA-004-01, CA-004-02.
+- [x] **F5.2** Prueba: redacción de un secreto en cualquier campo. Cubre CA-004-03.
+- [x] **F5.3** Prueba: `sha256` canónico estable ante el orden de claves. Cubre CA-004-04.
+- [x] **F5.4** Prueba: guardado exclusivo y con escritura segura (enlace en la ruta, colisión de id). Cubre CA-004-05.
+- [x] **F5.5** Prueba: nada sale del equipo (red interceptada). Cubre CA-004-06.
 
 ## F6 — Cadena y firma
 
-- [ ] **F6.1** Prueba: encadenado con `anterior`; alterar, borrar o reordenar rompe. Cubre CA-005-01.
-- [ ] **F6.2** Comando de comprobación y sus códigos. Cubre CA-005-02.
-- [ ] **F6.3** Firma y verificación opcionales con `node:crypto`; sin clave, «encadenado, no firmado». Cubre CA-005-03.
-- [ ] **F6.4** Impresión de la cabeza y texto del límite en la guía. Cubre CA-005-04, CA-005-05.
+- [x] **F6.1** Prueba: encadenado con `anterior`; alterar, borrar o reordenar rompe. Cubre CA-005-01.
+- [x] **F6.2** Comando de comprobación y sus códigos. Cubre CA-005-02.
+- [x] **F6.3** Firma y verificación opcionales con `node:crypto`; sin clave, «encadenado, no firmado». Cubre CA-005-03.
+- [x] **F6.4** Impresión de la cabeza y texto del límite en la guía. Cubre CA-005-04, CA-005-05.
+
+- [x] **F6.5** (añadida) `core/evidencia/protegidos.js` con su prueba (`tests/evidencia-protegidos.test.js`): lista de configuración que el agente no debe reescribir.
+- [ ] **F6.6** (fase siguiente) Cablear `protegidos.js` a `clasificarRuta` de `core/ciclo/protocolo-archivos.js` y a `leerRutasProtegidas`; prueba F8.1 «el implementador reescribe tsconfig.json».
+- [ ] **F6.7** (fase siguiente) Candado de proyecto (`ciclo/candado.js`) al leer la cabeza y escribir; `ciclo:llamada`/`modeloServido` para poblar `modelos`; `DockerCli.identidadImagen` en `prepararImagen`.
+
+> Fase A hecha en `core/evidencia/cadena.js`, `core/verificar/registro.js`, `cli/verificar.js` (`--comprobar-evidencia`), esquema `resultado-verificar` 1.1 y `docs/cadena-de-evidencia.md`. Pruebas: `tests/evidencia-cadena.test.js`, `tests/evidencia-comando.test.js`, `tests/evidencia-protegidos.test.js`. CA-005-04 se cumple con la cabeza guardada y la guía; CA-005-03 ya no es opcional con clave.
 
 ## F7 — Regresión (`no_cambiar`)
 
