@@ -9,6 +9,7 @@
  *   FALSO_SIN_DOCKER=1   `docker version` falla (Docker no disponible)
  *   FALSO_CODIGO         el contenedor termina con este código sin ejecutar nada (p. ej. 5)
  *   FALSO_SALIDA         texto que el contenedor escribe en la salida estándar con FALSO_CODIGO
+ *   FALSO_AGOTAR         texto: una ejecución cuyo comando lo contenga termina por tiempo agotado
  */
 
 import { appendFileSync } from "node:fs";
@@ -30,6 +31,10 @@ const ejecutar = (args) => new Promise((resolver) => {
   const montaje = String(args[args.indexOf("--mount") + 1]);
   const copia = /source=(.*),target=/.exec(montaje)?.[1] ?? "";
   anotar({ orden: "run", copia, nombre: args[args.indexOf("--name") + 1] });
+  // FALSO_AGOTAR: si el comando contiene este texto, «el contenedor» no termina a tiempo (timedOut)
+  if (process.env.FALSO_AGOTAR && args.slice(args.indexOf("--entrypoint")).some((a) => String(a).includes(process.env.FALSO_AGOTAR ?? ""))) {
+    return resolver({ ...base, code: null, timedOut: true });
+  }
   if (process.env.FALSO_CODIGO !== undefined) {
     return resolver({ ...base, code: Number(process.env.FALSO_CODIGO), stdout: process.env.FALSO_SALIDA ?? "" });
   }

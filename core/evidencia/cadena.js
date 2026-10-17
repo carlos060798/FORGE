@@ -418,6 +418,28 @@ export function comprobarEvidencia(cwd, opciones = {}) {
 // ---------------------------------------------------------------- escritura
 
 /**
+ * Resumen de las puertas declaradas para el bloque `evidencia` (spec puertas, fase B1): una entrada por puerta con
+ * su categoría y código de salida. Solo existe si el proyecto declara puertas; el detalle (salida acotada) va en
+ * `puertas` del informe y entra igual en el hash. Una puerta que no se llegó a ejecutar consta como `no_ejecutada`.
+ * @param {any} p  `resultado.puertas`
+ * @returns {{ puertas?: { nombre: string, comando: string, categoria: string, codigoSalida: number|null }[] }}
+ */
+function resumenDePuertas(p) {
+  if (!p || !Array.isArray(p.declaradas)) return {};
+  const hechos = new Map((Array.isArray(p.resultados) ? p.resultados : []).map((/** @type {any} */ r) => [r.nombre, r]));
+  return {
+    puertas: p.declaradas.map((/** @type {any} */ d) => {
+      const r = hechos.get(d.nombre);
+      return {
+        nombre: texto(d.nombre, 40) ?? '', comando: texto(d.comando, 300) ?? '',
+        categoria: r ? (texto(r.categoria, 40) ?? 'no_ejecutada') : 'no_ejecutada',
+        codigoSalida: r && typeof r.codigoSalida === 'number' ? r.codigoSalida : null,
+      };
+    }),
+  };
+}
+
+/**
  * Construye el bloque de evidencia de un resultado ya redactado, lo encadena al último informe y lo sella.
  * No escribe el informe: devuelve el objeto completo para que `registro.js` lo cree en exclusiva; luego
  * `guardarCabeza`. Si no hay clave, no se firma y se dice.
@@ -448,6 +470,7 @@ export function construirInforme(cwd, id, resultado, opciones = {}) {
     pruebas: nota('pruebas', hashDePruebas(raiz)),
     imagen: nota('imagen', identidadDeImagen(typeof resultado.imagen === 'string' ? resultado.imagen : null, opciones.dockerBin ?? 'docker')),
     modelos,
+    ...resumenDePuertas(resultado.puertas),
     aprobador: null,
     omitidos,
     firmado: clave !== null,

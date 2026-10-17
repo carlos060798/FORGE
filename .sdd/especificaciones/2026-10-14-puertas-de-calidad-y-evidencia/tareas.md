@@ -1,7 +1,7 @@
 # Tareas: puertas de calidad y evidencia
 
 > Plan: `plan.md` · Cada tarea: prueba primero, después código. `[ ]` por hacer · `[x]` hecha.
-> **Aprobada por delegación del dueño el 2026-10-17, solo la fase A (evidencia: S0, F5 y F6 parciales).** Redactada por un agente por encargo del dueño. Las demás fases esperan.
+> **Aprobada por delegación del dueño el 2026-10-17: fase A (evidencia: S0, F5 y F6 parciales) y fase B1 (puertas en `fragua verificar`: F1 y F2).** Redactada por un agente por encargo del dueño. Las demás fases esperan.
 
 ## S0 — Spikes (solo lectura, salida en `spikes/`)
 
@@ -14,21 +14,26 @@
 
 ## F1 — Configuración
 
-- [ ] **F1.1** Prueba: `puertas:` con claves válidas se lee; clave desconocida es error con su línea. Código en `core/ciclo/config.js`. Cubre CA-001-01, CA-001-02.
-- [ ] **F1.2** Prueba exhaustiva: ninguna clave aceptada afloja una garantía fija. Cubre CA-001-03.
-- [ ] **F1.3** Prueba: sin sección, la configuración resultante es idéntica a la de hoy. Cubre CA-001-04.
-- [ ] **F1.4** Prueba: comando con `&&`, `|`, `;`, `>` rechazado. Cubre CA-001-05.
+> **Fase B1 (2026-10-17, aprobada por delegación del dueño, "avanzar"): puertas declarables dentro de `fragua verificar`.** Módulos propios `core/puertas/{config,ejecutar}.js` (el lector plano de `core/ciclo/config.js` no sirve: ver `spikes/configuracion-protegida.md`). Pruebas: `tests/puertas-config.test.js`, `tests/puertas-ejecutar.test.js`, `tests/puertas-verificar.test.js`. Guía: `docs/puertas-de-calidad.md`. Esquema `resultado-verificar` 1.2 (copia congelada `tests/fixtures/contrato/v1.2/`). La integración con el ciclo (F3, `router.js`, `nodos.js`) espera a que termine el frente de perfiles.
+
+- [x] **F1.1** Prueba: `puertas:` con claves válidas se lee; clave desconocida es error con su línea. Código en `core/puertas/config.js` (no en `core/ciclo/config.js`). Cubre CA-001-01 (sin `cobertura_minima`: el umbral va en el comando), CA-001-02.
+- [x] **F1.2** Prueba exhaustiva: ninguna clave aceptada afloja una garantía fija; los topes solo bajan; límite al número de puertas. Cubre CA-001-03.
+- [x] **F1.3** Prueba: sin sección, el resultado es idéntico al de hoy (no aparece `puertas`). Cubre CA-001-04.
+- [x] **F1.4** Prueba: comando con `&&`, `|`, `;`, `>`, `<`, `&` o un intérprete como primera palabra rechazado; `#` pegado y comilla final. Cubre CA-001-05.
+- [ ] **F1.5** (fase siguiente) Ampliar `CONFIGURACION` de `protocolo-archivos.js` con `tsconfig*.json`, `biome.json`… (ver F6.6; mismo archivo del frente de perfiles).
 
 ## F2 — Ejecución en `forge verificar`
 
-- [ ] **F2.1** Prueba con Docker falso: cada puerta pass/fail/timeout/infra; código de salida del proceso. Código `core/ciclo/puertas.js`. Cubre CA-002-01, CA-002-02.
-- [ ] **F2.2** Prueba: pruebas en verde y puerta en rojo da `falla`; infra y timeout nunca éxito. Cubre CA-002-03.
-- [ ] **F2.3** Prueba: herramienta ausente da «puerta no ejecutable». Cubre CA-002-04.
-- [ ] **F2.4** Prueba: el resultado nombra la puerta y redacta su salida. Cubre CA-002-05.
-- [ ] **F2.5** Prueba: cobertura mínima se pasa a la herramienta; sin soporte, no disponible. Cubre CA-002-06.
-- [ ] **F2.6** Prueba: `--json` incluye las puertas y los códigos 0, 1 y 4 no cambian. Cubre CA-002-07.
+- [x] **F2.1** Prueba con Docker falso: cada puerta pass/fail/timeout/infra; código de salida del proceso. Código `core/puertas/ejecutar.js` (no `core/ciclo/puertas.js`). Cubre CA-002-01, CA-002-02.
+- [x] **F2.2** Prueba: pruebas en verde y puerta en rojo da `falla`; infra y timeout nunca éxito. Cubre CA-002-03.
+- [x] **F2.3** Prueba: herramienta ausente (127, mirado antes de `clasificar`) da «no ejecutable». Cubre CA-002-04.
+- [x] **F2.4** Prueba: el resultado nombra la puerta y redacta su salida. Cubre CA-002-05.
+- [x] **F2.5** Decisión: sin `cobertura_minima`; el umbral va dentro del comando de `cobertura` y lo hace cumplir la herramienta (CA-002-06 cumplido en su espíritu: no se lee un número de la salida). Documentado en `docs/puertas-de-calidad.md`.
+- [x] **F2.6** Prueba: `--json` incluye las puertas y los códigos 0, 1 y 4 no cambian; `--registrar` las lleva a `evidencia`. Cubre CA-002-07. Sin `--sin-puertas` (decisión documentada).
 
 ## F3 — Puertas en el ciclo
+
+> F3 es la fase siguiente (tras el frente de perfiles): el nodo `puertas` entre `sandbox` y `mutacion` (`nodos.js`, `grafo.js`), `decidirTrasPuertas` en `router.js`, el motivo `puerta` en `estado.js`, el evento `ciclo:puerta` (`core/event-log.js`, `docs/contrato/tipos-evento.json`) y la reutilización de `core/puertas/ejecutar.js` (ya expone `ejecutarPuertas` y `juzgarPuertas`). Esta fase NO emite eventos nuevos.
 
 - [ ] **F3.1** Prueba de `decidirTrasPuertas` (función pura) en `router.js`. Cubre RF-03.
 - [ ] **F3.2** Prueba del nodo y del grafo: sin sección, mismo recorrido que hoy; con puerta fallida, vuelve al implementador con su salida. Cubre CA-001-04, RF-04.

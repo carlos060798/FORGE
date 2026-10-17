@@ -123,6 +123,34 @@ describe("resultado-verificar: la salida REAL de `forge verificar --json` valida
     for (const l of readFileSync(join(dir, ".sdd", "events.jsonl"), "utf8").split("\n").filter(Boolean)) eventosRegistro.push(JSON.parse(l));
   });
 
+  test("con puertas declaradas (bloque opcional 1.2): pasa, falla, sin ejecutar y registrado", () => {
+    const conPuertas = (/** @type {string[]} */ lineas, /** @type {string} */ pruebas) => {
+      const d = proyecto(pruebas);
+      writeFileSync(join(d, ".sdd", "sdd.config.yaml"), ["puertas:", ...lineas.map((l) => "  " + l)].join("\n") + "\n");
+      return d;
+    };
+    const SALE = (/** @type {number} */ c) => `node -e "process.exit(${c})"`;
+    const dir = conPuertas([`tipos: ${SALE(0)}`, `linter: ${SALE(0)}`], PASA);
+    const ok = verificarJson(dir, ["--registrar"], { FORGE_HOME: join(base, "home-puertas") });
+    assert.deepEqual(validar(e, ok.json), [], ok.bruto);
+    assert.equal(ok.codigo, 0, ok.bruto);
+    assert.equal(ok.json.puertas.resultados.length, 2);
+    resultados.push(ok.json);
+    const guardado = JSON.parse(readFileSync(join(dir, ok.json.registro.archivo), "utf8"));
+    assert.deepEqual(validar(e, guardado), [], "el archivo registrado con puertas");
+    assert.equal(guardado.evidencia.puertas.length, 2);
+    registrados.push(guardado);
+    const rota = verificarJson(conPuertas([`seguridad: ${SALE(127)}`], PASA), []);
+    assert.deepEqual(validar(e, rota.json), [], rota.bruto);
+    assert.equal(rota.codigo, 1);
+    assert.equal(rota.json.puertas.resultados[0].categoria, "no_ejecutable");
+    resultados.push(rota.json);
+    const sinEjecutar = verificarJson(conPuertas([`tipos: ${SALE(0)}`], FALLA), []);
+    assert.deepEqual(validar(e, sinEjecutar.json), [], sinEjecutar.bruto);
+    assert.equal(sinEjecutar.json.puertas.ejecutadas, false);
+    resultados.push(sinEjecutar.json);
+  });
+
   test("crearResultado de cada veredicto valida (sin proceso hijo)", () => {
     for (const veredicto of ["pasa", "falla", "sin_pruebas", "infraestructura"]) {
       assert.deepEqual(validar(e, crearResultado({ veredicto: /** @type {any} */ (veredicto) })), [], veredicto);

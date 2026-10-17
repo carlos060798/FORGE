@@ -22,6 +22,8 @@ import { redactar } from '../ciclo/redactar.js';
 import { clasificar, sinPruebasEjecutadas } from '../ciclo/router.js';
 import { adquirir, ErrorBloqueado } from '../ciclo/candado.js';
 import { dividirComando } from '../sandbox/sandbox-runner.js';
+import { leerPuertas } from '../puertas/config.js';
+import { ejecutarPuertas, juzgarPuertas } from '../puertas/ejecutar.js';
 import { comprobarEntorno, construirSandbox } from '../sandbox/crear-sandbox.js';
 import { crearResultado, codigoDeSalida } from './resultado.js';
 
@@ -118,6 +120,12 @@ async function ejecutar(opciones) {
   // Sin intérprete de órdenes: un operador (&&, |, ;, >, <) es un error claro, y no se ejecuta nada
   try { dividirComando(comando); } catch (e) { return rechazo(e instanceof Error ? e.message : String(e)); }
 
+  // Puertas declaradas (core/puertas): lectura ESTRICTA antes de tocar Docker. Un error de la sección es un rechazo
+  // claro y no se ejecuta nada; no hay opción de línea de comandos ni variable para saltarlas.
+  const puertasLeidas = leerPuertas(cwd);
+  if (puertasLeidas.ok === false) return rechazo(puertasLeidas.errores.join(' | '));
+  avisos.push(...puertasLeidas.avisos);
+
   // Archivos a mutar: se resuelven ANTES de tocar Docker, para rechazar rápido y sin ejecutar nada
   /** @type {string[]} */
   let aMutar = [];
@@ -201,6 +209,32 @@ async function ejecutar(opciones) {
       if (categoria === 'timeout') motivo = 'Las pruebas superaron el tiempo máximo.';
     }
 
+    // Puertas: solo si las pruebas PASAN, en el mismo contenedor sin red, en serie. Su resultado entra en el
+    // veredicto (falla cerrado) ANTES de la mutación: con una puerta rota no se gasta en medir.
+    /** @type {Record<string, any>|null} */
+    let puertas = null;
+    if (puertasLeidas.declarada) {
+      puertas = {
+        declaradas: puertasLeidas.puertas.map((p) => ({ nombre: p.nombre, comando: redactar(p.comando) })),
+        topes: puertasLeidas.topes, ejecutadas: false, motivo: null, resultados: [],
+      };
+      if (veredicto === 'pasa') {
+        try {
+          const { resultados } = await ejecutarPuertas({ puertas: puertasLeidas.puertas, topes: puertasLeidas.topes, runner: sandbox, cwd });
+          puertas.ejecutadas = true;
+          puertas.resultados = resultados;
+          const j = juzgarPuertas(resultados);
+          if (j) { veredicto = j.veredicto; motivo = j.motivo; }
+        } catch (e) {
+          veredicto = 'infraestructura';
+          motivo = `No se pudieron ejecutar las puertas: ${e instanceof Error ? e.message : String(e)}`;
+          puertas.motivo = motivo;
+        }
+      } else {
+        puertas.motivo = `No se ejecutaron: las pruebas no pasan (veredicto «${veredicto}»).`;
+      }
+    }
+
     /** @type {Record<string, any>|null} */
     let mutacion = null;
     if (opciones.mutacion && veredicto === 'pasa') {
@@ -230,7 +264,7 @@ async function ejecutar(opciones) {
       cortePorTiempo: r.timedOut,
       cortePorMemoria: r.oomKilled,
       salida: [r.stdout, r.stderr].filter(Boolean).join('\n'),
-      avisos, mutacion,
+      avisos, mutacion, puertas,
     });
   } finally {
     liberar();

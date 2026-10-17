@@ -16,7 +16,7 @@
 | `omitidos` | el motivo de cada campo `null` o vacío |
 | `anterior`, `sha256`, `firma`, `firmado` | la cadena (abajo) |
 
-El resultado conserva `formato: 1`. El esquema (`docs/contrato/resultado-verificar.schema.json`, versión 1.1) declara `evidencia` como campo opcional; solo aparece en el archivo registrado, no en `--json`.
+El resultado conserva `formato: 1`. El esquema (`docs/contrato/resultado-verificar.schema.json`, versión 1.2) declara `evidencia` como campo opcional; solo aparece en el archivo registrado, no en `--json`. Si el proyecto declara puertas (`docs/puertas-de-calidad.md`), `evidencia.puertas` resume una entrada por puerta (nombre, comando, categoría y código de salida) y el detalle va en `puertas` del informe; todo ello entra en el `sha256`, así que retocar una puerta rompe la cadena.
 
 ## Cómo se encadena y se firma
 
