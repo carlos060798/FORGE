@@ -189,6 +189,51 @@ export function leerPrecios(yaml) {
 }
 
 const preciosAvisados = new Set();
+const sandboxAvisados = new Set();
+
+/** Techo de lo que un archivo del proyecto puede pedir al contenedor. Subirlo lo decide el usuario en su entorno. */
+export const TECHOS_SANDBOX = Object.freeze({ cpus: 4, memoria_mb: 4096, pids: 1024, timeout_s: 1800, salida_max_bytes: 16 * 1048576 });
+
+/** @param {unknown} v @returns {number|null} megabytes de «512m», «2g», «1024k» o bytes; null si no se entiende */
+export function memoriaEnMb(v) {
+  const m = /^(\d+(?:\.\d+)?)\s*([kmg])?b?$/i.exec(String(v ?? '').trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  const u = (m[2] ?? '').toLowerCase();
+  return u === 'g' ? n * 1024 : u === 'm' ? n : u === 'k' ? n / 1024 : n / 1048576;
+}
+
+/**
+ * Aplica los techos a la sección `sandbox` leída del proyecto. Una variable del ENTORNO del usuario
+ * (`FRAGUA_SANDBOX_CPUS`, `_MEMORIA`, `_PIDS`, `_TIMEOUT_S`, `_SALIDA_MAX_BYTES`) manda sobre el archivo y
+ * no tiene techo: es el usuario quien decide.
+ * @param {any} sandbox
+ * @param {{ avisar?: (m: string) => void, env?: Record<string, string|undefined> }} [o]
+ */
+export function limitarSandboxDelProyecto(sandbox, o = {}) {
+  const env = o.env ?? process.env;
+  const avisar = o.avisar ?? ((m) => { if (!sandboxAvisados.has(m)) { sandboxAvisados.add(m); console.warn(m); } });
+  const salida = { ...sandbox };
+  const claves = [['cpus', 'SANDBOX_CPUS'], ['memoria', 'SANDBOX_MEMORIA'], ['pids', 'SANDBOX_PIDS'], ['timeout_s', 'SANDBOX_TIMEOUT_S'], ['salida_max_bytes', 'SANDBOX_SALIDA_MAX_BYTES']];
+  for (const [clave, sufijo] of claves) {
+    const delUsuario = leerVariable(sufijo, env);
+    if (delUsuario !== undefined && String(delUsuario).trim() !== '') {
+      salida[clave] = clave === 'memoria' ? String(delUsuario).trim() : (Number.isFinite(Number(delUsuario)) && Number(delUsuario) > 0 ? Number(delUsuario) : salida[clave]);
+      continue;
+    }
+    const techo = clave === 'memoria' ? TECHOS_SANDBOX.memoria_mb : /** @type {any} */ (TECHOS_SANDBOX)[clave];
+    const valor = clave === 'memoria' ? memoriaEnMb(salida[clave]) : Number(salida[clave]);
+    if (valor === null || !Number.isFinite(valor) || valor <= 0) {
+      avisar(`[Fragua] .sdd/sdd.config.yaml: sandbox.${clave} = «${salida[clave]}» no es válido: se usa el valor por defecto.`);
+      salida[clave] = /** @type {any} */ (POR_DEFECTO.sandbox)[clave];
+    } else if (valor > techo) {
+      const permitido = clave === 'memoria' ? `${TECHOS_SANDBOX.memoria_mb}m` : techo;
+      avisar(`[Fragua] .sdd/sdd.config.yaml pide sandbox.${clave} = ${salida[clave]}, por encima del techo (${permitido}): se recorta. Un archivo del proyecto no puede pedir más recursos de los que tú permites; si es tu proyecto, define FRAGUA_${sufijo} en tu entorno.`);
+      salida[clave] = permitido;
+    }
+  }
+  return salida;
+}
 
 /**
  * Variable del ENTORNO del usuario: ids de modelo (separados por comas) cuyo precio 0 acepta aunque lo
@@ -393,6 +438,9 @@ export function leerConfigCiclo(cwd, overrides = {}) {
 
   // Un valor que pudiera leerse como una opción de docker se rechaza aquí, antes de empezar nada
   config.sandbox.runtime = validarRuntime(config.sandbox.runtime);
+  // Los recursos del contenedor los puede BAJAR el proyecto, no subir por encima de un techo (revisión de
+  // los spikes de puertas de calidad): un repositorio ajeno no debe poder pedir 64 CPU, 64 GB o 99999 s
+  config.sandbox = limitarSandboxDelProyecto(config.sandbox);
 
   if (!EMBEDDINGS.includes(config.motor.embeddings)) {
     throw new Error(`motor.embeddings desconocido: "${config.motor.embeddings}". Valores válidos: ${EMBEDDINGS.join(', ')}`);

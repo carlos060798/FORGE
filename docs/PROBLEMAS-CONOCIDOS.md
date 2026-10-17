@@ -581,6 +581,20 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 - **Quién debe actuar.** Quien tuviera `api_key` en un archivo de proyecto: pasarla al entorno. Prueba: `tests/llm-destino-no-confiable.test.js`.
 - **Alcance.** Cubre OpenAI y Ollama. Anthropic usa el SDK, que lee su propia variable de entorno; no se revisó si el SDK admite otra dirección base desde el proyecto.
 
+## Corregido el 2026-10-17: un archivo del proyecto podía subir el tope de gasto, bajar los precios y pedir recursos sin límite
+
+Tres fallos de la misma familia (el proyecto, que puede ser de un repositorio ajeno, decidía algo que protege al usuario). Los tres se resuelven con la regla **el proyecto puede apretar, nunca aflojar; subir un límite lo decide el usuario en su entorno**:
+
+| Qué pasaba | Qué cambió | Cómo subirlo si es tu proyecto |
+|---|---|---|
+| `presupuesto.tope_usd` del archivo mandaba sin límite si no había variable de entorno; además un `tope.json` traído por el repositorio en `.sdd/motor/<sesión>/` se aceptaba como tope ampliado (H-1, ALTA) | El archivo solo puede bajar el tope respecto al valor por defecto (2 USD); el tope ampliado va firmado con la clave local del usuario y se ignora sin firma válida | `FRAGUA_BUDGET_USD` en tu entorno; al reanudar, `--presupuesto-extra` |
+| `precios:` del archivo ganaba sobre la tabla incluida y admitía 0: el gasto no contaba y el tope no se alcanzaba (H-2) | Para un modelo de la tabla vale el mayor entre el del proyecto y el de la tabla; un precio 0 de un modelo desconocido se descarta | `FRAGUA_PRECIOS_CERO` con los ids de modelo que de verdad no te cuestan |
+| `sandbox.cpus`, `memoria`, `pids`, `timeout_s` y `salida_max_bytes` se aceptaban sin techo (se probó 64 CPU, 64 GB y 99999 s) | Techos: 4 CPU, 4 GB, 1024 procesos, 1800 s y 16 MiB; por encima se recorta con aviso. Un valor que no se entiende vuelve al de por defecto | `FRAGUA_SANDBOX_CPUS`, `_MEMORIA`, `_PIDS`, `_TIMEOUT_S`, `_SALIDA_MAX_BYTES` |
+
+**Qué cambia para quien ya tenía estos valores en el archivo de su propio proyecto:** verá un aviso y se aplicará el límite hasta que defina la variable. Pruebas: `tests/tope-gasto-no-confiable.test.js`, `tests/tope-ampliado-no-confiable.test.js`, `tests/precios-no-confiables.test.js` y `tests/sandbox-techos-no-confiables.test.js`.
+
+**Abiertos, de baja gravedad (revisión independiente):** un `base_url` loopback del proyecto gana a `OPENAI_BASE_URL` y recibe la clave (H-4); `directorioDeEstado` no comprueba el propietario de una carpeta existente (H-5). Además, `presupuestoExtra` de la API local no tiene techo aguas abajo (hasta 1000 USD por llamada, repetible): lo hace quien tiene el token, no el proyecto, pero conviene acotarlo antes de exponer el ciclo por MCP.
+
 ## Revisión independiente de la integración del 2026-10-14 (variables, `verificar`, instalador)
 
 Veredicto: aprobada con observaciones. Informe: `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/revision-independiente-1.md`.

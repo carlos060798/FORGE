@@ -7,6 +7,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ## [5.0.0] — Sin publicar
 
+> **Seguridad (2026-10-17):** el archivo de configuración de un proyecto ya no puede subir el tope de gasto, bajar los precios ni pedir recursos del contenedor por encima de un techo; el tope ampliado va firmado con la clave local del usuario. Si tenías estos valores en el archivo de tu proyecto, define las variables `FRAGUA_BUDGET_USD`, `FRAGUA_PRECIOS_CERO` o `FRAGUA_SANDBOX_*` en tu entorno. Ver `docs/PROBLEMAS-CONOCIDOS.md`.
+
 > **Seguridad (2026-10-13):** `.sdd/sdd.config.yaml` del proyecto ya no puede fijar `llm.api_key` ni un `llm.base_url` ajeno; antes un repositorio ajeno podía recibir la clave del usuario. Ver `docs/PROBLEMAS-CONOCIDOS.md`.
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
