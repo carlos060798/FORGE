@@ -29,6 +29,8 @@
     "ciclo:llamada_abortada": { "contrato": false, "archivo": "principal" },
     "ciclo:llamada_huerfana": { "contrato": false, "archivo": "principal", "nota": "Emitido y no declarado en el typedef hasta este contrato." },
     "ciclo:consumo_estimado": { "contrato": false, "archivo": "principal", "nota": "Emitido y no declarado en el typedef hasta este contrato." },
+    "ciclo:contenido_aviso": { "contrato": false, "archivo": "principal", "nota": "Control de salida de la defensa: algo de lo escrito merece atención pero no bloquea (p. ej. una IP pública); lleva ruta, tipo y línea, nunca el valor." },
+    "ciclo:contenido_rechazado": { "contrato": false, "archivo": "principal", "nota": "Control de salida de la defensa: lo que el agente escribió se rechazó (secreto, binario, tamaño o marcador de dato); lleva ruta, tipo y regla, nunca el valor." },
     "ciclo:turno": { "contrato": false, "archivo": "principal" },
     "ciclo:herramienta": { "contrato": false, "archivo": "principal" },
     "ciclo:lectura_rechazada": { "contrato": false, "archivo": "principal" },
