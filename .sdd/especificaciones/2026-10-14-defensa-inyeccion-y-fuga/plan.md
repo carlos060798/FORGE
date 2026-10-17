@@ -1,15 +1,15 @@
 # Plan de implementación: defensa frente a inyección y fuga
 
-> Spec: `spec.md` · Estado: **borrador, sin aprobar** · Decisiones existentes: ADR-21 (implementador por turnos), ADR-22 (integraciones, texto de plataforma como dato; revisión 2: lo que autoriza no vive en el árbol)
+> Spec: `spec.md` · Estado: **en implementación (aprobada por delegación del dueño, 2026-10-17)**; los informes de `spikes/` mandan sobre este plan · Decisiones existentes: ADR-21 (implementador por turnos), ADR-22 (integraciones, texto de plataforma como dato; revisión 2: lo que autoriza no vive en el árbol)
 
 ## 1. Suposiciones tomadas (corregibles)
 
 | # | Pregunta de la spec | Suposición del plan | Qué cambia si se invierte |
 |---|---|---|---|
-| 1 | Reutilizar `comoDato` o función hermana | Hermana (`comoArchivo`) en un módulo compartido con `comoDato` | Si se reutiliza tal cual, hay que desactivar la reescritura de enlaces con una opción |
+| 1 | Reutilizar `comoDato` o función hermana | **Hermana (`comoArchivo`) en `core/ciclo/dato-no-confiable.js`**, resuelta por el spike S0.1: `comoDato` reescribe enlaces y corrompería código | — |
 | 2 | Secreto: rechazar o redactar | Rechazar con motivo | Redactar exigiría un camino aparte y cambia el programa |
-| 3 | Destinos: bloquear o avisar | Avisar en la primera entrega; secretos bloquean | Una condición |
-| 4 | Identificador | Guardado en el diario con el prompt | Derivarlo exige una semilla de sesión |
+| 3 | Destinos: bloquear o avisar | **R1 pide revisión (llamada de red en código, comando en script, URL en configuración); R2 avisa; R3 (documentación) no se marca** (spike S0.3) | Una condición |
+| 4 | Identificador | **Derivado del contenido (sha256), uno por fragmento, sin estado** (spike S0.2: un nonce aleatorio rompe `claveDe`; guardarlo crea un círculo con la clave) | — |
 | 5 | Política de destinos | Entorno y estado fuera del árbol | Una lectura distinta |
 
 ## 2. Principios del diseño
@@ -23,14 +23,17 @@
 
 | Módulo | Responsabilidad |
 |---|---|
-| `core/ciclo/dato-no-confiable.js` (nuevo) | `comoArchivo`: delimitador con identificador, cabecera fija, tope de bytes, sin reescribir código. Comparte la generación del identificador con `core/integraciones/confianza.js` (extraer a una función común, sin cambiar su comportamiento) |
+| `core/ciclo/dato-no-confiable.js` (nuevo) | `comoArchivo`, `identificadorDe`, `etiquetaSegura`, `nombreListable` (movido desde `nodos.js`, que lo reexporta), `AVISO_DATO` (va en los contratos). Identificador derivado del contenido. Sin dependencias de `confianza.js` |
 | `core/ciclo/control-salida.js` (nuevo) | `revisarContenido(rutaPosix, contenido, anterior, politica)`: secretos (usa `pareceSecreto`, `redactarPorValor`) y destinos nuevos; devuelve `{ok}` o `{motivo, tipo}` sin el valor |
 | `core/ciclo/protocolo-archivos.js` | `aplicarArchivos` llama a `revisarContenido`; nuevos motivos; `requiereRevision` también por destino |
-| `core/ciclo/herramientas-coder.js` | Resultados de `leer_archivo`, `buscar` y salida de pruebas delimitados; mensajes de rechazo nuevos en `MOTIVOS` |
-| `core/ciclo/nodos.js` | Secciones del prompt con contenido del árbol delimitadas |
-| `core/ciclo/politica-destinos.js` (nuevo) | Lee la política del usuario fuera del árbol |
-| `tests/fixtures/integraciones/hostiles.json`, `tests/proyecto-hostil.test.js` | Batería ampliada |
-| `docs/GARANTIAS-Y-LIMITES.md` (nuevo, en F5) | Lista de garantías con enlaces |
+| `core/ciclo/herramientas-coder.js` | Resultados de `leer_archivo`, `listar`, `buscar` y `ejecutar_pruebas` delimitados; `listar`/`buscar` filtran nombres; `editar` rechaza el marcador de dato; motivos nuevos en `MOTIVOS` |
+| `core/ciclo/nodos.js` | Secciones del prompt con contenido del árbol delimitadas; `contextoComoDato` (un bloque por fragmento del recuperador); `seccionTarea`; `detalleDeRevision` |
+| `core/ciclo/politica-destinos.js` (nuevo) | Lee `FORGE_DESTINOS_PERMITIDOS` del entorno del usuario (comodines `*.dominio`) |
+| `tests/fixtures/integraciones/hostiles-proyecto.json` (nuevo), `tests/proyecto-hostil.test.js` | Batería ampliada; reutiliza `hostiles.json` (no se modificó: lo consumen otras pruebas) |
+| `core/recuperacion/recuperador-archivos.js`, `recuperador-semantico.js` | `recuperar()` devuelve fragmentos separados (`contenido`, `rotulo`); la cabecera semántica filtra el nombre |
+| `core/ciclo/pruebas-confiables.js`, `turnos.js`, `contratos.js` | Secciones y contratos con delimitador |
+| `tests/dato-no-confiable.test.js`, `defensa-inyeccion.test.js`, `entradas-registradas.test.js`, `garantias-documentadas.test.js` | Pruebas nuevas |
+| `docs/GARANTIAS-Y-LIMITES.md` (nuevo) | Lista de garantías con enlaces a pruebas, y límites |
 
 ## 4. Flujo
 
@@ -45,14 +48,14 @@
 
 - Evento nuevo: `ciclo:contenido_rechazado { ruta, tipo: 'secreto'|'destino'|'ilegible', regla }` (sin valor).
 - Política: `{ destinos_permitidos: string[] }` en el estado del usuario fuera del árbol; ausencia = ninguno permitido más allá de lo que ya esté en el proyecto.
-- Identificador: guardado en la entrada del diario del prompt (clave por huella en bloque; `turno:<it>:inicio` en turnos), de modo que reanudar reutiliza el mismo texto.
+- Identificador: **no se guarda**. Es `sha256("forge-dato:v1\0" + etiqueta + "\0" + texto_final)[0:24]`; reanudar reproduce el mismo prompt y la misma clave sin nada nuevo en el diario.
 
 ## 6. Fases
 
 | Fase | Contenido | Sale con |
 |---|---|---|
-| S0 | Spikes S0.1 a S0.4 | `spikes/` |
-| F1 | Batería nueva **antes** del código, en rojo con los controles negativos | Pruebas que demuestran el hueco actual |
+| S0 | Spikes S0.1 a S0.4 (S0.1, S0.2 y S0.3 hechos; **S0.4 no ejecutado**) | `spikes/` |
+| F1 | Batería nueva (se escribió junto a F2, comprobando que falla sin la defensa: control negativo y mutaciones manuales) | `hostiles-proyecto.json`, pruebas en rojo sin el código |
 | F2 | `comoArchivo` y aplicación en los puntos del inventario | HU-001 |
 | F3 | `control-salida` en `aplicarArchivos`, secretos | HU-002 (secretos) |
 | F4 | Destinos nuevos y política del usuario | HU-002 (destinos) |
@@ -75,7 +78,7 @@
 |---|---|---|
 | El delimitador aumenta tokens y coste | Medición en S0.4 | Cabecera una vez por prompt, no por archivo |
 | Falsos positivos de destino bloquean tareas legítimas | Corpus de S0.3 | Modo «avisar» y reglas por esquema |
-| El identificador guardado rompe el diario de prompts antiguos | Prueba de reanudación con diarios previos | Versionar la clave; diarios sin identificador se reproducen tal cual |
+| Un identificador aleatorio rompería `claveDe` | Prueba de la misma clave y de reanudación sin repetir llamadas | Identificador derivado; la prueba falla si alguien lo cambia a aleatorio |
 | El modelo real ignora la cabecera | Spike S0.4 | La garantía no depende de ello; se documenta |
 | Se añade un punto de entrada nuevo sin delimitar | Prueba estática que lista las rutas de lectura hacia el prompt | Falla si aparece una no registrada |
 

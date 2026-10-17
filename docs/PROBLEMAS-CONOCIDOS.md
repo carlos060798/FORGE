@@ -93,6 +93,7 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 - **Qué pasa.** La lista de archivos se corta en 200 entradas y, con más de 3000 archivos, deja carpetas enteras fuera sin avisar. Ya no descarta los nombres con acentos u otros alfabetos (`señal.py`, `módulo.py`; corregido, ver la sección 10); sí deja fuera los que llevan caracteres de control, invisibles o de cambio de dirección. El texto del repositorio (nombres de archivo, nombres de dependencia, `scripts.test`) entra en el prompt sin separar datos de instrucciones. `package.json` y `go.mod` se leen enteros, sin tope de tamaño.
 - **A quién afecta.** Proyectos grandes, proyectos con nombres en español, y quien ejecute el ciclo sobre un repositorio ajeno.
 - **Cómo evitarlo hoy.** Nombra en la tarea los archivos que importan. No ejecutes el ciclo sobre un repositorio que no conoces.
+- **Actualización (2026-10-17).** El texto del repositorio ya entra en el prompt **delimitado como dato no confiable**, y `listar`, `buscar` y la cabecera semántica filtran los nombres no listables. Lo que **no** cambia: el mapa sigue siendo parcial, y nada de esto se ha probado con un modelo real. Ver `docs/GARANTIAS-Y-LIMITES.md`.
 - **Evidencia.** REV-2, N9, N6 y tabla ASI01/ASI07. PLAN, «Abierto». `nombreListable` y `seccionMapa` en `core/ciclo/nodos.js`, comprobado el 2026-10-12. Ningún efecto de esto se ha probado con un modelo real.
 
 ### C-10 · Una clave de `sdd.config.yaml` mal sangrada se ignora sin aviso (corregido el 2026-10-12)

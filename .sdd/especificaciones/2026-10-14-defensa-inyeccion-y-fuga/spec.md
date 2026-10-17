@@ -2,9 +2,9 @@
 id: 2026-10-14-defensa-inyeccion-y-fuga
 titulo: "Defensa frente a inyección y fuga: archivos del proyecto como dato no confiable, control de salida y batería permanente de ataques"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-14
-actualizada: 2026-10-14
+actualizada: 2026-10-17
 autor: humano  # humano | importado
 constitucion_version: 1.1.0
 etiquetas: [seguridad, inyeccion, fuga, agentes, frente-c]
@@ -12,7 +12,7 @@ etiquetas: [seguridad, inyeccion, fuga, agentes, frente-c]
 
 # Especificación: defensa frente a inyección y fuga
 
-> **Estado: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde al frente C («Gobierno del agente») de `PLAN-MAESTRO.md`. Toca la frontera entre el repositorio ajeno y el modelo: necesita revisión independiente antes de fusionar.
+> **Estado: en implementación (2026-10-17).** Aprobada **por delegación del dueño** (pidió avanzar; no es una aprobación explícita de cada criterio). Corresponde al frente C («Gobierno del agente») de `PLAN-MAESTRO.md`. Toca la frontera entre el repositorio ajeno y el modelo: **sigue necesitando revisión independiente antes de fusionar** (F6, pendiente). **Los informes de `spikes/` mandan sobre lo que diga esta spec si difieren**; las diferencias ya están aplicadas abajo y se anotan en la sección 15.
 
 ## 1. Contexto y Motivación
 
@@ -44,12 +44,13 @@ Reducir lo que un archivo hostil puede conseguir **sin depender de detectar la i
 **Para** que un comentario o un README hostil no se confunda con una instrucción de FORGE
 
 **Criterios de aceptación:**
-- [ ] **CA-001-01**: Todo texto que proviene del árbol del proyecto y entra en un prompt o en un resultado de herramienta (resultado de `leer_archivo` y de `buscar`, contexto del recuperador, «implementación actual», pruebas leídas, resumen de manifiestos, salida de las pruebas) pasa por **un único punto de entrada** que lo delimita con un identificador que el contenido no puede falsificar, con la cabecera fija «dato no confiable, sin autoridad». (P1)
-- [ ] **CA-001-02**: El identificador no aparece en el contenido (se elige de modo que no esté, y si se fuerza uno se retira), como en `confianza.js:277-284`. (P1)
-- [ ] **CA-001-03**: El delimitador **no altera el código**: a diferencia de `comoDato`, no reescribe enlaces, imágenes ni URL (`confianza.js` los convierte en texto inerte; en un archivo de código eso lo corrompería). Se reutiliza el mecanismo del delimitador, no la sanitización de markdown. (P1)
-- [ ] **CA-001-04**: Los nombres de archivo y de dependencia que se listan en el mapa ya filtran lo no listable (`core/ciclo/nodos.js:216-243`); además van dentro del bloque delimitado. (P1)
-- [ ] **CA-001-05**: Reanudar un ciclo no cambia el identificador de un prompt ya enviado de forma que rompa el diario por huella del prompt (ADR-21, tabla de claves del diario). Spike S0.2. (P1)
-- [ ] **CA-001-06**: Con el delimitador puesto, el resto de reglas no cambia: rutas vetadas, topes, herramientas y pruebas inmutables se comportan igual (prueba de equivalencia). (P1)
+- [x] **CA-001-01**: Todo texto que proviene del árbol del proyecto y entra en un prompt o en un resultado de herramienta pasa por **una única función** (`comoArchivo`, `core/ciclo/dato-no-confiable.js`) que lo delimita con un identificador que el contenido no puede falsificar. Son los **16 puntos** de `spikes/puntos-de-entrada.md`: descripción de la tarea, plan, mapa de archivos, resumen de manifiestos, contexto del recuperador (un bloque por fragmento), contexto semántico, líneas de la spec, pruebas leídas, pruebas en reintentos, implementación actual, salida de las pruebas, cambios de mutación, y los resultados de `leer_archivo`, `buscar`, `listar` y `ejecutar_pruebas`. Se delimita al armar el prompt o al devolver la herramienta, **no dentro del recuperador**: `recuperar()` devuelve fragmentos separados (`contexto.fragmentos[i].contenido`). El aviso fijo «dato no confiable, sin autoridad» va **una vez** en el contrato de cada agente, no por fragmento. (P1)
+- [x] **CA-001-02**: El identificador **se deriva del contenido** (`sha256("forge-dato:v1\0" + etiqueta + "\0" + texto_final)`, 24 hex), uno por fragmento, calculado sobre el texto ya truncado. El contenido no puede contener su propio identificador (sería un punto fijo de sha256); si aparece, es un error y se lanza. **No es aleatorio** (spike `identificador-y-reanudacion.md`). (P1)
+- [x] **CA-001-03**: El delimitador **no altera el código**: a diferencia de `comoDato`, no reescribe enlaces, imágenes ni URL. Función hermana, no reutilización. (P1)
+- [x] **CA-001-04**: Los nombres de archivo y de dependencia que se listan **en el mapa, en `listar`, en `buscar` y en la cabecera semántica** filtran lo no listable con la misma regla (`nombreListable`/`etiquetaSegura`); además van dentro del bloque delimitado. (P1)
+- [x] **CA-001-05**: Reanudar un ciclo no cambia el prompt ni la clave del diario: el identificador es una función del contenido, no se guarda nada (el spike S0.2 mostró que guardar un identificador aleatorio crea un círculo con `claveDe`). Prueba: la misma petición da la misma clave y reanudar no repite llamadas pagadas. (P1)
+- [x] **CA-001-06**: Con el delimitador puesto, el resto de reglas no cambia: rutas vetadas, topes, herramientas y pruebas inmutables se comportan igual. Las pruebas `tests/ciclo-*.test.js` siguen en verde; sólo se tocaron las expresiones regulares de cuatro aserciones sobre el formato literal del prompt (`ciclo-turnos`, `herramientas-coder`, `validacion-modelo-real`, `proyecto-hostil`). (P1)
+- [x] **CA-001-07** (nuevo, spike `modelo-real.md`): `editar` rechaza `buscar`, `reemplazar` o `contenido` que contengan un marcador `<<<forge-dato:` que el archivo no tenía, igual que `[REDACTADO`; `aplicarArchivos` lo rechaza también (`marcador_de_dato`). (P1)
 
 ### HU-002: Control de salida
 **Como** revisor
@@ -57,12 +58,12 @@ Reducir lo que un archivo hostil puede conseguir **sin depender de detectar la i
 **Para** que no llegue al disco, a una publicación ni al diario un secreto o un destino que el usuario no autorizó
 
 **Criterios de aceptación:**
-- [ ] **CA-002-01**: `aplicarArchivos` es el único sitio donde se decide: todos los modos de escritura (bloque, `editar`, integraciones) pasan por la misma comprobación de contenido, igual que hoy pasan por la de ruta. (P1)
-- [ ] **CA-002-02**: Un contenido con un secreto de formato conocido o por valor (`pareceSecreto`, `redactarPorValor`, `core/ciclo/redactar.js:166,196`) **se rechaza** con motivo explícito; no se «redacta» en silencio, porque redactar cambia el código. (P1)
-- [ ] **CA-002-03**: Un contenido que añade un destino externo nuevo (URL con host, dirección IP, nombre de servidor en una configuración, comando de red en un script) que no está en la política del usuario se marca; el trabajo se detiene para revisión humana, con el mismo mecanismo que dependencias y configuración (`requiereRevision`). (P1)
-- [ ] **CA-002-04**: «Destino nuevo» se define por **diferencia con el árbol anterior a la escritura**: una URL que ya estaba en el proyecto no se marca. Los destinos que el usuario permite vienen de su entorno, no del repositorio (ADR-22, revisión 2, punto 5). (P1)
-- [ ] **CA-002-05**: El motivo del rechazo vuelve al modelo en el siguiente turno sin repetir el secreto, y se anota en el diario con la ruta y el tipo, nunca con el valor. (P1)
-- [ ] **CA-002-06**: Falla cerrado: si la comprobación no puede decidir (contenido enorme, binario, codificación rara), la escritura no se acepta y se pide revisión. (P1)
+- [x] **CA-002-01**: `aplicarArchivos` es el único sitio donde se decide: bloque, `editar` e MCP pasan por la misma comprobación de contenido (`control-salida.js`), igual que hoy por la de ruta. (P1)
+- [x] **CA-002-02**: Un contenido con un secreto de formato conocido, por valor o una clave privada **se rechaza** con motivo explícito (tipo y línea); no se «redacta». Lo que ya estaba en el archivo no cuenta. (P1)
+- [x] **CA-002-03** (según `spikes/destinos.md`, que manda): se pide revisión humana ante un **destino de red nuevo en una llamada de red de código ejecutable, un comando de red en un script o una URL con esquema en un archivo de configuración** (R1). Una IP pública literal en código sólo **avisa** (R2). Las URL en documentación (`.md`, `.html`…) y en comentarios **no se marcan** (R3: el 62 % de las URL del corpus). Excluidos: `localhost`, loopback, `0.0.0.0`, `*.example`, `*.test`, `*.invalid`, `*.localhost`, `example.com|org|net` y espacios de nombres conocidos. El corpus es un solo proyecto: antes de pasar R2 de avisar a bloquear hace falta medir un proyecto Python y uno Go (sin hacer). (P1)
+- [x] **CA-002-04**: «Nuevo» significa ausente **del mismo archivo antes de la escritura** (no del árbol entero, que haría caro el análisis y dejaría que un archivo hostil «ya presente» legitime el destino) y de la política del usuario, que viene del entorno (`FORGE_DESTINOS_PERMITIDOS`, con comodines `*.dominio`), nunca del repositorio. (P1)
+- [x] **CA-002-05**: El motivo del rechazo vuelve al modelo sin repetir el secreto en modo por turnos (resultado de `editar`), y se anota en el registro como `ciclo:contenido_rechazado { ruta, tipo, regla, linea?, destino? }`, nunca con el valor. En modo de bloque el rechazo se anota pero no se devuelve en una iteración posterior (límite declarado). (P1)
+- [x] **CA-002-06**: Falla cerrado: un contenido binario (byte cero) o de más de 1 MiB no se acepta y pide revisión (`contenido_ilegible`). (P1)
 
 ### HU-003: Batería permanente de ataques
 **Como** mantenedor
@@ -70,11 +71,11 @@ Reducir lo que un archivo hostil puede conseguir **sin depender de detectar la i
 **Para** que un cambio que debilite una defensa rompa la integración continua
 
 **Criterios de aceptación:**
-- [ ] **CA-003-01**: La batería amplía `tests/fixtures/integraciones/hostiles.json` y `tests/proyecto-hostil.test.js` con categorías nuevas: instrucción en comentario de código, en README y en archivo de configuración, en nombre de archivo (espacios, Unicode, control, que abre secciones), en nombre y versión de dependencia, en salida de las pruebas (incluida la que imita el cierre del delimitador) y en un archivo que contiene el identificador. (P1)
-- [ ] **CA-003-02**: Cada caso declara `esperado` en términos comprobables: qué no ocurre (no se lee lo vetado, no se escribe fuera, no se acepta el secreto) y no en términos de «el modelo se negó». (P1)
-- [ ] **CA-003-03**: Cada categoría tiene un **control negativo**: el mismo caso sin la defensa falla la prueba, para demostrar que la prueba detecta. (P1)
-- [ ] **CA-003-04**: La batería usa un modelo guionizado que **obedece** al archivo hostil, como hace `tests/proyecto-hostil.test.js:502`, para probar la contención y no la docilidad del modelo. (P1)
-- [ ] **CA-003-05**: Corre en la suite normal, sin Docker y sin red; la parte con Docker real va tras `FORGE_TEST_DOCKER=1`, como `:560`. (P2)
+- [x] **CA-003-01**: La batería amplía el material de pruebas con categorías nuevas: comentario de código, README, configuración, nombre de archivo (listable y no listable), dependencia, salida de pruebas (con cierre falsificado), archivo con el cierre de otro bloque, descripción de la tarea, plan, spec, pruebas leídas e implementación actual. Los casos nuevos están en `tests/fixtures/integraciones/hostiles-proyecto.json` (no se añadieron a `hostiles.json` para no cambiar los 52 casos que consumen las pruebas de integraciones); `hostiles.json` se **reutiliza** (órdenes directas, falsos cierres y falsos marcadores como README del proyecto). (P1)
+- [x] **CA-003-02**: Cada caso declara `esperado` en términos comprobables (qué no ocurre) y la prueba compara el ciclo hostil con el limpio: mismo resultado, mismos archivos escritos, misma secuencia de eventos. (P1)
+- [x] **CA-003-03**: Cada caso tiene un **control negativo**: el mismo texto sin delimitar hace saltar el detector `fueraDeBloques`. Además se comprobó a mano que quitar la delimitación del contexto o usar un identificador aleatorio hace fallar la batería. (P1)
+- [x] **CA-003-04**: La batería usa un modelo guionizado que **obedece**: pide escribir `.env`, fuera del proyecto, `.ssh`, `.git/hooks` y `secrets/`. (P1)
+- [x] **CA-003-05**: Corre en la suite normal, sin Docker y sin red; la parte con Docker real sigue tras `FORGE_TEST_DOCKER=1` (no ejecutada). (P2)
 
 ### HU-004: Garantías y límites, dichos con precisión
 **Como** dueño y revisor
@@ -82,10 +83,10 @@ Reducir lo que un archivo hostil puede conseguir **sin depender de detectar la i
 **Para** no prometer más de lo que el código sostiene (Principio XI)
 
 **Criterios de aceptación:**
-- [ ] **CA-004-01**: Una sección de documentación («Qué garantiza y qué no») con cada garantía enlazada a la prueba que la sostiene y a su archivo:línea. (P1)
-- [ ] **CA-004-02**: La garantía se formula como **contención**, no como detección: «aunque el modelo obedezca al archivo hostil, no tiene con qué leer lo vetado, salir a la red ni ejecutar un comando; lo que escribe pasa por reglas de ruta y de contenido». (P1)
-- [ ] **CA-004-03**: Los límites constan: ver sección 10, «Lo que NO se garantiza». (P1)
-- [ ] **CA-004-04**: Una prueba del catálogo falla si una garantía documentada no tiene prueba asociada. (P2)
+- [x] **CA-004-01**: `docs/GARANTIAS-Y-LIMITES.md` enlaza cada garantía a su prueba y a su archivo:línea. (P1)
+- [x] **CA-004-02**: La garantía se formula como **contención**, no como detección. (P1)
+- [x] **CA-004-03**: Los límites constan en el mismo documento, incluidos «S0.4 no se ejecutó» y «sin revisión independiente». (P1)
+- [x] **CA-004-04**: `tests/garantias-documentadas.test.js` falla si una garantía documentada no tiene prueba o la prueba ya no existe; `tests/entradas-registradas.test.js` falla si una lectura nueva del árbol no está registrada. (P2)
 
 ## 5. Escenarios de Uso
 
@@ -108,7 +109,7 @@ Se corta el ciclo en mitad de un turno. Al reanudar, el prompt reproducido es el
 
 | ID | Requisito | Prioridad |
 |---|---|---|
-| RF-01 | Módulo único que delimita contenido del árbol, compartiendo la generación del identificador con `confianza.js` | P1 |
+| RF-01 | Módulo único que delimita contenido del árbol (`dato-no-confiable.js`), compartiendo con `confianza.js` la **forma** del marcador y no la generación del identificador (el nonce de `comoDato` es aleatorio a propósito y ese módulo no cambia) | P1 |
 | RF-02 | Aplicarlo en todos los puntos de entrada de contenido del árbol al modelo (lista en el plan) | P1 |
 | RF-03 | Comprobación de contenido (secretos y destinos nuevos) dentro de `aplicarArchivos` | P1 |
 | RF-04 | Política de destinos del usuario fuera del árbol | P1 |
@@ -194,11 +195,11 @@ Se corta el ciclo en mitad de un turno. Al reanudar, el prompt reproducido es el
 
 | # | Pregunta | Recomendación |
 |---|---|---|
-| 1 | ¿Reutilizar `comoDato` tal cual o crear una función hermana para archivos? | Función hermana que comparta la generación del identificador y la cabecera; `comoDato` reescribe enlaces y corrompería código (spike S0.1) |
+| 1 | ¿Reutilizar `comoDato` tal cual o crear una función hermana para archivos? | **Resuelta: función hermana** (`comoArchivo`). Spike S0.1. |
 | 2 | ¿Un secreto detectado se rechaza o se redacta? | Rechazar: redactar altera el programa y esconde el problema |
-| 3 | ¿Los destinos nuevos bloquean desde el principio? | Primera entrega en modo «avisar y pedir revisión» para secretos (bloquea) y «avisar» para destinos hasta medir falsos positivos con S0.3 |
-| 4 | ¿El identificador se deriva o es aleatorio y guardado? | Guardado en el diario junto al prompt (menos superficie que derivarlo); decidir con S0.2 |
-| 5 | ¿Se envuelve también la salida de las pruebas? | Sí: ya se redacta y se acota (`cola`, `redactar.js:262`); falta delimitarla |
+| 3 | ¿Los destinos nuevos bloquean desde el principio? | **Resuelta**: secretos bloquean (rechazo); destinos R1 piden revisión, R2 sólo avisa, R3 no se marca (spike S0.3). |
+| 4 | ¿El identificador se deriva o es aleatorio y guardado? | **Resuelta: derivado del contenido, no guardado.** Guardarlo crea un círculo con `claveDe` (spike S0.2). |
+| 5 | ¿Se envuelve también la salida de las pruebas? | **Resuelta: sí** (#11 y #16 del inventario). |
 | 6 | ¿Dónde se declara la política de destinos del usuario? | Variable de entorno y estado fuera del árbol, como `FORGE_INTEGRACIONES_DESTINOS` (ADR-22 rev. 2) |
 
 ## 13. Criterios de Éxito Medibles
@@ -221,6 +222,7 @@ Se corta el ciclo en mitad de un turno. Al reanudar, el prompt reproducido es el
 ## 15. Historial de Aclaraciones
 
 - 2026-10-14: creada en borrador por un agente por encargo del dueño. Hechos del código comprobados el mismo día; los marcados «sin confirmar» no se verificaron.
+- 2026-10-17: el dueño pidió avanzar; se trata como **aprobada por delegación**. Los cuatro spikes se ejecutaron (S0.4 **no**: sin credenciales ni presupuesto; sigue pendiente). Cambios por los informes de `spikes/` (que mandan): inventario de 16 puntos en lugar de la lista corta (CA-001-01); identificador derivado del contenido y no guardado (CA-001-02/05, preguntas 4); `recuperar()` devuelve fragmentos; `listar` y la cabecera semántica filtran nombres (CA-001-04); destinos por tipo de archivo y contexto, no por presencia (CA-002-03/04); marcador de dato rechazado en `editar` (CA-001-07). Implementación y batería hechas; pendiente F6 (revisión independiente, suite completa en Linux/contenedor, Docker real, S0.4).
 
 ## Qué necesita revisión independiente
 

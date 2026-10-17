@@ -13,6 +13,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Defensa frente a inyección y fuga (spec `2026-10-14-defensa-inyeccion-y-fuga`, 2026-10-17)
+
+- **Seguridad.** El texto del proyecto que llega al modelo (archivos, nombres, manifiestos, salida de las pruebas, descripción de la tarea, plan) va entre marcadores `<<<forge-dato:ID inicio·fin>>>` como dato sin autoridad; el identificador se deriva del contenido (sha256), así que reanudar un ciclo no cambia el prompt ni repite llamadas pagadas. `listar`, `buscar` y la cabecera semántica filtran los nombres de archivo con las mismas reglas que el contenido.
+- **Cambio visible.** Lo que el agente escribe se revisa por contenido: un **secreto** se rechaza (no se redacta) y un **destino de red nuevo** en código, scripts o configuración detiene el trabajo para revisión humana. La documentación y los comentarios no se bloquean. Para destinos legítimos del proyecto, declara `FORGE_DESTINOS_PERMITIDOS` (dominios o `*.dominio`) en tu entorno. La primera vez que se despliega, un nodo cortado a mitad se paga una vez más (cambia la clave del diario).
+- **Límites.** No se midió el efecto con un modelo real (spike S0.4 sin ejecutar) ni se ha hecho revisión independiente. Ver `docs/GARANTIAS-Y-LIMITES.md`.
+
 ### Novedades de la oleada del 2026-10-14
 
 - **Verificar.** Comprobación del trabajo del ciclo con pruebas y mutación (`core/verificar/`); el motivo se redacta y la carpeta temporal se crea con modo 0700.

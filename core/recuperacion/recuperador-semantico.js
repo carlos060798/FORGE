@@ -13,6 +13,7 @@
 import { recortar, bytes, recuperarPorArchivos } from './recuperador-archivos.js';
 import { crearEmbedder } from './embeddings.js';
 import { canonica } from '../ciclo/protocolo-archivos.js';
+import { etiquetaSegura } from '../ciclo/dato-no-confiable.js';
 import { IndiceVectorial } from './indice-vectorial.js';
 
 const PARTE_ARCHIVOS = 0.6;
@@ -22,7 +23,7 @@ const INDICES = new Map();
 
 /**
  * @param {any} entrada  la de recuperarPorArchivos, más `tarea.descripcion`, `plan.pasos`, `embeddings`, `embeddingsModelo`, `embedder` y `k`
- * @returns {Promise<{ contexto: { fragmentos: { ruta: string, origen: string, bytes: number }[], bytesTotales: number, truncado: boolean, aviso?: string }, texto: string }>}
+ * @returns {Promise<{ contexto: { fragmentos: { ruta: string, origen: string, bytes: number, contenido: string, rotulo: string }[], bytesTotales: number, truncado: boolean, aviso?: string }, texto: string }>}
  */
 export async function recuperarSemantico(entrada) {
   const base = recuperarPorArchivos({ ...entrada, maxBytes: Math.floor(entrada.maxBytes * PARTE_ARCHIVOS) });
@@ -46,13 +47,14 @@ export async function recuperarSemantico(entrada) {
   const fragmentos = [...base.contexto.fragmentos];
   let truncado = base.contexto.truncado;
   for (const h of hallados) {
-    const cab = (texto === '' ? '' : '\n\n') + '### ' + h.ruta + ':' + h.ini + '-' + h.fin + ' (semantico, similitud ' + h.puntuacion.toFixed(2) + ')\n';
+    const nombre = etiquetaSegura(h.ruta) + ':' + h.ini + '-' + h.fin;
+    const cab = (texto === '' ? '' : '\n\n') + '### ' + nombre + ' (semantico, similitud ' + h.puntuacion.toFixed(2) + ')\n';
     const restante = entrada.maxBytes - bytes(texto) - bytes(cab);
     if (restante <= 0) { truncado = true; break; }
     const contenido = recortar(h.texto, restante);
     if (contenido !== h.texto) truncado = true;
     texto += cab + contenido;
-    fragmentos.push({ ruta: h.ruta, origen: 'semantico', bytes: bytes(contenido) });
+    fragmentos.push({ ruta: h.ruta, origen: 'semantico', bytes: bytes(contenido), contenido, rotulo: nombre + ' (semantico, similitud ' + h.puntuacion.toFixed(2) + ')' });
     if (contenido !== h.texto) break;
   }
   return { contexto: { fragmentos, bytesTotales: bytes(texto), truncado }, texto };

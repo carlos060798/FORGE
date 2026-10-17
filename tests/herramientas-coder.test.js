@@ -85,7 +85,7 @@ describe("leer_archivo (HU-001)", () => {
     escribir(e.dir, "src/a.js", Array.from({ length: 100 }, (_, i) => `linea ${i + 1}`).join("\n"));
     const r = await e.usar("leer_archivo", { ruta: "src/a.js", desde: 10, hasta: 12 });
     assert.match(r.texto, /líneas 10-12 de 100/);
-    assert.match(r.texto, /linea 10\nlinea 11\nlinea 12$/);
+    assert.match(r.texto, /linea 10\nlinea 11\nlinea 12\n<<<forge-dato:[0-9a-f]{24} fin>>>$/);
     assert.doesNotMatch(r.texto, /linea 9\n|linea 13/);
   });
 
