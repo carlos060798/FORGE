@@ -55,7 +55,7 @@ La batería (`tests/fixtures/integraciones/hostiles-proyecto.json`, 13 casos, y 
 
 ## Cómo se usa
 
-- `FORGE_DESTINOS_PERMITIDOS=api.miservicio.net,*.github.com` (entorno del usuario) declara los destinos que el código del agente puede usar sin revisión. Dominios exactos o `*.dominio` (subdominios, no el dominio solo). El repositorio no puede declararlos.
+- `FRAGUA_DESTINOS_PERMITIDOS=api.miservicio.net,*.github.com` (entorno del usuario) declara los destinos que el código del agente puede usar sin revisión. Dominios exactos o `*.dominio` (subdominios, no el dominio solo). El repositorio no puede declararlos.
 - Siempre libres: `localhost`, `127.0.0.0/8`, `0.0.0.0`, `::1`, `*.example`, `*.test`, `*.invalid`, `*.localhost`, `example.com|org|net` y los espacios de nombres XML y JSON más comunes.
 - Un destino que ya estaba en **el mismo archivo** antes de la escritura no cuenta como nuevo.
 - Un rechazo queda en el registro como `ciclo:contenido_rechazado { ruta, tipo, regla, linea? , destino? }` (nunca el valor del secreto) y, para IP públicas, como `ciclo:contenido_aviso`.
