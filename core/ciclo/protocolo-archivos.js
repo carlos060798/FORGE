@@ -245,6 +245,22 @@ export function validarRuta(cwd, ruta, opciones = {}) {
 }
 
 /**
+ * Lee del disco los archivos cuyas rutas guarda el estado del ciclo, pasando cada ruta por `validarRuta`:
+ * una ruta fuera del proyecto, absoluta, no portable o que pase por un enlace no se lee (defensa en
+ * profundidad: el estado va sellado, pero una ruta corrupta no debe poder llevar un archivo ajeno al prompt).
+ * @param {string} cwd
+ * @param {{ ruta: string }[]} archivos
+ * @returns {{ ruta: string, contenido: string|null, rechazo?: string }[]}
+ */
+export function leerArchivosDeEstado(cwd, archivos) {
+  return archivos.map(({ ruta }) => {
+    const v = validarRuta(cwd, String(ruta));
+    if (v.ok === false) return { ruta: String(ruta), contenido: null, rechazo: v.motivo };
+    try { return { ruta: String(ruta), contenido: fs.readFileSync(v.absoluta, 'utf8') }; } catch { return { ruta: String(ruta), contenido: null }; }
+  });
+}
+
+/**
  * Escribe en un temporal de la misma carpeta y lo renombra sobre el destino. El temporal se crea en
  * exclusiva: si ya existiera algo con ese nombre (también un enlace), no se escribe a través de él.
  * @param {string} absoluta

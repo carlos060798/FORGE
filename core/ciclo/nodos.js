@@ -27,7 +27,7 @@ import { POR_DEFECTO } from './config.js';
 import { CONTRATO_CODER, CONTRATO_PLANNER, CONTRATO_QA } from './contratos.js';
 import { huellaDeSalida } from './huella.js';
 import { ampliar, ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
-import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, validarRuta } from './protocolo-archivos.js';
+import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, leerArchivosDeEstado, validarRuta } from './protocolo-archivos.js';
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
@@ -478,10 +478,9 @@ export async function qa(estado, deps) {
 // ── coder ────────────────────────────────────────────────────────────────────
 
 function leerPruebas(estado) {
-  return estado.pruebas.archivos.map(({ ruta }) => {
-    const abs = path.resolve(estado.cwd, ruta);
-    return comoArchivo(ruta, fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '(no existe)');
-  }).join('\n\n');
+  return leerArchivosDeEstado(estado.cwd, estado.pruebas.archivos)
+    .map((a) => comoArchivo(a.ruta, a.contenido ?? (a.rechazo ? '(ruta no válida)' : '(no existe)')))
+    .join('\n\n');
 }
 
 /**

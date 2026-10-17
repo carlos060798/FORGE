@@ -14,7 +14,7 @@ import { FORMATO_ARCHIVOS } from './contratos.js';
 import { medirMutacion } from './mutacion.js';
 import { generarArchivos, pedirRevision, seccionProyecto, seccionTarea } from './nodos.js';
 import { AVISO_DATO, comoArchivo } from './dato-no-confiable.js';
-import { canonica } from './protocolo-archivos.js';
+import { canonica, leerArchivosDeEstado } from './protocolo-archivos.js';
 import { cola } from './redactar.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
@@ -24,11 +24,9 @@ import { cola } from './redactar.js';
  * @param {{ ruta: string }[]} archivos
  */
 function textoDeArchivos(cwd, archivos) {
-  return archivos.map(({ ruta }) => {
-    let contenido = '(no existe)';
-    try { contenido = fs.readFileSync(path.resolve(cwd, ruta), 'utf8'); } catch { /* se indica que no existe */ }
-    return comoArchivo(ruta, contenido);
-  }).join('\n\n');
+  return leerArchivosDeEstado(cwd, archivos)
+    .map((a) => comoArchivo(a.ruta, a.contenido ?? (a.rechazo ? '(ruta no válida)' : '(no existe)')))
+    .join('\n\n');
 }
 
 // ── Rojo obligatorio ─────────────────────────────────────────────────────────
