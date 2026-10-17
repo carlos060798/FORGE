@@ -69,7 +69,8 @@ export const CONFIGURACION = [
 export const CARPETAS_CONFIGURACION = ['__mocks__'];
 
 /** Nombres que Windows trata como dispositivos, con o sin extensión. */
-const DISPOSITIVOS = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+// Windows reserva también COM¹²³ y LPT¹²³ (superíndices), con o sin extensión (H-9 de la revisión)
+const DISPOSITIVOS = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])$/i;
 
 /**
  * Forma de comparar rutas: sin mayúsculas ni variantes Unicode. En Windows y
