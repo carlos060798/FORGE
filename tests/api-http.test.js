@@ -196,6 +196,37 @@ describe("lanzar y decidir", () => {
     assert.equal(r.cuerpo.tarea, "T3");
   });
 
+  test("techo del presupuesto extra: por llamada y agregado por sesión, leídos del entorno del usuario", async () => {
+    const f = lanzadorFalso();
+    const a = crearServidorApi({ cwd: dir, token: TOKEN, lanzar: f.lanzar, env: { FRAGUA_API_PRESUPUESTO_EXTRA_MAX: "3", FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL: "5" } });
+    const p = (await a.escuchar(0)).puerto;
+    const decidir = async (presupuestoExtra) => { f.terminarTodos(); await new Promise((r) => setTimeout(r, 20)); return pedir(p, { metodo: "POST", ruta: "/v1/decisiones", cuerpo: { decision: "continuar", presupuestoExtra } }); };
+    try {
+      const sobre = await decidir(3.5);
+      assert.equal(sobre.estado, 400);
+      assert.match(sobre.texto, /FRAGUA_API_PRESUPUESTO_EXTRA_MAX/);
+      assert.equal(f.lanzados.length, 0, "no se lanzó nada");
+      assert.equal((await decidir(3)).estado, 202, "dentro del techo sigue funcionando");
+      assert.equal((await decidir(2)).estado, 202, "suma 5: justo el total");
+      const exceso = await decidir(0.5);
+      assert.equal(exceso.estado, 400);
+      assert.match(exceso.texto, /FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL/);
+      assert.equal(f.lanzados.length, 2);
+    } finally { f.terminarTodos(); await a.cerrar(); }
+  });
+
+  test("techo del presupuesto extra: por defecto 5 por llamada y 20 por sesión", async () => {
+    const f = lanzadorFalso();
+    const a = crearServidorApi({ cwd: dir, token: TOKEN, lanzar: f.lanzar, env: {} });
+    const p = (await a.escuchar(0)).puerto;
+    const decidir = async (presupuestoExtra) => { f.terminarTodos(); await new Promise((r) => setTimeout(r, 20)); return pedir(p, { metodo: "POST", ruta: "/v1/decisiones", cuerpo: { decision: "continuar", presupuestoExtra } }); };
+    try {
+      assert.equal((await decidir(5.01)).estado, 400);
+      for (let i = 0; i < 4; i++) assert.equal((await decidir(5)).estado, 202, "llamada " + i);
+      assert.equal((await decidir(1)).estado, 400, "la quinta supera los 20 de la sesión");
+    } finally { f.terminarTodos(); await a.cerrar(); }
+  });
+
   test("CA-003-02: las decisiones inválidas se rechazan sin lanzar nada", async () => {
     falso.terminarTodos(); await new Promise((r) => setTimeout(r, 20));
     const antes = falso.lanzados.length;

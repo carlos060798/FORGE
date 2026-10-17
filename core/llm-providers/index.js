@@ -99,6 +99,29 @@ export function destinoDeModeloPermitido(direccion, env = process.env) {
   return permitidos.includes(u.hostname.toLowerCase()) || permitidos.includes(u.host.toLowerCase());
 }
 
+const R_AVISO_ENTORNO = (url, variable) => '[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (' + url + ') se ignora: tu entorno fija ' + variable + ' y manda sobre el archivo del proyecto.';
+const R_AVISO_LOOPBACK = (url) => '[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (' + url + ') se ignora: es una dirección de tu propia máquina que el proyecto fija y que tú no pediste; con un proveedor remoto recibiría tu clave. Si es tuya, define OPENAI_BASE_URL en tu entorno o añade ese host:puerto a ' + VARIABLE_HOSTS_LLM + '.';
+
+/** ¿Es una dirección de la propia máquina? */
+function esLoopback(direccion) {
+  try { return LOOPBACK.has(new URL(direccion).hostname.toLowerCase()); } catch { return false; }
+}
+
+/** ¿Nombró el usuario este host (o host:puerto) en su entorno? */
+function usuarioNombroElHost(direccion, env) {
+  try {
+    const u = new URL(direccion);
+    const lista = String(leerVariableRestrictiva('LLM_HOSTS', env, '') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    return lista.includes(u.host.toLowerCase()) || lista.includes(u.hostname.toLowerCase());
+  } catch { return false; }
+}
+
+/** ¿El proveedor elegido es local y no usa clave (Ollama y compatibles)? */
+function proveedorSinClave(proveedorDelProyecto, env) {
+  const nombre = String(leerVariable('LLM_PROVIDER', env) ?? proveedorDelProyecto ?? '').toLowerCase();
+  return ['ollama', 'local', 'deepseek', 'llama'].includes(nombre) || nombre.startsWith('http');
+}
+
 /**
  * Quita de lo leído del archivo del proyecto todo lo que decidiría a dónde va la clave o el contenido:
  * credenciales (solo valen por el entorno del usuario) y direcciones no permitidas. Avisa de cada cosa.
@@ -112,6 +135,20 @@ export function sanearConfigDelProyecto(config, env = process.env, avisar = (m) 
     if (clave in limpia) {
       delete limpia[clave];
       avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.${clave}» se ignora. Una credencial no puede venir de un archivo del proyecto; defínela en tu entorno (ANTHROPIC_API_KEY, OPENAI_API_KEY).`);
+    }
+  }
+  // H-4: lo que el USUARIO fija en su entorno manda siempre sobre el archivo del proyecto
+  if ('base_url' in limpia) {
+    const sinClave = proveedorSinClave(limpia.provider, env);
+    const delUsuario = env[sinClave ? 'OLLAMA_BASE_URL' : 'OPENAI_BASE_URL'];
+    if (delUsuario) {
+      avisar(R_AVISO_ENTORNO(limpia.base_url, sinClave ? 'OLLAMA_BASE_URL' : 'OPENAI_BASE_URL'));
+      delete limpia.base_url;
+    } else if (!sinClave && esLoopback(limpia.base_url) && !usuarioNombroElHost(limpia.base_url, env)) {
+      // Un proveedor remoto envía su clave en cada llamada: el proyecto no puede mandarla a un
+      // puerto de la propia máquina que el usuario no pidió (otro servicio local podría leerla)
+      avisar(R_AVISO_LOOPBACK(limpia.base_url));
+      delete limpia.base_url;
     }
   }
   if ('base_url' in limpia && !destinoDeModeloPermitido(limpia.base_url, env)) {

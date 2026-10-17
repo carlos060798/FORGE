@@ -37,6 +37,8 @@ El secreto es aleatorio, se genera en cada arranque y no se guarda en disco. Par
 | `GET /v1/ejecuciones/<id>` | — | `{estado: "en_curso"\|"terminada", codigoSalida, salida}`; la salida es el final de lo que escribió la terminal, sin secretos |
 | `POST /v1/decisiones` | `{"decision":"continuar"\|"aceptar"\|"abortar", "tarea"?, "iteracionesExtra"?, "presupuestoExtra"?}` | `202 {id, …}` |
 
+**Techo del presupuesto extra.** `presupuestoExtra` amplía el gasto de una tarea (queda firmado en el libro de gasto). Para que quien tenga el secreto no pueda gastar sin límite, la API aplica dos techos que fija el USUARIO en el entorno con el que arranca la API (no la petición ni el proyecto): `FRAGUA_API_PRESUPUESTO_EXTRA_MAX` por llamada (por defecto 5 USD) y `FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL` acumulado en la sesión de la API (por defecto 20 USD; se reinicia al reiniciar la API). Superarlos devuelve 400 con el nombre de la variable; un valor no numérico vuelve al defecto. Solo cuentan las decisiones que llegaron a lanzarse.
+
 Errores: 400 validación, 401 sin secreto o incorrecto, 403 origen o host, 404, 405, 409 ya hay una ejecución (el mensaje dice cuál), 413 cuerpo grande, 415 tipo de contenido.
 
 El código de salida de una ejecución es el de la terminal: 0 completadas (o abortada por decisión), 1 fallo, 3 hay tareas esperando decisión, 4 sin Docker. Ver `docs/ciclo-verificado.md`.
