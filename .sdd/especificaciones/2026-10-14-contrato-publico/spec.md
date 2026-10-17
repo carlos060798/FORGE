@@ -2,7 +2,7 @@
 id: 2026-10-14-contrato-publico
 titulo: "Contrato público: esquemas JSON versionados de tareas, estado, veredicto, eventos y resultado de verificar, con política de compatibilidad"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-14
 actualizada: 2026-10-14
 autor: humano  # humano | importado
@@ -12,7 +12,7 @@ etiquetas: [interoperabilidad, esquemas, compatibilidad, contrato, versionado]
 
 # Especificación: contrato público
 
-> **Estado: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde al frente E de `PLAN-MAESTRO.md` (sección 5). Cada afirmación sobre el código cita `archivo:línea` leído el 2026-10-14; lo no confirmado está marcado «sin confirmar».
+> **Estado: en implementación.** Redactada por un agente por encargo del dueño (2026-10-14); **aprobada por delegación del dueño el 2026-10-17** («avanza»), pendiente de su ratificación. Los informes de `spikes/` mandan sobre este texto allí donde difieran: ver «Ajustes tras los spikes» al final. Corresponde al frente E de `PLAN-MAESTRO.md` (sección 5). Cada afirmación sobre el código cita `archivo:línea` leído el 2026-10-14; lo no confirmado está marcado «sin confirmar».
 
 ## 1. Contexto y Motivación
 
@@ -204,3 +204,14 @@ Alguien añade `traza` al estado del ciclo y no lo declara. La prueba falla: «c
 ## 15. Historial de Aclaraciones
 
 - 2026-10-14: creada en borrador a partir del frente E del plan maestro y de la lectura de los artefactos actuales.
+- 2026-10-17: aprobada por delegación del dueño (pendiente de ratificación) y empezada la implementación.
+
+## 16. Ajustes tras los spikes (mandan sobre lo anterior)
+
+- **Ubicación.** Los esquemas se publican en `docs/contrato/` (van en el paquete por `docs/`), no en `core/schemas/`; el validador es `core/contrato/validar.js` (no `core/schemas/validador.js`); la política es `docs/contrato/LEEME.md` (no `docs/CONTRATO-PUBLICO.md`). `core/schemas/` no se toca.
+- **Subconjunto (S0.3).** Se añaden `minLength`, `maxLength`, `minItems`, `maxItems`, `minimum`, `maximum` y `pattern` acotado (cadenas de más de 65 536 caracteres no se evalúan); `oneOf` queda fuera (el plan lo mencionaba) y las uniones se modelan con `type: [..., "null"]`. `format` es anotación.
+- **Estado (S0.4).** El esquema antiguo `estado` exige `schemaVersion`, que el `.sdd/estado.json` real no tiene. Se añade `estado-pipeline` (versión opcional, claves desconocidas admitidas) sin tocar el antiguo; el nombre `estado-ciclo` queda para el estado de tarea del ciclo.
+- **Tarea.** Son tres esquemas (`tarea`, `tarea-entrada`, `tarea-sdd`) porque `oneOf` no está en el subconjunto.
+- **Eventos (S0.2).** Hay dos archivos de eventos distintos; tres tipos emitidos no estaban en `EventType` (`ciclo:llamada_huerfana`, `ciclo:consumo_estimado`, `verificar:resultado`): se declaran en el tipo y en `docs/contrato/tipos-evento.json`, con una prueba que lo exige.
+- **`--json` (S0.5).** `run` y `status` no tienen `--json`: no se añade aquí; queda como pendiente (otra especificación). Solo `verificar --json` entra.
+- **Pendientes.** Comando `esquema` (CA-001-07, P2); que `validateArtefacto` y `validarArgumentos` (MCP) deleguen en el validador nuevo; lectores con rechazo explícito de versión desconocida fuera del estado del ciclo (CA-003-06, RF-07).

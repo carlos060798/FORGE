@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/estado-pipeline/1.0",
+  "title": "Estado del pipeline (.sdd/estado.json)",
+  "description": "Describe el .sdd/estado.json REAL. A diferencia de core/schemas/estado.schema.json (que exige `schemaVersion`, ausente en el archivo real y que nadie valida), aqui `schemaVersion` es opcional y no hay propiedades obligatorias; el archivo es una zona de extension (los comandos anaden claves) y los consumidores deben ignorar las desconocidas. Los comandos SDD escriben `especificacion_activa` y el engine `spec_activa` (core/tareas.js specActiva): ambos existen.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "version_plugin": { "type": "string" },
+    "version_constitucion": { "type": "string" },
+    "inicializado": { "type": "boolean" },
+    "perfil": { "type": "string" },
+    "fase_actual": { "type": "string" },
+    "pipeline_step": { "type": "string", "enum": ["idea", "discovery", "ir", "design", "spec", "plan", "tasks", "code", "done"] },
+    "especificacion_activa": { "type": ["string", "null"] },
+    "spec_activa": { "type": ["string", "null"] },
+    "spec_aprobado": { "type": "boolean" },
+    "plan_aprobado": { "type": "boolean" },
+    "tareas_generadas": { "type": "boolean" },
+    "historial": { "type": "array", "x-interno": true, "items": { "type": "object" } }
+  }
+}

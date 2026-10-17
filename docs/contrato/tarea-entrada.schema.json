@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/tarea-entrada/1.0",
+  "title": "Tarea de entrada del engine ({ tareas: [ ... ] })",
+  "description": "Elemento de la lista `tareas` de .sdd/estado-tareas.json (formato del engine), tal como lo produce core/tareas.js normalizarTareas. Zona de extension: se admiten campos desconocidos y los consumidores deben ignorarlos.",
+  "type": "object",
+  "required": ["id", "agente"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "agente": { "type": "string" },
+    "modelo": { "type": ["string", "null"] },
+    "prompt": { "type": "string", "x-interno": true },
+    "dependencias": { "type": "array", "items": { "type": "string" } },
+    "cubre_cas": { "type": "array", "items": { "type": "string" } },
+    "archivos": { "type": "array", "items": { "type": "string" } },
+    "criterioCmd": { "type": "string" },
+    "parte_de_codigo_existente": { "type": "boolean" }
+  }
+}

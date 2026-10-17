@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/resultado-verificar/1.0",
+  "title": "Resultado de forge verificar (formato 1)",
+  "description": "Salida de `forge verificar --json` (core/verificar/resultado.js). Version del artefacto: el campo `formato` (entero). El archivo guardado con --registrar lleva ademas `id` en la raiz.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formato", "veredicto", "codigoSalida", "motivo", "codigoPruebas", "comando", "lenguaje", "imagen", "duracionMs", "cortePorTiempo", "cortePorMemoria", "salida", "avisos", "mutacion", "registro"],
+  "properties": {
+    "formato": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "description": "Solo en el archivo de .sdd/verificaciones/ (registro.js); no sale en --json." },
+    "veredicto": { "type": "string", "enum": ["pasa", "falla", "sin_pruebas", "infraestructura"] },
+    "codigoSalida": { "type": "integer", "enum": [0, 1, 4], "description": "Igual al codigo de proceso: pasa 0, falla 1, sin_pruebas 1, infraestructura 4." },
+    "motivo": { "type": ["string", "null"], "x-interno": true, "description": "Texto para personas: no es contrato." },
+    "codigoPruebas": { "type": ["integer", "null"] },
+    "comando": { "type": ["string", "null"] },
+    "lenguaje": { "type": ["string", "null"] },
+    "imagen": { "type": ["string", "null"] },
+    "duracionMs": { "type": "integer", "minimum": 0 },
+    "cortePorTiempo": { "type": "boolean" },
+    "cortePorMemoria": { "type": "boolean" },
+    "salida": { "type": "string", "x-interno": true, "description": "Cola redactada de la salida de las pruebas: no es contrato." },
+    "avisos": { "type": "array", "items": { "type": "string" }, "x-interno": true },
+    "mutacion": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["solicitada", "archivos", "probadas", "detectadas", "concluyentes", "puntuacion", "concluyente", "veredicto", "minima", "motivos"],
+      "properties": {
+        "solicitada": { "type": "boolean" },
+        "archivos": { "type": "array", "items": { "type": "string" } },
+        "probadas": { "type": "integer", "minimum": 0 },
+        "detectadas": { "type": "integer", "minimum": 0 },
+        "concluyentes": { "type": "integer", "minimum": 0 },
+        "descartadas": { "type": "integer", "minimum": 0, "x-interno": true },
+        "puntuacion": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "puntuacionBruta": { "type": ["number", "null"], "x-interno": true },
+        "concluyente": { "type": "boolean" },
+        "veredicto": { "type": "string", "enum": ["medida", "cumple_el_minimo", "bajo_el_minimo", "no_concluyente"] },
+        "minima": { "type": ["number", "null"] },
+        "minConcluyentes": { "type": "integer", "minimum": 0, "x-interno": true },
+        "motivos": { "type": "array", "items": { "type": "string" }, "x-interno": true },
+        "parcial": { "type": "boolean", "x-interno": true },
+        "motivoParcial": { "type": ["string", "null"], "x-interno": true },
+        "sinCobertura": { "type": "boolean", "x-interno": true },
+        "lineaBase": { "type": "string", "enum": ["ok", "falla", "infraestructura", "no_medida"], "x-interno": true },
+        "infraestructura": { "type": "boolean", "x-interno": true },
+        "candidatas": { "type": "integer", "minimum": 0, "x-interno": true },
+        "fueraDeLoCambiado": { "type": "integer", "minimum": 0, "x-interno": true },
+        "rechazadas": {
+          "type": "array", "x-interno": true,
+          "items": { "type": "object", "required": ["ruta", "motivo"], "properties": { "ruta": { "type": "string" }, "motivo": { "type": "string" } } }
+        },
+        "sobrevivientes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ruta", "linea", "operador"],
+            "properties": {
+              "ruta": { "type": "string" },
+              "linea": { "type": "integer" },
+              "operador": { "type": "string" },
+              "antes": { "type": "string", "x-interno": true },
+              "despues": { "type": "string", "x-interno": true }
+            }
+          }
+        },
+        "copiaSinBorrar": { "type": "boolean", "x-interno": true },
+        "aviso": { "type": "string", "x-interno": true }
+      }
+    },
+    "registro": {
+      "type": ["object", "null"],
+      "description": "null si no se pidio --registrar; { id, archivo } si quedo registrado; { error } si no se pudo.",
+      "properties": {
+        "id": { "type": "string" },
+        "archivo": { "type": "string" },
+        "error": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

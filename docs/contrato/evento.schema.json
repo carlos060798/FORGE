@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/evento/1.0",
+  "title": "Evento (una linea de events.jsonl)",
+  "description": "Sobre estable de core/event-log.js. El `payload` es LIBRE por tipo y no es contrato (salvo lo que diga docs/contrato/tipos-evento.json para los tipos marcados como contrato). `id` no es unico entre procesos (cadena libre: `<ms>-<contador>` o `<ms>-<pid>`). Hay DOS archivos: .sdd/events.jsonl (run, resume, API, integraciones, verificar --registrar) y .sdd/observabilidad/events.jsonl (status, step, state). Los lectores deben tolerar lineas corruptas y tipos desconocidos.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "ts", "payload"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "type": "string", "minLength": 1, "pattern": "^[a-z_]+(:[a-z_]+)?$" },
+    "ts": { "type": "string", "minLength": 1 },
+    "agent": { "type": "string" },
+    "taskId": { "type": "string" },
+    "pipelineStep": { "type": "string" },
+    "payload": { "type": "object", "additionalProperties": true, "x-interno": true },
+    "envelope": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "retryCount": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

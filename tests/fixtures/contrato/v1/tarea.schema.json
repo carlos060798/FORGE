@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/tarea/1.0",
+  "title": "Tarea normalizada (la que usa el ciclo)",
+  "description": "Campo `tarea` del estado del ciclo (core/ciclo/estado.js estadoInicial). Las dos formas de ENTRADA son tarea-entrada (engine) y tarea-sdd (.estado-tareas.json); core/tareas.js las normaliza. No tiene campo de version propio: la version es la del esquema ($id).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "descripcion", "agente", "archivos", "cas"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "descripcion": { "type": "string", "x-interno": true },
+    "agente": { "type": "string" },
+    "archivos": { "type": "array", "items": { "type": "string" } },
+    "cas": { "type": "array", "items": { "type": "string" } },
+    "criterioCmd": { "type": "string" },
+    "parte_de_codigo_existente": { "type": "boolean", "const": true }
+  }
+}

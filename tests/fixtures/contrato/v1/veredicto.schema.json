@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge-sdd.dev/contrato/veredicto/1.0",
+  "title": "Veredicto de verificacion",
+  "description": "Unico vocabulario de veredicto de `forge verificar`. NO es el mismo concepto que la categoria de una ejecucion del ciclo ni que el resultado de una tarea: ver el mapa x-mapa. No se renombra ningun valor.",
+  "type": "string",
+  "enum": ["pasa", "falla", "sin_pruebas", "infraestructura"],
+  "x-mapa": {
+    "veredicto_a_codigo_de_proceso": { "pasa": 0, "falla": 1, "sin_pruebas": 1, "infraestructura": 4 },
+    "categoria_del_ciclo_a_veredicto_aproximado": { "pass": "pasa", "fail": "falla", "timeout": "falla", "infra_error": "infraestructura" },
+    "nota": "La categoria (pass|fail|timeout|infra_error) describe UNA ejecucion dentro del ciclo; `sin_pruebas` no tiene categoria propia (el ciclo lo trata como fail). El resultado de tarea (en_curso|exito|revision_pendiente|aceptada_por_humano|abortada) es el desenlace del ciclo entero, no un veredicto."
+  }
+}

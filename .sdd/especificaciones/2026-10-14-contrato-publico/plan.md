@@ -99,3 +99,7 @@
 ## 9. Revisión
 
 Es de riesgo bajo para el aislamiento, pero **fija una promesa pública**: necesita revisión independiente de (1) la lista de lo comprometido y lo interno, (2) el validador de subconjunto, (3) que ningún valor existente cambie, y (4) la política de compatibilidad. No toca contenedor, red ni credenciales.
+
+## 10. Ajustes tras los spikes (2026-10-17, mandan sobre lo anterior)
+
+Esquemas en `docs/contrato/` y validador en `core/contrato/validar.js` (ver spec, sección 16). El diferencial de compatibilidad se reduce, de momento, a «igual a la copia congelada de `tests/fixtures/contrato/v1/` o `$id` distinto». Pruebas: `tests/contrato-validador.test.js` y `tests/contrato-publico.test.js`.
