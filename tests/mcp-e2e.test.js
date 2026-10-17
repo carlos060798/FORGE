@@ -68,7 +68,8 @@ describe("forge mcp — proceso real", () => {
       assert.equal(init.result.serverInfo.name, "forge");
       c.notificar("notifications/initialized");
       const r = await c.pedir("tools/call", { name: "leer_archivo", arguments: { ruta: "src/a.js" } });
-      assert.equal(texto(r), "hola");
+      // H-5: lo que se lee del proyecto llega como dato delimitado
+      assert.match(texto(r), /^<<<forge-dato:[0-9a-f]{24} inicio · src\/a\.js>>>\nhola\n<<<forge-dato:[0-9a-f]{24} fin>>>$/);
       assert.equal(await c.cerrar(), 0);
     }
   });
@@ -158,7 +159,11 @@ describe("CA-004-06 — cliente oficial del protocolo", { skip: !SDK && "requier
     `;
     const r = spawnSync(process.execPath, ["--input-type=module", "-e", guion], { cwd: SDK, encoding: "utf8", timeout: 60_000 });
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(JSON.parse(r.stdout.trim().split("\n").pop() ?? "{}"), {
+    const salida = JSON.parse(r.stdout.trim().split("\n").pop() ?? "{}");
+    // H-5: el archivo llega dentro de un bloque de dato; se comprueba el bloque y se compara el resto
+    assert.match(salida.leer, /^<<<forge-dato:[0-9a-f]{24} inicio · src\/a\.js>>>\nhola\n<<<forge-dato:[0-9a-f]{24} fin>>>$/);
+    salida.leer = "hola";
+    assert.deepEqual(salida, {
       nombres: ["ejecutar_pruebas", "leer_archivo", "escribir_archivo"], leer: "hola", vetada: true, escribir: false, dependencias: true, inexistente: -32602,
     });
   });

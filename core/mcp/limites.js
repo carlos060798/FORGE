@@ -18,6 +18,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSy
 import { join } from 'node:path';
 import { leerVariableRestrictiva } from '../entorno.js';
 import { claveLocal, firmar, firmaValida } from '../estado-usuario.js';
+import { adquirir, ErrorBloqueado } from '../ciclo/candado.js';
 
 export const LIMITES_POR_DEFECTO = Object.freeze({ timeout_s: 300, salida_max_bytes: 16384, por_hora: 20, por_dia: 200 });
 export const LIMITES_TECHO = Object.freeze({ timeout_s: 1800, salida_max_bytes: 65536, por_hora: 1000, por_dia: 10000 });
@@ -70,6 +71,32 @@ const DIA_MS = 86_400_000;
  * @returns {{ ok: true } | { ok: false, codigo: 'cupo'|'contador_invalido', motivo: string }}
  */
 export function reservarCupo(dirEstado, limites, ahora = Date.now()) {
+  const dir = join(dirEstado, 'mcp');
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+  } catch (e) {
+    return { ok: false, codigo: 'contador_invalido', motivo: `No se pudo preparar el contador de uso (${e instanceof Error ? e.message : e}); sin contador no se ejecuta nada.` };
+  }
+  // Leer, sumar y escribir es una sola operación: sin candado, dos servidores a la vez cuentan de menos (H-8)
+  let liberar = null;
+  for (let intento = 0; intento < 400 && liberar === null; intento++) {
+    try {
+      liberar = adquirir(join(dir, 'cupos.lock'), 'El contador de uso');
+    } catch (e) {
+      if (!(e instanceof ErrorBloqueado)) break;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5 + Math.floor(Math.random() * 15));
+    }
+  }
+  if (liberar === null) return { ok: false, codigo: 'contador_invalido', motivo: 'No se pudo tomar el candado del contador de uso; sin contador no se ejecuta nada.' };
+  try {
+    return reservarConCandado(dirEstado, limites, ahora);
+  } finally {
+    liberar();
+  }
+}
+
+/** @param {string} dirEstado @param {{ por_hora: number, por_dia: number }} limites @param {number} ahora @returns {{ ok: true } | { ok: false, codigo: 'cupo'|'contador_invalido', motivo: string }} */
+function reservarConCandado(dirEstado, limites, ahora) {
   const dir = join(dirEstado, 'mcp');
   const archivo = join(dir, 'cupos.json');
   let clave;

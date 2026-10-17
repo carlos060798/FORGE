@@ -20,7 +20,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { adquirir, ErrorBloqueado } from '../ciclo/candado.js';
+import { ErrorBloqueado } from '../ciclo/candado.js';
+import { adquirirProyecto } from './candado-proyecto.js';
 import { leerRutasProtegidas } from '../ciclo/config.js';
 import { validarRuta } from '../ciclo/protocolo-archivos.js';
 import { cola } from '../ciclo/redactar.js';
@@ -170,19 +171,21 @@ export function crearHerramientaVerificar(opciones) {
 
       if (enCurso) return cerrar(rechazo('ocupado', 'Ya hay una verificación en curso en este proyecto. No se encola: espera a que termine.'));
 
-      // 2. Cupo (contador firmado en el estado del usuario). Falla cerrado
       if (!dirEstado) return cerrar(rechazo('contador_invalido', 'No hay estado del usuario donde llevar el contador de uso; sin contador no se ejecuta nada.'));
-      const cupo = reservarCupo(dirEstado, limites);
-      if (cupo.ok === false) return cerrar(rechazo(cupo.codigo, cupo.motivo));
 
-      // 3. Candado del proyecto, el mismo que usa `ejecutar_pruebas` y los ciclos
+      // 2. Candado del proyecto, el mismo que usa `ejecutar_pruebas` y los ciclos. Va ANTES del cupo:
+      // un proyecto «ocupado» (o un candado plantado por el repo) no debe gastar el cupo del usuario
       let liberar;
       try {
-        liberar = adquirir(path.join(cwd, '.sdd', 'motor', 'proyecto.lock'), 'El entorno aislado de este proyecto');
+        liberar = adquirirProyecto(path.join(cwd, '.sdd', 'motor', 'proyecto.lock'), 'El entorno aislado de este proyecto');
       } catch (e) {
         if (e instanceof ErrorBloqueado) return cerrar(rechazo('ocupado', e.message));
         return cerrar(rechazo('ocupado', `No se pudo tomar el candado del proyecto: ${e instanceof Error ? e.message : e}`));
       }
+
+      // 3. Cupo (contador firmado en el estado del usuario). Falla cerrado
+      const cupo = reservarCupo(dirEstado, limites);
+      if (cupo.ok === false) { liberar(); return cerrar(rechazo(cupo.codigo, cupo.motivo)); }
       enCurso = true;
 
       // 4. Verificar, con tiempo máximo y cancelación que detienen el contenedor

@@ -340,7 +340,8 @@ describe("CA-002-02 — `forge mcp` real, sin saludo", () => {
     const lista = await c.pedir("tools/list");
     assert.deepEqual(lista.result.tools.map((t) => t.name).sort(), ["ejecutar_pruebas", "escribir_archivo", "leer_archivo"]);
 
-    assert.equal(texto(await c.pedir("tools/call", { name: "leer_archivo", arguments: { ruta: "src/a.js" } })), "hola");
+    // H-5: el archivo llega dentro de un bloque de dato no confiable
+    assert.match(texto(await c.pedir("tools/call", { name: "leer_archivo", arguments: { ruta: "src/a.js" } })), /^<<<forge-dato:[0-9a-f]{24} inicio · src\/a\.js>>>\nhola\n<<<forge-dato:[0-9a-f]{24} fin>>>$/);
     const escrito = await c.pedir("tools/call", { name: "escribir_archivo", arguments: { ruta: "src/b.js", contenido: "v1" } });
     assert.equal(escrito.result.isError, undefined);
     assert.equal(escrito.result.resultType, "complete");
