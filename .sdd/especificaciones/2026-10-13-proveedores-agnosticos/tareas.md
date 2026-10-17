@@ -35,8 +35,8 @@
 - [x] **F4.1** Coste cero explícito en `precios:`; prueba de que nunca es implícito. Cubre CA-004-01.
 - [x] **F4.2** Aviso de modelo sin precio, una vez por sesión, con la clave que falta. Cubre CA-004-02.
 - [x] **F4.3** `presupuesto.sin_precio`. Cubre CA-004-03.
-- [ ] **F4.4** Tabla de OpenAI revisada y fecha actualizada. Cubre CA-004-04.
-- [ ] **F4.5** Tokens de caché de otros proveedores. Cubre CA-004-05.
+- [x] **F4.4** Tabla de OpenAI revisada y fecha actualizada. Cubre CA-004-04.
+- [x] **F4.5** Tokens de caché de otros proveedores. Cubre CA-004-05.
 
 ## F5 — Niveles neutrales
 
@@ -47,7 +47,7 @@
 
 ## F6 — Validación real
 
-- [ ] **F6.1** `--proveedor` en `scripts/pruebas-independientes.mjs`. Cubre CA-006-01.
+- [x] **F6.1** `--proveedor` en `scripts/pruebas-independientes.mjs`. Cubre CA-006-01.
 - [ ] **F6.2** **(Dueño)** Tres proyectos con un segundo proveedor real, con tope; evidencia en la carpeta. Cubre CA-006-02.
 - [ ] **F6.3** Documentación coherente con lo que se haya probado. Cubre CA-006-03.
 

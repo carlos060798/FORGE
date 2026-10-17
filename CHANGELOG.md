@@ -13,6 +13,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Proveedores agnósticos: precios, caché y kit de pruebas (spec `2026-10-13-proveedores-agnosticos`, 2026-10-17)
+
+- **Precios de OpenAI.** La tabla incluida pasa de 2 a 16 modelos (`gpt-4o`, `gpt-4.1`, `gpt-5.4`, `gpt-5.5`, `gpt-5.6-*`, `gpt-6*`), copiados de https://developers.openai.com/api/docs/pricing el 2026-10-17 (nivel Standard, hasta 272K de entrada; por encima hay tarifa mayor que no se contempla). Quedan fuera los modelos «-pro», `o1`/`o3` y los que no se confirmó que sirvan por la API de chat. Un modelo ausente sigue contándose al precio más caro conocido.
+- **Caché de OpenAI.** El precio de «Cached input» de cada modelo se usa para los tokens cacheados (dentro de `prompt_tokens`, ya separados); sin precio propio se cobra al de entrada, nunca por debajo. Ollama sin precio declarado sigue contando al más caro; declarado a cero, cuenta cero.
+- **Kit de pruebas independientes.** `scripts/pruebas-independientes.mjs` acepta `--proveedor anthropic|openai|ollama|stub` y `--modelo-alto|medio|economico`, y registra proveedor y modelos en `informe.json` e `informe.md`. Humo sigue siendo stub, sin gasto ni claves; el modo real exige la clave del proveedor elegido en el entorno (nunca en la línea de comandos). **No se ejecutó con un modelo real**: sigue sin probarse con un segundo proveedor real (F6.2, del dueño).
+
 ### Defensa frente a inyección y fuga (spec `2026-10-14-defensa-inyeccion-y-fuga`, 2026-10-17)
 
 - **Seguridad.** El texto del proyecto que llega al modelo (archivos, nombres, manifiestos, salida de las pruebas, descripción de la tarea, plan) va entre marcadores `<<<forge-dato:ID inicio·fin>>>` como dato sin autoridad; el identificador se deriva del contenido (sha256), así que reanudar un ciclo no cambia el prompt ni repite llamadas pagadas. `listar`, `buscar` y la cabecera semántica filtran los nombres de archivo con las mismas reglas que el contenido.

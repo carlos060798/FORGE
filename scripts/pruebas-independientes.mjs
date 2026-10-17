@@ -16,7 +16,11 @@
  *
  * Opciones: --modelo humo|real (humo)   --proyectos lista (todos)   --tope USD por proyecto (0.30)
  *           --nivel haiku|sonnet|opus (haiku)   --salida carpeta (temporal)   --conservar   --desde-repo
- * Con --modelo real hace falta ANTHROPIC_API_KEY en el entorno (nunca se imprime ni se guarda).
+ *           --proveedor anthropic|openai|ollama|stub (stub en humo, anthropic en real)
+ *           --modelo-alto / --modelo-medio / --modelo-economico id (los del proveedor por defecto)
+ * Con --modelo real hace falta la clave del proveedor elegido en el ENTORNO (ANTHROPIC_API_KEY, OPENAI_API_KEY;
+ * Ollama no usa clave): nunca por la línea de comandos, y nunca se imprime ni se guarda.
+ * El modo humo es siempre el proveedor stub: sin gasto y sin claves.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -24,6 +28,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { analizarOpciones, configDeModelos, descripcionDeProveedor, entornoDelCiclo } from './opciones-independientes.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -31,16 +36,15 @@ const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i === -1 ? d : (args[i + 1] ?? d); };
 const flag = (n) => args.includes(`--${n}`);
-const MODELO = opt('modelo', 'humo');
-const TOPE = Number(opt('tope', '0.30'));
-const NIVEL = opt('nivel', 'haiku');
-const DESDE_REPO = flag('desde-repo');
-const CONSERVAR = flag('conservar');
-
-if (!['humo', 'real'].includes(MODELO)) salir(2, '--modelo debe ser humo o real');
-if (!Number.isFinite(TOPE) || TOPE <= 0 || TOPE > 5) salir(2, '--tope debe ser un número entre 0 y 5 (USD por proyecto)');
-if (!['haiku', 'sonnet', 'opus'].includes(NIVEL)) salir(2, '--nivel debe ser haiku, sonnet u opus');
-if (MODELO === 'real' && !process.env.ANTHROPIC_API_KEY) salir(2, 'Con --modelo real hace falta ANTHROPIC_API_KEY en el entorno.');
+const analisis = analizarOpciones(args, process.env);
+if (!analisis.ok) salir(2, analisis.error);
+const OPC = analisis.opciones;
+const MODELO = OPC.modelo;
+const TOPE = OPC.tope;
+const NIVEL = OPC.nivel;
+const DESDE_REPO = OPC.desdeRepo;
+const CONSERVAR = OPC.conservar;
+const PROVEEDOR = OPC.proveedor;
 
 function salir(codigo, mensaje) { console.error(mensaje); process.exit(codigo); }
 
@@ -84,7 +88,7 @@ const PROYECTOS = {
   },
 };
 
-const elegidos = opt('proyectos', Object.keys(PROYECTOS).join(',')).split(',').map((s) => s.trim()).filter(Boolean);
+const elegidos = OPC.proyectos ?? Object.keys(PROYECTOS);
 for (const n of elegidos) if (!PROYECTOS[n]) salir(2, `Proyecto desconocido: ${n}. Disponibles: ${Object.keys(PROYECTOS).join(', ')}`);
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -122,6 +126,7 @@ const docker = sh('docker', ['version', '--format', '{{.Server.Version}}'], { ti
 const previo = [
   ['FORGE', `${version} (${DESDE_REPO ? 'copia de trabajo' : 'paquete instalado'})`],
   ['Docker', docker.status === 0 ? `servidor ${docker.stdout.trim()}` : 'NO disponible'],
+  ['Proveedor', descripcionDeProveedor(OPC)],
   ['Modelo', MODELO === 'real' ? `real, nivel máximo ${NIVEL}, tope ${TOPE} USD por proyecto` : 'humo (sin gasto)'],
   ['Carpeta', SALIDA],
 ];
@@ -129,16 +134,8 @@ for (const [k, v] of previo) console.log(`${k.padEnd(8)} ${v}`);
 if (docker.status !== 0) salir(4, 'Docker es obligatorio para el ciclo verificado y no responde.');
 
 // ── Ejecución ───────────────────────────────────────────────────────────────
-const entorno = { ...process.env };
-if (MODELO === 'real') {
-  entorno.FORGE_LLM_PROVIDER = 'anthropic';
-  entorno.FORGE_NIVEL_MAXIMO = NIVEL;
-  entorno.FORGE_BUDGET_USD = String(TOPE);
-} else {
-  entorno.FORGE_LLM_PROVIDER = 'stub';
-  delete entorno.ANTHROPIC_API_KEY;
-  entorno.FORGE_BUDGET_USD = '0.05';
-}
+const entorno = entornoDelCiclo(OPC, process.env);
+const CONFIG_MODELOS = configDeModelos(OPC.modelos);
 
 /** @param {string} dir */
 function leerRegistro(dir) {
@@ -176,6 +173,7 @@ for (const nombre of elegidos) {
   mkdirSync(dir, { recursive: true });
   for (const [ruta, contenido] of Object.entries(def.archivos)) escribir(dir, ruta, contenido);
   escribir(dir, '.sdd/estado.json', '{"pipeline_step":"code"}\n');
+  if (CONFIG_MODELOS) escribir(dir, '.sdd/sdd.config.yaml', CONFIG_MODELOS);
   escribir(dir, 'tareas.json', JSON.stringify(def.tareas, null, 2) + '\n');
 
   const t0 = Date.now();
@@ -211,6 +209,7 @@ const md = [
   '# Informe de pruebas en proyectos independientes',
   '',
   `- FORGE: ${version} (${DESDE_REPO ? 'copia de trabajo' : 'paquete instalado con npm'})`,
+  `- Proveedor y modelos: ${descripcionDeProveedor(OPC)}`,
   `- Modelo: ${MODELO === 'real' ? `real, nivel máximo ${NIVEL}, tope ${TOPE} USD por proyecto` : 'humo (sin gasto, proveedor de pruebas)'}`,
   `- Fecha: ${new Date().toISOString()}`,
   `- Sistema: ${process.platform} · Node ${process.version} · Docker ${docker.stdout.trim()}`,
@@ -234,7 +233,7 @@ const md = [
   ]),
 ].join('\n');
 writeFileSync(join(SALIDA, 'informe.md'), md);
-writeFileSync(join(SALIDA, 'informe.json'), JSON.stringify({ version, modelo: MODELO, nivel: NIVEL, tope: TOPE, totalUsd, informe }, null, 2));
+writeFileSync(join(SALIDA, 'informe.json'), JSON.stringify({ version, proveedor: PROVEEDOR, modelos: OPC.modelos, modelo: MODELO, nivel: NIVEL, tope: TOPE, totalUsd, informe }, null, 2));
 console.log(`\nInforme: ${join(SALIDA, 'informe.md')}`);
 if (!CONSERVAR) console.log('Las carpetas de los proyectos se conservan para que puedas inspeccionarlas; bórralas cuando termines.');
 
