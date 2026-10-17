@@ -304,9 +304,10 @@ describe("revisarContenido: destinos de red (spike destinos.md: por tipo de arch
     }
   });
 
-  test("CA-002-04: 'nuevo' es respecto al MISMO archivo antes de escribir", () => {
+  test("CA-002-04: 'nuevo' es todo host que no autoriza el entorno; el archivo previo (del repositorio) no cuenta", () => {
     const antes = 'fetch("https://api.ajeno.net/v1");\n';
-    assert.equal(nuevo("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', antes).ok, true, "el host ya estaba en ese archivo");
+    assert.equal(nuevo("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', antes).ok, false, "que el host ya estuviera en ese archivo no lo autoriza");
+    assert.equal(nuevo("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', antes, ["api.ajeno.net"]).ok, true, "lo autoriza el entorno del usuario");
     assert.equal(nuevo("src/a.js", 'fetch("https://otro.ajeno.net/v1");\n', antes).ok, false, "otro host sí es nuevo");
     assert.equal(nuevo("src/b.js", 'fetch("https://api.ajeno.net/v1");\n', null).ok, false, "un archivo nuevo no hereda destinos de otro");
   });

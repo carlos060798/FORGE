@@ -8,7 +8,7 @@
  *     sólo dice el tipo y la línea.
  *   - un destino de red NUEVO en código, scripts o configuración pide revisión humana. La documentación
  *     y los comentarios no cuentan (el 62 % de las URL del corpus medido son documentación, spike
- *     destinos.md). «Nuevo» es respecto al mismo archivo antes de escribir y a la política del usuario.
+ *     destinos.md). «Nuevo» es todo host que no autorice el entorno del usuario: el archivo previo es del repositorio y no cuenta.
  *   - falla cerrado: un contenido que no se puede analizar (binario, de más de 1 MiB) no se acepta.
  *   - el marcador de dato (<<<forge-dato:…) no es parte de ningún archivo: si el modelo lo copia, no se escribe.
  *
@@ -272,32 +272,14 @@ function destinosDeLinea(linea, previa, tipo) {
 }
 
 /**
- * Hosts e IP que aparecen en el CÓDIGO de un archivo (no en comentarios): lo que ya contactaba.
- * @param {string} rutaPosix @param {string} texto
- */
-function conocidosDe(rutaPosix, texto) {
-  const tipo = tipoDeArchivo(rutaPosix);
-  if (tipo === 'documentacion') return new Set();
-  const lineas = texto.split(/\r?\n/);
-  const mapa = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
-  const conocidos = new Set();
-  lineas.forEach((l, i) => {
-    if (mapa[i]) return;
-    for (const h of hostsDeUrl(l)) conocidos.add(h);
-    for (const o of ipv4(l)) conocidos.add(o.join('.'));
-  });
-  return conocidos;
-}
-
-/**
- * @param {string} rutaPosix @param {string} contenido @param {string | null} anterior
+ * El archivo previo NO autoriza nada: es del repositorio (revisión nº 2, C-1). Sólo autoriza el entorno del usuario.
+ * @param {string} rutaPosix @param {string} contenido
  * @param {string[]} permitidos
  * @returns {{ destino?: { host: string, linea: number }, avisos: { tipo: 'ip', linea: number }[] }}
  */
-function buscarDestinos(rutaPosix, contenido, anterior, permitidos) {
+function buscarDestinos(rutaPosix, contenido, permitidos) {
   const tipo = tipoDeArchivo(rutaPosix);
   if (tipo === 'documentacion') return { avisos: [] };
-  const conocidos = anterior === null ? new Set() : conocidosDe(rutaPosix, anterior);
   const lineas = contenido.split(/\r?\n/);
   const comentario = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
   const avisos = [];
@@ -305,12 +287,12 @@ function buscarDestinos(rutaPosix, contenido, anterior, permitidos) {
     const linea = lineas[i];
     if (comentario[i]) continue;
     for (const host of destinosDeLinea(linea, i > 0 && !comentario[i - 1] ? lineas[i - 1] : '', tipo)) {
-      if (esReservado(host) || conocidos.has(host) || destinoPermitido(host, permitidos)) continue;
+      if (esReservado(host) || destinoPermitido(host, permitidos)) continue;
       return { destino: { host: host.slice(0, 100), linea: i + 1 }, avisos };
     }
     for (const o of ipv4(linea)) {
       const ip = o.join('.');
-      if (esIpPublica(o) && !conocidos.has(ip) && !destinoPermitido(ip, permitidos)) avisos.push({ tipo: /** @type {const} */ ('ip'), linea: i + 1 });
+      if (esIpPublica(o) && !destinoPermitido(ip, permitidos)) avisos.push({ tipo: /** @type {const} */ ('ip'), linea: i + 1 });
     }
   }
   return { avisos };
@@ -337,7 +319,7 @@ export function revisarContenido(rutaPosix, contenido, anterior, politica = {}) 
   const secreto = buscarSecreto(contenido, anterior);
   if (secreto) return { ok: false, tipo: 'secreto', regla: secreto.regla, ...(secreto.linea !== undefined ? { linea: secreto.linea } : {}) };
 
-  const d = buscarDestinos(rutaPosix, contenido, anterior, politica.destinos_permitidos ?? []);
+  const d = buscarDestinos(rutaPosix, contenido, politica.destinos_permitidos ?? []);
   if (d.destino) return { ok: false, tipo: 'destino', regla: 'R1', linea: d.destino.linea, destino: d.destino.host };
   return { ok: true, avisos: d.avisos };
 }
