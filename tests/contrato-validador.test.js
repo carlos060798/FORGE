@@ -67,3 +67,30 @@ describe("validar: el esquema se rechaza si usa algo fuera del subconjunto", () 
     assert.throws(() => comprobarEsquema({ items: [{ type: "string" }] }), /items/);
   });
 });
+
+describe("validar: solo cuentan las propiedades propias", () => {
+  const esquema = { type: "object", properties: { a: { type: "string" } }, additionalProperties: false };
+
+  test("un campo llamado como una propiedad heredada de Object NO se toma por declarado", () => {
+    for (const k of ["constructor", "toString", "hasOwnProperty", "valueOf"]) {
+      const errores = validar(esquema, JSON.parse(`{"a":"x","${k}":1}`));
+      assert.ok(errores.some((e) => e.includes(`campo adicional ${k}`)), `${k} debe señalarse como adicional`);
+    }
+  });
+
+  test("__proto__ como clave de datos tampoco se cuela", () => {
+    const errores = validar(esquema, JSON.parse('{"a":"x","__proto__":{"b":1}}'));
+    assert.ok(errores.some((e) => e.includes("campo adicional __proto__")));
+  });
+
+  test("required no se da por cumplido con una propiedad heredada", () => {
+    const errores = validar({ type: "object", required: ["toString"] }, {});
+    assert.ok(errores.some((e) => e.includes("falta (obligatorio)")));
+  });
+
+  test("un campo declarado con ese nombre sí se valida", () => {
+    const e = { type: "object", properties: { constructor: { type: "integer" } }, additionalProperties: false };
+    assert.deepEqual(validar(e, JSON.parse('{"constructor":3}')), []);
+    assert.ok(validar(e, JSON.parse('{"constructor":"x"}')).length > 0);
+  });
+});

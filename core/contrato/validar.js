@@ -101,10 +101,11 @@ function visitar(s, v, ruta, out) {
     if (s.items !== undefined) v.forEach((x, i) => visitar(s.items, x, `${ruta}[${i}]`, out));
   }
   if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-    for (const r of s.required ?? []) if (!(r in v)) out.push(`${ruta}.${r}: falta (obligatorio)`);
+    // Solo propiedades PROPIAS: con `in`, un campo llamado «constructor» o «toString» se tomaría por declarado
+    for (const r of s.required ?? []) if (!Object.hasOwn(v, r)) out.push(`${ruta}.${r}: falta (obligatorio)`);
     const props = s.properties ?? {};
     for (const [k, x] of Object.entries(v)) {
-      if (k in props) visitar(props[k], x, `${ruta}.${k}`, out);
+      if (Object.hasOwn(props, k)) visitar(props[k], x, `${ruta}.${k}`, out);
       else if (s.additionalProperties === false) out.push(`${ruta}: campo adicional ${k}`);
       else if (s.additionalProperties && typeof s.additionalProperties === 'object') visitar(s.additionalProperties, x, `${ruta}.${k}`, out);
     }
