@@ -12,7 +12,7 @@ etiquetas: [calidad, evidencia, puertas, trazabilidad, sandbox, determinista]
 
 # Especificación: puertas de calidad y evidencia
 
-> **Estado (2026-10-17): aprobada por delegación del dueño ("avanzar"), SOLO la fase A: evidencia encadenada (CA-004-xx y CA-005-xx en lo que cubre `plan.md`, sección 16). Puertas declarables, criterios enlazados y `no_cambiar` siguen en borrador.**
+> **Estado (2026-10-17): aprobada por delegación del dueño ("avanzar"): fase A (evidencia encadenada, CA-004-xx y CA-005-xx en lo que cubre `plan.md`, sección 16) y fase B1 (puertas declarables dentro de `fragua verificar`: HU-001 y HU-002 en `verificar`, `plan.md` sección 17). La integración en el ciclo, los criterios enlazados y `no_cambiar` siguen en borrador.**
 >
 > **Estado original: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde al frente D de `PLAN-MAESTRO.md` (sección 5). Cada afirmación sobre el código cita `archivo:línea` leído el 2026-10-14; lo que no se pudo confirmar está marcado «sin confirmar».
 
@@ -49,11 +49,11 @@ Que un proyecto pueda **declarar puertas adicionales** (tipos, linter, seguridad
 **Para** que el ciclo y `verificar` las exijan además de las pruebas
 
 **Criterios de aceptación:**
-- [ ] **CA-001-01**: Una sección `puertas:` admite las claves fijas `tipos`, `linter`, `seguridad`, `cobertura` (comando) y `cobertura_minima` (0 a 100). El lector actual solo entiende `clave: valor` con dos espacios de sangría (`core/ciclo/config.js:81-110`), así que la forma es plana por diseño. (P1)
-- [ ] **CA-001-02**: Una clave desconocida en `puertas:` es un error con mensaje claro, no se ignora en silencio (misma regla que `core/ciclo/config.js:94-102`). (P1)
-- [ ] **CA-001-03**: Un proyecto **solo puede añadir** puertas. No existe clave para desactivar, relajar ni sustituir el comando de pruebas, el contenedor sin red, el rojo obligatorio, la redacción ni el tope de gasto. Una prueba recorre todas las claves aceptadas y falla si alguna aflojaría una garantía fija. (P1)
-- [ ] **CA-001-04**: Sin sección `puertas:` el comportamiento es idéntico al de hoy (veredicto por el comando de pruebas). (P1)
-- [ ] **CA-001-05**: Cada comando se divide con `dividirComando` (`core/verificar/index.js:119`, `core/sandbox/sandbox-runner.js`): sin intérprete de órdenes, sin encadenados ni redirecciones. (P1)
+- [x] **CA-001-01** (B1; sin `cobertura_minima`: el umbral va en el comando, ver `plan.md` §17): Una sección `puertas:` admite las claves fijas `tipos`, `linter`, `seguridad`, `cobertura` (comando) y `cobertura_minima` (0 a 100). El lector actual solo entiende `clave: valor` con dos espacios de sangría (`core/ciclo/config.js:81-110`), así que la forma es plana por diseño. (P1)
+- [x] **CA-001-02** (B1): Una clave desconocida en `puertas:` es un error con mensaje claro, no se ignora en silencio (misma regla que `core/ciclo/config.js:94-102`). (P1)
+- [x] **CA-001-03** (B1): Un proyecto **solo puede añadir** puertas. No existe clave para desactivar, relajar ni sustituir el comando de pruebas, el contenedor sin red, el rojo obligatorio, la redacción ni el tope de gasto. Una prueba recorre todas las claves aceptadas y falla si alguna aflojaría una garantía fija. (P1)
+- [x] **CA-001-04** (B1): Sin sección `puertas:` el comportamiento es idéntico al de hoy (veredicto por el comando de pruebas). (P1)
+- [x] **CA-001-05** (B1): Cada comando se divide con `dividirComando` (`core/verificar/index.js:119`, `core/sandbox/sandbox-runner.js`): sin intérprete de órdenes, sin encadenados ni redirecciones. (P1)
 
 ### HU-002: Ejecutar las puertas en el contenedor y decidir por código de salida
 **Como** revisor
@@ -61,13 +61,13 @@ Que un proyecto pueda **declarar puertas adicionales** (tipos, linter, seguridad
 **Para** que el veredicto no dependa de la opinión de un modelo (Principio VI)
 
 **Criterios de aceptación:**
-- [ ] **CA-002-01**: Cada puerta se ejecuta con el mismo mecanismo y los mismos límites que las pruebas (`sandbox.*`, `core/ciclo/config.js:38-45`), sin red y sobre una copia. No existe ejecución de puertas en el anfitrión. (P1)
-- [ ] **CA-002-02**: El enrutador clasifica cada puerta con las reglas ya existentes: salida 0 es `pass`; 125, 126 y 127 e `infraError` son `infra_error`; tiempo agotado es `timeout`; el resto, `fail` (`core/ciclo/router.js:19-29`). La decisión nunca lee el texto de la salida. (P1)
-- [ ] **CA-002-03**: Una puerta que falla impide el éxito de la tarea aunque las pruebas pasen. Una puerta en `infra_error` o `timeout` nunca es éxito (falla cerrado), igual que el modo `exigir` de mutación (`core/ciclo/router.js:127-130`). (P1)
-- [ ] **CA-002-04**: Una puerta cuyo comando no existe en la imagen (herramienta no instalada) termina con salida distinta de cero y se informa como «puerta no ejecutable», no como éxito. La imagen no instala herramientas por su cuenta (sin red). (P1)
-- [ ] **CA-002-05**: El resultado indica **qué puerta** causó el veredicto: nombre, comando, código de salida, duración y salida acotada y redactada con `cola`/`redactar` (`core/verificar/resultado.js:61-71`). (P1)
-- [ ] **CA-002-06**: `cobertura_minima` se evalúa pasando el umbral a la propia herramienta (p. ej. su opción de «fallar bajo X %»), no leyendo un número de la salida. Si la herramienta del proyecto no admite umbral, la puerta de cobertura no está disponible y se dice así. (P1)
-- [ ] **CA-002-07**: `forge verificar` ejecuta las puertas con las mismas reglas; con `--json` aparecen en el resultado. Códigos de salida del proceso sin cambios (0, 1, 4). (P1)
+- [x] **CA-002-01** (B1, en `verificar`): Cada puerta se ejecuta con el mismo mecanismo y los mismos límites que las pruebas (`sandbox.*`, `core/ciclo/config.js:38-45`), sin red y sobre una copia. No existe ejecución de puertas en el anfitrión. (P1)
+- [x] **CA-002-02** (B1; 127 se distingue antes de `clasificar`): El enrutador clasifica cada puerta con las reglas ya existentes: salida 0 es `pass`; 125, 126 y 127 e `infraError` son `infra_error`; tiempo agotado es `timeout`; el resto, `fail` (`core/ciclo/router.js:19-29`). La decisión nunca lee el texto de la salida. (P1)
+- [x] **CA-002-03** (B1, en `verificar`): Una puerta que falla impide el éxito de la tarea aunque las pruebas pasen. Una puerta en `infra_error` o `timeout` nunca es éxito (falla cerrado), igual que el modo `exigir` de mutación (`core/ciclo/router.js:127-130`). (P1)
+- [x] **CA-002-04** (B1): Una puerta cuyo comando no existe en la imagen (herramienta no instalada) termina con salida distinta de cero y se informa como «puerta no ejecutable», no como éxito. La imagen no instala herramientas por su cuenta (sin red). (P1)
+- [x] **CA-002-05** (B1): El resultado indica **qué puerta** causó el veredicto: nombre, comando, código de salida, duración y salida acotada y redactada con `cola`/`redactar` (`core/verificar/resultado.js:61-71`). (P1)
+- [ ] **CA-002-06** (B1: sustituido, el umbral va dentro del comando de `cobertura`; sin `cobertura_minima`): `cobertura_minima` se evalúa pasando el umbral a la propia herramienta (p. ej. su opción de «fallar bajo X %»), no leyendo un número de la salida. Si la herramienta del proyecto no admite umbral, la puerta de cobertura no está disponible y se dice así. (P1)
+- [x] **CA-002-07** (B1): `forge verificar` ejecuta las puertas con las mismas reglas; con `--json` aparecen en el resultado. Códigos de salida del proceso sin cambios (0, 1, 4). (P1)
 
 ### HU-003: Ver qué criterio de aceptación no tiene prueba
 **Como** líder técnico
@@ -248,4 +248,5 @@ Una tarea de corrección declara `no_cambiar: tests/facturas.test.js`. El arregl
 ## 15. Historial de Aclaraciones
 
 - 2026-10-14: creada en borrador a partir de la investigación de estándares y del frente D del plan maestro.
+- 2026-10-17 (B1): aprobada por delegación del dueño la fase de puertas en `verificar`. Mandan los informes de `spikes/`: un clon de `SandboxRunner` por puerta (solo cambia el comando), en serie y con tiempo total acotado; el proyecto solo añade exigencias y solo baja topes; 127 es «no ejecutable»; el lector de la sección es propio y estricto (clave desconocida, `#` pegado y comilla final); sin `--sin-puertas`; `cobertura_minima` sustituido por el umbral dentro del comando.
 - 2026-10-17: aprobada por delegación del dueño solo en la fase A (evidencia encadenada). Los siete informes de `spikes/` mandan sobre este texto cuando difieren: `aprobador` es siempre `null`; la imagen se registra como `{ etiqueta, id, repoDigests }` (no `digest`); los modelos son una lista de pares pedidos; la firma deja de ser opcional cuando hay clave local; CA-005-04: el truncado de los últimos informes solo se detecta con la cabeza guardada del lado del usuario.

@@ -49,6 +49,7 @@ export function codigoDeSalida(veredicto) {
  *   salida?: string,
  *   avisos?: string[],
  *   mutacion?: Record<string, any>|null,
+ *   puertas?: Record<string, any>|null,
  * }} datos
  */
 export function crearResultado(datos) {
@@ -71,8 +72,30 @@ export function crearResultado(datos) {
     avisos: (datos.avisos ?? []).map((a) => redactar(String(a))),
     // null si no se pidió --mutacion; con --mutacion es siempre un objeto (core/verificar/mutacion.js)
     mutacion: datos.mutacion ?? null,
+    // Bloque opcional (core/puertas): SOLO si el proyecto declara puertas. Sin sección, el resultado es el de siempre.
+    ...(datos.puertas ? { puertas: sanearPuertas(datos.puertas) } : {}),
     // Con --registrar: { id, archivo } o { error }; null si no se pidió
     registro: /** @type {null | { id?: string, archivo?: string, error?: string }} */ (null),
+  };
+}
+
+/**
+ * Copia del bloque `puertas` con todo texto redactado y acotado: lo que sale hacia fuera pasa siempre por aquí.
+ * @param {Record<string, any>} p
+ */
+function sanearPuertas(p) {
+  return {
+    declaradas: (p.declaradas ?? []).map((/** @type {any} */ d) => ({ nombre: String(d.nombre), comando: redactar(String(d.comando)) })),
+    topes: p.topes,
+    ejecutadas: p.ejecutadas === true,
+    motivo: p.motivo == null ? null : redactar(String(p.motivo)),
+    resultados: (p.resultados ?? []).map((/** @type {any} */ r) => ({
+      nombre: String(r.nombre), comando: redactar(String(r.comando)), categoria: String(r.categoria),
+      codigoSalida: typeof r.codigoSalida === 'number' ? r.codigoSalida : null,
+      duracionMs: Math.max(0, Math.round(Number(r.duracionMs) || 0)),
+      salida: cola(String(r.salida ?? ''), SALIDA_MAX_BYTES),
+      motivo: r.motivo == null ? null : redactar(String(r.motivo)),
+    })),
   };
 }
 
@@ -95,10 +118,25 @@ export function textoDelResultado(r) {
   if (r.cortePorTiempo) l.push('Las pruebas se cortaron por tiempo.');
   if (r.cortePorMemoria) l.push('Las pruebas se cortaron por memoria.');
   for (const a of r.avisos) l.push(`Aviso: ${a}`);
+  if (r.puertas) l.push(...textoDePuertas(r.puertas));
   if (r.mutacion) l.push(...textoDeMutacion(r.mutacion));
   if (r.registro) l.push(r.registro.error ? `Registro: NO se pudo registrar: ${r.registro.error}` : `Registro: ${r.registro.archivo}`);
   if (r.salida) l.push('--- salida de las pruebas (acotada y redactada) ---', r.salida.trimEnd());
   return l.join('\n');
+}
+
+/** @param {Record<string, any>} p */
+function textoDePuertas(p) {
+  const etiqueta = /** @type {Record<string, string>} */ ({
+    pass: 'pasa', fail: 'FALLA', timeout: 'TIEMPO AGOTADO', infra_error: 'INFRAESTRUCTURA', no_ejecutable: 'NO EJECUTABLE', no_ejecutada: 'no se lanzó',
+  });
+  const l = [`Puertas: ${p.declaradas.map((/** @type {any} */ d) => d.nombre).join(', ')}${p.ejecutadas ? '' : ' (no se ejecutaron)'}`];
+  if (p.motivo) l.push(`  ${p.motivo}`);
+  for (const r of p.resultados) {
+    l.push(`  ${r.nombre}: ${etiqueta[r.categoria] ?? r.categoria}${r.codigoSalida !== null ? ` (código ${r.codigoSalida})` : ''} · ${r.duracionMs} ms · ${r.comando}`);
+    if (r.categoria !== 'pass' && r.salida) l.push(...r.salida.trimEnd().split('\n').slice(-12).map((/** @type {string} */ x) => `    | ${x}`));
+  }
+  return l;
 }
 
 /** @param {Record<string, any>} m */

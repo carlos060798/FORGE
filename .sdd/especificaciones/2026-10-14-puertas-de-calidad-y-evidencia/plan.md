@@ -110,6 +110,19 @@ Orden por valor y riesgo: F1 a F3 y F5 a F6 son la parte central; F7 es pequeña
 
 Toca aislamiento, firma y la superficie de configuración que decide un veredicto: **necesita revisión independiente** con la guía OWASP de agentes (`PLAN-MAESTRO.md:72`), en concreto: (1) que ninguna clave afloje una garantía, (2) la ejecución de comandos del proyecto, (3) la integridad y los límites de la cadena y la firma, (4) el tratamiento de la clave, (5) la protección contra debilitar configuraciones de herramientas.
 
+## 17. Fase B1: puertas declarables en `fragua verificar` (2026-10-17, implementada)
+
+Los spikes mandan sobre las secciones 3 a 6. Lo que cambia:
+
+- Módulos `core/puertas/config.js` (lector estricto propio; `core/ciclo/config.js` no se toca) y `core/puertas/ejecutar.js` (no `core/ciclo/puertas.js`: ese archivo cuelga del frente de perfiles y del enrutador, fase siguiente). Integración mínima en `core/verificar/index.js` y `resultado.js`; `core/evidencia/cadena.js` resume las puertas en `evidencia.puertas`.
+- Un clon del `SandboxRunner` por puerta que solo cambia `testCmd` (patrón de `core/ciclo/mutacion.js:1106`), en serie, con tiempo por puerta y total acotados. `argvRun` fija las garantías; la puerta solo aporta un comando.
+- `clasificar` no se toca: el 127 se mira antes y es `no_ejecutable`. Categorías: `pass`, `fail`, `timeout`, `infra_error`, `no_ejecutable`, `no_ejecutada`.
+- Veredicto: solo se ejecutan si las pruebas pasan; una puerta que no pasa da `falla` (código 1) con su nombre, o `infraestructura` (4) si falló el aislamiento; sin mutación en ese caso. Una puerta se ejecuta aunque la anterior falle (el implementador ve todo), salvo fallo de infraestructura o tiempo total agotado.
+- El resultado no cambia `formato: 1`: bloque opcional `puertas` (esquema `resultado-verificar` 1.2) y `evidencia.puertas`. Sin sección, nada cambia.
+- Sin `cobertura_minima`: no hay forma genérica de pasar un umbral a una herramienta; va dentro del comando. Sin `--sin-puertas` ni variable que las desactive. Intérpretes (`sh`, `bash`, `cmd`, `powershell`…) vetados como primera palabra.
+- Topes: `timeout_s` 120/600, `timeout_total_s` 300/900, `salida_max_bytes` 262144/1048576 (defecto/techo); el entorno del usuario los fija con techo y el proyecto solo los baja. Máximo cuatro puertas.
+- Pendiente (fase siguiente): nodo y enrutador del ciclo, evento `ciclo:puerta`, cableado de `protegidos.js`, Docker real (F8.2), revisión independiente.
+
 ## 16. Fase A: evidencia encadenada (2026-10-17, implementada)
 
 Los spikes mandan sobre las secciones anteriores. Lo que cambia:

