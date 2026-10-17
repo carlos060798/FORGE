@@ -130,7 +130,10 @@ describe("leer_archivo", () => {
   test("CA-002-01: devuelve el contenido de un archivo del proyecto", async () => {
     const { h, cwd } = herramientas();
     escribir(cwd, "src/a.js", "const a = 1;\n");
-    assert.deepEqual(await h.leer_archivo.ejecutar({ ruta: "src/a.js" }), { texto: "const a = 1;\n" });
+    // H-5: el contenido va delimitado como dato no confiable; el contenido en sí sale literal
+    const r = await h.leer_archivo.ejecutar({ ruta: "src/a.js" });
+    assert.equal(r.error, undefined);
+    assert.match(r.texto, /^<<<forge-dato:[0-9a-f]{24} inicio · src\/a\.js>>>\nconst a = 1;\n\n<<<forge-dato:[0-9a-f]{24} fin>>>$/);
   });
 
   test("CA-002-02: rechaza lo que sale del proyecto, lo vetado y los enlaces, con una razón", async () => {

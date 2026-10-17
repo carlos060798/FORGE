@@ -12,9 +12,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { adquirir, ErrorBloqueado } from '../ciclo/candado.js';
+import { ErrorBloqueado } from '../ciclo/candado.js';
+import { adquirirProyecto } from './candado-proyecto.js';
 import { aplicarArchivos, validarRuta } from '../ciclo/protocolo-archivos.js';
-import { cola } from '../ciclo/redactar.js';
+import { cola, redactarFormatos } from '../ciclo/redactar.js';
+import { comoArchivo } from '../ciclo/dato-no-confiable.js';
 import { Respaldo } from '../ciclo/respaldo.js';
 import { clasificar } from '../ciclo/router.js';
 
@@ -78,7 +80,7 @@ export function crearHerramientas(opciones) {
       async ejecutar() {
         let liberar;
         try {
-          liberar = adquirir(path.join(cwd, '.sdd', 'motor', 'proyecto.lock'), 'El entorno aislado de este proyecto');
+          liberar = adquirirProyecto(path.join(cwd, '.sdd', 'motor', 'proyecto.lock'), 'El entorno aislado de este proyecto');
         } catch (e) {
           if (e instanceof ErrorBloqueado) return ocupado(e.message);
           throw e;
@@ -102,7 +104,7 @@ export function crearHerramientas(opciones) {
           const salida = cola(`${r.stdout ?? ''}${r.stderr ? `\n${r.stderr}` : ''}`, 8192);
           // Un fallo del entorno es un error de la herramienta: el agente no puede corregirlo editando código
           return {
-            texto: `${resumen}\ncategoría: ${categoria}\ncódigo de salida: ${r.exitCode ?? 'ninguno'}\nduración: ${((r.durationMs ?? 0) / 1000).toFixed(1)} s\n\n--- salida (final) ---\n${salida || '(vacía)'}`,
+            texto: `${resumen}\ncategoría: ${categoria}\ncódigo de salida: ${r.exitCode ?? 'ninguno'}\nduración: ${((r.durationMs ?? 0) / 1000).toFixed(1)} s\n\n--- salida (final; contenido no confiable) ---\n${comoArchivo('salida de pruebas', salida || '(vacía)')}`,
             ...(categoria === 'infra_error' ? { error: true } : {}),
           };
         } finally {
@@ -144,8 +146,9 @@ export function crearHerramientas(opciones) {
           fs.readSync(fd, buffer, 0, buffer.length, 0);
           if (buffer.includes(0)) return error(`"${rutaPosix}" parece un archivo binario: no se devuelve.`);
           const recortado = info.size > MAX_LECTURA_BYTES;
-          const texto = buffer.toString('utf8').replace(/�+$/, '');
-          return { texto: texto + (recortado ? `\n\n[archivo recortado: se muestran ${MAX_LECTURA_BYTES} de ${info.size} bytes]` : '') };
+          // Contenido del proyecto = dato no confiable: delimitado y con los formatos de secreto redactados (revisión nº 1, H-5)
+          const texto = redactarFormatos(buffer.toString('utf8').replace(/�+$/, ''));
+          return { texto: comoArchivo(rutaPosix, texto) + (recortado ? `\n[archivo recortado: se muestran ${MAX_LECTURA_BYTES} de ${info.size} bytes]` : '') };
         } finally {
           fs.closeSync(fd);
         }
