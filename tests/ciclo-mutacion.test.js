@@ -25,6 +25,7 @@ import { CicloVerificado, lineasEstadoCiclo, textoMutacion } from "../core/ciclo
 import { NODOS } from "../core/ciclo/nodos.js";
 import { DockerCli } from "../core/sandbox/docker-cli.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 
@@ -1087,7 +1088,7 @@ describe("ciclo completo — modo exigir", () => {
 describe("forge status muestra la puntuación de cada tarea medida", () => {
   function sesion(cwd) {
     mkdirSync(join(cwd, ".sdd", "motor"), { recursive: true });
-    writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() }));
+    writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() })));
   }
 
   test("textoMutacion", () => {
@@ -1185,14 +1186,14 @@ describe("revisión independiente — recorridos del ciclo", () => {
   test("H-07: forge status y el registro muestran cuántas tareas están exentas del rojo obligatorio", async () => {
     const e = entorno({ tester: [pruebas("FUERTE")] });
     mkdirSync(join(e.cwd, ".sdd", "motor"), { recursive: true });
-    writeFileSync(join(e.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() }));
+    writeFileSync(join(e.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() })));
     await e.ciclo().ejecutar({ ...TAREA, parte_de_codigo_existente: true });
     const lineas = lineasEstadoCiclo(e.cwd);
     assert.ok(lineas.some((l) => /Exentas del rojo obligatorio \(parte_de_codigo_existente\): 1 de 1 · T1/.test(l)), lineas.join("\n"));
 
     const normal = entorno({ tester: [pruebas("FUERTE")] });
     mkdirSync(join(normal.cwd, ".sdd", "motor"), { recursive: true });
-    writeFileSync(join(normal.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() }));
+    writeFileSync(join(normal.cwd, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "r1", modo: "ciclo", creada: new Date().toISOString() })));
     await normal.ciclo().ejecutar(TAREA);
     assert.ok(!lineasEstadoCiclo(normal.cwd).some((l) => /Exentas del rojo/.test(l)));
   });

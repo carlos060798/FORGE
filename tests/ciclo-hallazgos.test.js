@@ -545,7 +545,7 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
       const lineas = eventos.map(([type, taskId, payload], i) => JSON.stringify({ id: `${i}`, type, ts: new Date().toISOString(), taskId, payload: payload ?? {} }));
       writeFileSync(join(dir, ".sdd", "events.jsonl"), lineas.join("\n") + "\n");
     }
-    if (sesion) { mkdirSync(join(dir, ".sdd", "motor"), { recursive: true }); writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesion)); }
+    if (sesion) { mkdirSync(join(dir, ".sdd", "motor"), { recursive: true }); writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada(sesion))); }
     return dir;
   }
   const T = (id) => ({ id, agente: "arquitecto", prompt: `Tarea ${id}` });
@@ -614,7 +614,7 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
     const g = new GuardadorArchivos(join(dir, ".sdd", "motor", runId));
     const e = estadoInicial({ id: "T1", agente: "arquitecto" }, { runId, cwd: dir });
     g.guardar(`${runId}:T1`, { nodo: "coder", siguiente: "revision_humana", estado: { ...e, resultado: "revision_pendiente", revision: { motivo: "iteraciones", reanudarEn: "coder" } } });
-    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" }));
+    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" })));
 
     const r = forge(dir, ["run", "--motor", "clasico"]);
     assert.equal(r.status, 1, r.stdout + r.stderr);
@@ -628,7 +628,7 @@ describe("CLI — hallazgos 1, 13, 14 y modo clásico", () => {
     const runId = "run-pausada-2";
     const g = new GuardadorArchivos(join(dir, ".sdd", "motor", runId));
     g.guardar(`${runId}:T1`, { nodo: "coder", siguiente: "sandbox", estado: estadoInicial({ id: "T1", agente: "arquitecto" }, { runId, cwd: dir }) });
-    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" }));
+    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" })));
 
     const r = forge(dir, ["resume", "--motor", "clasico"]);
     assert.equal(r.status, 1, r.stdout + r.stderr);
@@ -654,6 +654,7 @@ function require_child() {
   return createRequire(import.meta.url)("node:child_process");
 }
 import { createRequire } from "node:module";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 describe("S3 — el ciclo con motor.recuperador: semantico", () => {
   test("los agentes reciben, además de los archivos de la tarea, trozos parecidos del repositorio", async () => {

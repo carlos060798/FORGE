@@ -13,6 +13,7 @@ import { crearRecuperador } from '../recuperacion/recuperador.js';
 import { GuardadorArchivos } from './checkpoint-archivos.js';
 import { leerConfigCiclo } from './config.js';
 import { Diario, claveDe, LibroDeGasto } from './diario.js';
+import { selloValido, sesionSellada } from './sello.js';
 import { estadoInicial } from './estado.js';
 import { INICIO, REVISION } from './grafo.js';
 import { elegirMotor } from './motores/index.js';
@@ -37,7 +38,10 @@ export function sesionActual(cwd) {
   try {
     const sesion = JSON.parse(fs.readFileSync(path.join(dirMotorBase(cwd), ARCHIVO_SESION), 'utf8'));
     // El runId acaba en rutas de disco: un sesion.json ajeno no puede apuntar fuera de .sdd/motor
-    return typeof sesion?.runId === 'string' && ID_VALIDO.test(sesion.runId) ? sesion : null;
+    if (!(typeof sesion?.runId === 'string' && ID_VALIDO.test(sesion.runId))) return null;
+    // Y debe llevar el sello del usuario: un sesion.json traído por el repositorio no cuenta (sello.js)
+    const { sello, ...datos } = sesion;
+    return selloValido({ sesion: datos }, sello) ? datos : null;
   } catch {
     return null;
   }
@@ -73,7 +77,7 @@ export function tareasSinTerminarEnElProyecto(cwd) {
 export function nuevaSesion(cwd) {
   const sesion = { runId: `run-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${process.pid}`, modo: 'ciclo', creada: new Date().toISOString() };
   fs.mkdirSync(dirMotorBase(cwd), { recursive: true });
-  fs.writeFileSync(path.join(dirMotorBase(cwd), ARCHIVO_SESION), JSON.stringify(sesion, null, 2), 'utf8');
+  fs.writeFileSync(path.join(dirMotorBase(cwd), ARCHIVO_SESION), JSON.stringify(sesionSellada(sesion), null, 2), 'utf8');
   return sesion;
 }
 

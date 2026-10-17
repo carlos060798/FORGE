@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { crearServidorApi, validarTareas } from "../core/api/servidor.js";
 import { GuardadorArchivos } from "../core/ciclo/checkpoint-archivos.js";
 import { estadoInicial } from "../core/ciclo/estado.js";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TOKEN = "t".repeat(64);
@@ -267,7 +268,7 @@ describe("estado", () => {
     const e = estadoInicial({ id: "T1", agente: "tester" }, { runId, cwd: dir });
     g.guardar(`${runId}:T1`, { nodo: "coder", siguiente: "revision_humana", estado: { ...e, iteracion: 5, resultado: "revision_pendiente", revision: { motivo: "iteraciones", reanudarEn: "coder", detalle: "5 ejecuciones fallidas" } } });
     g.guardar(`${runId}:T2`, { nodo: "sandbox", siguiente: null, estado: { ...estadoInicial({ id: "T2", agente: "tester" }, { runId, cwd: dir }), resultado: "exito", iteracion: 1 } });
-    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" }));
+    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId, modo: "ciclo", creada: "2026-01-01T00:00:00Z" })));
     writeFileSync(join(dir, ".sdd", "motor", runId, "gasto.jsonl"), JSON.stringify({ taskId: "T1", usd: 0.25, inputTokens: 10, outputTokens: 2 }) + "\n");
 
     const falso = lanzadorFalso();

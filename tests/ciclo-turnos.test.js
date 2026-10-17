@@ -22,6 +22,7 @@ import { claveTurno, modoImplementador } from "../core/ciclo/turnos.js";
 import { AnthropicProvider, OllamaProvider, OpenAIProvider, StubProvider } from "../core/llm-providers/index.js";
 import { comprobarConversacion } from "../core/llm-providers/stub-provider.js";
 import { precioDe } from "../core/session-budget.js";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 const escribir = (dir, ruta, contenido) => { mkdirSync(join(dir, ruta, ".."), { recursive: true }); writeFileSync(join(dir, ruta), contenido); };
@@ -57,7 +58,7 @@ function entorno({ turnos = [], ejecuciones = [], motor = {}, presupuesto = {}, 
   escribir(cwd, "package.json", JSON.stringify({ name: "p", type: "module", scripts: { test: "node --test" } }));
   escribir(cwd, "src/grande.js", GRANDE);
   mkdirSync(join(cwd, ".sdd", "motor"), { recursive: true });
-  writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: "2026-10-09T00:00:00Z" }));
+  writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "r1", modo: "ciclo", creada: "2026-10-09T00:00:00Z" })));
 
   const e = {
     cwd, turnos: [...turnos], colaEjecuciones: [...ejecuciones],

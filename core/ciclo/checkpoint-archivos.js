@@ -11,6 +11,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import { adquirir, ErrorBloqueado } from './candado.js';
 import { validarEstado } from './estado.js';
+import { selloValido, sellar } from './sello.js';
 
 export class ErrorHiloEnUso extends Error {
   /** @param {string} threadId @param {number} pid */
@@ -64,8 +65,11 @@ export class GuardadorArchivos {
     const previos = this._archivos(threadId);
     const seq     = previos.length ? Number(previos[previos.length - 1].slice(0, 6)) + 1 : 1;
     const estado  = JSON.stringify(punto.estado);
+    const sha256  = huella(estado);
+    // El sello liga el punto a ESTE hilo: copiarlo a otro no vale (ver sello.js)
+    const sello   = sellar({ hilo: threadId, seq, nodo: punto.nodo, siguiente: punto.siguiente, sha256 });
     const cuerpo  = JSON.stringify({
-      seq, ts: new Date().toISOString(), nodo: punto.nodo, siguiente: punto.siguiente, sha256: huella(estado), estado: punto.estado,
+      seq, ts: new Date().toISOString(), nodo: punto.nodo, siguiente: punto.siguiente, sha256, sello, estado: punto.estado,
     });
 
     const destino = path.join(dir, String(seq).padStart(6, '0') + '.json');
@@ -96,6 +100,11 @@ export class GuardadorArchivos {
       }
       if (huella(JSON.stringify(punto.estado)) !== punto.sha256) {
         descartados.push({ archivo, motivo: 'la huella no coincide con el contenido' });
+        continue;
+      }
+      // La huella solo detecta daños; el sello prueba que lo escribió este usuario (no un repositorio ajeno)
+      if (!selloValido({ hilo: threadId, seq: punto.seq, nodo: punto.nodo, siguiente: punto.siguiente, sha256: punto.sha256 }, punto.sello)) {
+        descartados.push({ archivo, motivo: 'sin sello válido (no lo escribió este usuario en este equipo): se ignora' });
         continue;
       }
       const errores = validarEstado(punto.estado);

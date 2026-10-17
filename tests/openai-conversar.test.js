@@ -19,6 +19,7 @@ import { costoDe } from '../core/ciclo/presupuesto.js';
 import { OpenAIProvider } from '../core/llm-providers/index.js';
 import { precioDe } from '../core/session-budget.js';
 import { servidorFalso } from './fixtures/proveedores/servidor-falso.js';
+import { sesionSellada } from '../core/ciclo/sello.js';
 
 const CENTINELA = 'sk-centinela-openai-no-debe-salir-7c2d41';
 const HERRAMIENTAS = [{ nombre: 'leer', descripcion: 'Lee', esquema: { type: 'object', properties: {} } }];
@@ -167,7 +168,7 @@ function montar(escenarios, { ejecuciones, config = {} } = /** @type {any} */ ({
     writeFileSync(join(cwd, 'package.json'), JSON.stringify({ name: 'p', type: 'module', scripts: { test: 'node --test' } }));
     writeFileSync(join(cwd, 'src', 'a.js'), 'export const a = 1;\n');
     mkdirSync(join(cwd, '.sdd', 'motor'), { recursive: true });
-    writeFileSync(join(cwd, '.sdd', 'motor', 'sesion.json'), JSON.stringify({ runId: 'r1', modo: 'ciclo', creada: '2026-10-14T00:00:00Z' }));
+    writeFileSync(join(cwd, '.sdd', 'motor', 'sesion.json'), JSON.stringify(sesionSellada({ runId: 'r1', modo: 'ciclo', creada: '2026-10-14T00:00:00Z' })));
 
     const registro = new AgentRegistry();
     for (const name of ['arquitecto', 'tester', 'desarrollador-backend']) registro.register({ name, model: 'sonnet', systemPrompt: `Eres ${name}.`, goal: 'Objetivo' });

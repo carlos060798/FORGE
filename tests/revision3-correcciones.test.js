@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { crearHerramientasCoder } from "../core/ciclo/herramientas-coder.js";
 import { redactar, redactarFormatos } from "../core/ciclo/redactar.js";
 import { Respaldo } from "../core/ciclo/respaldo.js";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 const escribir = (dir, ruta, contenido) => { mkdirSync(join(dir, ruta, ".."), { recursive: true }); writeFileSync(join(dir, ruta), contenido); };
 
@@ -135,7 +136,7 @@ describe("N-01 en el ciclo — un cambio ajeno durante la interrupción no se to
 
     const cwd = mkdtempSync(join(tmpdir(), "forge-rev3-ciclo-"));
     mkdirSync(join(cwd, ".sdd", "motor"), { recursive: true });
-    writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "r1", modo: "ciclo", creada: "2026-10-10T00:00:00Z" }));
+    writeFileSync(join(cwd, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "r1", modo: "ciclo", creada: "2026-10-10T00:00:00Z" })));
     writeFileSync(join(cwd, "package.json"), JSON.stringify({ type: "module", scripts: { test: "node --test" } }));
     mkdirSync(join(cwd, "src"), { recursive: true });
     writeFileSync(join(cwd, "src", "g.js"), Array.from({ length: 20 }, (_, i) => `export const v${i} = ${i};`).join("\n") + "\n");

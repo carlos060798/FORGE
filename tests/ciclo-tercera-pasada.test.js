@@ -22,6 +22,7 @@ import { estadoInicial } from "../core/ciclo/estado.js";
 import { POR_DEFECTO } from "../core/ciclo/config.js";
 import { recuperarPorArchivos } from "../core/recuperacion/recuperador-archivos.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
+import { sesionSellada } from "../core/ciclo/sello.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
@@ -250,7 +251,7 @@ describe("NUEVO-1 y N8 — el modo clásico no ejecuta código del modelo; las d
     pausar(dir, "run-vieja-1");
     // Una sesión posterior, vacía, es la que figura como actual
     mkdirSync(join(dir, ".sdd", "motor", "run-nueva-2"), { recursive: true });
-    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify({ runId: "run-nueva-2", modo: "ciclo", creada: "2026-01-02T00:00:00Z" }));
+    writeFileSync(join(dir, ".sdd", "motor", "sesion.json"), JSON.stringify(sesionSellada({ runId: "run-nueva-2", modo: "ciclo", creada: "2026-01-02T00:00:00Z" })));
 
     assert.deepEqual(tareasSinTerminarEnElProyecto(dir), ["T1"]);
     const r = forge(dir, ["run", "--motor", "clasico", "--tasks", "tareas.json"]);
