@@ -69,15 +69,17 @@ function buscarSecreto(contenido, anterior) {
 
 // ── destinos ─────────────────────────────────────────────────────────────────
 
-const EXT_DOCUMENTACION = /\.(?:md|markdown|mdx|txt|rst|adoc|html?|csv|log)$/i;
+const EXT_DOCUMENTACION = /\.(?:md|markdown|mdx|txt|rst|adoc|csv|log)$/i;
+const EXT_MARCADO = /\.(?:html?|xhtml|svg)$/i;   // el navegador los ejecuta: son código (revisión nº 1, H-3)
 const EXT_SCRIPT = /\.(?:sh|bash|zsh|fish|ps1|psm1|bat|cmd)$/i;
-const EXT_CONFIG = /\.(?:json|jsonc|ya?ml|toml|ini|cfg|conf|properties|xml|tf|env|plist)$/i;
+const EXT_CONFIG = /\.(?:json|jsonc|json5|ya?ml|toml|ini|cfg|conf|properties|xml|tf|env|plist)$/i;
 const NOMBRES_SCRIPT = /^(?:makefile|gnumakefile|dockerfile(?:\..*)?|.*\.dockerfile|jenkinsfile|vagrantfile)$/i;
 
-/** @returns {'documentacion' | 'script' | 'configuracion' | 'codigo'} */
+/** @returns {'documentacion' | 'marcado' | 'script' | 'configuracion' | 'codigo'} */
 function tipoDeArchivo(rutaPosix) {
   const base = path.posix.basename(rutaPosix);
   if (EXT_DOCUMENTACION.test(base)) return 'documentacion';
+  if (EXT_MARCADO.test(base)) return 'marcado';
   if (EXT_SCRIPT.test(base) || NOMBRES_SCRIPT.test(base)) return 'script';
   if (EXT_CONFIG.test(base) || /^\.env(?:\..*)?$/i.test(base)) return 'configuracion';
   return 'codigo';
@@ -94,18 +96,104 @@ const ESPACIOS_DE_NOMBRES = new Set([
 ]);
 
 /** Llamadas de red en código. */
-const RE_LLAMADA_RED = /\b(?:fetch|axios|got|superagent|ky|requests?|urllib\d?|urlopen|httpx|aiohttp|http\.(?:get|post|put|request|newrequest|client)|https\.(?:get|request)|net\.(?:connect|createconnection)|createconnection|socket\.connect|websocket|eventsource|xmlhttprequest|httpclient|webclient|restclient|resttemplate|reqwest|curl_init|file_get_contents|open-uri|net::http|dial(?:context)?)\b/i;
+const RE_LLAMADA_RED = /\b(?:fetch|axios|got|superagent|ky|requests?|urllib\d?|urlopen|httpx|aiohttp|http\.(?:get|post|put|request|newrequest|client)|https\.(?:get|request)|net\.(?:connect|createconnection)|createconnection|socket\.connect|websocket|eventsource|xmlhttprequest|httpclient|webclient|restclient|resttemplate|reqwest|curl_init|file_get_contents|open-uri|net::http|dial(?:context)?|sendbeacon|importscripts|new\s+image|window\.open)\b|\bimport\s*\(|\.(?:src|href)\s*=|\burl\s*\(|@import\b|\bxlink:href\b/i;
 /** Comandos de red en scripts. */
 const RE_COMANDO_RED = /\b(?:curl|wget|nc|ncat|netcat|ssh|scp|sftp|rsync|telnet|ftp|invoke-webrequest|invoke-restmethod|iwr|irm|git\s+clone|git\s+remote\s+add|git\s+fetch|git\s+pull|git\s+push)\b/i;
+/** Ejecución de un comando desde código: `exec("curl …")`, `spawn("wget", …)`, `os.system(…)`. */
+const RE_EJECUTAR_COMANDO = /\b(?:exec|execsync|execfile|execfilesync|spawn|spawnsync|system|popen|check_output|check_call|shell_exec|passthru|proc_open|subprocess\.\w+|child_process)\b/i;
 const RE_COMANDO_DE_HOST = /\b(ssh|sftp|telnet|nc|ncat|netcat)\s+((?:-\S+\s+(?:\d+\s+)?)*)([^\s|;&<>"']+)/i;
 const RE_COMANDO_DE_COPIA = /\b(?:scp|rsync)\b[^\n]*?\s(?:[\w.-]+@)?([A-Za-z0-9][A-Za-z0-9.-]*):[^\s:]/i;
 
-function esLineaDeComentario(linea, tipo) {
-  const t = linea.trim();
-  if (t === '') return true;
-  if (tipo === 'codigo') return /^(?:\/\/|\/\*|\*|#(?!!)|--|;|%)/.test(t) && !/^#\s*include\b/.test(t);
-  if (tipo === 'script') return /^(?:#(?!!)|rem\b|::|\/\/)/i.test(t);
-  return /^(?:#|;|\/\/|<!--)/.test(t);   // configuración
+// ── comentarios, por lenguaje (revisión nº 1, H-2) ───────────────────────────
+//
+// «Comentario» depende del lenguaje: `;` lo es en ini o lisp, no en JavaScript; `--` en SQL o Lua, no en
+// Go; `*` sólo dentro de un bloque `/* */` abierto. Una extensión desconocida sólo reconoce `//` y `/*`.
+// Ante la duda, NO es comentario: se mira la línea.
+
+/** @typedef {{ linea: string[], bloque: [string, string][], ambiguos?: string[] }} EstiloComentario */
+
+const EXT_ALMOHADILLA = /\.(?:pyw?|rb|pl|pm|r|jl|exs?|coffee|cr|nim|tcl|php|ya?ml|toml|env|cfg|conf|properties|tf)$/i;
+const EXT_PUNTO_Y_COMA = /\.(?:ini|inf|asm|s|lisp|lsp|el|clj[sc]?|scm|rkt|cl|properties|cfg|conf)$/i;
+const EXT_PORCENTAJE = /\.(?:tex|sty|cls|m|erl|hrl)$/i;
+const EXT_DOBLE_GUION = /\.(?:sql|lua|hs|elm|ada|adb|ads|vhdl?)$/i;
+const EXT_MARCAS = /\.(?:html?|xhtml|svg|xml|plist)$/i;
+
+/** @param {string} rutaPosix @param {string} tipo @returns {EstiloComentario} */
+function estiloDeComentario(rutaPosix, tipo) {
+  const base = path.posix.basename(rutaPosix);
+  /** @type {string[]} */ const linea = [];
+  /** @type {string[]} */ const ambiguos = [];
+  /** @type {[string, string][]} */ const bloque = [];
+  if (tipo === 'script') {
+    return { linea: ['#', 'rem ', '::', '//'], bloque: [] };   // `#!` se trata aparte
+  }
+  if (EXT_MARCAS.test(base)) bloque.push(['<!--', '-->']);
+  if (tipo === 'marcado') bloque.push(['/*', '*/']), linea.push('//');   // <script> y <style> dentro del documento
+  if (tipo === 'codigo') {
+    linea.push('//');
+    bloque.push(['/*', '*/']);
+    if (EXT_ALMOHADILLA.test(base)) linea.push('#');
+    if (EXT_PUNTO_Y_COMA.test(base)) ambiguos.push(';');
+    if (EXT_PORCENTAJE.test(base)) ambiguos.push('%');
+    if (EXT_DOBLE_GUION.test(base)) ambiguos.push('--');
+  } else if (tipo === 'configuracion') {
+    if (/\.(?:jsonc|json5|tf)$/i.test(base)) { linea.push('//'); bloque.push(['/*', '*/']); }
+    if (EXT_ALMOHADILLA.test(base) || /^\.env/i.test(base)) linea.push('#');
+    if (EXT_PUNTO_Y_COMA.test(base)) ambiguos.push(';');
+  }
+  return { linea, bloque, ambiguos };
+}
+
+/** ¿Lo que sigue a un marcador de comentario es, además, una llamada de red ejecutable? */
+const RE_RESTO_EJECUTABLE = new RegExp(`(?:${RE_LLAMADA_RED.source}|${RE_EJECUTAR_COMANDO.source})\\s*[(\`'"]`, 'i');
+
+/** @param {string} t línea ya recortada @param {EstiloComentario} e */
+function empiezaComoComentario(t, e) {
+  for (const m of e.linea) {
+    if (t.toLowerCase().startsWith(m)) return !(m === '#' && t.startsWith('#!'));
+  }
+  for (const m of e.ambiguos ?? []) {
+    if (!t.startsWith(m)) continue;
+    // `;fetch("…")` (la llamada pegada al marcador) no es un comentario; `-- fetch(…)` con espacio sí. La duda se resuelve hacia «no es comentario»
+    const resto = t.slice(m.length);
+    return /^\s/.test(resto) || !RE_RESTO_EJECUTABLE.test(resto);
+  }
+  return false;
+}
+
+/**
+ * Para cada línea: ¿es sólo comentario (o vacía)? Lleva el estado de los bloques de comentario de las barras y de las marcas.
+ * Un bloque sólo se abre al principio de una línea: un `/*` dentro de una cadena no esconde lo que sigue.
+ * @param {string[]} lineas @param {EstiloComentario} estilo
+ * @returns {boolean[]}
+ */
+function mapaDeComentarios(lineas, estilo) {
+  /** @type {boolean[]} */
+  const mapa = [];
+  /** @type {string | null} */
+  let cierre = null;
+  for (const linea of lineas) {
+    const t = linea.trim();
+    if (t === '') { mapa.push(true); continue; }
+    if (cierre !== null) {
+      const i = t.indexOf(cierre);
+      if (i < 0) { mapa.push(true); continue; }
+      const resto = t.slice(i + cierre.length).trim();
+      cierre = null;
+      mapa.push(resto === '' || empiezaComoComentario(resto, estilo));
+      continue;
+    }
+    const abre = estilo.bloque.find(([a]) => t.startsWith(a));
+    if (abre) {
+      const j = t.indexOf(abre[1], abre[0].length);
+      if (j < 0) { cierre = abre[1]; mapa.push(true); continue; }
+      const resto = t.slice(j + abre[1].length).trim();
+      mapa.push(resto === '' || empiezaComoComentario(resto, estilo));
+      continue;
+    }
+    mapa.push(empiezaComoComentario(t, estilo));
+  }
+  return mapa;
 }
 
 function esReservado(host) {
@@ -138,10 +226,22 @@ function hostsDeUrl(texto) {
   return hosts;
 }
 
+/** Hosts de las URL que un documento de marcado CARGA (no las de un enlace `<a>` que alguien debe pulsar). */
+function hostsDeCarga(linea) {
+  const hosts = [];
+  for (const m of linea.matchAll(RE_URL)) {
+    const antes = linea.slice(Math.max(0, (m.index ?? 0) - 120), m.index);
+    if (/<a\s[^>]*$/i.test(antes)) continue;
+    if (/(?:\b(?:src|srcset|poster|data|action|formaction|ping|href|xlink:href)\s*=\s*["']?\s*(?:[^"'\s]*,\s*)?|\burl\s*\(\s*["']?\s*|@import\s+["']?\s*)$/i.test(antes)) hosts.push(m[1].toLowerCase());
+  }
+  return hosts;
+}
+
 /**
  * Destinos que una línea de código/script/configuración contacta.
  * @param {string} linea @param {string} previa  línea anterior (una llamada puede partirse en dos)
- * @param {'script'|'configuracion'|'codigo'} tipo
+ * @param {'script'|'configuracion'|'codigo'|'marcado'} tipo
+ * @returns {string[]}
  */
 function destinosDeLinea(linea, previa, tipo) {
   /** @type {string[]} */
@@ -156,6 +256,7 @@ function destinosDeLinea(linea, previa, tipo) {
     if (c) hosts.push(c[1].toLowerCase());
     return hosts.filter((x) => x !== '' && !x.startsWith('-') && !/^\d+$/.test(x) && !x.startsWith('$'));
   }
+  if (tipo === 'marcado') hosts.push(...hostsDeCarga(linea));
   // código: una URL con esquema en una línea que llama a la red (o la sigue de cerca)
   if (RE_LLAMADA_RED.test(linea) || RE_LLAMADA_RED.test(previa)) {
     hosts.push(...hostsDeUrl(linea));
@@ -163,7 +264,29 @@ function destinosDeLinea(linea, previa, tipo) {
       for (const m of linea.matchAll(/["']((?:[a-z0-9-]+\.)+[a-z]{2,})["']/gi)) hosts.push(m[1].toLowerCase());
     }
   }
-  return hosts;
+  // `exec("curl …")`, `spawn("wget", […])`: se mira como un script
+  if (RE_EJECUTAR_COMANDO.test(linea) || RE_EJECUTAR_COMANDO.test(previa)) {
+    if (RE_COMANDO_RED.test(linea) || RE_COMANDO_RED.test(previa)) hosts.push(...destinosDeLinea(`${previa} ${linea}`, '', 'script'));
+  }
+  return [...new Set(hosts)];
+}
+
+/**
+ * Hosts e IP que aparecen en el CÓDIGO de un archivo (no en comentarios): lo que ya contactaba.
+ * @param {string} rutaPosix @param {string} texto
+ */
+function conocidosDe(rutaPosix, texto) {
+  const tipo = tipoDeArchivo(rutaPosix);
+  if (tipo === 'documentacion') return new Set();
+  const lineas = texto.split(/\r?\n/);
+  const mapa = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
+  const conocidos = new Set();
+  lineas.forEach((l, i) => {
+    if (mapa[i]) return;
+    for (const h of hostsDeUrl(l)) conocidos.add(h);
+    for (const o of ipv4(l)) conocidos.add(o.join('.'));
+  });
+  return conocidos;
 }
 
 /**
@@ -174,13 +297,14 @@ function destinosDeLinea(linea, previa, tipo) {
 function buscarDestinos(rutaPosix, contenido, anterior, permitidos) {
   const tipo = tipoDeArchivo(rutaPosix);
   if (tipo === 'documentacion') return { avisos: [] };
-  const conocidos = new Set(anterior === null ? [] : [...hostsDeUrl(anterior), ...ipv4(anterior).map((o) => o.join('.'))]);
+  const conocidos = anterior === null ? new Set() : conocidosDe(rutaPosix, anterior);
   const lineas = contenido.split(/\r?\n/);
+  const comentario = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
   const avisos = [];
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
-    if (esLineaDeComentario(linea, tipo)) continue;
-    for (const host of destinosDeLinea(linea, i > 0 ? lineas[i - 1] : '', tipo)) {
+    if (comentario[i]) continue;
+    for (const host of destinosDeLinea(linea, i > 0 && !comentario[i - 1] ? lineas[i - 1] : '', tipo)) {
       if (esReservado(host) || conocidos.has(host) || destinoPermitido(host, permitidos)) continue;
       return { destino: { host: host.slice(0, 100), linea: i + 1 }, avisos };
     }
