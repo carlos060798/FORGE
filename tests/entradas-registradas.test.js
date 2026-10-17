@@ -30,9 +30,11 @@ const REGISTRO = {
   "core/ciclo/nodos.js::seccionProyecto": "delimitado",
   "core/ciclo/nodos.js::seccionMapa": "delimitado",
   "core/ciclo/nodos.js::seccionImplementacionActual": "delimitado",
-  "core/ciclo/nodos.js::leerPruebas": "delimitado",
+  // Lee las rutas que guarda el estado (validadas con validarRuta). Devuelve el contenido en bruto: SUS DOS LLAMADORES
+  // (nodos.js::leerPruebas y pruebas-confiables.js::textoDeArchivos) lo envuelven con comoArchivo; lo vigila
+  // tests/estado-rutas-validadas.test.js ("los llamadores delimitan")
+  "core/ciclo/protocolo-archivos.js::leerArchivosDeEstado": "no_va_al_modelo",   // devuelve el contenido en bruto; la delimitación es de sus llamadores
   "core/ciclo/nodos.js::sandbox": "no_va_al_modelo",                               // detector de sospecha
-  "core/ciclo/pruebas-confiables.js::textoDeArchivos": "delimitado",
   // recuperador: devuelve fragmentos; el ciclo los delimita en nodos.js (contextoComoDato)
   "core/recuperacion/recuperador-archivos.js::leerComoTexto": "no_va_al_modelo",   // lectura acotada; el llamador devuelve el fragmento
   "core/recuperacion/recuperador-archivos.js::recuperarPorArchivos": "delimitado",

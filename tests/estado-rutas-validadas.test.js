@@ -65,3 +65,23 @@ describe('leerArchivosDeEstado', () => {
     assert.equal(r[0].rechazo, undefined);
   });
 });
+
+describe('los llamadores delimitan lo que leen del estado', () => {
+  test('todo uso de leerArchivosDeEstado envuelve el contenido con comoArchivo', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const { dirname, join: unir } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const raiz = unir(dirname(fileURLToPath(import.meta.url)), '..', 'core');
+    const archivos = [];
+    const recorrer = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = unir(d, e.name); if (e.isDirectory()) recorrer(p); else if (e.name.endsWith('.js')) archivos.push(p); } };
+    recorrer(raiz);
+    const usos = archivos.filter((f) => !f.endsWith('protocolo-archivos.js') && /leerArchivosDeEstado\s*\(/.test(readFileSync(f, 'utf8')));
+    assert.ok(usos.length >= 2, 'se esperan al menos los dos llamadores conocidos');
+    for (const f of usos) {
+      const txt = readFileSync(f, 'utf8');
+      // cada llamada a leerArchivosDeEstado va seguida, en las siguientes líneas, de comoArchivo
+      const trozos = txt.split(/leerArchivosDeEstado\s*\(/).slice(1);
+      for (const t of trozos) assert.ok(/comoArchivo\s*\(/.test(t.slice(0, 400)), `${f}: un uso de leerArchivosDeEstado no delimita con comoArchivo`);
+    }
+  });
+});
