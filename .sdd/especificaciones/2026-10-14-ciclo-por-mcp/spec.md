@@ -2,9 +2,9 @@
 id: 2026-10-14-ciclo-por-mcp
 titulo: "Ciclo por MCP: otra herramienta delega en Fragua la verificación (y, más tarde, el ciclo) sin poder gastar, escribir fuera ni publicar"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-14
-actualizada: 2026-10-14
+actualizada: 2026-10-17
 autor: humano  # humano | importado
 constitucion_version: 1.1.0
 etiquetas: [mcp, interoperar, seguridad, gasto, aprobacion, verificacion]
@@ -12,7 +12,7 @@ etiquetas: [mcp, interoperar, seguridad, gasto, aprobacion, verificacion]
 
 # Especificación: `ciclo-por-mcp`
 
-> **Estado: borrador.** Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Es el frente E de `PLAN-MAESTRO.md` (§5) y la oleada 4 (§7). Recoge la exclusión que dejó `2026-10-13-verificar-sin-modelo` (§8: «Exponer este comando por MCP: va en la especificación del ciclo por MCP, con su revisión de seguridad»).
+> **Estado: en implementación, solo la fase 1 (2026-10-17).** El dueño pidió avanzar y la especificación se trata como aprobada por delegación; las fases 2 y 3 NO se implementan. Los informes de `spikes/` mandan sobre lo que diga el texto si difieren (ver §15). Redactada por un agente por encargo del dueño (2026-10-14); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Es el frente E de `PLAN-MAESTRO.md` (§5) y la oleada 4 (§7). Recoge la exclusión que dejó `2026-10-13-verificar-sin-modelo` (§8: «Exponer este comando por MCP: va en la especificación del ciclo por MCP, con su revisión de seguridad»).
 
 ## 1. Contexto y Motivación
 
@@ -60,7 +60,7 @@ Ninguna fase permite escribir fuera del proyecto, publicar, desplegar, ampliar p
 - [ ] **CA-001-04**: Sin Docker devuelve un error de herramienta (`error: true`) y no ejecuta nada en el equipo. No existe argumento para saltar el aislamiento. (P1)
 - [ ] **CA-001-05**: El módulo no importa proveedores de modelo, integraciones ni claves; una prueba estática lo vigila, como la de `verificar`. (P1)
 - [ ] **CA-001-06**: Cero gasto en modelos por construcción; el coste es solo de CPU y Docker, acotado por CA-004-xx. (P1)
-- [ ] **CA-001-07**: Mutación (`mutacion: true`) se admite solo con `archivos` (lista de rutas relativas validadas con `validarRuta`), nunca con `desde` en la primera entrega (el spike S0.2 de `verificar` decide si `desde` es seguro). (P2)
+- [x] **CA-001-07**: Mutación se pide con el argumento `mutacion_archivos` (1 a 5 rutas relativas a archivos existentes, validadas con `validarRuta`); `desde` NO se ofrece al llamante remoto (decisión de la implementación, §15). (P2)
 
 ### HU-002: El servidor se arranca con un perfil cerrado
 **Como** usuario
@@ -243,5 +243,15 @@ Error de herramienta con lo que falta; nada se ejecuta en el equipo.
 - OWASP GenAI, Top 10 para aplicaciones agénticas 2026 (ASI01, ASI02, ASI03, ASI09).
 
 ## 15. Historial de Aclaraciones
+
+- 2026-10-17: el dueño pidió avanzar; se trata como aprobada por delegación y se implementa SOLO la fase 1. Decisiones que se apartan o precisan el texto, con su evidencia:
+  - **El perfil por defecto sigue siendo `completo`** (las tres herramientas de siempre); `--perfil verificacion` (o `FRAGUA_MCP_PERFIL`) es el nuevo. Spike `protocolo-y-limites.md`: cambiar el valor por defecto rompe configuraciones que usan `escribir_archivo`. Un perfil desconocido no arranca.
+  - **`desde` fuera**: el spike de mutación de `verificar-sin-modelo` lo muestra como la única vía con `git` y texto del llamante; con `archivos` el llamante solo nombra archivos ya presentes que pasan `validarRuta`. El argumento se llama `mutacion_archivos` y es el único que acepta la herramienta.
+  - **Sin descargas ni construcciones**: `pull` y `build` de Docker se rechazan desde el servidor (spike `consumo-verificar.md`): sin imagen preparada, error de infraestructura.
+  - **`validarArgumentos` valida ahora arrays, booleanos y números** (spike `protocolo-y-limites.md`); antes ignoraba esos tipos.
+  - **Tiempo máximo y cancelación**: 300 s por defecto, del entorno del usuario (`FRAGUA_MCP_TIMEOUT_S`, techo 1800). Al agotarse o cancelarse (revisión sin estado), el servidor detiene el contenedor por nombre. Con las revisiones con saludo la cancelación no llega a la herramienta: límite documentado y fijado por una prueba.
+  - **Candado**: se usa `.sdd/motor/proyecto.lock` (el de `ejecutar_pruebas` y los ciclos) además del de `verificar`; los topes por hora y por día (20/200 por defecto, sin medir: S0.3 sigue pendiente de Docker) van en un contador firmado del estado del usuario.
+  - **Autenticación**: stdio no tiene; `docs/mcp-verificar.md` dice qué se garantiza (el cliente es el proceso que lanza el servidor) y qué no.
+  - Sin hacer en esta entrega: `fragua doctor` con el perfil (CA-002-05), cliente MCP real de extremo a extremo (F3.2), revisión independiente (F3.5), `verificacion.md` (F3.6).
 
 - 2026-10-14: creada en borrador. Sin aclaraciones del dueño todavía.

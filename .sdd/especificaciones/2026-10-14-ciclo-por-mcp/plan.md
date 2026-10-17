@@ -1,6 +1,6 @@
 # Plan de implementación: `ciclo-por-mcp`
 
-> Spec: `spec.md` · Estado: **borrador, sin aprobar** · Decisiones existentes: ADR-12 (MCP sin dependencias), ADR-15 (sin cliente MCP en los nodos), ADR-22 (decisiones de seguridad en el entorno del usuario)
+> Spec: `spec.md` · Estado: **fase 1 en implementación (aprobada por delegación del dueño, 2026-10-17); fases 2 y 3 sin implementar** · Decisiones existentes: ADR-12 (MCP sin dependencias), ADR-15 (sin cliente MCP en los nodos), ADR-22 (decisiones de seguridad en el entorno del usuario)
 
 ## 1. Suposiciones tomadas (corregibles)
 
@@ -9,7 +9,7 @@
 | 1 | Alcance de la implementación | Solo fase 1 (`verificar`); fases 2 y 3 quedan diseñadas | Más fases en esta entrega |
 | 2 | Perfil | `--perfil verificacion` en `fragua mcp` | Un comando nuevo |
 | 3 | Topes | 20/hora y 200/día, a confirmar con S0.3 | Constantes |
-| 4 | `desde` en mutación | Fuera de la primera entrega | Depende del spike S0.2 de `verificar` |
+| 4 | `desde` en mutación | Fuera: el argumento es `mutacion_archivos` (decisión con evidencia de los spikes, ver spec §15) | Exigiría ejecutar git con texto del llamante |
 | 5 | Transporte | Solo stdio | HTTP exigiría otra spec |
 
 ## 2. Principios del diseño
@@ -25,8 +25,9 @@
 | Módulo | Responsabilidad |
 |---|---|
 | `core/mcp/perfiles.js` (nuevo) | Perfiles y sus listas cerradas; resuelve el perfil efectivo (usuario ∩ proyecto) |
-| `core/mcp/herramientas-verificar.js` (nuevo) | Herramienta `verificar`: valida argumentos, llama a `core/verificar/index.js`, aplica topes y auditoría |
+| `core/mcp/herramientas-verificar.js` (nuevo) | Herramienta `verificar`: valida argumentos, llama a `core/verificar/index.js`, aplica topes y auditoría; cubre el `DockerCli` (sin `pull`/`build`, mata el contenedor al cortar) |
 | `core/mcp/limites.js` (nuevo) | Contadores por hora y día en el estado del usuario; interruptor |
+| `core/mcp/protocolo.js` | `validarArgumentos` valida arrays, booleanos y números (spike S0.1) |
 | `core/mcp/servidor.js` | Acepta `perfil` y construye las herramientas según el perfil (cambio mínimo) |
 | `core/mcp/herramientas-ciclo.js` (nuevo, fase 2-3) | `estado_ciclo` y `proponer_ciclo` |
 | `core/ciclo/solicitudes.js` (nuevo, fase 3) | Cola de solicitudes firmada; reutiliza `estado-usuario.js` |

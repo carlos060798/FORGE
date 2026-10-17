@@ -12,12 +12,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { crearHerramientas } from './herramientas.js';
+import { crearHerramientaVerificar } from './herramientas-verificar.js';
+import { aplicarPerfil, resolverPerfil } from './perfiles.js';
 import { ServidorMcp } from './protocolo.js';
 
 const INSTRUCCIONES = [
   'Herramientas de FORGE sobre un proyecto.',
   'Usa ejecutar_pruebas para comprobar tu trabajo: corre en un contenedor aislado y no ejecuta nada en el equipo del usuario.',
   'escribir_archivo rechaza lo vetado y lo que requiere revisión humana (dependencias, configuración ejecutable): no insistas, díselo al usuario.',
+].join(' ');
+
+const INSTRUCCIONES_VERIFICACION = [
+  'Fragua: una sola herramienta, verificar.',
+  'Ejecuta las pruebas del proyecto en un contenedor aislado y devuelve un veredicto (pasa, falla, sin_pruebas, infraestructura).',
+  'Solo "pasa" es éxito: cero pruebas ejecutadas no lo es. No escribe, no publica, no gasta y no acepta comandos.',
+  'Si responde ocupado, apagado, cupo o tiempo, díselo al usuario: no insistas en bucle.',
 ].join(' ');
 
 function versionDelPaquete() {
@@ -76,16 +85,24 @@ async function crearRunnerDocker(cwd) {
 }
 
 /**
- * @param {{ cwd?: string, entrada?: import('stream').Readable, salida?: import('stream').Writable }} [opciones]
+ * @param {{ cwd?: string, perfil?: string, env?: Record<string, string|undefined>, cli?: import('../sandbox/docker-cli.js').DockerCli,
+ *   entrada?: import('stream').Readable, salida?: import('stream').Writable }} [opciones]
  * @returns {Promise<void>} se resuelve cuando el cliente cierra la conexión
  */
 export function iniciarServidor(opciones = {}) {
   const cwd = path.resolve(opciones.cwd ?? process.cwd());
+  // El perfil lo elige el usuario (argumento de arranque o su entorno); un nombre desconocido no arranca
+  const p = resolverPerfil({ argumento: opciones.perfil, env: opciones.env });
+  if (p.ok === false) return Promise.reject(new Error(p.error));
+  const perfil = p.perfil;
+  const herramientas = perfil === 'verificacion'
+    ? [crearHerramientaVerificar({ cwd, env: opciones.env, cli: opciones.cli })]
+    : crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) });
   const servidor = new ServidorMcp({
     nombre: 'forge',
     version: versionDelPaquete(),
-    instrucciones: INSTRUCCIONES,
-    herramientas: crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) }),
+    instrucciones: perfil === 'verificacion' ? INSTRUCCIONES_VERIFICACION : INSTRUCCIONES,
+    herramientas: aplicarPerfil(herramientas, perfil),
     entrada: opciones.entrada ?? process.stdin,
     salida: opciones.salida ?? process.stdout,
     avisar: (m) => process.stderr.write(`[forge mcp] ${m}\n`),
