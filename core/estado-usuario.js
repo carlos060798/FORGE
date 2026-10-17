@@ -130,8 +130,25 @@ export function directorioDeEstado(cwd, env = process.env) {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   try { if (process.platform !== 'win32') chmodSync(dir, 0o700); } catch { /* no es nuestro: se sigue */ }
   const st = lstatSync(dir);
-  if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('El directorio de estado de las integraciones no es una carpeta normal; no se usa.');
+  comprobarPropietarioDelEstado(st, typeof process.getuid === 'function' ? process.getuid() : undefined);
   return dir;
+}
+
+/**
+ * H-5: la carpeta de estado que YA existía debe ser del propio usuario. En un sistema compartido otro
+ * usuario podría haberla creado antes (con una clave que él conoce).
+ *   - POSIX: el uid del dueño es el propio y el modo no da permisos a grupo ni a otros.
+ *   - Windows: no hay uid en Node; solo se comprueba lo posible (no es enlace ni unión, es carpeta). La
+ *     protección real es la ACL heredada de %LOCALAPPDATA% (límite conocido y documentado).
+ * @param {{ isDirectory(): boolean, isSymbolicLink(): boolean, uid?: number, mode?: number }} st resultado de lstat
+ * @param {number|undefined} uidPropio
+ * @param {string} [plataforma]
+ */
+export function comprobarPropietarioDelEstado(st, uidPropio, plataforma = process.platform) {
+  if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('El directorio de estado de las integraciones no es una carpeta normal; no se usa.');
+  if (plataforma === 'win32' || uidPropio === undefined) return;
+  if (st.uid !== uidPropio) throw new Error('El directorio de estado de las integraciones no es tuya (otro usuario la creó); no se usa. Bórrala o define FRAGUA_HOME en una carpeta tuya.');
+  if (((st.mode ?? 0) & 0o077) !== 0) throw new Error('El directorio de estado de las integraciones tiene permisos para el grupo u otros usuarios y no se pudo cerrar a 0700; no se usa.');
 }
 
 /**
