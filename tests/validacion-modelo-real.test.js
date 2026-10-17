@@ -254,7 +254,7 @@ describe("H6 y H7 — lo que reciben los agentes en el ciclo", () => {
     assert.match(tester.userPrompt, /## Proyecto[\s\S]*módulos ES/);
     assert.match(coder1.userPrompt, /## Proyecto[\s\S]*módulos ES/);
     assert.doesNotMatch(coder1.userPrompt, /Tu implementación actual/, "en el primer intento no hay versión anterior");
-    assert.match(coder2.userPrompt, /## Tu implementación actual[\s\S]*### src\/calc\.js\nexport const version = 1;/);
+    assert.match(coder2.userPrompt, /## Tu implementación actual[\s\S]*inicio · src\/calc\.js>>>\nexport const version = 1;/);
   });
 });
 

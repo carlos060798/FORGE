@@ -33,6 +33,10 @@ export const MOTIVOS = {
   no_es_prueba: 'con el rol "pruebas" solo se pueden escribir archivos de prueba',
   prueba_inmutable: 'con el rol "implementacion" no se pueden escribir archivos de prueba',
   error_escritura: 'no se pudo escribir (¿la ruta es un directorio o cuelga de un archivo?)',
+  secreto: 'el contenido parece contener un secreto (clave, token o contraseña): no se escribe',
+  destino_nuevo: 'el contenido apunta a un destino de red nuevo que el usuario no ha autorizado: requiere revisión humana',
+  contenido_ilegible: 'el contenido no se pudo comprobar (binario o de más de 1 MB)',
+  marcador_de_dato: 'el contenido lleva un marcador de dato («<<<forge-dato:…»), que no es parte de ningún archivo',
 };
 
 const error = (texto) => ({ texto, error: true });

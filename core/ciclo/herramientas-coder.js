@@ -25,6 +25,7 @@ import { cola, ocultarCuerposDeClave, redactarFormatos } from './redactar.js';
 import { clasificar } from './router.js';
 import { MOTIVOS as MOTIVOS_RUTA } from '../mcp/herramientas.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
+import { comoArchivo, nombreListable, MARCA_DATO } from './dato-no-confiable.js';
 
 /** Tamaño máximo del texto de un resultado. Lo que no cabe se recorta, con aviso. */
 export const MAX_RESULTADO_BYTES = 32 * 1024;
@@ -44,7 +45,14 @@ const MOTIVOS = {
   archivo_inexistente: 'el archivo no existe: para crearlo usa "contenido" en lugar de "buscar" y "reemplazar"',
   no_es_texto: 'no es un archivo de texto',
   demasiado_grande: `supera el máximo de ${MAX_ARCHIVO_BYTES / 1024} KB`,
+  secreto: 'el contenido parece contener un secreto (clave, token o contraseña): los secretos no se escriben en archivos del proyecto; usa una variable de entorno o un valor de ejemplo claramente falso',
+  destino_nuevo: 'el contenido apunta a un destino de red nuevo que el usuario no ha autorizado',
+  contenido_ilegible: 'el contenido no se pudo comprobar (es binario o supera 1 MB)',
+  marcador_de_dato: 'el contenido lleva un marcador de dato («<<<forge-dato:…»), que no es parte de ningún archivo',
 };
+
+/** Rechazos que detienen el trabajo para que lo mire una persona. */
+const MOTIVOS_DE_REVISION = ['dependencias', 'configuracion', 'destino_nuevo', 'contenido_ilegible'];
 
 const RUTA = { type: 'string', maxLength: 1024, description: 'Ruta relativa a la raíz del proyecto, con "/"' };
 
@@ -195,6 +203,7 @@ function recortarLineas(lineas, maxBytes) {
  * @param {{
  *   cwd: string,
  *   vetadas?: string[],
+ *   politicaDestinos?: string[],
  *   pruebas?: string[],
  *   respaldo: { registrar: (rutaPosix: string) => void },
  *   runner: { test: (cwd: string) => Promise<any> },
@@ -224,12 +233,17 @@ export function crearHerramientasCoder(opciones) {
   }
 
   /** @returns {ResultadoHerramienta} */
-  function escrituraRechazada(ruta, motivo) {
+  function escrituraRechazada(ruta, motivo, rechazo) {
     opciones.log.append('ciclo:escritura_rechazada', { nodo: 'coder', herramienta: 'editar', ruta, motivo }, meta);
-    const revision = motivo === 'dependencias' || motivo === 'configuracion';
+    // Contenido rechazado: se anota la ruta y el TIPO, nunca el valor (CA-002-05)
+    if (rechazo?.tipo) {
+      opciones.log.append('ciclo:contenido_rechazado', { nodo: 'coder', herramienta: 'editar', ruta, tipo: rechazo.tipo, regla: rechazo.regla, ...(rechazo.linea !== undefined ? { linea: rechazo.linea } : {}), ...(rechazo.destino !== undefined ? { destino: rechazo.destino } : {}) }, meta);
+    }
+    const revision = MOTIVOS_DE_REVISION.includes(motivo);
+    const donde = `${rechazo?.linea !== undefined ? ` (línea ${rechazo.linea})` : ''}${rechazo?.destino !== undefined ? ` (destino: ${rechazo.destino})` : ''}`;
     return fallo(
-      `No se modificó "${ruta}": ${explicar(motivo)}.${revision ? ' El cambio NO se aplicó y requiere revisión humana: el trabajo se detiene aquí.' : ''}`,
-      { rechazo: { ruta, motivo }, ...(revision ? { requiereRevision: true } : {}) },
+      `No se modificó "${ruta}": ${explicar(motivo)}${donde}.${revision ? ' El cambio NO se aplicó y requiere revisión humana: el trabajo se detiene aquí.' : ''}`,
+      { rechazo: { ruta, motivo, ...(rechazo?.destino !== undefined ? { destino: rechazo.destino } : {}) }, ...(revision ? { requiereRevision: true } : {}) },
     );
   }
 
@@ -311,7 +325,8 @@ export function crearHerramientasCoder(opciones) {
       const aviso     = caben < tramo.length
         ? `\n[recortado: se muestran las líneas ${inicio}-${ultima} de ${total}; pide el resto con "desde": ${ultima + 1} y "hasta"]`
         : '';
-      return { texto: redactarFormatos(`${cabecera}\n${mostradas.join('\n')}${aviso}`), error: false };
+      // El contenido del archivo es dato del proyecto: delimitado y sin autoridad (spec 2026-10-14)
+      return { texto: comoArchivo(v.rutaPosix, redactarFormatos(`${cabecera}\n${mostradas.join('\n')}${aviso}`)), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -322,6 +337,7 @@ export function crearHerramientasCoder(opciones) {
       const carpetas = new Map();
       for (const a of listarArchivosIndexables(cwd, [...vetadas])) {
         if (!a.ruta.startsWith(c.prefijo)) continue;
+        if (!nombreListable(a.ruta)) continue;   // un nombre raro no entra en el prompt (misma regla que el mapa)
         const resto = a.ruta.slice(c.prefijo.length);
         const barra = resto.indexOf('/');
         if (barra === -1) archivos.push(`${a.ruta} (${a.size} bytes)`);
@@ -335,7 +351,7 @@ export function crearHerramientasCoder(opciones) {
       if (entradas.length === 0) return { texto: `No hay archivos visibles en ${donde}.`, error: false };
       const visibles = entradas.slice(0, MAX_ENTRADAS_LISTADO);
       const aviso = entradas.length > visibles.length ? `\n[recortado: ${entradas.length - visibles.length} entradas más; lista una subcarpeta]` : '';
-      return { texto: `Contenido de ${donde}:\n${visibles.join('\n')}${aviso}`, error: false };
+      return { texto: `Contenido de ${donde}:\n${comoArchivo('listado', `${visibles.join('\n')}${aviso}`)}`, error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -350,7 +366,7 @@ export function crearHerramientasCoder(opciones) {
       const lineas = [];
       let bytes = 0;
       let hayMas = false;
-      const archivos = listarArchivosIndexables(cwd, [...vetadas]).filter((a) => a.ruta.startsWith(c.prefijo)).sort((a, b) => (a.ruta < b.ruta ? -1 : 1));
+      const archivos = listarArchivosIndexables(cwd, [...vetadas]).filter((a) => a.ruta.startsWith(c.prefijo) && nombreListable(a.ruta)).sort((a, b) => (a.ruta < b.ruta ? -1 : 1));
       busqueda:
       for (const a of archivos) {
         let contenido;
@@ -368,7 +384,7 @@ export function crearHerramientasCoder(opciones) {
       }
       if (lineas.length === 0) return { texto: `Sin coincidencias de "${texto}"${c.prefijo ? ` en "${c.prefijo}"` : ''}.`, error: false };
       const aviso = hayMas ? `\n[recortado: hay más coincidencias; se muestran las ${lineas.length} primeras. Acota con "carpeta" o con un texto más específico]` : '';
-      return { texto: redactarFormatos(`${lineas.join('\n')}${aviso}`), error: false };
+      return { texto: comoArchivo('coincidencias', redactarFormatos(`${lineas.join('\n')}${aviso}`)), error: false };
     },
 
     /** @returns {Promise<ResultadoHerramienta>} */
@@ -383,15 +399,21 @@ export function crearHerramientasCoder(opciones) {
       // documentación): se permite lo que el archivo ya tiene (N4-09). `buscar` solo puede llevarlo si
       // el archivo lo lleva, y lo que se escribe no puede llevar más marcadores que lo que se sustituye
       // (o que el archivo entero, si se reemplaza todo).
-      if ([buscar, reemplazar, contenido].some((t) => esTexto(t) && t.includes(MARCADOR))) {
-        const actualTexto = textoActual(ruta);
-        const enActual = actualTexto === null ? 0 : contar(actualTexto, MARCADOR);
-        const esBuscar = esTexto(buscar) ? contar(buscar, MARCADOR) : 0;
-        const permitido = (esBuscar === 0 || (actualTexto !== null && actualTexto.includes(buscar)))
-          && (esTexto(reemplazar) ? contar(reemplazar, MARCADOR) <= esBuscar : true)
-          && (esTexto(contenido) ? contar(contenido, MARCADOR) <= enActual : true);
-        if (!permitido) {
-          return fallo('El texto contiene "[REDACTADO": ese marcador no es parte del archivo. Lee el archivo de nuevo y usa el texto tal cual está. No se cambió nada.');
+      const MARCADORES = [
+        [MARCADOR, 'El texto contiene "[REDACTADO": ese marcador no es parte del archivo. Lee el archivo de nuevo y usa el texto tal cual está. No se cambió nada.'],
+        [`<<<${MARCA_DATO}:`, 'El texto contiene un marcador de dato («<<<forge-dato:…»): no es parte del archivo, lo añade el motor al mostrártelo. Lee el archivo de nuevo y usa solo el contenido. No se cambió nada.'],
+      ];
+      for (const [marcador, mensaje] of MARCADORES) {
+        if ([buscar, reemplazar, contenido].some((t) => esTexto(t) && t.includes(marcador))) {
+          const actualTexto = textoActual(ruta);
+          const enActual = actualTexto === null ? 0 : contar(actualTexto, marcador);
+          const esBuscar = esTexto(buscar) ? contar(buscar, marcador) : 0;
+          const permitido = (esBuscar === 0 || (actualTexto !== null && actualTexto.includes(buscar)))
+            && (esTexto(reemplazar) ? contar(reemplazar, marcador) <= esBuscar : true)
+            && (esTexto(contenido) ? contar(contenido, marcador) <= enActual : true);
+          if (!permitido) {
+            return fallo(mensaje);
+          }
         }
       }
       let nuevo = contenido;
@@ -429,9 +451,10 @@ export function crearHerramientasCoder(opciones) {
       // El único camino de escritura: el mismo que el modo de bloque (ADR-07)
       const aplicado = aplicarArchivos(cwd, [{ ruta, contenido: nuevo }], {
         rol: 'coder', pruebas: [...pruebas], vetadas: [...vetadas], atomica: true,
+        ...(opciones.politicaDestinos !== undefined ? { politicaDestinos: [...opciones.politicaDestinos] } : {}),
         antesDeEscribir: (rutaPosix) => opciones.respaldo.registrar(rutaPosix),
       });
-      if (aplicado.rechazados.length > 0) return escrituraRechazada(ruta, aplicado.rechazados[0].motivo);
+      if (aplicado.rechazados.length > 0) return escrituraRechazada(ruta, aplicado.rechazados[0].motivo, aplicado.rechazados[0]);
       const [e] = aplicado.escritos;
       return {
         texto: sustituir ? `Fragmento sustituido en ${e.ruta}.` : `Escrito ${e.ruta} (${Buffer.byteLength(nuevo, 'utf8')} bytes).`,
@@ -460,7 +483,7 @@ export function crearHerramientasCoder(opciones) {
       return {
         texto: `${resumen}\ncódigo de salida: ${r.exitCode ?? 'ninguno'}\nejecución ${ejecutadas} de ${maxPruebas} de este intento\n`
           + 'Esta ejecución no decide el resultado de la tarea: lo decide la ejecución final del ciclo.\n\n'
-          + `--- salida (final) ---\n${salida || '(vacía)'}`,
+          + `--- salida (final) ---\n${comoArchivo('salida de las pruebas', salida || '(vacía)')}`,
         error: categoria === 'infra_error',
         pruebas: true,
       };

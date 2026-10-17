@@ -5,6 +5,10 @@
  * objetivo del plan y las líneas de la spec que citan los criterios cubiertos.
  * El texto entregado, cabeceras y aviso incluidos, nunca supera `maxBytes`.
  *
+ * Devuelve además cada fragmento por separado (`contexto.fragmentos[i].contenido`): quien arma el
+ * prompt los delimita uno a uno como dato no confiable (core/ciclo/dato-no-confiable.js). El `texto`
+ * pegado se conserva por compatibilidad, pero NO debe ir a un prompt tal cual (spec 2026-10-14).
+ *
  * Lo que el plan pide leer lo decide un modelo: se aplican las mismas reglas
  * que para escribir (nada de fuera del proyecto, nada vetado, enlaces
  * simbólicos resueltos). Los manifiestos y la configuración sí se pueden leer.
@@ -13,6 +17,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { validarRuta } from '../ciclo/protocolo-archivos.js';
+import { etiquetaSegura } from '../ciclo/dato-no-confiable.js';
 
 const AVISO = '\n\n[contexto recortado al tamaño máximo]';
 export const bytes = (t) => Buffer.byteLength(t, 'utf8');
@@ -58,7 +63,7 @@ export function leerComoTexto(abs, maxBytes) {
  *   specPath?: string,
  *   vetadas?: string[],
  * }} entrada
- * @returns {{ contexto: { fragmentos: { ruta: string, origen: string, bytes: number }[], bytesTotales: number, truncado: boolean }, texto: string }}
+ * @returns {{ contexto: { fragmentos: { ruta: string, origen: string, bytes: number, contenido: string, rotulo: string }[], bytesTotales: number, truncado: boolean, aviso?: string }, texto: string }}
  */
 export function recuperarPorArchivos(entrada) {
   const { cwd, tarea, plan, maxBytes, specPath } = entrada;
@@ -108,7 +113,7 @@ export function recuperarPorArchivos(entrada) {
   if (bytes(completo) <= maxBytes) {
     return {
       contexto: {
-        fragmentos: candidatos.map((c) => ({ ruta: c.ruta, origen: c.origen, bytes: bytes(c.contenido) })),
+        fragmentos: candidatos.map((c) => ({ ruta: c.ruta, origen: c.origen, bytes: bytes(c.contenido), contenido: c.contenido, rotulo: `${etiquetaSegura(c.ruta)} (${c.origen})` })),
         bytesTotales: bytes(completo),
         truncado: false,
       },
@@ -126,7 +131,7 @@ export function recuperarPorArchivos(entrada) {
     if (restante <= 0) break;
     const contenido = recortar(c.contenido, restante);
     texto += cab + contenido;
-    fragmentos.push({ ruta: c.ruta, origen: c.origen, bytes: bytes(contenido) });
+    fragmentos.push({ ruta: c.ruta, origen: c.origen, bytes: bytes(contenido), contenido, rotulo: `${etiquetaSegura(c.ruta)} (${c.origen})` });
   }
   texto = bytes(texto) <= maxBytes - bytes(AVISO) ? texto + AVISO : recortar(texto, maxBytes);
 

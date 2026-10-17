@@ -146,9 +146,9 @@ describe("Escenario 1 — tres líneas de un archivo de dos mil, sin reescribirl
     await e.nuevoCiclo().ejecutar(TAREA);
     const [primera, segunda] = e.conversaciones;
     const prompt = primera.mensajes[0].contenido;
-    assert.match(prompt, /^## Tarea\nCambia v1000/);
-    assert.match(prompt, /## Plan\n1\. cambiar tres constantes/);
-    assert.match(prompt, /## Pruebas que deben pasar \(no puedes modificarlas\)\n### tests\/grande\.test\.js/);
+    assert.match(prompt, /^## Tarea\n<<<forge-dato:[0-9a-f]{24} inicio · descripción de la tarea>>>\nCambia v1000/);
+    assert.match(prompt, /## Plan\n<<<forge-dato:[0-9a-f]{24} inicio · plan>>>\n1\. cambiar tres constantes/);
+    assert.match(prompt, /## Pruebas que deben pasar \(no puedes modificarlas\)\n<<<forge-dato:[0-9a-f]{24} inicio · tests\/grande\.test\.js>>>/);
     assert.match(prompt, /## Proyecto\n- package\.json declara "type": "module"/);
     assert.match(prompt, /## Archivos del proyecto\n[\s\S]*- src\/grande\.js/);
     assert.match(prompt, /## Límites de este intento\n- Como máximo 30 turnos[\s\S]*5 ejecuciones de pruebas/);
@@ -207,7 +207,7 @@ describe("HU-003 — probar durante el trabajo no decide el éxito", () => {
     const cuarta = e.conversaciones[3];
     assert.equal(cuarta.mensajes.length, 1);
     assert.match(cuarta.mensajes[0].contenido, /## Resultado de la ejecución anterior \(iteración 1, fail\)[\s\S]*SALIDA-DE-LA-FINAL/);
-    assert.match(cuarta.mensajes[0].contenido, /## Archivos que ya escribiste en intentos anteriores\n- src\/nuevo\.js/);
+    assert.match(cuarta.mensajes[0].contenido, /## Archivos que ya escribiste en intentos anteriores\n<<<forge-dato:[0-9a-f]{24} inicio · archivos escritos>>>\n- src\/nuevo\.js/);
     assert.equal(/** @type {any} */ (r.estado).turnos, 5);
   });
 

@@ -34,6 +34,7 @@
  */
 
 import { CONTRATO_CODER_TURNOS } from './contratos.js';
+import { comoArchivo } from './dato-no-confiable.js';
 import { POR_DEFECTO } from './config.js';
 import { crearHerramientasCoder } from './herramientas-coder.js';
 import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
@@ -103,17 +104,17 @@ export function modoImplementador(estado, deps) {
  */
 export function promptTurnos(estado, deps, ayudas, limites) {
   const ultima = estado.ejecuciones[estado.ejecuciones.length - 1];
-  let p = `## Tarea\n${estado.tarea.descripcion}${ayudas.seccionPlan(estado)}`
+  let p = `## Tarea\n${comoArchivo('descripción de la tarea', estado.tarea.descripcion)}${ayudas.seccionPlan(estado)}`
     + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${ayudas.leerPruebas(estado)}`
     + ayudas.seccionProyecto(estado.cwd, deps.vetadas)
     + ayudas.seccionMapa(estado.cwd, deps.vetadas);
   if (estado.implementacion.archivos.length > 0) {
-    p += `\n\n## Archivos que ya escribiste en intentos anteriores\n${estado.implementacion.archivos.map((a) => `- ${a.ruta}`).join('\n')}`
+    p += `\n\n## Archivos que ya escribiste en intentos anteriores\n${comoArchivo('archivos escritos', estado.implementacion.archivos.map((a) => `- ${a.ruta}`).join('\n'))}`
       + '\nSiguen en el proyecto tal como los dejaste: léelos antes de cambiarlos.';
   }
   if (ultima) {
     p += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
-      + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+      + `\n### Salida\n${comoArchivo('salida de las pruebas', ultima.stdoutCola || '(vacía)')}\n### Errores\n${comoArchivo('errores de las pruebas', ultima.stderrCola || '(vacío)')}`;
   }
   p += '\n\n## Límites de este intento'
     + `\n- Como máximo ${limites.turnosMax} turnos (cada respuesta tuya es un turno) y ${limites.pruebasMax} ejecuciones de pruebas.`
@@ -155,7 +156,7 @@ function contabilizar(estado, deps, presupuesto, r) {
  *       → { ok, contenido, stopReason, inputTokens, outputTokens, modelo, proveedor, error, delDiario? }
  *   admiteHerramientas({ agente, proveedorLocal }) → boolean
  *   diario?.obtener(clave) / diario?.anotar(clave, valor) / diario?.claves()
- * @param {{ seccionPlan: Function, leerPruebas: Function, seccionProyecto: Function, seccionMapa: Function, pedirRevision: Function }} ayudas
+ * @param {{ seccionPlan: Function, leerPruebas: Function, seccionProyecto: Function, seccionMapa: Function, pedirRevision: Function, detalleDeRevision?: Function }} ayudas
  * @returns {Promise<Partial<EstadoCiclo>>}
  */
 export async function coderPorTurnos(estado, deps, ayudas) {
@@ -184,6 +185,7 @@ export async function coderPorTurnos(estado, deps, ayudas) {
   /** @type {Map<string, { ruta: string, sha256: string }>} */
   const escritos = new Map();
   /** @type {string[]} */
+  /** @type {{ ruta: string, motivo: string, destino?: string }[]} */
   const propuestos = [];
   let respondidos = 0;
   /** @type {'terminado'|'dependencias'|'presupuesto'|'sin_herramientas'|'turnos_agotados'|null} */
@@ -285,7 +287,7 @@ export async function coderPorTurnos(estado, deps, ayudas) {
         }, meta);
       }
       for (const e of res.escritos ?? []) escritos.set(e.ruta, e);
-      if (res.requiereRevision && res.rechazo) propuestos.push(res.rechazo.ruta);
+      if (res.requiereRevision && res.rechazo) propuestos.push(res.rechazo);
       resultados.push({ tipo: 'resultado_herramienta', idUso: uso.id, contenido: res.texto, esError: Boolean(res.error) });
     }
     mensajes.push({ rol: 'usuario', contenido: resultados });
@@ -313,7 +315,9 @@ export async function coderPorTurnos(estado, deps, ayudas) {
   switch (fin) {
     case 'dependencias':
       return revision('dependencias',
-        `El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${[...new Set(propuestos)].join(', ')}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`);
+        ayudas.detalleDeRevision
+          ? ayudas.detalleDeRevision(propuestos)
+          : `El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${[...new Set(propuestos.map((p) => p.ruta))].join(', ')}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`);
     case 'presupuesto':
       // Con algo escrito, las pruebas finales no cuestan dinero y pueden dar el trabajo por bueno
       return escritos.size > 0 ? /** @type {any} */ (parcial) : revision('presupuesto');

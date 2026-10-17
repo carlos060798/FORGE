@@ -15,6 +15,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import { coincide } from '../glob.js';
+import { revisarContenido, MAX_CONTENIDO_BYTES } from './control-salida.js';
+import { leerPoliticaDestinos } from './politica-destinos.js';
 
 /**
  * Carpetas vetadas a cualquier profundidad. No basta con vetarlas en la raíz:
@@ -264,19 +266,24 @@ function escribirAtomico(absoluta, contenido) {
  *
  * @param {string} cwd
  * @param {{ ruta: string, contenido: string }[]} archivos
- * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void, atomica?: boolean }} opciones
+ * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void, atomica?: boolean, politicaDestinos?: string[] }} opciones
  *   `pruebas`: rutas (posix) de las pruebas ya escritas; inmutables para el rol `coder`.
  *   `antesDeEscribir`: se llama con cada ruta aceptada, antes de tocar el disco (respaldo).
  *   `atomica`: escribe en un temporal junto al destino y lo renombra, de modo que un corte a mitad
  *   de la escritura deja el archivo anterior entero (lo usa el implementador por turnos, ADR-21).
- * @returns {{ escritos: { ruta: string, sha256: string }[], rechazados: { ruta: string, motivo: string }[], requiereRevision: boolean }}
- *   `requiereRevision`: el agente propuso cambiar dependencias o configuración ejecutable.
+ *   `politicaDestinos`: destinos de red que el usuario permite (por defecto, `FORGE_DESTINOS_PERMITIDOS`; nunca el repositorio).
+ * @returns {{ escritos: { ruta: string, sha256: string }[], rechazados: { ruta: string, motivo: string, tipo?: string, regla?: string, linea?: number, destino?: string }[], requiereRevision: boolean, avisos: { ruta: string, tipo: string, linea: number }[] }}
+ *   `requiereRevision`: el agente propuso cambiar dependencias o configuración ejecutable, un destino de red nuevo o un contenido que no se pudo analizar.
+ *   Además de la ruta y el rol se revisa el CONTENIDO (control-salida.js): un secreto se rechaza (`secreto`), un destino nuevo
+ *   pide revisión (`destino_nuevo`), lo ilegible no se acepta (`contenido_ilegible`). Nunca se devuelve el valor.
  */
 export function aplicarArchivos(cwd, archivos, opciones) {
   const pruebas    = new Set((opciones.pruebas ?? []).map(canonica));
   const vistas     = new Set();
   const escritos   = [];
   const rechazados = [];
+  const avisos     = [];
+  const politica   = opciones.politicaDestinos !== undefined ? { destinos_permitidos: opciones.politicaDestinos } : leerPoliticaDestinos();
 
   for (const { ruta, contenido } of archivos) {
     const v = validarRuta(cwd, ruta, { vetadas: opciones.vetadas });
@@ -296,6 +303,14 @@ export function aplicarArchivos(cwd, archivos, opciones) {
       continue;
     }
 
+    // Contenido: lo último que se decide antes de tocar el disco (falla cerrado)
+    const revision = revisarContenido(v.rutaPosix, contenido, textoAnterior(v.absoluta), politica);
+    if (revision.ok === false) {
+      rechazados.push({ ruta, motivo: MOTIVO_DE_TIPO[revision.tipo], tipo: revision.tipo, regla: revision.regla, ...(revision.linea !== undefined ? { linea: revision.linea } : {}), ...(revision.destino !== undefined ? { destino: revision.destino } : {}) });
+      continue;
+    }
+    for (const a of revision.avisos) avisos.push({ ruta: v.rutaPosix, ...a });
+
     try {
       opciones.antesDeEscribir?.(v.rutaPosix);
       fs.mkdirSync(path.dirname(v.absoluta), { recursive: true });
@@ -309,7 +324,28 @@ export function aplicarArchivos(cwd, archivos, opciones) {
     escritos.push({ ruta: v.rutaPosix, sha256: huella(contenido) });
   }
 
-  return { escritos, rechazados, requiereRevision: rechazados.some((r) => r.motivo === 'dependencias' || r.motivo === 'configuracion') };
+  return { escritos, rechazados, avisos, requiereRevision: rechazados.some((r) => MOTIVOS_DE_REVISION.includes(r.motivo)) };
+}
+
+/** Motivo de rechazo por cada tipo de problema de contenido. */
+const MOTIVO_DE_TIPO = /** @type {const} */ ({
+  secreto: 'secreto',
+  destino: 'destino_nuevo',
+  ilegible: 'contenido_ilegible',
+  marcador_de_dato: 'marcador_de_dato',
+});
+
+/** Rechazos que detienen el trabajo para que lo mire una persona (un secreto se rechaza y el modelo lo corrige). */
+const MOTIVOS_DE_REVISION = ['dependencias', 'configuracion', 'destino_nuevo', 'contenido_ilegible'];
+
+/** Texto actual del archivo (para saber qué es «nuevo»), o null si no existe, es binario o es enorme. */
+function textoAnterior(absoluta) {
+  try {
+    const info = fs.statSync(absoluta);
+    if (!info.isFile() || info.size > MAX_CONTENIDO_BYTES) return null;
+    const buffer = fs.readFileSync(absoluta);
+    return buffer.includes(0) ? null : buffer.toString('utf8');
+  } catch { return null; }
 }
 
 /**

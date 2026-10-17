@@ -12,7 +12,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FORMATO_ARCHIVOS } from './contratos.js';
 import { medirMutacion } from './mutacion.js';
-import { generarArchivos, pedirRevision, seccionProyecto } from './nodos.js';
+import { generarArchivos, pedirRevision, seccionProyecto, seccionTarea } from './nodos.js';
+import { AVISO_DATO, comoArchivo } from './dato-no-confiable.js';
 import { canonica } from './protocolo-archivos.js';
 import { cola } from './redactar.js';
 
@@ -26,7 +27,7 @@ function textoDeArchivos(cwd, archivos) {
   return archivos.map(({ ruta }) => {
     let contenido = '(no existe)';
     try { contenido = fs.readFileSync(path.resolve(cwd, ruta), 'utf8'); } catch { /* se indica que no existe */ }
-    return `### ${ruta}\n${contenido}`;
+    return comoArchivo(ruta, contenido);
   }).join('\n\n');
 }
 
@@ -153,18 +154,21 @@ ${FORMATO_ARCHIVOS}
 - Conserva las pruebas que ya había: añade comprobaciones de resultados concretos, no las quites.
 - Las pruebas deben describir el comportamiento que pide la tarea, no copiar la implementación.
 - No escribas ni modifiques la implementación: se rechazará.
-- No añadas dependencias nuevas: usa el ejecutor de pruebas que ya tiene el proyecto.`;
+- No añadas dependencias nuevas: usa el ejecutor de pruebas que ya tiene el proyecto.
+
+${AVISO_DATO}`;
 
 /**
  * @param {NonNullable<EstadoCiclo['mutacion']>} m
  */
 export function seccionSobrevivientes(m) {
+  // `antes` y `despues` son líneas de la implementación, que el repositorio controla: van como dato
   const lineas = m.sobrevivientes.map((s, i) =>
     `${i + 1}. ${s.ruta}, línea ${s.linea} (${s.operador}):\n   original: ${s.antes}\n   cambiado: ${s.despues}`);
   return '\n\n## Cambios que tus pruebas no detectaron'
     + `\nSe hicieron ${m.probadas} cambios pequeños en la implementación, de uno en uno, y las pruebas siguieron pasando con ${m.sobrevivientes.length} de ellos. `
     + 'Con cada uno de estos cambios aplicado, al menos una prueba debería fallar:'
-    + `\n${lineas.join('\n')}`;
+    + `\n${comoArchivo('cambios que las pruebas no detectaron', lineas.join('\n'))}`;
 }
 
 /**
@@ -175,7 +179,7 @@ export function seccionSobrevivientes(m) {
  */
 export async function refuerzo(estado, deps) {
   const m = estado.mutacion ?? { ...SIN_MEDIR, refuerzos: 0 };
-  const userPrompt = `## Tarea\n${estado.tarea.descripcion}`
+  const userPrompt = seccionTarea(estado)
     + `\n\n## Pruebas actuales\n${textoDeArchivos(estado.cwd, estado.pruebas.archivos)}`
     + seccionSobrevivientes(m)
     + seccionProyecto(estado.cwd, deps.vetadas)

@@ -34,6 +34,7 @@ import { detectarSospecha } from './sospecha.js';
 import { coderPorTurnos, modoImplementador } from './turnos.js';
 import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, seccionPasanSinImplementacion } from './pruebas-confiables.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
+import { nombreListable, comoArchivo } from './dato-no-confiable.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
 
@@ -122,6 +123,13 @@ export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, 
     });
     for (const rechazo of aplicado.rechazados) {
       deps.log.append('ciclo:escritura_rechazada', { nodo, ruta: rechazo.ruta, motivo: rechazo.motivo }, { taskId: estado.taskId });
+      // Control de salida: se anota la ruta, el tipo y la regla; nunca el valor (CA-002-05)
+      if (rechazo.tipo) {
+        deps.log.append('ciclo:contenido_rechazado', { nodo, ruta: rechazo.ruta, tipo: rechazo.tipo, regla: rechazo.regla, ...(rechazo.linea !== undefined ? { linea: rechazo.linea } : {}), ...(rechazo.destino !== undefined ? { destino: rechazo.destino } : {}) }, { taskId: estado.taskId });
+      }
+    }
+    for (const aviso of aplicado.avisos ?? []) {
+      deps.log.append('ciclo:contenido_aviso', { nodo, ruta: aviso.ruta, tipo: aviso.tipo, linea: aviso.linea }, { taskId: estado.taskId });
     }
     return { presupuesto, aplicado };
   }
@@ -137,11 +145,52 @@ async function textoDeContexto(estado, deps) {
   });
   // Una búsqueda semántica que falla no detiene el ciclo, pero queda anotada
   if (r.contexto?.aviso) deps.log.append('custom', { message: r.contexto.aviso }, { taskId: estado.taskId });
-  return r;
+  return { ...r, texto: contextoComoDato(r) };
+}
+
+/**
+ * Cada fragmento del recuperador va en su propio bloque de dato no confiable, con su propio identificador (derivado
+ * del contenido). Se delimita aquí, al armar el prompt, y no en el recuperador: el tope `contexto_max_bytes` aplica al
+ * contenido, no a los marcadores. Un recuperador que sólo devuelve texto pegado se entrega entero como UN bloque
+ * (falla cerrado: nunca como texto suelto).
+ * @param {{ texto?: string, contexto?: { fragmentos?: { ruta: string, contenido?: string, rotulo?: string }[], truncado?: boolean } }} r
+ */
+function contextoComoDato(r) {
+  const fragmentos = r.contexto?.fragmentos ?? [];
+  if (fragmentos.length > 0 && fragmentos.every((f) => typeof f.contenido === 'string')) {
+    return fragmentos.map((f) => comoArchivo(f.rotulo ?? f.ruta, /** @type {string} */ (f.contenido))).join('\n\n')
+      + (r.contexto?.truncado ? '\n\n[contexto recortado al tamaño máximo]' : '');
+  }
+  return typeof r.texto === 'string' && r.texto !== '' ? comoArchivo('contexto', r.texto) : '';
 }
 
 function seccionPlan(estado) {
-  return estado.plan?.pasos?.length ? `\n\n## Plan\n${estado.plan.pasos.map((p, i) => `${i + 1}. ${p}`).join('\n')}` : '';
+  return estado.plan?.pasos?.length ? `\n\n## Plan\n${comoArchivo('plan', estado.plan.pasos.map((p, i) => `${i + 1}. ${p}`).join('\n'))}` : '';
+}
+
+/**
+ * La descripción de la tarea sale de `tareas.md` o de una especificación importada: puede venir de un tercero.
+ * Va como dato, igual que el resto del texto que no escribe FORGE.
+ * @param {EstadoCiclo} estado
+ */
+export function seccionTarea(estado) {
+  return `## Tarea\n${comoArchivo('descripción de la tarea', estado.tarea.descripcion)}`;
+}
+
+/**
+ * Qué se le dice a la persona cuando el control de salida o la ruta detienen el trabajo. Sin valores: sólo rutas y tipos.
+ * @param {{ ruta: string, motivo: string, destino?: string }[]} rechazados
+ */
+export function detalleDeRevision(rechazados) {
+  const de = (...motivos) => rechazados.filter((x) => motivos.includes(x.motivo));
+  const partes = [];
+  const deps = de('dependencias', 'configuracion');
+  if (deps.length) partes.push(`El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${deps.map((x) => x.ruta).join(', ')}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`);
+  const dest = de('destino_nuevo');
+  if (dest.length) partes.push(`El implementador escribe hacia un destino de red nuevo que no está autorizado (${dest.map((x) => `${x.ruta}${x.destino ? ` → ${x.destino}` : ''}`).join(', ')}). El cambio no se aplicó: revísalo y, si es legítimo, autoriza el destino con FORGE_DESTINOS_PERMITIDOS o aplícalo tú.`);
+  const ile = de('contenido_ilegible');
+  if (ile.length) partes.push(`El implementador propone contenido que no se pudo comprobar (binario o de más de 1 MB: ${ile.map((x) => x.ruta).join(', ')}). El cambio no se aplicó.`);
+  return partes.join(' ');
 }
 
 const MAX_BYTES_PROPIOS = 24 * 1024;
@@ -181,7 +230,10 @@ export function seccionProyecto(cwd, vetadas = []) {
   /** Una sola línea, sin secretos: lo que venga del manifiesto no puede abrir secciones propias en el prompt. */
   const unaLinea = (texto, max) => redactar(String(texto)).replace(/[\s\u0000-\u001f]+/g, ' ').replace(/[#`]/g, '').trim().slice(0, max);
 
+  /** Reglas de FORGE (no dependen del contenido del manifiesto) */
   const lineas = [];
+  /** Lo que se copia del manifiesto: texto del proyecto, va como dato */
+  const datos = [];
   const crudo = leerManifiesto('package.json');
   if (crudo !== null) {
     try {
@@ -194,32 +246,25 @@ export function seccionProyecto(cwd, vetadas = []) {
       if (pkg.type === 'module') lineas.push('- package.json declara "type": "module": los archivos .js son módulos ES. Usa import/export; `require` no existe.');
       else if (pkg.type === 'commonjs' || !esTs) lineas.push('- package.json no declara "type": "module": los archivos .js son CommonJS. Usa require/module.exports (o la extensión .mjs para módulos ES).');
       else lineas.push('- package.json no declara "type": los archivos .js siguen el estilo de los que ya hay en el proyecto.');
-      if (typeof pkg.scripts?.test === 'string') lineas.push(`- Script de pruebas: ${unaLinea(pkg.scripts.test, 200)}`);
-      lineas.push(nombres.length ? `- Dependencias instaladas: ${nombres.slice(0, 40).join(', ')}` : '- Sin dependencias instaladas: usa solo la biblioteca estándar.');
+      if (typeof pkg.scripts?.test === 'string') datos.push(`- Script de pruebas: ${unaLinea(pkg.scripts.test, 200)}`);
+      if (nombres.length) datos.push(`- Dependencias instaladas: ${nombres.slice(0, 40).join(', ')}`);
+      else lineas.push('- Sin dependencias instaladas: usa solo la biblioteca estándar.');
     } catch { /* package.json ilegible: no se dice nada */ }
   }
   const gomod = leerManifiesto('go.mod');
   if (gomod !== null) {
     const mod = /^module\s+([\w./~-]{1,200})\s*$/m.exec(gomod);
-    if (mod) lineas.push(`- Módulo de Go: ${mod[1]}`);
+    if (mod) datos.push(`- Módulo de Go: ${mod[1]}`);
   }
   for (const ruta of demasiado) lineas.push(`- ${ruta} es demasiado grande para leerlo (más de ${MAX_BYTES_MANIFIESTO / 1024} KiB): no se resume aquí.`);
-  return lineas.length ? `\n\n## Proyecto\n${lineas.join('\n')}` : '';
+  if (lineas.length === 0 && datos.length === 0) return '';
+  const bloque = datos.length ? comoArchivo('datos de los manifiestos', datos.join('\n')) : '';
+  return `\n\n## Proyecto\n${[...lineas, ...(bloque ? [bloque] : [])].join('\n')}`;
 }
 
 const MAX_ARCHIVOS_MAPA = 200;
 
-/**
- * ¿Puede esta ruta escribirse tal cual en un prompt?
- * @param {string} ruta
- */
-export function nombreListable(ruta) {
-  // Letras y cifras de cualquier alfabeto, marcas de acento y emoji; no control, invisibles ni separadores raros.
-  // Un nombre con acentos o en japonés es normal: descartarlo dejaba al agente sin ver parte del proyecto.
-  return ruta.length > 0 && ruta.length <= 200
-    && /^(?:[\p{L}\p{N}_@.+\-/ ()\[\]]|(?![︀-️])\p{M}|\p{Extended_Pictographic}️?)+$/u.test(ruta)
-    && !/(?:^|\/)\p{M}/u.test(ruta) && !/[ㅤᅟᅠ᠎⠀ﾠ​-‏]/u.test(ruta);
-}
+export { nombreListable };
 
 /**
  * Lista de archivos del proyecto, con los mismos vetos que el índice de búsqueda (secretos, rutas
@@ -240,7 +285,7 @@ export function seccionMapa(cwd, vetadas = []) {
   if (rutas.length === 0) return '';
   const visibles = rutas.slice(0, MAX_ARCHIVOS_MAPA);
   const resto = rutas.length - visibles.length;
-  return `\n\n## Archivos del proyecto\n${visibles.map((r) => `- ${r}`).join('\n')}${resto > 0 ? `\n(y ${resto} más)` : ''}`;
+  return `\n\n## Archivos del proyecto\n${comoArchivo('archivos del proyecto', `${visibles.map((r) => `- ${r}`).join('\n')}${resto > 0 ? `\n(y ${resto} más)` : ''}`)}`;
 }
 
 /**
@@ -260,9 +305,9 @@ function seccionImplementacionActual(estado, yaEnContexto, vetadas = []) {
     let contenido;
     try { contenido = fs.readFileSync(path.resolve(estado.cwd, ruta), 'utf8'); } catch { continue; }
     const bytes = Buffer.byteLength(contenido, 'utf8');
-    if (bytes > restante) { partes.push(`### ${ruta}\n(omitido: no cabe en el contexto)`); continue; }
+    if (bytes > restante) { partes.push(comoArchivo(ruta, '(omitido: no cabe en el contexto)')); continue; }
     restante -= bytes;
-    partes.push(`### ${ruta}\n${contenido}`);
+    partes.push(comoArchivo(ruta, contenido));
   }
   return partes.length ? `\n\n## Tu implementación actual (la que produjo el resultado de abajo)\n${partes.join('\n\n')}` : '';
 }
@@ -281,7 +326,7 @@ function seccionPruebasAnteriores(estado, deps) {
     + 'Puede que las pruebas estén rotas por sí mismas (no cargan, importan algo que no existe, usan otro sistema de módulos). '
     + 'Reescríbelas de modo que una implementación correcta pueda pasarlas.'
     + `\n${leerPruebas(estado)}`
-    + `\n### Salida que se repitió\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+    + `\n### Salida que se repitió\n${comoArchivo('salida de las pruebas', ultima.stdoutCola || '(vacía)')}\n### Errores\n${comoArchivo('errores de las pruebas', ultima.stderrCola || '(vacío)')}`;
 }
 
 /**
@@ -305,7 +350,7 @@ function seccionPruebasNoEncontradas(estado) {
 export async function planner(estado, deps) {
   const r = await invocar(estado, deps, estado.presupuesto, 'planner', {
     agente: 'arquitecto',
-    userPrompt: `## Tarea\n${estado.tarea.descripcion}${seccionMapa(estado.cwd, deps.vetadas)}${seccionProyecto(estado.cwd, deps.vetadas)}`,
+    userPrompt: `${seccionTarea(estado)}${seccionMapa(estado.cwd, deps.vetadas)}${seccionProyecto(estado.cwd, deps.vetadas)}`,
     extraContext: CONTRATO_PLANNER,
   });
   if ('fallo' in r) return r.fallo;
@@ -351,7 +396,7 @@ export async function qa(estado, deps) {
   const exenta = estado.tarea.parte_de_codigo_existente === true;
 
   const contexto = (await textoDeContexto(estado, deps)).texto;
-  const partes = (mapa, extra = '') => `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+  const partes = (mapa, extra = '') => `${seccionTarea(estado)}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : mapa)
     + seccionProyecto(estado.cwd, deps.vetadas)
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`
@@ -435,7 +480,7 @@ export async function qa(estado, deps) {
 function leerPruebas(estado) {
   return estado.pruebas.archivos.map(({ ruta }) => {
     const abs = path.resolve(estado.cwd, ruta);
-    return `### ${ruta}\n${fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '(no existe)'}`;
+    return comoArchivo(ruta, fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '(no existe)');
   }).join('\n\n');
 }
 
@@ -447,7 +492,7 @@ function leerPruebas(estado) {
 export async function coder(estado, deps) {
   const { modo, marca } = modoImplementador(estado, deps);
   if (modo === 'turnos') {
-    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision });
+    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision, detalleDeRevision });
     // El servidor no admite herramientas (lo supo en el primer turno): sigue en modo de bloque
     if (!(/** @type {any} */ (r).caerABloque)) return r;
     return { ...(await coderEnBloque(estado, deps)), implementador: 'bloque' };
@@ -464,7 +509,7 @@ async function coderEnBloque(estado, deps) {
   // `volatil`: lo que este mismo nodo cambia en el disco al escribir (el mapa de archivos y su propia
   // versión anterior). Va en el prompt, pero no en la clave del diario (R3).
   const partes = (volatil) => {
-    let p = `## Tarea\n${estado.tarea.descripcion}${seccionPlan(estado)}`
+    let p = `${seccionTarea(estado)}${seccionPlan(estado)}`
       + `\n\n## Pruebas que deben pasar (no puedes modificarlas)\n${leerPruebas(estado)}`
       + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : (volatil ? seccionMapa(estado.cwd, deps.vetadas) : ''))
       + seccionProyecto(estado.cwd, deps.vetadas);
@@ -472,7 +517,7 @@ async function coderEnBloque(estado, deps) {
       const yaEnContexto = new Set((recuperado.contexto?.fragmentos ?? []).map((f) => f.ruta));
       if (volatil) p += seccionImplementacionActual(estado, yaEnContexto, deps.vetadas);
       p += `\n\n## Resultado de la ejecución anterior (iteración ${ultima.iteracion}, ${ultima.categoria})`
-        + `\n### Salida\n${ultima.stdoutCola || '(vacía)'}\n### Errores\n${ultima.stderrCola || '(vacío)'}`;
+        + `\n### Salida\n${comoArchivo('salida de las pruebas', ultima.stdoutCola || '(vacía)')}\n### Errores\n${comoArchivo('errores de las pruebas', ultima.stderrCola || '(vacío)')}`;
     }
     return p;
   };
@@ -490,11 +535,7 @@ async function coderEnBloque(estado, deps) {
   const parcial = { implementacion: { archivos: [...porRuta.values()] }, presupuesto: r.presupuesto };
 
   if (r.aplicado.requiereRevision) {
-    const propuestos = r.aplicado.rechazados
-      .filter((x) => x.motivo === 'dependencias' || x.motivo === 'configuracion')
-      .map((x) => x.ruta).join(', ');
-    return { ...parcial, ...pedirRevision('dependencias', 'coder',
-      `El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${propuestos}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`) };
+    return { ...parcial, ...pedirRevision('dependencias', 'coder', detalleDeRevision(r.aplicado.rechazados)) };
   }
   if (r.aplicado.escritos.length === 0) {
     return { ...parcial, ...pedirRevision('salida_invalida', 'coder', 'El implementador no escribió ningún archivo válido.') };
