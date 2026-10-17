@@ -216,7 +216,7 @@ describe("CA-001-02 y CA-001-03 — cada tipo de token a su precio", () => {
     assert.deepEqual(preciosCache("anthropic", "claude-sonnet-4-6"), { escritura: 3.75 / M, lectura: 0.3 / M });
     assert.deepEqual(preciosCache("anthropic", "claude-opus-5-5"), { escritura: 5 / M, lectura: 0.2 / M });
     assert.equal(preciosCache("anthropic", "modelo-inventado"), null);
-    assert.equal(preciosCache("openai", "gpt-4o"), null, "un modelo sin precios de caché en la lista");
+    assert.equal(preciosCache("openai", "modelo-inventado"), null, "un modelo sin precios de caché en la lista");
     for (const id of Object.keys(TABLA.anthropic)) assert.ok(preciosCache("anthropic", id), id);
   });
 
@@ -245,7 +245,7 @@ describe("CA-001-02 y CA-001-03 — cada tipo de token a su precio", () => {
   });
 
   test("un modelo sin precios de caché: la lectura al precio de entrada y la escritura a 1,25 veces", () => {
-    const precio = precioCompletoDe("openai", "gpt-4o");
+    const precio = precioCompletoDe("openai", "gpt-4o", undefined, { "gpt-4o": { input: 2.5 / M, output: 10 / M } });
     assert.equal(precio.cacheRead, precio.input);
     assert.equal(precio.cacheWrite, precio.input * MULTIPLICADOR_ESCRITURA_5M);
   });

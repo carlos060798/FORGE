@@ -19,7 +19,7 @@
 export const REVISADA = '2026-10-09';
 
 /** Fecha en que se contrastaron los precios de OpenAI con https://developers.openai.com/api/docs/pricing (los de Anthropic: REVISADA). */
-export const REVISADA_OPENAI = '2026-10-12';
+export const REVISADA_OPENAI = '2026-10-17';
 
 /** Página de la que se copiaron los precios de Anthropic. */
 export const FUENTE = 'https://platform.claude.com/docs/en/about-claude/pricing';
@@ -63,12 +63,29 @@ export const TABLA = {
     // Haiku 4.5: activo, con retirada «no antes del 2026-10-15»
     'claude-haiku-4-5-20251001':  { entrada: 1,   salida: 5,   cache_escritura_5m: 1.25,  cache_escritura_1h: 2,   cache_lectura: 0.1 },
   },
-  // OpenAI: contrastados el 2026-10-12 (REVISADA_OPENAI) con la tarifa oficial, nivel «Standard»:
+  // OpenAI: contrastados el 2026-10-17 (REVISADA_OPENAI) con la tarifa oficial, nivel «Standard», hasta 272K de entrada:
   // https://developers.openai.com/api/docs/pricing (platform.openai.com/docs/pricing redirige ahí).
-  // gpt-4o 2.50 / 10.00 y gpt-4o-mini 0.15 / 0.60 USD por millón de tokens (entrada / salida).
+  // USD por millón de tokens. `cache_lectura` es «Cached input»; OpenAI no cobra escritura de caché.
+  // Por encima de 272K de entrada hay tarifa mayor que FORGE NO contempla (su contexto por defecto no llega).
+  // Fuera a propósito: los modelos «-pro», `o1`/`o3`, `chat-latest` y `gpt-5.3-codex` (sin confirmar que sirvan
+  // por la API de chat; spec §8) y los de 2025 sin uso en FORGE. Un modelo ausente se cuenta al precio más caro.
   openai: {
-    'gpt-4o':      { entrada: 2.5,  salida: 10 },
-    'gpt-4o-mini': { entrada: 0.15, salida: 0.6 },
+    'gpt-4o':        { entrada: 2.5, salida: 10, cache_lectura: 1.25 },
+    'gpt-4o-mini':   { entrada: 0.15, salida: 0.6, cache_lectura: 0.075 },
+    'gpt-4.1':       { entrada: 2, salida: 8, cache_lectura: 0.5 },
+    'gpt-4.1-mini':  { entrada: 0.4, salida: 1.6, cache_lectura: 0.1 },
+    'gpt-4.1-nano':  { entrada: 0.1, salida: 0.4, cache_lectura: 0.025 },
+    'gpt-5.4':       { entrada: 2.5, salida: 15, cache_lectura: 0.25 },
+    'gpt-5.4-mini':  { entrada: 0.75, salida: 4.5, cache_lectura: 0.075 },
+    'gpt-5.4-nano':  { entrada: 0.2, salida: 1.25, cache_lectura: 0.02 },
+    'gpt-5.5':       { entrada: 5, salida: 30, cache_lectura: 0.5 },
+    'gpt-5.6-sol':   { entrada: 4, salida: 20, cache_lectura: 0.4 },
+    'gpt-5.6-terra': { entrada: 2, salida: 12, cache_lectura: 0.2 },
+    'gpt-5.6-luna':  { entrada: 0.2, salida: 1.2, cache_lectura: 0.02 },
+    'gpt-6-astra':   { entrada: 10, salida: 50, cache_lectura: 1 },
+    'gpt-6.1-sol':   { entrada: 2, salida: 10, cache_lectura: 0.1 },
+    'gpt-6-sol':     { entrada: 2, salida: 10, cache_lectura: 0.2 },
+    'gpt-6-luna':    { entrada: 0.1, salida: 0.5, cache_lectura: 0.01 },
   },
 };
 
@@ -129,8 +146,10 @@ export const MULTIPLICADOR_ESCRITURA_5M = 1.25;
  */
 export function preciosCache(proveedor, modelo) {
   const p = Object.hasOwn(TABLA[proveedor] ?? {}, modelo) ? TABLA[proveedor][modelo] : null;
-  if (!p || typeof p.cache_escritura_5m !== 'number' || typeof p.cache_lectura !== 'number') return null;
-  return { escritura: p.cache_escritura_5m / POR_MILLON, lectura: p.cache_lectura / POR_MILLON };
+  if (!p || typeof p.cache_lectura !== 'number') return null;
+  // Sin precio de escritura (OpenAI no la cobra aparte) se usa entrada × 1,25: nunca por debajo
+  const escritura = typeof p.cache_escritura_5m === 'number' ? p.cache_escritura_5m : p.entrada * MULTIPLICADOR_ESCRITURA_5M;
+  return { escritura: escritura / POR_MILLON, lectura: p.cache_lectura / POR_MILLON };
 }
 
 /**

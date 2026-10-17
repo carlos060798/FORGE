@@ -48,7 +48,8 @@ describe('gasto: el contrato de caché de OpenAI (va dentro de prompt_tokens)', 
 
       const precio = precioDe('openai', 'gpt-4o-mini');
       const usd = costoDe({ proveedor: 'openai', modelo: 'gpt-4o-mini', inputTokens: r.inputTokens, outputTokens: r.outputTokens, cacheCreationTokens: r.cacheCreationTokens, cacheReadTokens: r.cacheReadTokens });
-      const esperado = 1000 * precio.input + 50 * precio.output;   // lo que se cobraría sin caché: nunca por debajo
+      const esperado = 200 * precio.input + 800 * 0.075e-6 + 50 * precio.output;   // la caché a su precio oficial (Cached input); nunca por debajo de él
+      assert.ok(usd <= 1000 * precio.input + 50 * precio.output + 1e-12, 'ni más que todo a precio de entrada');
       assert.ok(Math.abs(usd - esperado) < 1e-12, `${usd} vs ${esperado}`);
     } finally { await s.cerrar(); }
   });
@@ -232,7 +233,8 @@ describe('ciclo por turnos contra un servidor falso de chat completions (CA-002-
       const precio = precioDe('openai', 'gpt-4o-mini');
       const prompt = 100 + 100 + 500 + 600 + 700;
       const completion = 10 + 10 + 20 + 30 + 8;
-      assert.ok(Math.abs(p.gastado_usd - (prompt * precio.input + completion * precio.output)) < 1e-9, `${p.gastado_usd}`);
+      const cacheados = 400 + 600;   // dentro de prompt_tokens; se cobran a 0,075 USD por millón (Cached input de gpt-4o-mini)
+      assert.ok(Math.abs(p.gastado_usd - ((prompt - cacheados) * precio.input + cacheados * 0.075e-6 + completion * precio.output)) < 1e-9, `${p.gastado_usd}`);
       assert.equal(p.llamadas, 5);
 
       // Centinela: ni en los registros, ni en el estado en disco, ni en lo que viajó en cuerpos
