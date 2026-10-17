@@ -26,7 +26,7 @@ import { cola } from '../ciclo/redactar.js';
 import { createStateStore } from '../state-store.js';
 import { PipelineStateMachine } from '../state-machine.js';
 import { EventLog } from '../event-log.js';
-import { sinVariable } from '../entorno.js';
+import { sinVariable, leerVariable } from '../entorno.js';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'cli', 'index.js');
 const MAX_CUERPO = 64 * 1024;
@@ -36,6 +36,21 @@ const DECISIONES = ['continuar', 'aceptar', 'abortar'];
 const TIEMPO_MAX_MS = 2 * 60 * 60 * 1000;
 const MAX_EJECUCIONES_GUARDADAS = 50;
 const TOKEN_MIN = 16;
+/** Techos del presupuesto extra de una decisión (USD). Los fija el USUARIO en su entorno, no la petición. */
+const PRESUPUESTO_EXTRA_MAX_DEFECTO = 5;
+const PRESUPUESTO_EXTRA_TOTAL_DEFECTO = 20;
+
+/**
+ * Techo numérico del entorno del usuario; un valor ausente o no numérico (o negativo) vuelve al defecto.
+ * @param {string} sufijo @param {number} defecto @param {Record<string, string|undefined>} env
+ */
+function techoDeEntorno(sufijo, defecto, env) {
+  let crudo;
+  try { crudo = leerVariable(sufijo, env); } catch { return defecto; }
+  if (crudo === undefined || String(crudo).trim() === '') return defecto;
+  const n = Number(crudo);
+  return Number.isFinite(n) && n >= 0 ? n : defecto;
+}
 
 /** @param {string} a @param {string} b */
 function igual(a, b) {
@@ -93,13 +108,16 @@ export function validarTareas(tareas) {
 }
 
 /**
- * @param {{ cwd: string, token?: string, lanzar?: typeof lanzarCli }} opciones
+ * @param {{ cwd: string, token?: string, lanzar?: typeof lanzarCli, env?: Record<string, string|undefined> }} opciones
  */
 export function crearServidorApi(opciones) {
   const cwd = path.resolve(opciones.cwd);
   const token = opciones.token ?? randomBytes(32).toString('hex');
   if (token.length < TOKEN_MIN || /\s/.test(token)) throw new Error(`El secreto debe tener al menos ${TOKEN_MIN} caracteres y ningún espacio`);
   const lanzar = opciones.lanzar ?? lanzarCli;
+  const entorno = opciones.env ?? process.env;
+  /** Presupuesto extra ya concedido en esta sesión de la API (USD). */
+  let presupuestoExtraConcedido = 0;
   /** @type {Map<string, any>} */
   const ejecuciones = new Map();
   let activa = null;
@@ -238,11 +256,18 @@ export function crearServidorApi(opciones) {
       for (const campo of ['iteracionesExtra', 'presupuestoExtra']) {
         if (b[campo] !== undefined && (typeof b[campo] !== 'number' || !Number.isFinite(b[campo]) || b[campo] < 0 || b[campo] > 1000)) return fallo(res, 400, `"${campo}" debe ser un número entre 0 y 1000`);
       }
+      if (b.presupuestoExtra) {
+        const maxLlamada = techoDeEntorno('API_PRESUPUESTO_EXTRA_MAX', PRESUPUESTO_EXTRA_MAX_DEFECTO, entorno);
+        const maxSesion = techoDeEntorno('API_PRESUPUESTO_EXTRA_TOTAL', PRESUPUESTO_EXTRA_TOTAL_DEFECTO, entorno);
+        if (b.presupuestoExtra > maxLlamada) return fallo(res, 400, `"presupuestoExtra" (${b.presupuestoExtra} USD) supera el máximo por llamada de ${maxLlamada} USD (FRAGUA_API_PRESUPUESTO_EXTRA_MAX, en el entorno de quien arrancó la API)`);
+        if (presupuestoExtraConcedido + b.presupuestoExtra > maxSesion) return fallo(res, 400, `"presupuestoExtra" superaría el total por sesión de ${maxSesion} USD (FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL); ya concedido: ${presupuestoExtraConcedido} USD. Reinicia la API o súbelo en tu entorno`);
+      }
       const args = ['resume', '--motor', 'ciclo', '--decision', b.decision];
       if (b.tarea) args.push('--tarea', b.tarea);
       if (b.iteracionesExtra) args.push('--iteraciones-extra', String(b.iteracionesExtra));
       if (b.presupuestoExtra) args.push('--presupuesto-extra', String(b.presupuestoExtra));
       const e = iniciar('decision', args, { decision: b.decision, tarea: b.tarea ?? null });
+      if (e && b.presupuestoExtra) presupuestoExtraConcedido += b.presupuestoExtra;
       return e ? responder(res, 202, e) : fallo(res, 409, `Ya hay una ejecución en curso (${activa})`);
     }
 
