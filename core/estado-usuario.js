@@ -30,11 +30,13 @@ import { isAbsolute, join, resolve, sep } from 'node:path';
 export const VARIABLE_HOME = 'FORGE_HOME';
 
 /** JSON con las claves ordenadas: la misma cadena para el mismo valor. @param {unknown} v @returns {string} */
-export function canonico(v) {
-  if (Array.isArray(v)) return `[${v.map(canonico).join(',')}]`;
+export function canonico(v, prof = 0) {
+  // E-2: un informe anidado a miles de niveles desbordaba la pila con un RangeError genérico
+  if (prof > 500) throw new Error('El dato es demasiado anidado para sellarlo (más de 500 niveles).');
+  if (Array.isArray(v)) return `[${v.map((x) => canonico(x, prof + 1)).join(',')}]`;
   if (v !== null && typeof v === 'object') {
     const o = /** @type {Record<string, unknown>} */ (v);
-    return `{${Object.keys(o).sort().filter((k) => o[k] !== undefined).map((k) => `${JSON.stringify(k)}:${canonico(o[k])}`).join(',')}}`;
+    return `{${Object.keys(o).sort().filter((k) => o[k] !== undefined).map((k) => `${JSON.stringify(k)}:${canonico(o[k], prof + 1)}`).join(',')}}`;
   }
   return JSON.stringify(v);
 }
