@@ -37,6 +37,10 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { canonico, claveLocal, directorioDeEstado, existeEstado, firmar, firmaValida, rutaDeEstado } from '../estado-usuario.js';
 import { PREFIJO_GIT, entornoGit } from '../verificar/cambios.js';
+import { adquirir, ErrorBloqueado } from '../ciclo/candado.js';
+
+/** Espera síncrona corta (el registro es síncrono como el resto de la cadena). @param {number} ms */
+function esperarMs(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
 import { leerArchivo } from '../escritura-segura.js';
 
 export const VERSION_EVIDENCIA = 1;
@@ -511,9 +515,21 @@ export function guardarCabeza(dir, clave, informe, n) {
  * @returns {{ informe: Record<string, any>, firmado: boolean, cabeza: { ok: boolean, motivo: string|null } }}
  */
 export function registrarEncadenado(cwd, id, resultado, crear, opciones = {}) {
-  const { informe, clave, estadoDir } = construirInforme(cwd, id, resultado, opciones);
-  if (crear(informe) !== true) throw new Error(`No se pudo crear el informe ${texto(id, 80)}: ya existe.`);
-  const total = recorrer(cwd, { env: opciones.env });
-  const cabeza = guardarCabeza(estadoDir, clave, informe, total.informes);
-  return { informe, firmado: clave !== null, cabeza };
+  // E-1: dos registros a la vez leían la misma cabeza y la cadena se bifurcaba. Se serializan con un candado
+  // del proyecto: cada informe se encadena a la cabeza anterior REAL, tomada bajo el candado.
+  // Un registro espera a que el anterior termine (un informe es rápido): se reintenta un rato antes de rendirse.
+  const cerrojo = path.join(path.resolve(cwd), '.sdd', 'verificaciones', 'registro.lock');
+  let liberar = null;
+  const limite = Date.now() + 15_000;
+  while (liberar === null) {
+    try { liberar = adquirir(cerrojo, 'El registro de evidencia'); }
+    catch (e) { if (Date.now() > limite || !(e instanceof ErrorBloqueado)) throw e; esperarMs(20 + Math.floor(Math.random() * 40)); }
+  }
+  try {
+    const { informe, clave, estadoDir } = construirInforme(cwd, id, resultado, opciones);
+    if (crear(informe) !== true) throw new Error(`No se pudo crear el informe ${texto(id, 80)}: ya existe.`);
+    const total = recorrer(cwd, { env: opciones.env });
+    const cabeza = guardarCabeza(estadoDir, clave, informe, total.informes);
+    return { informe, firmado: clave !== null, cabeza };
+  } finally { liberar(); }
 }
