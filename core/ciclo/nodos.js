@@ -32,6 +32,7 @@ import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
 import { coderPorTurnos, modoImplementador } from './turnos.js';
+import { perfilEfectivo } from './perfiles.js';
 import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, seccionPasanSinImplementacion } from './pruebas-confiables.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 import { nombreListable, comoArchivo } from './dato-no-confiable.js';
@@ -101,7 +102,7 @@ async function invocar(estado, deps, presupuesto, nodo, /** @type {PeticionAgent
  * Llama al agente y aplica los archivos que devuelve. Si la salida no se puede
  * interpretar, lo intenta una vez más antes de pedir revisión.
  */
-export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas, clavePrompt }) {
+export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, contrato, rol, pruebas, clavePrompt, perfil }) {
   let presupuesto = estado.presupuesto;
   let error = '';
 
@@ -119,6 +120,7 @@ export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, 
 
     const aplicado = aplicarArchivos(estado.cwd, bloque.archivos, {
       rol, pruebas, vetadas: deps.vetadas,
+      ...(perfil?.rutasEscribir.prefijos ? { rutasEscribir: perfil.rutasEscribir.prefijos } : {}),
       antesDeEscribir: (ruta) => deps.respaldo.registrar(ruta),
     });
     for (const rechazo of aplicado.rechazados) {
@@ -137,10 +139,10 @@ export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, 
   return { fallo: { presupuesto, ...pedirRevision('salida_invalida', nodo, `El agente "${agente}" no devolvió una salida utilizable: ${error}`) } };
 }
 
-async function textoDeContexto(estado, deps) {
+async function textoDeContexto(estado, deps, perfil) {
   const r = await deps.recuperar({
     cwd: estado.cwd, tarea: estado.tarea, plan: estado.plan,
-    maxBytes: deps.config.motor.contexto_max_bytes, specPath: deps.specPath, vetadas: deps.vetadas,
+    maxBytes: Math.min(deps.config.motor.contexto_max_bytes, perfil?.contextoMaxBytes ?? Infinity), specPath: deps.specPath, vetadas: deps.vetadas,
     embeddings: deps.config.motor.embeddings, embeddingsModelo: deps.config.motor.embeddings_modelo,
   });
   // Una búsqueda semántica que falla no detiene el ciclo, pero queda anotada
@@ -344,10 +346,41 @@ function seccionPruebasNoEncontradas(estado) {
     + '(carpeta, nombre, y con unittest un tests/__init__.py).';
 }
 
+// ── perfiles ─────────────────────────────────────────────────────────────────
+
+/**
+ * Envuelve un nodo con su perfil de rol (perfiles.js): lo resuelve antes de gastar nada (si no se puede, revisión
+ * 'perfil'), lo registra en el estado y en el motor, y si al reanudar quedó más estrecho que el guardado pide revisión.
+ * @param {'planner'|'qa'|'coder'} rolPerfil
+ * @param {string} nodo  nodo desde el que se sigue tras una revisión
+ * @param {(estado: EstadoCiclo, deps: any, perfil: import('./perfiles.js').Perfil) => Promise<any>} interno
+ */
+export function conPerfil(rolPerfil, nodo, interno) {
+  return async (/** @type {EstadoCiclo} */ estado, /** @type {any} */ deps) => {
+    const meta = { taskId: estado.taskId };
+    let r;
+    try {
+      r = perfilEfectivo(rolPerfil, estado);
+    } catch (e) {
+      return pedirRevision('perfil', nodo, 'No se pudo resolver el perfil del rol "' + rolPerfil + '": ' + cola(String(e instanceof Error ? e.message : e), 500) + ' No se llamó a ningún modelo. Corrígelo y continúa.');
+    }
+    const perfiles = { ...(estado.perfiles ?? {}), [rolPerfil]: r.perfil };
+    if (r.guardado === null) {
+      deps.log.append('ciclo:perfil_resuelto', { rol: rolPerfil, nodo, herramientas: r.perfil.herramientas, rutas_escribir: r.perfil.rutasEscribir, pasos_max: r.perfil.pasosMax, pruebas_max: r.perfil.pruebasMax, contexto_max_bytes: r.perfil.contextoMaxBytes }, meta);
+    }
+    for (const a of r.avisos) deps.log.append('ciclo:perfil_ampliacion_ignorada', { rol: a.rol, capa: a.capa, campo: a.campo, pedido: a.pedido.slice(0, 80), motivo: a.motivo }, meta);
+    if (r.estrechado.length > 0) {
+      deps.log.append('ciclo:perfil_cambiado', { rol: rolPerfil, nodo, campos: r.estrechado }, meta);
+      return { perfiles, ...pedirRevision('perfil', nodo, 'El perfil del rol "' + rolPerfil + '" es ahora más estrecho que con el que empezó esta tarea (' + r.estrechado.join('; ') + '). Se aplicará el estrecho. Revísalo: "continuar" sigue con él, "abortar" restaura los archivos.') };
+    }
+    return { ...(await interno(estado, deps, r.perfil)), perfiles };
+  };
+}
+
 // ── planner ──────────────────────────────────────────────────────────────────
 
 /** @param {EstadoCiclo} estado */
-export async function planner(estado, deps) {
+async function plannerInterno(estado, deps, _perfil) {
   const r = await invocar(estado, deps, estado.presupuesto, 'planner', {
     agente: 'arquitecto',
     userPrompt: `${seccionTarea(estado)}${seccionMapa(estado.cwd, deps.vetadas)}${seccionProyecto(estado.cwd, deps.vetadas)}`,
@@ -371,6 +404,7 @@ export async function planner(estado, deps) {
 
   return { plan, presupuesto: r.presupuesto };
 }
+export const planner = conPerfil('planner', 'planner', plannerInterno);
 
 // ── retriever ────────────────────────────────────────────────────────────────
 
@@ -388,14 +422,14 @@ export async function retriever(estado, deps) {
  * se ejecuta. Una tarea que declara partir de código existente queda exenta.
  * @param {EstadoCiclo} estado
  */
-export async function qa(estado, deps) {
+async function qaInterno(estado, deps, perfil) {
   const meta = { taskId: estado.taskId };
   // Un fallo del entorno dejó las pruebas escritas y sin comprobar: al continuar se comprueban, sin volver a pagarlas
   const soloComprobar = estado.rojo?.estado === 'sin_comprobar' && estado.pruebas.archivos.length > 0
     && huellasAlteradas(estado.cwd, estado.pruebas.archivos).length === 0;
   const exenta = estado.tarea.parte_de_codigo_existente === true;
 
-  const contexto = (await textoDeContexto(estado, deps)).texto;
+  const contexto = (await textoDeContexto(estado, deps, perfil)).texto;
   const partes = (mapa, extra = '') => `${seccionTarea(estado)}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : mapa)
     + seccionProyecto(estado.cwd, deps.vetadas)
@@ -408,7 +442,7 @@ export async function qa(estado, deps) {
   let presupuesto = estado.presupuesto;
   /** Pide las pruebas al agente; `extra` es lo que se le añade en el reintento. */
   const pedir = (extra = '') => generarArchivos({ ...estado, presupuesto }, deps, 'qa', {
-    agente: 'tester', userPrompt: partes(seccionMapa(estado.cwd, deps.vetadas), extra), contrato: CONTRATO_QA, rol: 'qa', pruebas: [],
+    agente: 'tester', userPrompt: partes(seccionMapa(estado.cwd, deps.vetadas), extra), contrato: CONTRATO_QA, rol: 'qa', pruebas: [], perfil,
     // El mapa cambia cuando este mismo nodo escribe las pruebas: fuera de la clave del diario
     clavePrompt: partes('', extra),
   });
@@ -474,6 +508,7 @@ export async function qa(estado, deps) {
     archivos = [...porRuta.values()];
   }
 }
+export const qa = conPerfil('qa', 'qa', qaInterno);
 
 // ── coder ────────────────────────────────────────────────────────────────────
 
@@ -488,20 +523,22 @@ function leerPruebas(estado) {
  * El modo usado queda anotado en el estado del hilo: lo empezado en un modo sigue en ese modo.
  * @param {EstadoCiclo} estado
  */
-export async function coder(estado, deps) {
+async function coderInterno(estado, deps, perfil) {
   const { modo, marca } = modoImplementador(estado, deps);
   if (modo === 'turnos') {
-    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision, detalleDeRevision });
+    const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision, detalleDeRevision }, perfil);
     // El servidor no admite herramientas (lo supo en el primer turno): sigue en modo de bloque
     if (!(/** @type {any} */ (r).caerABloque)) return r;
-    return { ...(await coderEnBloque(estado, deps)), implementador: 'bloque' };
+    return { ...(await coderEnBloque(estado, deps, perfil)), implementador: 'bloque' };
   }
-  return { ...(await coderEnBloque(estado, deps)), implementador: marca };
+  return { ...(await coderEnBloque(estado, deps, perfil)), implementador: marca };
 }
+/** El perfil es del rol del nodo, no del agente: `tarea.agente` lo elige el repositorio y no cambia nada de esto. */
+export const coder = conPerfil('coder', 'coder', coderInterno);
 
 /** @param {EstadoCiclo} estado */
-async function coderEnBloque(estado, deps) {
-  const recuperado = await textoDeContexto(estado, deps);
+async function coderEnBloque(estado, deps, perfil) {
+  const recuperado = await textoDeContexto(estado, deps, perfil);
   const contexto = recuperado.texto;
   const ultima   = estado.ejecuciones[estado.ejecuciones.length - 1];
 
@@ -523,7 +560,7 @@ async function coderEnBloque(estado, deps) {
   const userPrompt = partes(true);
 
   const r = await generarArchivos(estado, deps, 'coder', {
-    agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder', clavePrompt: partes(false),
+    agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder', clavePrompt: partes(false), perfil,
     pruebas: estado.pruebas.archivos.map((a) => a.ruta),
   });
   if ('fallo' in r) return r.fallo;

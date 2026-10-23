@@ -55,22 +55,45 @@ export function tiempoPorIntento(baseMs, caracteres) {
 
 function parseFrontmatter(raw) {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
-  if (!match) return { meta: {}, body: raw };
+  if (!match) return { meta: {}, body: raw, avisos: [] };
 
   const meta = {};
-  for (const line of match[1].split('\n')) {
+  /** Lo que este lector descarta o aplana sin que el significado de una cabecera válida cambie (spec perfiles-de-agente). */
+  const avisos = [];
+  const lineas = match[1].split('\n');
+  for (let i = 0; i < lineas.length; i++) {
+    const line = lineas[i];
     const colon = line.indexOf(':');
-    if (colon < 1) continue;
+    if (colon < 1) {
+      if (/^\s+-\s/.test(line) || /^-\s/.test(line)) avisos.push(`línea ${i + 2}: un elemento de lista YAML («- ...») se ignora; este lector solo admite listas en una línea, como tools: ["Read","Grep"]`);
+      continue;
+    }
     const key = line.slice(0, colon).trim();
     let value = line.slice(colon + 1).trim();
+    // Una clave con sangría pertenece a un bloque anidado, que este lector no entiende: se aplana y puede pisar una de primer nivel
+    if (/^\s/.test(line)) avisos.push(`línea ${i + 2}: la clave "${key}" está anidada; este lector la trata como de primer nivel y podría pisar otra`);
     if (value.startsWith('[')) {
-      try { meta[key] = JSON.parse(value.replace(/'/g, '"')); } catch { meta[key] = value; }
+      try { meta[key] = JSON.parse(value.replace(/'/g, '"')); } catch {
+        meta[key] = value;
+        avisos.push(`línea ${i + 2}: "${key}" no es una lista válida (¿faltan las comillas? Usa ${key}: ["Read","Grep"]); se ignora`);
+      }
       continue;
     }
     value = value.replace(/^["']|["']$/g, '');
     meta[key] = value;
+    if (key === 'tools' && value !== '') avisos.push(`línea ${i + 2}: "tools" debe ser una lista entre corchetes, como tools: ["Read","Grep"]; se ignora`);
+    if (key === 'tools' && value === '') avisos.push(`línea ${i + 2}: "tools" está vacío o es una lista YAML con guiones; se ignora. Usa tools: ["Read","Grep"]`);
   }
-  return { meta, body: match[2] };
+  return { meta, body: match[2], avisos };
+}
+
+/**
+ * Lo que el lector de cabeceras descarta o aplana en silencio. Vacío si la cabecera es del formato admitido.
+ * @param {string} raw contenido completo de un agents/*.md
+ * @returns {string[]}
+ */
+export function avisosDeCabecera(raw) {
+  return parseFrontmatter(raw).avisos;
 }
 
 /**
@@ -92,6 +115,8 @@ function normalizeModel(raw) {
 export class AgentRegistry {
   constructor() {
     this.agents = new Map();
+    /** @type {{ archivo: string, aviso: string }[]} */
+    this.avisos = [];
   }
 
   /** @param {string} agentsDir */
@@ -103,7 +128,11 @@ export class AgentRegistry {
     for (const file of files) {
       const filePath = path.join(agentsDir, file);
       const raw = fs.readFileSync(filePath, 'utf8');
-      const { meta, body } = parseFrontmatter(raw);
+      const { meta, body, avisos } = parseFrontmatter(raw);
+      for (const aviso of avisos) {
+        this.avisos.push({ archivo: file, aviso });
+        console.warn(`[Fragua] agents/${file}: ${aviso}`);
+      }
       const name = String(meta['name'] ?? path.basename(file, '.md'));
       this.agents.set(name, {
         name,

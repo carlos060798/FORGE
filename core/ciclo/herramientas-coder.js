@@ -49,6 +49,7 @@ const MOTIVOS = {
   destino_nuevo: 'el contenido apunta a un destino de red nuevo que el usuario no ha autorizado',
   contenido_ilegible: 'el contenido no se pudo comprobar (es binario o supera 1 MB)',
   marcador_de_dato: 'el contenido lleva un marcador de dato («<<<forge-dato:…»), que no es parte de ningún archivo',
+  fuera_de_perfil: 'tu perfil de implementador no permite escribir en esa ruta',
 };
 
 /** Rechazos que detienen el trabajo para que lo mire una persona. */
@@ -211,9 +212,12 @@ function recortarLineas(lineas, maxBytes) {
  *   taskId?: string,
  *   maxPruebas?: number,
  *   pruebasEjecutadas?: number,
+ *   perfil?: { herramientas: string[], rutasEscribir: string[]|null },
  * }} opciones
  *   `pruebas`: rutas de las pruebas de la tarea, inmutables. `maxPruebas`: tope de ejecuciones de
  *   pruebas de este intento. `pruebasEjecutadas`: las ya hechas antes de un corte.
+ *   `perfil` (perfiles.js): las herramientas que se ofrecen y se ejecutan (las demás no existen para el modelo, aunque las pida)
+ *   y los prefijos donde `editar` puede escribir. Sin perfil, las cinco y cualquier ruta permitida.
  */
 export function crearHerramientasCoder(opciones) {
   // Copias propias: nada de lo que ocurra después (ni lo que lea el modelo) cambia reglas ni topes
@@ -221,6 +225,8 @@ export function crearHerramientasCoder(opciones) {
   const vetadas    = Object.freeze([...(opciones.vetadas ?? [])]);
   const pruebas    = Object.freeze([...(opciones.pruebas ?? [])]);
   const maxPruebas = Number.isInteger(opciones.maxPruebas) ? Number(opciones.maxPruebas) : 5;
+  const permitidas = Object.freeze(opciones.perfil ? [...opciones.perfil.herramientas] : ESQUEMAS_HERRAMIENTAS.map((e) => e.nombre));
+  const rutasEscribir = opciones.perfil?.rutasEscribir ? Object.freeze([...opciones.perfil.rutasEscribir]) : null;
   const meta       = { taskId: opciones.taskId };
   let ejecutadas   = opciones.pruebasEjecutadas ?? 0;
 
@@ -451,6 +457,7 @@ export function crearHerramientasCoder(opciones) {
       // El único camino de escritura: el mismo que el modo de bloque (ADR-07)
       const aplicado = aplicarArchivos(cwd, [{ ruta, contenido: nuevo }], {
         rol: 'coder', pruebas: [...pruebas], vetadas: [...vetadas], atomica: true,
+        ...(rutasEscribir ? { rutasEscribir: [...rutasEscribir] } : {}),
         ...(opciones.politicaDestinos !== undefined ? { politicaDestinos: [...opciones.politicaDestinos] } : {}),
         antesDeEscribir: (rutaPosix) => opciones.respaldo.registrar(rutaPosix),
       });
@@ -491,7 +498,7 @@ export function crearHerramientasCoder(opciones) {
   };
 
   return {
-    esquemas: ESQUEMAS_HERRAMIENTAS,
+    esquemas: ESQUEMAS_HERRAMIENTAS.filter((e) => permitidas.includes(e.nombre)),
     /** Ejecuciones de pruebas hechas en este intento. */
     pruebasEjecutadas: () => ejecutadas,
     /** Al reproducir desde el diario una ejecución de pruebas ya hecha: cuenta, pero no se repite. */
@@ -505,6 +512,7 @@ export function crearHerramientasCoder(opciones) {
       const esquema = POR_NOMBRE.get(nombre);
       if (!esquema) return fallo(`Herramienta desconocida: "${String(nombre).slice(0, 80)}". Las únicas son: ${ESQUEMAS_HERRAMIENTAS.map((e) => e.nombre).join(', ')}.`);
       const datos = entrada ?? {};
+      if (!permitidas.includes(nombre)) return fallo('La herramienta "' + nombre + '" no está disponible en tu perfil. Las que tienes: ' + (permitidas.join(', ') || 'ninguna') + '. No se hizo nada.');
       if (typeof datos !== 'object' || Array.isArray(datos)) return fallo(`La entrada de "${nombre}" debe ser un objeto.`);
       const sobran = Object.keys(datos).filter((k) => !(k in esquema.esquema.properties));
       if (sobran.length > 0) {

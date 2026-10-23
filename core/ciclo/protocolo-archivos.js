@@ -283,12 +283,14 @@ function escribirAtomico(absoluta, contenido) {
  *
  * @param {string} cwd
  * @param {{ ruta: string, contenido: string }[]} archivos
- * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void, atomica?: boolean, politicaDestinos?: string[] }} opciones
+ * @param {{ rol: 'qa'|'coder', pruebas?: string[], vetadas?: string[], antesDeEscribir?: (rutaPosix: string) => void, atomica?: boolean, politicaDestinos?: string[], rutasEscribir?: string[] }} opciones
  *   `pruebas`: rutas (posix) de las pruebas ya escritas; inmutables para el rol `coder`.
  *   `antesDeEscribir`: se llama con cada ruta aceptada, antes de tocar el disco (respaldo).
  *   `atomica`: escribe en un temporal junto al destino y lo renombra, de modo que un corte a mitad
  *   de la escritura deja el archivo anterior entero (lo usa el implementador por turnos, ADR-21).
  *   `politicaDestinos`: destinos de red que el usuario permite (por defecto, `FORGE_DESTINOS_PERMITIDOS`; nunca el repositorio).
+ *   `rutasEscribir`: perfil del rol (perfiles.js). Si se da, la ruta debe estar bajo alguno de estos prefijos (carpeta con «/» final,
+ *   o archivo exacto); `[]` no deja escribir nada. Se suma a la regla del rol, nunca la sustituye: motivo `fuera_de_perfil`.
  * @returns {{ escritos: { ruta: string, sha256: string }[], rechazados: { ruta: string, motivo: string, tipo?: string, regla?: string, linea?: number, destino?: string }[], requiereRevision: boolean, avisos: { ruta: string, tipo: string, linea: number }[] }}
  *   `requiereRevision`: el agente propuso cambiar dependencias o configuración ejecutable, un destino de red nuevo o un contenido que no se pudo analizar.
  *   Además de la ruta y el rol se revisa el CONTENIDO (control-salida.js): un secreto se rechaza (`secreto`), un destino nuevo
@@ -317,6 +319,12 @@ export function aplicarArchivos(cwd, archivos, opciones) {
     }
     if (opciones.rol === 'coder' && (pruebas.has(clave) || esRutaDePrueba(v.rutaPosix))) {
       rechazados.push({ ruta, motivo: 'prueba_inmutable' });
+      continue;
+    }
+
+    // Perfil del rol: las rutas que el ciclo le deja escribir (solo puede estrechar la regla del rol)
+    if (opciones.rutasEscribir && !opciones.rutasEscribir.some((p) => (p.endsWith('/') ? v.rutaPosix.startsWith(p) : v.rutaPosix === p))) {
+      rechazados.push({ ruta, motivo: 'fuera_de_perfil' });
       continue;
     }
 

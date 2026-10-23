@@ -2,10 +2,12 @@
  * estado.js — Esquema, valores por defecto y validación del estado del ciclo verificado
  */
 
+import { validarPerfilGuardado } from './perfiles.js';
+
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles', 'perfil'];
 export const ESTADOS_ROJO  = ['fallan', 'pasan', 'exenta', 'sin_comprobar'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
@@ -79,6 +81,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {'en_curso'|'exito'|'revision_pendiente'|'aceptada_por_humano'|'abortada'} resultado
  * @property {'bloque'|'turnos'} [implementador]  modo con el que el implementador trabaja en este hilo (ADR-21); lo fija su primer intento
  * @property {number} [turnos]  turnos del implementador respondidos en esta tarea (solo en modo turnos)
+ * @property {Record<string, import('./perfiles.js').Perfil>} [perfiles]  perfil efectivo de cada rol (planner, qa, coder) la primera vez que corrió; al reanudar manda la intersección con el nuevo (perfiles.js)
  */
 
 /**
@@ -179,6 +182,15 @@ export function validarEstado(estado) {
       if (m.puntuacion !== null && (typeof m.puntuacion !== 'number' || !(m.puntuacion >= 0 && m.puntuacion <= 1))) errores.push('mutacion.puntuacion debe ser null o un número entre 0 y 1');
       if (typeof m.parcial !== 'boolean') errores.push('mutacion.parcial debe ser verdadero o falso');
       if (!Array.isArray(m.sobrevivientes)) errores.push('mutacion.sobrevivientes debe ser una lista');
+    }
+  }
+
+  // Opcional: los puntos de guardado anteriores a los perfiles (spec perfiles-de-agente) no lo llevan
+  if (e.perfiles !== undefined) {
+    if (!e.perfiles || typeof e.perfiles !== 'object' || Array.isArray(e.perfiles)) errores.push('perfiles debe ser un objeto');
+    else for (const [rol, perfil] of Object.entries(e.perfiles)) {
+      for (const motivo of validarPerfilGuardado(perfil)) errores.push('perfiles.' + rol + ': ' + motivo);
+      if (/** @type {any} */ (perfil)?.rol !== rol) errores.push('perfiles.' + rol + ': el rol no coincide');
     }
   }
 
