@@ -76,11 +76,16 @@ const EXT_CONFIG = /\.(?:json|jsonc|json5|ya?ml|toml|ini|cfg|conf|properties|xml
 /** Plantillas: el servidor o el navegador las ejecutan y cargan lo que dicen sus etiquetas (revisión nº 2, C-3). */
 const EXT_PLANTILLA = /\.(?:vue|svelte|jsx|tsx|php|phtml|erb|ejs|hbs|njk|twig|astro|shtml|mht)$/i;
 const RE_ETIQUETA_DE_CARGA = /<(?:img|script|link|iframe|embed|source|video|audio|object|input|image|use)\b/i;
+/** Archivos que fijan de dónde se descargan paquetes, submódulos o registros (revisión nº 2, C-4). */
+const NOMBRES_DEPENDENCIAS = new RegExp('^(?:\\.npmrc|\\.yarnrc(?:\\.yml)?|\\.pypirc|\\.gitmodules|\\.gitconfig|pip\\.conf|pipfile|\\.condarc|go\\.(?:mod|work)|cargo\\.toml|.*\\.gradle(?:\\.kts)?|.*\\.kts|requirements.*\\.txt|constraints.*\\.txt)$', 'i');
+/** Cargo.toml mezcla metadato (repository, homepage) con orígenes de descarga: sólo cuentan estas claves. */
+const RE_CARGO_DESCARGA = /(?:^|[\s{,])(?:git|registry|index|replace-with)\s*=/i;
 const NOMBRES_SCRIPT = /^(?:makefile|gnumakefile|dockerfile(?:\..*)?|.*\.dockerfile|jenkinsfile|vagrantfile)$/i;
 
-/** @returns {'documentacion' | 'marcado' | 'script' | 'configuracion' | 'codigo'} */
+/** @returns {'documentacion' | 'marcado' | 'script' | 'dependencias' | 'configuracion' | 'codigo'} */
 function tipoDeArchivo(rutaPosix) {
   const base = path.posix.basename(rutaPosix);
+  if (NOMBRES_DEPENDENCIAS.test(base)) return 'dependencias';   // antes que «documentación»: requirements.txt no es prosa
   if (EXT_DOCUMENTACION.test(base)) return 'documentacion';
   if (EXT_MARCADO.test(base)) return 'marcado';
   if (EXT_SCRIPT.test(base) || NOMBRES_SCRIPT.test(base)) return 'script';
@@ -130,7 +135,13 @@ function estiloDeComentario(rutaPosix, tipo) {
   /** @type {string[]} */ const ambiguos = [];
   /** @type {[string, string][]} */ const bloque = [];
   if (tipo === 'script') {
-    return { linea: ['#', 'rem ', '::', '//'], bloque: [] };   // `#!` se trata aparte
+    return { linea: ['#', 'rem ', '::'], bloque: [] };   // `#!` se trata aparte. `//` NO es comentario en sh/bat/ps1: `//usr/bin/curl` es un comando (revisión nº 2, C-5)
+  }
+  if (tipo === 'dependencias') {
+    if (/\.(?:gradle|kts)$|^go\./i.test(base)) { linea.push('//', '#'); bloque.push(['/*', '*/']); }
+    else linea.push('#');
+    if (!/^(?:requirements|constraints|cargo|go\\.)/i.test(base)) ambiguos.push(';');
+    return { linea, bloque, ambiguos };
   }
   if (EXT_MARCAS.test(base)) bloque.push(['<!--', '-->']);
   if (tipo === 'marcado') bloque.push(['/*', '*/']), linea.push('//');   // <script> y <style> dentro del documento
@@ -246,15 +257,17 @@ function hostsDeCarga(linea) {
 /**
  * Destinos que una línea de código/script/configuración contacta.
  * @param {string} linea @param {string} previa  línea anterior (una llamada puede partirse en dos)
- * @param {'script'|'configuracion'|'codigo'|'marcado'} tipo
- * @param {{ hayRed?: boolean, plantilla?: boolean }} [ctx]  hayRed: el archivo tiene alguna llamada de red o importación dinámica
+ * @param {'script'|'dependencias'|'configuracion'|'codigo'|'marcado'} tipo
+ * @param {{ hayRed?: boolean, plantilla?: boolean, cargo?: boolean, continuacion?: string }} [ctx]  hayRed: el archivo tiene alguna llamada de red o importación dinámica
  * @returns {string[]}
  */
 function destinosDeLinea(linea, previa, tipo, ctx = {}) {
   /** @type {string[]} */
   const hosts = [];
-  if (tipo === 'configuracion') return hostsDeUrl(linea);
+  if (tipo === 'dependencias' && ctx.cargo && !RE_CARGO_DESCARGA.test(linea)) return [];
+  if (tipo === 'configuracion' || tipo === 'dependencias') return hostsDeUrl(linea);
   if (tipo === 'script') {
+    if (ctx.continuacion) linea = `${ctx.continuacion} ${linea}`;   // curl \ + URL en la línea siguiente
     if (!RE_COMANDO_RED.test(linea) || /^\s*(?:echo|printf|write-host|write-output)\b/i.test(linea)) return [];
     hosts.push(...hostsDeUrl(linea));
     const h = RE_COMANDO_DE_HOST.exec(linea);
@@ -281,6 +294,41 @@ function destinosDeLinea(linea, previa, tipo, ctx = {}) {
 }
 
 /**
+ * Líneas anteriores de un script que terminan en continuación (`\\`, acento grave, `^`) y forman con esta una sola orden.
+ * @param {string[]} lineas @param {boolean[]} comentario @param {number} i
+ */
+function continuacionDe(lineas, comentario, i) {
+  const partes = [];
+  for (let j = i - 1; j >= 0 && partes.length < 20; j--) {
+    if (comentario[j] || !/[\\\`^]\s*$/.test(lineas[j])) break;
+    partes.unshift(lineas[j].replace(/[\\\`^]\s*$/, ''));
+  }
+  return partes.join(' ');
+}
+
+/**
+ * package.json: sólo los campos que DESCARGAN o publican cuentan; `repository`, `homepage`, `bugs`, `author`
+ * son metadato (revisión nº 2, C-9). Devuelve null si no es un JSON analizable (entonces se mira como configuración).
+ * @param {string} contenido @returns {string[] | null}
+ */
+function destinosDePackageJson(contenido) {
+  /** @type {any} */ let pj;
+  try { pj = JSON.parse(contenido); } catch { return null; }
+  if (pj === null || typeof pj !== 'object' || Array.isArray(pj)) return null;
+  /** @type {string[]} */ const hosts = [];
+  /** @param {any} v @param {number} [d] */
+  const textos = (v, d = 0) => {
+    if (typeof v === 'string') hosts.push(...hostsDeUrl(v));
+    else if (v && typeof v === 'object' && d < 8) for (const x of Object.values(v)) textos(x, d + 1);
+  };
+  for (const k of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies', 'overrides', 'resolutions', 'publishConfig']) textos(pj[k]);
+  if (pj.scripts && typeof pj.scripts === 'object') {
+    for (const v of Object.values(pj.scripts)) if (typeof v === 'string') hosts.push(...destinosDeLinea(v, '', 'script'));
+  }
+  return [...new Set(hosts)];
+}
+
+/**
  * El archivo previo NO autoriza nada: es del repositorio (revisión nº 2, C-1). Sólo autoriza el entorno del usuario.
  * @param {string} rutaPosix @param {string} contenido
  * @param {string[]} permitidos
@@ -289,16 +337,30 @@ function destinosDeLinea(linea, previa, tipo, ctx = {}) {
 function buscarDestinos(rutaPosix, contenido, permitidos) {
   const tipo = tipoDeArchivo(rutaPosix);
   if (tipo === 'documentacion') return { avisos: [] };
+  if (/^package\.json$/i.test(path.posix.basename(rutaPosix))) {
+    const pj = destinosDePackageJson(contenido);
+    if (pj) {
+      const lineasPj = contenido.split(/\r?\n/);
+      for (const host of pj) {
+        if (esReservado(host) || destinoPermitido(host, permitidos)) continue;
+        const i = lineasPj.findIndex((l) => l.toLowerCase().includes(host));
+        return { destino: { host: host.slice(0, 100), linea: i + 1 || 1 }, avisos: [] };
+      }
+      return { avisos: [] };
+    }
+  }
   const lineas = contenido.split(/\r?\n/);
   const comentario = mapaDeComentarios(lineas, estiloDeComentario(rutaPosix, tipo));
   const avisos = [];
   const ctx = {
     plantilla: EXT_PLANTILLA.test(path.posix.basename(rutaPosix)),
+    cargo: /^cargo\.toml$/i.test(path.posix.basename(rutaPosix)),
     hayRed: lineas.some((l, i) => !comentario[i] && (RE_LLAMADA_CON_ARGUMENTO.test(l) || /\bimport\s*\(/.test(l) || (RE_EJECUTAR_COMANDO.test(l) && RE_COMANDO_RED.test(l)))),
   };
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
     if (comentario[i]) continue;
+    ctx.continuacion = tipo === 'script' ? continuacionDe(lineas, comentario, i) : '';
     for (const host of destinosDeLinea(linea, i > 0 && !comentario[i - 1] ? lineas[i - 1] : '', tipo, ctx)) {
       if (esReservado(host) || destinoPermitido(host, permitidos)) continue;
       return { destino: { host: host.slice(0, 100), linea: i + 1 }, avisos };
