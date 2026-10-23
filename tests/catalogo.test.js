@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AgentRegistry, avisosDeCabecera } from '../core/agent-registry.js';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ALIAS = ['opus', 'sonnet', 'haiku'];
@@ -85,7 +86,34 @@ for (const f of md('agents')) {
     assert.ok(ALIAS.includes(c.model), `${rel(f)}: regla "model alias opus|sonnet|haiku" (model=${c.model})`);
     assert.ok(c.tools && !/^\[\s*\]$/.test(c.tools), `${rel(f)}: regla "tools no vacío"`);
   });
+  test(`agente ${rel(f)}: el lector del motor no descarta ni aplana nada de la cabecera`, () => {
+    // `tools: [Read, Grep]` sin comillas o con guiones se leía como [] sin aviso (spec perfiles-de-agente, spike S0.2)
+    assert.deepEqual(avisosDeCabecera(fs.readFileSync(f, 'utf8')), [], `${rel(f)}: regla "cabecera del formato que lee el motor"`);
+  });
 }
+
+test('el lector avisa de lo que antes descartaba sin decir nada, y no cambia el significado de una cabecera válida', () => {
+  const con = (lineas) => `---\nname: x\ndescription: d\nmodel: sonnet\n${lineas}\n---\ncuerpo\n`;
+  assert.deepEqual(avisosDeCabecera(con('tools: ["Read","Grep"]')), []);
+  assert.deepEqual(avisosDeCabecera(con("tools: ['Read']")), []);
+  assert.match(avisosDeCabecera(con('tools: [Read, Grep]'))[0], /no es una lista válida/);
+  assert.match(avisosDeCabecera(con('tools: Read, Grep'))[0], /lista entre corchetes/);
+  assert.ok(avisosDeCabecera(con('tools:\n  - Read\n  - Write')).length >= 2);
+  assert.match(avisosDeCabecera(con('perfil:\n  model: haiku'))[0], /anidada/);
+
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TEMP ?? '/tmp'), 'forge-cab-'));
+  fs.writeFileSync(path.join(dir, 'x.md'), con('tools: [Read, Grep]'));
+  const aviso = console.warn;
+  /** @type {string[]} */ const dicho = [];
+  console.warn = (m) => { dicho.push(String(m)); };
+  try {
+    const r = new AgentRegistry();
+    r.load(dir);
+    assert.deepEqual(r.get('x')?.tools, [], 'el significado no cambia: sigue descartándose');
+    assert.equal(r.avisos.length, 1);
+  } finally { console.warn = aviso; }
+  assert.match(dicho[0], /x\.md.*no es una lista válida/);
+});
 
 for (const f of md('commands')) {
   test(`comando ${rel(f)}: cabecera válida`, () => {

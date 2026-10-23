@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FORMATO_ARCHIVOS } from './contratos.js';
 import { medirMutacion } from './mutacion.js';
-import { generarArchivos, pedirRevision, seccionProyecto, seccionTarea } from './nodos.js';
+import { conPerfil, generarArchivos, pedirRevision, seccionProyecto, seccionTarea } from './nodos.js';
 import { AVISO_DATO, comoArchivo } from './dato-no-confiable.js';
 import { canonica, leerArchivosDeEstado } from './protocolo-archivos.js';
 import { cola } from './redactar.js';
@@ -175,7 +175,7 @@ export function seccionSobrevivientes(m) {
  * vuelven a tomar aquí y el nodo `sandbox` las comprueba antes de cada ejecución.
  * @param {EstadoCiclo} estado
  */
-export async function refuerzo(estado, deps) {
+async function refuerzoInterno(estado, deps, perfil) {
   const m = estado.mutacion ?? { ...SIN_MEDIR, refuerzos: 0 };
   const userPrompt = seccionTarea(estado)
     + `\n\n## Pruebas actuales\n${textoDeArchivos(estado.cwd, estado.pruebas.archivos)}`
@@ -184,7 +184,7 @@ export async function refuerzo(estado, deps) {
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
 
   const r = await generarArchivos(estado, deps, 'refuerzo', {
-    agente: 'tester', userPrompt, contrato: CONTRATO_REFUERZO, rol: 'qa', pruebas: [], clavePrompt: userPrompt,
+    agente: 'tester', userPrompt, contrato: CONTRATO_REFUERZO, rol: 'qa', pruebas: [], clavePrompt: userPrompt, perfil,
   });
   if ('fallo' in r) return r.fallo;
 
@@ -203,3 +203,7 @@ export async function refuerzo(estado, deps) {
     mutacion: { ...m, refuerzos: (m.refuerzos ?? 0) + 1 },
   };
 }
+/** Mismo rol que `qa`: el agente de pruebas, con el mismo perfil. */
+const refuerzoConPerfil = conPerfil('qa', 'refuerzo', refuerzoInterno);
+/** Declaración (no constante): nodos.js la lee al cargarse aunque este módulo se cargue primero. */
+export async function refuerzo(estado, deps) { return refuerzoConPerfil(estado, deps); }

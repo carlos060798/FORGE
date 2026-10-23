@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge-sdd.dev/contrato/estado-ciclo/1.0",
+  "$id": "https://forge-sdd.dev/contrato/estado-ciclo/1.1",
   "title": "Estado del ciclo verificado (por tarea)",
   "description": "EstadoCiclo de core/ciclo/estado.js. Version del artefacto: `schemaVersion` (cadena \"1.0\"). Distinto del estado del pipeline (.sdd/estado.json: ver estado-pipeline). Las reglas que JSON Schema no expresa (umbral_degradacion_usd <= tope_usd, detectadas <= probadas) las comprueba validarEstado.",
   "type": "object",
@@ -75,7 +75,7 @@
       } },
     "revision": { "type": ["object", "null"], "required": ["motivo", "reanudarEn"],
       "properties": {
-        "motivo": { "type": "string", "enum": ["iteraciones", "presupuesto", "infraestructura", "dependencias", "salida_invalida", "exito_sospechoso", "sin_progreso", "pruebas_no_fallan", "pruebas_debiles"] },
+        "motivo": { "type": "string", "enum": ["iteraciones", "presupuesto", "infraestructura", "dependencias", "salida_invalida", "exito_sospechoso", "sin_progreso", "pruebas_no_fallan", "pruebas_debiles", "perfil"] },
         "reanudarEn": { "type": "string" },
         "detalle": { "type": "string", "x-interno": true },
         "decision": { "type": "string" },
@@ -83,6 +83,17 @@
       } },
     "resultado": { "type": "string", "enum": ["en_curso", "exito", "revision_pendiente", "aceptada_por_humano", "abortada"] },
     "implementador": { "type": "string", "enum": ["bloque", "turnos"], "x-interno": true },
-    "turnos": { "type": "integer", "minimum": 0, "x-interno": true }
+    "turnos": { "type": "integer", "minimum": 0, "x-interno": true },
+    "perfiles": { "type": "object", "x-interno": true, "description": "Perfil efectivo de cada rol del ciclo (planner, qa, coder) la primera vez que corrió (core/ciclo/perfiles.js). Opcional: los hilos anteriores no lo llevan.",
+      "additionalProperties": { "type": "object", "additionalProperties": false, "required": ["rol", "herramientas", "rutasEscribir", "pasosMax", "pruebasMax", "contextoMaxBytes"],
+        "properties": {
+          "rol": { "type": "string", "enum": ["planner", "qa", "coder"] },
+          "herramientas": { "type": "array", "items": { "type": "string" } },
+          "rutasEscribir": { "type": "object", "additionalProperties": false, "required": ["clase", "prefijos"],
+            "properties": { "clase": { "type": "string", "enum": ["ninguna", "pruebas", "no_pruebas"] }, "prefijos": { "type": ["array", "null"], "items": { "type": "string" } } } },
+          "pasosMax": { "type": "integer", "minimum": 0 },
+          "pruebasMax": { "type": "integer", "minimum": 0 },
+          "contextoMaxBytes": { "type": "integer", "minimum": 0 }
+        } } }
   }
 }

@@ -37,6 +37,7 @@ import { CONTRATO_CODER_TURNOS } from './contratos.js';
 import { comoArchivo } from './dato-no-confiable.js';
 import { POR_DEFECTO } from './config.js';
 import { crearHerramientasCoder } from './herramientas-coder.js';
+import { HERRAMIENTAS_CODER, perfilPorDefecto } from './perfiles.js';
 import { ErrorConsumo, limitarNivel, modeloEfectivo, puedeLlamar, registrar, avisoSinPrecio, trasAbortada } from './presupuesto.js';
 import { cola } from './redactar.js';
 
@@ -157,13 +158,15 @@ function contabilizar(estado, deps, presupuesto, r) {
  *   admiteHerramientas({ agente, proveedorLocal }) → boolean
  *   diario?.obtener(clave) / diario?.anotar(clave, valor) / diario?.claves()
  * @param {{ seccionPlan: Function, leerPruebas: Function, seccionProyecto: Function, seccionMapa: Function, pedirRevision: Function, detalleDeRevision?: Function }} ayudas
+ * @param {import('./perfiles.js').Perfil} [perfil]  perfil efectivo del rol `coder` (perfiles.js): herramientas, rutas escribibles y topes
  * @returns {Promise<Partial<EstadoCiclo>>}
  */
-export async function coderPorTurnos(estado, deps, ayudas) {
+export async function coderPorTurnos(estado, deps, ayudas, perfil = perfilPorDefecto('coder')) {
   const it         = estado.iteracion;
   const meta       = { taskId: estado.taskId };
-  const turnosMax  = deps.config.motor?.turnos_max ?? POR_DEFECTO.motor.turnos_max;
-  const pruebasMax = deps.config.motor?.turnos_pruebas_max ?? POR_DEFECTO.motor.turnos_pruebas_max;
+  // El tope de la configuración y el del perfil: manda el más estricto
+  const turnosMax  = Math.min(deps.config.motor?.turnos_max ?? POR_DEFECTO.motor.turnos_max, perfil.pasosMax);
+  const pruebasMax = Math.min(deps.config.motor?.turnos_pruebas_max ?? POR_DEFECTO.motor.turnos_pruebas_max, perfil.pruebasMax);
   const agente     = estado.tarea.agente;
 
   // El primer mensaje se guarda: al reanudar, el mapa de archivos ya no sería el mismo
@@ -179,7 +182,17 @@ export async function coderPorTurnos(estado, deps, ayudas) {
   const herramientas = crearHerramientasCoder({
     cwd: estado.cwd, vetadas: deps.vetadas, pruebas: estado.pruebas.archivos.map((a) => a.ruta),
     respaldo: deps.respaldo, runner: deps.runner, log: deps.log, taskId: estado.taskId, maxPruebas: pruebasMax,
+    perfil: { herramientas: perfil.herramientas, rutasEscribir: perfil.rutasEscribir.prefijos },
   });
+  /** Lo que el perfil de ahora no permite y el diario trae ya hecho (se rellena al reproducir un turno) */
+  let violacion = '';
+  /** @param {{ nombre: string }} u @param {{ escritos?: { ruta: string }[] }} resultado */
+  const fueraDePerfil = (u, resultado) => {
+    if (HERRAMIENTAS_CODER.includes(u.nombre) && !perfil.herramientas.includes(u.nombre)) return 'la herramienta "' + u.nombre + '" ya no está en tu perfil';
+    const prefijos = perfil.rutasEscribir.prefijos;
+    const fuera = prefijos ? (resultado.escritos ?? []).find((x) => !prefijos.some((p) => (p.endsWith('/') ? x.ruta.startsWith(p) : x.ruta === p))) : null;
+    return fuera ? 'escribió "' + fuera.ruta + '", que el perfil ya no permite' : '';
+  };
 
   let presupuesto = estado.presupuesto;
   /** @type {Map<string, { ruta: string, sha256: string }>} */
@@ -188,7 +201,7 @@ export async function coderPorTurnos(estado, deps, ayudas) {
   /** @type {{ ruta: string, motivo: string, destino?: string }[]} */
   const propuestos = [];
   let respondidos = 0;
-  /** @type {'terminado'|'dependencias'|'presupuesto'|'sin_herramientas'|'turnos_agotados'|null} */
+  /** @type {'terminado'|'dependencias'|'presupuesto'|'sin_herramientas'|'turnos_agotados'|'perfil'|null} */
   let fin = null;
   /** @type {string|null} */
   let errorInfra = null;
@@ -246,6 +259,9 @@ export async function coderPorTurnos(estado, deps, ayudas) {
       const claveResultado = `${clave}:r:${i}`;
       let res = deps.diario?.obtener(claveResultado);
       if (res) {
+        // Reproducir el diario no se salta el perfil (spikes/reanudacion.md): lo que el perfil de ahora prohíbe pide revisión
+        const motivoPerfil = fueraDePerfil(uso, res);
+        if (motivoPerfil) { violacion = 'Al reanudar, el diario trae un turno que el perfil actual del implementador no permite: ' + motivoPerfil + '. Revisa el perfil (sección perfiles de .sdd/sdd.config.yaml) o aborta; lo escrito antes del corte sigue en el proyecto.'; break; }
         // Ya se ejecutó antes del corte: se reutiliza el resultado, no se repite la acción
         if (res.pruebas) herramientas.contarPrueba();
       } else {
@@ -290,6 +306,7 @@ export async function coderPorTurnos(estado, deps, ayudas) {
       if (res.requiereRevision && res.rechazo) propuestos.push(res.rechazo);
       resultados.push({ tipo: 'resultado_herramienta', idUso: uso.id, contenido: res.texto, esError: Boolean(res.error) });
     }
+    if (violacion) { fin = 'perfil'; break; }
     mensajes.push({ rol: 'usuario', contenido: resultados });
     // Igual que en modo de bloque: tocar dependencias o configuración termina el intento
     if (propuestos.length > 0) fin = 'dependencias';
@@ -318,6 +335,9 @@ export async function coderPorTurnos(estado, deps, ayudas) {
         ayudas.detalleDeRevision
           ? ayudas.detalleDeRevision(propuestos)
           : `El implementador propone cambiar dependencias o configuración que alguna herramienta ejecuta sola (${[...new Set(propuestos.map((p) => p.ruta))].join(', ')}). El cambio no se aplicó: revísalo y hazlo tú si es correcto.`);
+    case 'perfil':
+      deps.log.append('ciclo:perfil_cambiado', { rol: 'coder', iteracion: it, campo: 'diario', aviso: violacion }, meta);
+      return revision('perfil', violacion);
     case 'presupuesto':
       // Con algo escrito, las pruebas finales no cuestan dinero y pueden dar el trabajo por bueno
       return escritos.size > 0 ? /** @type {any} */ (parcial) : revision('presupuesto');
