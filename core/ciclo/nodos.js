@@ -31,6 +31,9 @@ import { aplicarArchivos, canonica, extraerBloque, huellasAlteradas, leerArchivo
 import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from './router.js';
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
+import { ejecucionQaConPuertas } from '../puertas/ciclo.js';
+import { leerPuertas } from '../puertas/config.js';
+import { ejecutarPuertas } from '../puertas/ejecutar.js';
 import { coderPorTurnos, modoImplementador } from './turnos.js';
 import { perfilEfectivo } from './perfiles.js';
 import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, seccionPasanSinImplementacion } from './pruebas-confiables.js';
@@ -594,7 +597,16 @@ export async function sandbox(estado, deps) {
   // Aquí un código 5 NO se trata como «ninguna prueba encontrada»: esa comprobación ya se hizo al escribir
   // las pruebas, antes de que existiera la implementación. Después, el 5 lo puede provocar el propio código
   // (os._exit(5)), y eximirlo de las iteraciones sería un hueco (R4 de la revisión independiente).
-  const categoria = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
+  const categoriaPruebas = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
+  // Puertas declaradas (fase B2): solo se miran si las pruebas pasaron. Sin puertas, no cambia nada.
+  const declaradas = leerPuertas(estado.cwd);
+  const decision = await ejecucionQaConPuertas({
+    categoria: categoriaPruebas,
+    puertas: declaradas.ok === true && declaradas.declarada ? async () => (await ejecutarPuertas({
+      puertas: declaradas.puertas, topes: declaradas.topes, runner: deps.runner, cwd: estado.cwd,
+    })).resultados : null,
+  });
+  const categoria = decision.categoria;
 
   // Un fallo del entorno no consume iteraciones (CA-005-05)
   const iteracion = categoria === 'infra_error' ? estado.iteracion : estado.iteracion + 1;
@@ -616,6 +628,7 @@ export async function sandbox(estado, deps) {
     const sospecha = detectarSospecha({ stdout: r.stdout, stderr: r.stderr, archivos, pruebas });
     if (sospecha.length > 0) ejecucion.sospecha = sospecha;
   }
+  if (decision.motivo) ejecucion.puerta = decision.motivo;
   deps.log.append('ciclo:ejecucion', { categoria, exitCode: ejecucion.exitCode, timedOut: ejecucion.timedOut, durationMs: ejecucion.durationMs, iteracion }, { taskId: estado.taskId });
 
   return { iteracion, ejecuciones: [ejecucion] };
