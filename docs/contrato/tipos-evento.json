@@ -22,6 +22,7 @@
     "custom": { "contrato": false, "archivo": "principal" },
     "ciclo:nodo_completado": { "contrato": false, "archivo": "principal" },
     "ciclo:ejecucion": { "contrato": false, "archivo": "principal" },
+    "ciclo:regresion": { "contrato": false, "archivo": "principal" },
     "ciclo:escritura_rechazada": { "contrato": false, "archivo": "principal" },
     "ciclo:presupuesto_degradado": { "contrato": false, "archivo": "principal" },
     "ciclo:revision_decidida": { "contrato": false, "archivo": "principal" },

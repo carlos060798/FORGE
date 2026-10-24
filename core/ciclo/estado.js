@@ -7,7 +7,7 @@ import { validarPerfilGuardado } from './perfiles.js';
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles', 'perfil', 'puerta'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles', 'perfil', 'puerta', 'regresion'];
 export const ESTADOS_ROJO  = ['fallan', 'pasan', 'exenta', 'sin_comprobar'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
@@ -67,12 +67,13 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {string} threadId
  * @property {string} taskId
  * @property {string} cwd
- * @property {{id: string, descripcion: string, agente: string, archivos: string[], cas: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean}} tarea
+ * @property {{id: string, descripcion: string, agente: string, archivos: string[], cas: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean, no_cambiar?: string[]}} tarea
  * @property {{pasos: string[], archivosObjetivo: string[]}|null} plan
  * @property {{fragmentos: {ruta: string, origen: string, bytes: number}[], bytesTotales: number, truncado: boolean}} contexto
  * @property {{archivos: {ruta: string, sha256: string}[], comando: string}} pruebas
  * @property {{archivos: {ruta: string, sha256: string}[]}} implementacion
  * @property {{estado: 'fallan'|'pasan'|'exenta'|'sin_comprobar', reintentado: boolean}|null} [rojo]  comprobación de que las pruebas fallan antes de implementar
+ * @property {{base: 'verde'}} [regresion]  la línea base de `no_cambiar` se comprobó en verde antes de implementar (core/ciclo/regresion.js)
  * @property {Mutacion|null} [mutacion]  última medición de las pruebas por mutación; null si no se ha medido
  * @property {Ejecucion[]} ejecuciones
  * @property {number} iteracion
@@ -86,7 +87,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  */
 
 /**
- * @param {{id: string, prompt?: string, descripcion?: string, agente: string, archivos?: string[], cubre_cas?: string[], cas?: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean}} tarea
+ * @param {{id: string, prompt?: string, descripcion?: string, agente: string, archivos?: string[], cubre_cas?: string[], cas?: string[], criterioCmd?: string, parte_de_codigo_existente?: boolean, no_cambiar?: string[]}} tarea
  * @param {{runId: string, cwd: string, maxIteraciones?: number, tope_usd?: number, umbral_degradacion_usd?: number}} opciones
  * @returns {EstadoCiclo}
  */
@@ -106,6 +107,8 @@ export function estadoInicial(tarea, opciones) {
       ...(tarea.criterioCmd ? { criterioCmd: tarea.criterioCmd } : {}),
       // La tarea declara que parte de un comportamiento que ya existe: exenta del rojo obligatorio (ADR-20)
       ...(tarea.parte_de_codigo_existente === true ? { parte_de_codigo_existente: true } : {}),
+      // Pruebas existentes que no deben romperse (HU-006). Se conserva tal cual: la validación pide revisión si no vale
+      ...(tarea.no_cambiar !== undefined ? { no_cambiar: tarea.no_cambiar } : {}),
     },
     plan: null,
     contexto: { fragmentos: [], bytesTotales: 0, truncado: false },
@@ -171,6 +174,10 @@ export function validarEstado(estado) {
   if (!Number.isInteger(e.maxIteraciones) || e.maxIteraciones < 1) errores.push('maxIteraciones debe ser un entero ≥ 1');
   if (!RESULTADOS.includes(e.resultado)) errores.push(`resultado desconocido: ${e.resultado}`);
   if (e.revision !== null && !MOTIVOS.includes(e.revision?.motivo)) errores.push(`motivo de revisión desconocido: ${e.revision?.motivo}`);
+
+  // Opcional: los puntos de guardado anteriores a la regresión (HU-006) no lo llevan
+  if (e.regresion !== undefined && e.regresion?.base !== 'verde') errores.push('regresion.base debe ser "verde"');
+  if (e.tarea?.no_cambiar !== undefined && !Array.isArray(e.tarea.no_cambiar)) errores.push('tarea.no_cambiar debe ser una lista');
 
   // Opcionales: los puntos de guardado anteriores a ADR-20 no los llevan
   if (e.rojo !== undefined && e.rojo !== null && !ESTADOS_ROJO.includes(e.rojo?.estado)) errores.push(`estado del rojo desconocido: ${e.rojo?.estado}`);

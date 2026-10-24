@@ -202,6 +202,9 @@ export async function crearServidorGitLab(o) {
     });
   });
 
+  // Sin conexiones persistentes: bajo la carga de la suite completa, el cliente (fetch) reutilizaba un socket que el
+  // servidor ya había cerrado y el test fallaba con «fetch failed». Una conexión por petición lo evita.
+  servidor.prependListener('request', (_req, res) => { res.setHeader('Connection', 'close'); });
   await new Promise((r) => servidor.listen(0, '127.0.0.1', () => r(undefined)));
   const puerto = /** @type {any} */ (servidor.address()).port;
 

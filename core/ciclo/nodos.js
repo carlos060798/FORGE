@@ -32,6 +32,7 @@ import { clasificar, detalleSinPruebas, sinProgreso, sinPruebasEjecutadas } from
 import { cola, redactar } from './redactar.js';
 import { detectarSospecha } from './sospecha.js';
 import { ejecucionQaConPuertas } from '../puertas/ciclo.js';
+import { ejecutarNoCambiar, textoDeRegresion, validarNoCambiar } from './regresion.js';
 import { leerPuertas } from '../puertas/config.js';
 import { ejecutarPuertas } from '../puertas/ejecutar.js';
 import { coderPorTurnos, modoImplementador } from './turnos.js';
@@ -180,6 +181,21 @@ function seccionPlan(estado) {
  */
 export function seccionTarea(estado) {
   return `## Tarea\n${comoArchivo('descripción de la tarea', estado.tarea.descripcion)}`;
+}
+
+/**
+ * Criterios de aceptación que cubre la tarea y la instrucción de citarlos en las pruebas (HU-003, CA-003-02).
+ * Solo ids con la forma `CA-xxx-yy`: nada libre de la tarea llega al prompt por esta vía. Sin criterios, no añade nada.
+ * @param {EstadoCiclo} estado
+ */
+export function seccionCriterios(estado) {
+  const ids = [...new Set((estado.tarea.cas ?? []).filter((c) => typeof c === 'string' && /^CA-\d{3}-\d{2}$/.test(c)))];
+  if (ids.length === 0) return '';
+  return `
+
+## Criterios de aceptación que cubre esta tarea
+${ids.join(', ')}
+Cita cada identificador, tal cual, en un comentario o en el nombre de la prueba que comprueba ese criterio.`;
 }
 
 /**
@@ -433,7 +449,7 @@ async function qaInterno(estado, deps, perfil) {
   const exenta = estado.tarea.parte_de_codigo_existente === true;
 
   const contexto = (await textoDeContexto(estado, deps, perfil)).texto;
-  const partes = (mapa, extra = '') => `${seccionTarea(estado)}${seccionPlan(estado)}`
+  const partes = (mapa, extra = '') => `${seccionTarea(estado)}${seccionCriterios(estado)}${seccionPlan(estado)}`
     + (contexto ? `\n\n## Contexto del proyecto\n${contexto}` : mapa)
     + seccionProyecto(estado.cwd, deps.vetadas)
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`
@@ -527,6 +543,33 @@ function leerPruebas(estado) {
  * @param {EstadoCiclo} estado
  */
 async function coderInterno(estado, deps, perfil) {
+  // «Lo que no debe cambiar» (HU-006): antes de implementar, esas pruebas deben pasar tal como están
+  const base = await comprobarLineaBase(estado, deps);
+  if ('parcial' in base) return base.parcial;
+  const r = await coderConModo(estado, deps, perfil);
+  return base.verde ? { ...r, regresion: { base: /** @type {const} */ ('verde') } } : r;
+}
+
+/**
+ * Línea base de `no_cambiar` (CA-006-02, CA-006-05). Sin la declaración no hace nada. Una declaración no válida o una
+ * línea base que ya falla piden revisión humana en lugar de seguir. Una vez en verde queda anotado en el estado.
+ * @param {EstadoCiclo} estado
+ * @returns {Promise<{ revision: false, verde: boolean } | { revision: true, parcial: Partial<EstadoCiclo> }>}
+ */
+export async function comprobarLineaBase(estado, deps) {
+  const declarada = estado.tarea.no_cambiar;
+  if (declarada === undefined) return { revision: false, verde: false };
+  const v = validarNoCambiar(estado.cwd, declarada);
+  if (v.ok === false) return { revision: true, parcial: pedirRevision('regresion', 'coder', v.error) };
+  if (estado.regresion?.base === 'verde') return { revision: false, verde: false };
+  const r = await ejecutarNoCambiar({ runner: deps.runner, cwd: estado.cwd, testCmd: deps.testCmd, rutas: v.rutas, fase: 'base' });
+  deps.log.append('ciclo:regresion', { fase: 'base', categoria: r.categoria, exitCode: r.exitCode, archivos: r.rutas.length }, { taskId: estado.taskId });
+  if (r.categoria !== 'pass') return { revision: true, parcial: pedirRevision('regresion', 'coder', textoDeRegresion(r, 'base')) };
+  return { revision: false, verde: true };
+}
+
+/** @param {EstadoCiclo} estado */
+async function coderConModo(estado, deps, perfil) {
   const { modo, marca } = modoImplementador(estado, deps);
   if (modo === 'turnos') {
     const r = await coderPorTurnos(estado, deps, { seccionPlan, leerPruebas, seccionProyecto, seccionMapa, pedirRevision, detalleDeRevision }, perfil);
@@ -564,7 +607,7 @@ async function coderEnBloque(estado, deps, perfil) {
 
   const r = await generarArchivos(estado, deps, 'coder', {
     agente: estado.tarea.agente, userPrompt, contrato: CONTRATO_CODER, rol: 'coder', clavePrompt: partes(false), perfil,
-    pruebas: estado.pruebas.archivos.map((a) => a.ruta),
+    pruebas: [...estado.pruebas.archivos.map((a) => a.ruta), ...(Array.isArray(estado.tarea.no_cambiar) ? estado.tarea.no_cambiar : [])],
   });
   if ('fallo' in r) return r.fallo;
 
@@ -600,11 +643,22 @@ export async function sandbox(estado, deps) {
   const categoriaPruebas = clasificar(r, { hayPruebas: estado.pruebas.archivos.length > 0, pruebasIntactas: true });
   // Puertas declaradas (fase B2): solo se miran si las pruebas pasaron. Sin puertas, no cambia nada.
   const declaradas = leerPuertas(estado.cwd);
+  const hayPuertas = declaradas.ok === true && declaradas.declarada;
+  // `no_cambiar` (HU-006) se juzga como una puerta más: si alguna de esas pruebas falla, la ejecución es `fail`
+  const noCambiar = estado.tarea.no_cambiar !== undefined ? validarNoCambiar(estado.cwd, estado.tarea.no_cambiar) : null;
   const decision = await ejecucionQaConPuertas({
     categoria: categoriaPruebas,
-    puertas: declaradas.ok === true && declaradas.declarada ? async () => (await ejecutarPuertas({
-      puertas: declaradas.puertas, topes: declaradas.topes, runner: deps.runner, cwd: estado.cwd,
-    })).resultados : null,
+    puertas: hayPuertas || noCambiar ? async () => {
+      /** @type {any[]} */ const resultados = [];
+      if (hayPuertas) resultados.push(...(await ejecutarPuertas({ puertas: declaradas.puertas, topes: declaradas.topes, runner: deps.runner, cwd: estado.cwd })).resultados);
+      if (noCambiar) {
+        // Una declaración que dejó de ser válida tras implementar (p. ej. se borró un archivo) tampoco es éxito
+        resultados.push(noCambiar.ok === false
+          ? { nombre: 'regresion', categoria: 'fail', exitCode: null, salida: noCambiar.error }
+          : await ejecutarNoCambiar({ runner: deps.runner, cwd: estado.cwd, testCmd: deps.testCmd, rutas: noCambiar.rutas, fase: 'regresion' }));
+      }
+      return resultados;
+    } : null,
   });
   const categoria = decision.categoria;
   // Si una puerta declarada decidió (no pasó), la ejecución es la de esa puerta: su salida es la que el

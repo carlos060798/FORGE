@@ -20,7 +20,8 @@
         "archivos": { "type": "array", "items": { "type": "string" } },
         "cas": { "type": "array", "items": { "type": "string" } },
         "criterioCmd": { "type": "string" },
-        "parte_de_codigo_existente": { "type": "boolean" }
+        "parte_de_codigo_existente": { "type": "boolean" },
+        "no_cambiar": { "type": "array", "items": { "type": "string" } }
       } },
     "plan": { "type": ["object", "null"], "x-interno": true },
     "contexto": { "type": "object", "x-interno": true },
@@ -33,6 +34,7 @@
       "properties": {
         "archivos": { "type": "array", "items": { "type": "object", "required": ["ruta", "sha256"], "properties": { "ruta": { "type": "string" }, "sha256": { "type": "string" } } } }
       } },
+    "regresion": { "type": "object", "additionalProperties": false, "required": ["base"], "properties": { "base": { "type": "string", "const": "verde" } } },
     "rojo": { "type": ["object", "null"], "additionalProperties": false,
       "properties": {
         "estado": { "type": "string", "enum": ["fallan", "pasan", "exenta", "sin_comprobar"] },
@@ -75,7 +77,7 @@
       } },
     "revision": { "type": ["object", "null"], "required": ["motivo", "reanudarEn"],
       "properties": {
-        "motivo": { "type": "string", "enum": ["iteraciones", "presupuesto", "infraestructura", "dependencias", "salida_invalida", "exito_sospechoso", "sin_progreso", "pruebas_no_fallan", "pruebas_debiles", "perfil", "puerta"] },
+        "motivo": { "type": "string", "enum": ["iteraciones", "presupuesto", "infraestructura", "dependencias", "salida_invalida", "exito_sospechoso", "sin_progreso", "pruebas_no_fallan", "pruebas_debiles", "perfil", "puerta", "regresion"] },
         "reanudarEn": { "type": "string" },
         "detalle": { "type": "string", "x-interno": true },
         "decision": { "type": "string" },

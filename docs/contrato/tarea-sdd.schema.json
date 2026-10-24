@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge-sdd.dev/contrato/tarea-sdd/1.0",
+  "$id": "https://forge-sdd.dev/contrato/tarea-sdd/1.1",
   "title": "Estado de tareas generado por /sdd.tareas",
   "description": "Contenido de .sdd/especificaciones/<id>/.estado-tareas.json: `tareas` es un mapa { T001: {...} }. El enunciado vive en tareas.md (no es contrato). Zona de extension: campos desconocidos admitidos.",
   "type": "object",
@@ -19,7 +19,8 @@
           "depende_de": { "type": "array", "items": { "type": "string" } },
           "dependencias": { "type": "array", "items": { "type": "string" } },
           "cubre_cas": { "type": "array", "items": { "type": "string" } },
-          "parte_de_codigo_existente": { "type": "boolean" }
+          "parte_de_codigo_existente": { "type": "boolean" },
+          "no_cambiar": { "type": "array", "items": { "type": "string" } }
         }
       }
     }

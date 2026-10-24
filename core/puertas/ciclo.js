@@ -32,6 +32,16 @@ export function decidirTrasPuertas(o) {
       motivo: `La puerta ${ausentes.map((r) => r.nombre).join(', ')} no es ejecutable en la imagen (la herramienta no está instalada). No se da la tarea por buena: revisa la sección puertas: o prepara la imagen.`,
     };
   }
+  const regresion = malas.find((r) => r.nombre === 'regresion');
+  if (regresion) {
+    // HU-006: lo que la tarea declaró que no debía cambiar, cambió. El motivo lleva la lista de lo declarado.
+    const otras = malas.filter((r) => r !== regresion);
+    return {
+      pasa: false, revision: false,
+      motivo: `Regresión: las pruebas pasan, pero se rompió lo declarado en no_cambiar${/** @type {any} */ (regresion).rutas ? ` (${/** @type {any} */ (regresion).rutas.join(', ')})` : ''} (${regresion.categoria}).`
+        + (otras.length ? ` Tampoco pasa la puerta ${otras.map((r) => r.nombre).join(', ')}.` : ''),
+    };
+  }
   return {
     pasa: false, revision: false,
     motivo: `Las pruebas pasan, pero la puerta ${malas.map((r) => r.nombre).join(', ')} no pasa (${malas.map((r) => r.categoria).join(', ')}). La tarea no se da por buena.`,

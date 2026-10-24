@@ -206,6 +206,7 @@ const MOTIVOS_LEGIBLES = {
   sin_progreso:    'las pruebas fallan igual varias veces seguidas: puede que estén rotas (mira el detalle)',
   pruebas_no_fallan: 'las pruebas recién escritas pasan sin que exista la implementación: no demuestran nada (mira el detalle)',
   pruebas_debiles: 'las pruebas pasan, pero detectan pocos cambios deliberados en el código (mira el detalle)',
+  regresion:       'las pruebas declaradas en no_cambiar no pasan, o la declaración no es válida (mira el detalle)',
 };
 
 /** Explica por qué se pausó cada tarea y qué puede decidir la persona. No gasta nada. */

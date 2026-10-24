@@ -32,7 +32,7 @@ export const SALIDA_PUERTA_MAX = 8192;
  * Clon del ejecutor que solo cambia el comando (y, para las puertas, tiempo y tope de salida).
  * @param {any} runner @param {string} comando @param {string} nombre @param {number} timeoutMs @param {number} salidaMaxBytes
  */
-function clonar(runner, comando, nombre, timeoutMs, salidaMaxBytes) {
+export function clonar(runner, comando, nombre, timeoutMs, salidaMaxBytes) {
   const o = runner?.o;
   if (!o || typeof runner.constructor !== 'function' || typeof o.runId !== 'string') throw new Error('el ejecutor de pruebas no permite ejecutar otro comando');
   return new runner.constructor({

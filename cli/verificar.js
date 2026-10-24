@@ -11,12 +11,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CON_VALOR = new Set(['cwd', 'comando', 'archivos', 'desde', 'mutacion-minima']);
-const BOOLEANAS = new Set(['json', 'mutacion', 'registrar', 'comprobar-evidencia']);
+const BOOLEANAS = new Set(['json', 'mutacion', 'registrar', 'comprobar-evidencia', 'criterios', 'exigir-cobertura-de-criterios']);
 const USO = 'Uso: forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json] [--registrar] [--mutacion (--archivos <a,b> | --desde <ref>) [--mutacion-minima <0..1>]]\n       forge verificar --comprobar-evidencia [--cwd <dir>] [--json]';
 const NUMERO_0_1 = /^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/;
 
 /**
- * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean, comprobarEvidencia?: boolean,
+ * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean, comprobarEvidencia?: boolean, criterios?: { exigir: boolean },
  *   mutacion?: { archivos?: string[], desde?: string, minima?: number } }} OpcionesCli
  */
 
@@ -49,6 +49,15 @@ export function leerOpciones(argv) {
     const otras = ['comando', 'archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
     if (activas.has('registrar') || activas.has('mutacion') || otras.length > 0) return { error: '--comprobar-evidencia solo lee: no se combina con --registrar, --mutacion, --comando, --archivos, --desde ni --mutacion-minima.' };
     o.comprobarEvidencia = true;
+    return o;
+  }
+
+  if (activas.has('exigir-cobertura-de-criterios') && !activas.has('criterios')) return { error: '--exigir-cobertura-de-criterios solo tiene sentido con --criterios.' };
+  if (activas.has('criterios')) {
+    // Solo lectura: lee archivos y compara texto, no ejecuta nada
+    const otras = ['comando', 'archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
+    if (activas.has('registrar') || activas.has('mutacion') || otras.length > 0) return { error: '--criterios solo lee: no se combina con --registrar, --mutacion, --comando, --archivos, --desde ni --mutacion-minima.' };
+    o.criterios = { exigir: activas.has('exigir-cobertura-de-criterios') };
     return o;
   }
 
@@ -96,6 +105,15 @@ export async function cmdVerificar(argv, deps = {}) {
     const c = comprobarEvidencia(cwd);
     salida(o.json ? JSON.stringify(c) : textoComprobacion(c));
     return c.ok ? 0 : 1;
+  }
+
+  if (o.criterios) {
+    const { matrizDelProyecto, textoMatriz } = await import('../core/evidencia/criterios.js');
+    const r = matrizDelProyecto(cwd);
+    if (!r.ok) { errores(`✗ ${r.motivo}`); return 1; }
+    salida(o.json ? JSON.stringify({ spec: r.spec, ...r.matriz }) : textoMatriz(r.spec, r.matriz));
+    // Por defecto solo informa; con la opción explícita, un criterio sin tarea o sin prueba da el código 1
+    return o.criterios.exigir && (r.matriz.sinTarea.length > 0 || r.matriz.sinPrueba.length > 0) ? 1 : 0;
   }
 
   // Carga diferida: ni el comando ni sus dependencias se cargan hasta aquí

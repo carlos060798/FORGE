@@ -180,7 +180,7 @@ export async function coderPorTurnos(estado, deps, ayudas, perfil = perfilPorDef
   const mensajes = [{ rol: 'usuario', contenido: inicio.userPrompt }];
 
   const herramientas = crearHerramientasCoder({
-    cwd: estado.cwd, vetadas: deps.vetadas, pruebas: estado.pruebas.archivos.map((a) => a.ruta),
+    cwd: estado.cwd, vetadas: deps.vetadas, pruebas: [...estado.pruebas.archivos.map((a) => a.ruta), ...(Array.isArray(estado.tarea.no_cambiar) ? estado.tarea.no_cambiar : [])],
     respaldo: deps.respaldo, runner: deps.runner, log: deps.log, taskId: estado.taskId, maxPruebas: pruebasMax,
     perfil: { herramientas: perfil.herramientas, rutasEscribir: perfil.rutasEscribir.prefijos },
   });

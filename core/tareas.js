@@ -63,6 +63,8 @@ export function normalizarTareas(raw, tareasMd = '') {
       cubre_cas:    t.cubre_cas ?? [],
       // Exención del rojo obligatorio (ADR-20): la tarea parte de un comportamiento que ya existe
       ...(t.parte_de_codigo_existente === true ? { parte_de_codigo_existente: true } : {}),
+      // Pruebas existentes que deben pasar antes y después del cambio (HU-006); se valida al empezar el ciclo, no aquí
+      ...(t.no_cambiar !== undefined ? { no_cambiar: t.no_cambiar } : {}),
     }));
 }
 
