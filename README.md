@@ -37,7 +37,7 @@ FORGE:
 
 ## Estado
 
-> A fecha de **2026-10-12**. La versión **5.0.0 no está publicada**: en npm, `forja-mvp` (nombre antiguo) sigue en 4.2.0; el paquete nuevo es `fragua`. Lo que sigue describe la rama `feature/motor-agentico`.
+> La versión **5.0.0 no está publicada**: en npm, `forja-mvp` (nombre antiguo) sigue en 4.2.0; el paquete nuevo es `fragua`. Lo que sigue describe la rama `feature/motor-agentico`. **Estado al día, cifras y pendientes: [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md).**
 
 **Qué es.** Un framework de desarrollo guiado por especificaciones para Claude Code. Desde 5.0.0, las tareas de código pasan por un **ciclo verificado**:
 

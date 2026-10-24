@@ -1,6 +1,6 @@
 # FORGE 5.0: para qué sirve y qué trae
 
-> Estado: 5.0.0 **no está publicada en npm**. Describe la rama `feature/motor-agentico`. Cada dato sale de leer el código (`cli/index.js`, `cli/integraciones.js`, `core/ciclo/config.js`, `core/llm-providers/index.js`) o los documentos enlazados; no se ejecutó nada para escribir esta guía.
+> Estado: 5.0.0 **no está publicada en npm**. Describe la rama `feature/motor-agentico`. **Para el estado al día (cifras, qué está en curso y qué falta) ver [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).** Cada dato sale de leer el código (`cli/index.js`, `cli/integraciones.js`, `core/ciclo/config.js`, `core/llm-providers/index.js`) o los documentos enlazados; no se ejecutó nada para escribir esta guía.
 
 ## Qué está verificado y qué no
 
@@ -242,7 +242,7 @@ Lista completa en [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) y [limitation
 - Un **adversario deliberado** puede imitar la señal de aserción de las pruebas y esquivar la detección de éxito sospechoso.
 - Con `motor.mutacion: exigir`, la tarea **se pausa si hay pocos mutantes concluyentes** (menos de `mutacion_min_concluyentes`), p. ej. en proyectos pequeños.
 - La puntuación de mutación se midió en pocos proyectos.
-- **Cifras de pruebas inconsistentes**: README, CHANGELOG, roadmap y PROBLEMAS-CONOCIDOS citan 998, 1405, 2055, 2214 y 2468; no hay una pasada completa registrada sobre el commit actual. No cites un número sin su fecha y commit.
+- **Cifras de pruebas**: las de los documentos antiguos (998, 1405, 2055, 2214, 2468) están superadas. La cifra vigente, con su commit, está en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 Pendiente del dueño del proyecto:
 

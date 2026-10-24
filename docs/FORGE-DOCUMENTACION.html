@@ -128,15 +128,22 @@ $env:ANTHROPIC_API_KEY='...'                                  # solo en la sesi�
 node scripts/pruebas-independientes.mjs --modelo real --proyectos js-nuevo --tope 0.15</code></pre>
 
 <h2 id="estado">6. Estado del plan</h2>
+<p>Cifras y detalle al día en <a href="ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a>. Último commit con suite completa: <code>b4f234d</code>; 3782 pruebas, 3750 pasan, 1 fallo de carga conocido (pasa aislado), 31 saltadas.</p>
 <table>
 <tr><th>Bloque</th><th>Estado</th><th>Nota</th></tr>
-<tr><td>Fases 6–9 del motor</td><td class="ok">Hecho</td><td>Validación, mutación, implementador por pasos, caché/MCP/AGENTS.md/runtime</td></tr>
-<tr><td>Integraciones GitHub/GitLab/Jira</td><td class="ok">Hecho, sin cuenta real</td><td>Probadas con servidores falsos locales</td></tr>
-<tr><td>Revisiones independientes</td><td class="ok">Cinco pasadas</td><td>Sin hallazgos altos abiertos; observaciones de la quinta cerradas</td></tr>
-<tr><td>Proyectos independientes con modelo real</td><td class="ok">3 de 3</td><td>go-modulo y dos-tareas con modelo real: opcionales</td></tr>
-<tr><td>Integración continua en Linux</td><td class="warn">Sin ejecutar</td><td>Requiere abrir la solicitud de cambio a <code>main</code></td></tr>
+<tr><td>Ciclo verificado y motor propio</td><td class="ok">Hecho</td><td>Planificación, pruebas, implementación y mutación; aislamiento en Docker (probado en Windows 11)</td></tr>
+<tr><td>Fragua verificar (sin modelo)</td><td class="ok">Hecho</td><td>Mutación, --desde con git neutralizado, --registrar con cadena firmada, --comprobar-evidencia</td></tr>
+<tr><td>Puertas declarables</td><td class="ok">Hecho en verificar y en el ciclo</td><td>Una puerta que falla impide dar la tarea por buena</td></tr>
+<tr><td>Estado del ciclo sellado</td><td class="ok">Hecho</td><td>Puntos de guardado y sesión con sello de la clave del usuario</td></tr>
+<tr><td>Proveedores agnósticos</td><td class="ok">Hecho</td><td>Anthropic, OpenAI y Ollama con herramientas; niveles neutrales</td></tr>
+<tr><td>Instalación agnóstica y nombre Fragua</td><td class="ok">Hecho</td><td>9 herramientas con carpeta confirmada; comando fragua junto a forge</td></tr>
+<tr><td>Servidor MCP (perfil verificacion)</td><td class="ok">Hecho</td><td>Solo verificar, sin gasto, con límites del entorno del usuario</td></tr>
+<tr><td>Revisiones independientes de seguridad</td><td class="ok">Cinco pasadas anteriores y dos de hoy</td><td>Todos los hallazgos altos corregidos con prueba que fallaba antes</td></tr>
+<tr><td>Perfiles de agente</td><td class="warn">Primera entrega integrada; resto en curso</td><td>Ver ESTADO-ACTUAL.md</td></tr>
+<tr><td>Integración continua en Linux</td><td class="warn">Sin ejecutar</td><td>Requiere abrir la PR a <code>main</code></td></tr>
+<tr><td>Contenedores reales medidos</td><td class="warn">Pendiente</td><td>Este equipo no tiene Docker: todo lo de contenedor va con Docker falso</td></tr>
 <tr><td>Gasto calculado frente a facturado</td><td class="warn">Pendiente</td><td>Comparar con la consola del proveedor</td></tr>
-<tr><td>Ratificación de especificaciones y ADR-19..22</td><td class="warn">Pendiente del dueño</td><td>—</td></tr>
+<tr><td>Ratificación de especificaciones y ADR-19..22</td><td class="warn">Pendiente del dueño</td><td>Hasta ahora avanzado por delegación, anotado en cada carpeta</td></tr>
 <tr><td>Publicación en npm y etiqueta</td><td class="bad">No hecha</td><td>Irreversible: solo el dueño y con CI en verde</td></tr>
 </table>
 <h3>Límites declarados</h3>
@@ -144,6 +151,7 @@ node scripts/pruebas-independientes.mjs --modelo real --proyectos js-nuevo --top
 <li>Un adversario deliberado puede imitar la señal de aserción de la mutación; la revisión humana es el control final.</li>
 <li><code>mutacion: exigir</code> pausa si hay pocos mutantes concluyentes (falla cerrado).</li>
 <li>Las integraciones no se han probado contra las plataformas reales.</li>
+<li>Ningún contenedor real está medido: el equipo no tiene Docker.</li>
 <li>La clave de Anthropic usada en la validación apareció en una conversación: hay que rotarla.</li>
 </ul>
 </main>
