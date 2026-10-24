@@ -415,8 +415,29 @@ function recorrer(cwd, opciones = {}) {
  * @returns {ResultadoComprobacion}
  */
 export function comprobarEvidencia(cwd, opciones = {}) {
-  const { tip: _t, ...r } = recorrer(cwd, opciones);
-  return r;
+  // F6.7: la cabeza y los informes se leen bajo el candado del registro, el mismo que usa el registro para
+  // escribir un informe y luego la cabeza. Sin él, una lectura entre las dos escrituras vería una cadena
+  // desfasada que no existe. Sin carpeta de informes no hay registro en curso ni nada que leer: no se crea nada.
+  const liberar = fs.existsSync(path.join(path.resolve(cwd), DIRECTORIO_INFORMES)) ? tomarCerrojoDeRegistro(cwd) : null;
+  try {
+    const { tip: _t, ...r } = recorrer(cwd, opciones);
+    return r;
+  } finally { liberar?.(); }
+}
+
+/**
+ * Candado del registro de evidencia del proyecto (`.sdd/verificaciones/registro.lock`, el de core/ciclo/candado.js).
+ * Espera un rato si otro proceso lo tiene: un informe tarda poco. Devuelve la función que lo libera.
+ * @param {string} cwd
+ * @returns {() => void}
+ */
+function tomarCerrojoDeRegistro(cwd) {
+  const cerrojo = path.join(path.resolve(cwd), '.sdd', 'verificaciones', 'registro.lock');
+  const limite = Date.now() + 15_000;
+  for (;;) {
+    try { return adquirir(cerrojo, 'El registro de evidencia'); }
+    catch (e) { if (Date.now() > limite || !(e instanceof ErrorBloqueado)) throw e; esperarMs(20 + Math.floor(Math.random() * 40)); }
+  }
 }
 
 // ---------------------------------------------------------------- escritura
@@ -515,16 +536,9 @@ export function guardarCabeza(dir, clave, informe, n) {
  * @returns {{ informe: Record<string, any>, firmado: boolean, cabeza: { ok: boolean, motivo: string|null } }}
  */
 export function registrarEncadenado(cwd, id, resultado, crear, opciones = {}) {
-  // E-1: dos registros a la vez leían la misma cabeza y la cadena se bifurcaba. Se serializan con un candado
-  // del proyecto: cada informe se encadena a la cabeza anterior REAL, tomada bajo el candado.
-  // Un registro espera a que el anterior termine (un informe es rápido): se reintenta un rato antes de rendirse.
-  const cerrojo = path.join(path.resolve(cwd), '.sdd', 'verificaciones', 'registro.lock');
-  let liberar = null;
-  const limite = Date.now() + 15_000;
-  while (liberar === null) {
-    try { liberar = adquirir(cerrojo, 'El registro de evidencia'); }
-    catch (e) { if (Date.now() > limite || !(e instanceof ErrorBloqueado)) throw e; esperarMs(20 + Math.floor(Math.random() * 40)); }
-  }
+  // E-1: dos registros a la vez leían la misma cabeza y la cadena se bifurcaba. Se serializan con el candado
+  // del registro: cada informe se encadena a la cabeza anterior REAL, tomada bajo el candado.
+  const liberar = tomarCerrojoDeRegistro(cwd);
   try {
     const { informe, clave, estadoDir } = construirInforme(cwd, id, resultado, opciones);
     if (crear(informe) !== true) throw new Error(`No se pudo crear el informe ${texto(id, 80)}: ya existe.`);
