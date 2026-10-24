@@ -6,8 +6,11 @@
  * `ruff.toml`, `biome.json`... y con ellas un implementador puede aflojar la puerta que lo juzga
  * (quitar `strict`, añadir `exclude`). Esta lista es la que habrá que sumar a `CONFIGURACION`.
  *
- * ESTADO: módulo puro y probado; SU CABLEADO a protocolo-archivos.js es de la fase siguiente (toca el
- * ciclo). No lo importa nadie todavía. Solo APRIETA: nunca quita protección a lo que ya la tiene.
+ * CABLEADO (F6.6, F1.5): `clasificarRuta` (core/ciclo/protocolo-archivos.js) la consulta y devuelve
+ * `configuracion`, de modo que el implementador no la escribe (ni `aplicarArchivos`, ni el servidor MCP, ni la
+ * publicación). NO entra en `esVetada` ni en `vetadas`: esas listas también deciden qué se copia al contenedor
+ * (core/sandbox/staging.js) y qué se lee para el contexto, y un tsconfig.json que no se copiara rompería las
+ * pruebas de TypeScript. Solo APRIETA: nunca quita protección a lo que ya la tiene.
  *
  * La comparación es por nombre de archivo (último componente), sin distinguir mayúsculas (Windows y
  * macOS lo hacen: `TSConfig.json` es el mismo archivo), y tras normalizar `\` y `/`.

@@ -17,6 +17,7 @@ import { createHash } from 'crypto';
 import { coincide } from '../glob.js';
 import { revisarContenido, MAX_CONTENIDO_BYTES } from './control-salida.js';
 import { leerPoliticaDestinos } from './politica-destinos.js';
+import { esConfiguracionProtegida } from '../evidencia/protegidos.js';
 
 /**
  * Carpetas vetadas a cualquier profundidad. No basta con vetarlas en la raíz:
@@ -123,6 +124,8 @@ export function clasificarRuta(rutaPosix, vetadasExtra = []) {
   if (MANIFIESTOS.some((p) => coincide(nombre, p))) return 'dependencias';
   if (segmentos.some((s) => s.startsWith('.'))) return 'configuracion';
   if (CONFIGURACION.some((p) => coincide(nombre, p))) return 'configuracion';
+  // Configuración de las herramientas de calidad (tsconfig, biome, mypy, ruff…): fuente única en evidencia/protegidos.js (F6.6, F1.5)
+  if (esConfiguracionProtegida(rutaPosix)) return 'configuracion';
   if (segmentos.slice(0, -1).some((s) => CARPETAS_CONFIGURACION.includes(s))) return 'configuracion';
   return null;
 }
