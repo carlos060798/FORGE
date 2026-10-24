@@ -132,7 +132,8 @@ function aplicarCapa(base, pedido, capa, estricta, avisos) {
   const limite = estricta ? base : techo;
   const p = copiar(base);
   const aviso = (campo, texto, motivo) => avisos.push({ capa, rol, campo, pedido: texto, motivo });
-  const donde = (campo) => (capa === 'proyecto' ? `perfiles.${rol}_${campo}` : `FRAGUA_PERFIL_${rol.toUpperCase()}_${campo.toUpperCase()}`);
+  // Un error nombra archivo y clave (CA-001-02): la capa de proyecto sale de .sdd/sdd.config.yaml; la de usuario, de su variable
+  const donde = (campo) => (capa === 'proyecto' ? `.sdd/sdd.config.yaml perfiles.${rol}_${campo}` : `FRAGUA_PERFIL_${rol.toUpperCase()}_${campo.toUpperCase()}`);
 
   for (const [campo, texto] of Object.entries(pedido)) {
     if (campo === 'herramientas') {
