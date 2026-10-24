@@ -20,7 +20,7 @@
 - [x] **F1.2** Prueba exhaustiva: ninguna clave aceptada afloja una garantía fija; los topes solo bajan; límite al número de puertas. Cubre CA-001-03.
 - [x] **F1.3** Prueba: sin sección, el resultado es idéntico al de hoy (no aparece `puertas`). Cubre CA-001-04.
 - [x] **F1.4** Prueba: comando con `&&`, `|`, `;`, `>`, `<`, `&` o un intérprete como primera palabra rechazado; `#` pegado y comilla final. Cubre CA-001-05.
-- [ ] **F1.5** (fase siguiente) Ampliar `CONFIGURACION` de `protocolo-archivos.js` con `tsconfig*.json`, `biome.json`… (ver F6.6; mismo archivo del frente de perfiles).
+- [x] **F1.5** Ampliar `CONFIGURACION` de `protocolo-archivos.js` con `tsconfig*.json`, `biome.json`… Hecho con F6.6 (misma pieza): la lista es la de `core/evidencia/protegidos.js` y entra por `clasificarRuta`, no por la constante `CONFIGURACION`, para tener una sola fuente. Prueba: `tests/configuracion-protegida.test.js`.
 
 ## F2 — Ejecución en `forge verificar`
 
@@ -35,10 +35,10 @@
 
 > F3 es la fase siguiente (tras el frente de perfiles): el nodo `puertas` entre `sandbox` y `mutacion` (`nodos.js`, `grafo.js`), `decidirTrasPuertas` en `router.js`, el motivo `puerta` en `estado.js`, el evento `ciclo:puerta` (`core/event-log.js`, `docs/contrato/tipos-evento.json`) y la reutilización de `core/puertas/ejecutar.js` (ya expone `ejecutarPuertas` y `juzgarPuertas`). Esta fase NO emite eventos nuevos.
 
-- [ ] **F3.1** Prueba de `decidirTrasPuertas` (función pura) en `router.js`. Cubre RF-03.
-- [ ] **F3.2** Prueba del nodo y del grafo: sin sección, mismo recorrido que hoy; con puerta fallida, vuelve al implementador con su salida. Cubre CA-001-04, RF-04.
-- [ ] **F3.3** Prueba: motivo `puerta` en el estado y en `validarEstado` (`core/ciclo/estado.js:8,167`).
-- [ ] **F3.4** Prueba de regresión del ciclo completo con el Docker falso y un modelo falso.
+- [x] **F3.1** Prueba de `decidirTrasPuertas` (función pura) en `router.js`. Cubre RF-03. Hecha en `tests/puertas-en-el-ciclo.test.js` y `tests/puertas-nodo-qa.test.js`; la función vive en `core/puertas/ciclo.js` (ya estaba ahí), no en `router.js`. Se corrigió el vocabulario: comparaba con `pasa` y la categoría real es `pass`.
+- [x] **F3.2** Prueba del nodo y del grafo: sin sección, mismo recorrido que hoy; con puerta fallida, vuelve al implementador con su salida. Cubre CA-001-04, RF-04. `tests/puertas-sandbox-grafo.test.js`. El grafo no cambia: la decisión vive dentro de `sandbox` y `decidirRuta` la encamina como las pruebas, así que no hace falta arista nueva.
+- [x] **F3.3** Prueba: motivo `puerta` en el estado y en `validarEstado` (`core/ciclo/estado.js:8,167`). `tests/puertas-motivo-estado.test.js`.
+- [x] **F3.4** Prueba de regresión del ciclo completo con el Docker falso y un modelo falso. `tests/puertas-ciclo-completo.test.js`: sin sección, con puertas que pasan y con una que falla (la tarea no se aprueba).
 
 ## F4 — Criterios enlazados a pruebas
 
@@ -64,8 +64,8 @@
 - [x] **F6.4** Impresión de la cabeza y texto del límite en la guía. Cubre CA-005-04, CA-005-05.
 
 - [x] **F6.5** (añadida) `core/evidencia/protegidos.js` con su prueba (`tests/evidencia-protegidos.test.js`): lista de configuración que el agente no debe reescribir.
-- [ ] **F6.6** (fase siguiente) Cablear `protegidos.js` a `clasificarRuta` de `core/ciclo/protocolo-archivos.js` y a `leerRutasProtegidas`; prueba F8.1 «el implementador reescribe tsconfig.json».
-- [ ] **F6.7** (fase siguiente) Candado de proyecto (`ciclo/candado.js`) al leer la cabeza y escribir; `ciclo:llamada`/`modeloServido` para poblar `modelos`; `DockerCli.identidadImagen` en `prepararImagen`.
+- [x] **F6.6** Cablear `protegidos.js` a `clasificarRuta` de `core/ciclo/protocolo-archivos.js` y a `leerRutasProtegidas`; prueba F8.1 «el implementador reescribe tsconfig.json». Hecho en `clasificarRuta` (`tests/configuracion-protegida.test.js`). **No** se añadió a `leerRutasProtegidas`: su lista va a `vetadas`, que decide también la copia al contenedor (`core/sandbox/staging.js`) y el contexto; meter ahí `tsconfig.json` lo quitaría de la copia de las pruebas de TypeScript. Motivo en `protegidos.js` y en `docs/GARANTIAS-Y-LIMITES.md`.
+- [ ] **F6.7** (fase siguiente) Candado de proyecto (`ciclo/candado.js`) al leer la cabeza y escribir; `ciclo:llamada`/`modeloServido` para poblar `modelos`; `DockerCli.identidadImagen` en `prepararImagen`. **Parcial:** el candado de lectura y de escritura está hecho (`core/evidencia/cadena.js`, `tests/evidencia-candado-lectura.test.js`). **Pendiente, no pequeño:** `modelos` con `ciclo:llamada`/`modeloServido` (un tipo de evento nuevo con su contrato, y `forge run` no produce informe de evidencia: hoy `modelos` queda vacío en `forge verificar`, que no llama a modelos); `DockerCli.identidadImagen` no existe.
 
 > Fase A hecha en `core/evidencia/cadena.js`, `core/verificar/registro.js`, `cli/verificar.js` (`--comprobar-evidencia`), esquema `resultado-verificar` 1.1 y `docs/cadena-de-evidencia.md`. Pruebas: `tests/evidencia-cadena.test.js`, `tests/evidencia-comando.test.js`, `tests/evidencia-protegidos.test.js`. CA-005-04 se cumple con la cabeza guardada y la guía; CA-005-03 ya no es opcional con clave.
 

@@ -1,6 +1,6 @@
 # Puertas de calidad en `fragua verificar`
 
-Una **puerta** es una comprobación adicional que el proyecto declara (tipos, linter, seguridad, cobertura) y que corre en el **mismo contenedor sin red** que las pruebas. Decide solo el **código de salida** de su comando. Spec: `.sdd/especificaciones/2026-10-14-puertas-de-calidad-y-evidencia/` (fase B1). En esta fase las puertas viven en `fragua verificar`; su integración en el ciclo (nodo y enrutador) es la fase siguiente.
+Una **puerta** es una comprobación adicional que el proyecto declara (tipos, linter, seguridad, cobertura) y que corre en el **mismo contenedor sin red** que las pruebas. Decide solo el **código de salida** de su comando. Spec: `.sdd/especificaciones/2026-10-14-puertas-de-calidad-y-evidencia/` (fase B1). Corren en `fragua verificar` y, en el ciclo, dentro del nodo `sandbox`, tras las pruebas. Si una puerta no pasa, la tarea vuelve al implementador con la salida de la puerta; solo una herramienta ausente (código 127) pide revisión humana. Todavía no hay un evento `ciclo:puerta`.
 
 ## Declararlas
 
@@ -42,7 +42,7 @@ Decisión con evidencia (`tests/puertas-verificar.test.js` «no existe forma de 
 ## Límites (sin adornos)
 
 - Una puerta mide lo que su herramienta mide. Un comando que siempre sale con 0 pasa; la revisión humana de la sección `puertas:` es el control.
-- El implementador aún puede debilitar `tsconfig.json`, `biome.json`, `mypy.ini`… en el ciclo: `core/evidencia/protegidos.js` existe pero no está cableado a `protocolo-archivos.js` (fase siguiente).
+- El implementador no puede escribir `tsconfig.json`, `biome.json`, `mypy.ini`… (lista en `core/evidencia/protegidos.js`, cableada a `clasificarRuta`). Sí puede escribir lo que esos archivos extienden o referencian si la lista no lo conoce (p. ej. un tsconfig que se extiende con `extends`).
 - Un envoltorio que no esté en la lista de intérpretes (`env sh`, `xargs sh`) no se rechaza; dentro del contenedor sigue sin red ni privilegios.
 - Probado con el Docker falso. El 127 de Docker real y el tiempo de varias ejecuciones en serie no están medidos (`FORGE_TEST_DOCKER=1`, fase F8.2).
 - Una puerta que necesita red (descargar reglas) falla por diseño.
