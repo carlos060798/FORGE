@@ -142,6 +142,7 @@ const POR_NOMBRE = new Map(ESQUEMAS_HERRAMIENTAS.map((e) => [e.nombre, e]));
  * @property {boolean} error
  * @property {{ ruta: string, sha256: string }[]} [escritos]  archivos escritos por esta acción
  * @property {{ ruta: string, motivo: string }} [rechazo]     ruta rechazada y por qué
+ * @property {string} [motivo]                                la llamada se rechazó sin tocar nada (p. ej. `herramienta_fuera_de_perfil`); queda en el diario
  * @property {boolean} [requiereRevision]                     intentó tocar dependencias o configuración
  * @property {boolean} [pruebas]                              ejecutó las pruebas (cuenta para el tope)
  */
@@ -512,7 +513,7 @@ export function crearHerramientasCoder(opciones) {
       const esquema = POR_NOMBRE.get(nombre);
       if (!esquema) return fallo(`Herramienta desconocida: "${String(nombre).slice(0, 80)}". Las únicas son: ${ESQUEMAS_HERRAMIENTAS.map((e) => e.nombre).join(', ')}.`);
       const datos = entrada ?? {};
-      if (!permitidas.includes(nombre)) return fallo('La herramienta "' + nombre + '" no está disponible en tu perfil. Las que tienes: ' + (permitidas.join(', ') || 'ninguna') + '. No se hizo nada.');
+      if (!permitidas.includes(nombre)) return fallo('La herramienta "' + nombre + '" no está disponible en tu perfil. Las que tienes: ' + (permitidas.join(', ') || 'ninguna') + '. No se hizo nada.', { motivo: 'herramienta_fuera_de_perfil' });
       if (typeof datos !== 'object' || Array.isArray(datos)) return fallo(`La entrada de "${nombre}" debe ser un objeto.`);
       const sobran = Object.keys(datos).filter((k) => !(k in esquema.esquema.properties));
       if (sobran.length > 0) {

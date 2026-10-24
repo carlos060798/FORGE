@@ -299,7 +299,7 @@ export async function coderPorTurnos(estado, deps, ayudas, perfil = perfilPorDef
         deps.log.append('ciclo:herramienta', {
           iteracion: it, turno: n, herramienta: String(uso.nombre).slice(0, 80), ok: !res.error,
           ...(typeof uso.entrada?.ruta === 'string' ? { ruta: uso.entrada.ruta.slice(0, 300) } : {}),
-          ...(res.rechazo ? { motivo: res.rechazo.motivo } : {}),
+          ...((res.rechazo?.motivo ?? res.motivo) ? { motivo: res.rechazo?.motivo ?? res.motivo } : {}),
         }, meta);
       }
       for (const e of res.escritos ?? []) escritos.set(e.ruta, e);
