@@ -64,7 +64,7 @@ Reglas:
 | Veredicto de verificación | `pasa`, `falla`, `sin_pruebas`, `infraestructura` | `resultado-verificar.veredicto` |
 | Categoría de una ejecución | `pass`, `fail`, `timeout`, `infra_error` | `estado-ciclo.ejecuciones[].categoria` |
 | Resultado de la tarea | `en_curso`, `exito`, `revision_pendiente`, `aceptada_por_humano`, `abortada` | `estado-ciclo.resultado` |
-| Motivo de revisión | `iteraciones`, `presupuesto`, `infraestructura`, `dependencias`, `salida_invalida`, `exito_sospechoso`, `sin_progreso`, `pruebas_no_fallan`, `pruebas_debiles` | `estado-ciclo.revision.motivo` |
+| Motivo de revisión | `iteraciones`, `presupuesto`, `infraestructura`, `dependencias`, `salida_invalida`, `exito_sospechoso`, `sin_progreso`, `pruebas_no_fallan`, `pruebas_debiles`, `puerta` (una puerta declarada no pasa, o falta su herramienta: 127) | `estado-ciclo.revision.motivo` |
 | Veredicto de la medición por mutación | `medida`, `cumple_el_minimo`, `bajo_el_minimo`, `no_concluyente` | `resultado-verificar.mutacion.veredicto` |
 
 Aproximación categoría → veredicto: `pass`→`pasa`, `fail`/`timeout`→`falla`, `infra_error`→`infraestructura`. `sin_pruebas` no tiene categoría propia en el ciclo. La categoría describe **una ejecución**; el resultado, **la tarea entera**; el veredicto, **una verificación**: son conceptos distintos. El mapa legible por máquina está en `veredicto.schema.json` (`x-mapa`) y una prueba lo contrasta con el código.

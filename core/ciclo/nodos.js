@@ -607,15 +607,20 @@ export async function sandbox(estado, deps) {
     })).resultados : null,
   });
   const categoria = decision.categoria;
+  // Si una puerta declarada decidió (no pasó), la ejecución es la de esa puerta: su salida es la que el
+  // implementador necesita ver, no la de unas pruebas que sí pasaron (F3.2).
+  const porPuerta = decision.motivo !== null;
+  const salidaOut = porPuerta ? (decision.salida ?? '') : r.stdout;
+  const salidaErr = porPuerta ? '' : r.stderr;
 
   // Un fallo del entorno no consume iteraciones (CA-005-05)
   const iteracion = categoria === 'infra_error' ? estado.iteracion : estado.iteracion + 1;
   const ejecucion = {
     iteracion, categoria,
-    exitCode: r.exitCode ?? null, timedOut: Boolean(r.timedOut), oomKilled: Boolean(r.oomKilled),
-    durationMs: r.durationMs ?? 0, stdoutCola: cola(r.stdout), stderrCola: cola(r.stderr),
+    exitCode: porPuerta ? null : (r.exitCode ?? null), timedOut: porPuerta ? false : Boolean(r.timedOut), oomKilled: porPuerta ? false : Boolean(r.oomKilled),
+    durationMs: r.durationMs ?? 0, stdoutCola: cola(salidaOut), stderrCola: cola(salidaErr),
     // Para detectar que varias ejecuciones seguidas fallan igual (router.sinProgreso)
-    huellaSalida: huellaDeSalida(r.stdout, r.stderr),
+    huellaSalida: huellaDeSalida(salidaOut, salidaErr),
   };
   // Un pase solo se da por bueno si la salida lo confirma y el codigo escrito no corta el proceso al cargarse
   if (categoria === 'pass') {
@@ -631,7 +636,10 @@ export async function sandbox(estado, deps) {
   if (decision.motivo) ejecucion.puerta = decision.motivo;
   deps.log.append('ciclo:ejecucion', { categoria, exitCode: ejecucion.exitCode, timedOut: ejecucion.timedOut, durationMs: ejecucion.durationMs, iteracion }, { taskId: estado.taskId });
 
-  return { iteracion, ejecuciones: [ejecucion] };
+  const parcial = { iteracion, ejecuciones: [ejecucion] };
+  // Una herramienta ausente (127) no se arregla reintentando: la decide una persona (F3.2)
+  if (decision.revision) return { ...parcial, ...pedirRevision('puerta', 'sandbox', decision.motivo ?? undefined) };
+  return parcial;
 }
 
 // ── revision_humana ──────────────────────────────────────────────────────────

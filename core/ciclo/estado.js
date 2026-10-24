@@ -7,7 +7,7 @@ import { validarPerfilGuardado } from './perfiles.js';
 export const SCHEMA_VERSION = '1.0';
 
 export const CATEGORIAS    = ['pass', 'fail', 'timeout', 'infra_error'];
-export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles', 'perfil'];
+export const MOTIVOS       = ['iteraciones', 'presupuesto', 'infraestructura', 'dependencias', 'salida_invalida', 'exito_sospechoso', 'sin_progreso', 'pruebas_no_fallan', 'pruebas_debiles', 'perfil', 'puerta'];
 export const ESTADOS_ROJO  = ['fallan', 'pasan', 'exenta', 'sin_comprobar'];
 export const RESULTADOS    = ['en_curso', 'exito', 'revision_pendiente', 'aceptada_por_humano', 'abortada'];
 export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
@@ -22,6 +22,7 @@ export const ESTADOS_GASTO = ['ok', 'degradado', 'agotado'];
  * @property {number} durationMs
  * @property {string[]} [sospecha]  motivos por los que un `pass` no se da por bueno (core/ciclo/sospecha.js)
  * @property {string} [huellaSalida]  sha256 de la salida normalizada (core/ciclo/huella.js); vacía si no hubo salida
+ * @property {string} [puerta]  motivo por el que una puerta declarada (core/puertas) no dejó pasar la ejecución; su salida va en stdoutCola
  * @property {string} stdoutCola
  * @property {string} stderrCola
  */
@@ -163,6 +164,8 @@ export function validarEstado(estado) {
     if (!CATEGORIAS.includes(ej?.categoria)) errores.push(`categoría de ejecución desconocida: ${ej?.categoria}`);
     // Opcional: los puntos de guardado anteriores a la detección de «sin progreso» no la llevan
     if (ej?.huellaSalida !== undefined && typeof ej.huellaSalida !== 'string') errores.push('huellaSalida de una ejecución debe ser un texto');
+    // Opcional: solo lo lleva una ejecución que no dejó pasar una puerta declarada (F3.3)
+    if (ej?.puerta !== undefined && typeof ej.puerta !== 'string') errores.push('puerta de una ejecución debe ser un texto');
   }
   if (!Number.isInteger(e.iteracion) || e.iteracion < 0) errores.push('iteracion debe ser un entero ≥ 0');
   if (!Number.isInteger(e.maxIteraciones) || e.maxIteraciones < 1) errores.push('maxIteraciones debe ser un entero ≥ 1');
