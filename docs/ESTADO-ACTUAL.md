@@ -1,6 +1,6 @@
 # Estado actual de Fragua (5.0.0, sin publicar)
 
-> **Fecha:** 2026-10-24 · **Rama:** `feature/motor-agentico` · **Última suite completa:** `1d728f5` (fusión de perfiles de agente y puertas de calidad)
+> **Fecha:** 2026-10-24 · **Rama:** `feature/motor-agentico` · **Última suite completa:** `be747d6` (3877 de 3909 pasan; un fallo por lentitud del disco, ver abajo)
 > Este documento es el estado de referencia. Las guías (`FORGE-5.0-GUIA.md`, `README.md`) enlazan aquí en vez de repetir cifras. Si una cifra de otro documento no coincide con esta página, manda esta.
 
 ## Qué es, en una frase
@@ -11,8 +11,8 @@ Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo veri
 
 | Medida | Valor | Cómo se midió |
 |---|---|---|
-| Pruebas | 3862 en total: 3831 pasan, 31 saltadas, 0 fallan | `npm test` en `1d728f5`, Windows 11, Node 24.20 |
-| Tipos | 0 errores | `npm run typecheck` en `1d728f5` |
+| Pruebas | 3909 en total: 3877 pasan, 1 falla, 31 saltadas | `npm test` en `be747d6`, Windows 11, Node 24.20, sin otras suites en marcha; 1277 s |
+| Tipos | 0 errores | `npm run typecheck` en `1d728f5`; no repetido en `be747d6` |
 | Agentes | 14 (en `agents/`) | Conteo de archivos |
 | Skills | 31 (en `skills/`) | Conteo de carpetas |
 | Comandos | 39, con una skill generada cada uno | Inventario, `scripts/inventario-agentes.mjs` |
@@ -20,7 +20,11 @@ Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo veri
 
 Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no se ejecutan en este equipo.
 
-**Pasadas intermitentes.** En la primera pasada completa, en `f195354` (antes de fusionar los perfiles de agente), fallaron tres pruebas, todas con la carga de la suite entera: la de memoria SQLite (`tests/agent-memory.test.js`), la batería hostil de 52 entradas (`tests/integraciones-extremo-a-extremo.test.js`) y un límite de tiempo de `adfATexto` (`tests/integraciones-revision1.test.js`). Los tres archivos, ejecutados solos, pasan: 96 de 96. No se ha identificado la causa de la intermitencia; queda anotada como deuda.
+**La suite no está verde.** En la pasada de `be747d6` falla una prueba: «5000 archivos pequeños» (`tests/proyecto-hostil.test.js`), que agotó su tiempo a los 568 s. Aislada, en la misma `HEAD`, pasa (208 s). Según la medición de la sesión que la lanzó, el disco de esa máquina es muy lento (escribir 5000 archivos de una línea tarda unos 52 s y copiarlos unos 18 s); no se ha comprobado en otra máquina. Por eso la cifra se da como «1 fallo por lentitud del disco», no como verde.
+
+**Pasadas anteriores con fallos intermitentes.** En `f195354` fallaron tres pruebas con la carga de la suite entera (memoria SQLite, batería hostil de 52 entradas y un límite de tiempo de `adfATexto`); aisladas pasan. En `03d4baa`, con otra suite corriendo en la misma máquina, fallaron pruebas de tiempo límite (`comoDato`, «una cadena enorme», «5000 archivos»). Todas las de tiempo límite pasan aisladas.
+
+**Pendiente antes de empujar la rama:** una pasada completa sin otras suites en marcha, con un disco que no sea el de la prueba de 5000 archivos, o un ajuste explícito de su tiempo límite con su justificación.
 
 ## Lo que funciona y está probado
 

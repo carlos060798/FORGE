@@ -60,7 +60,7 @@ Necesita Docker en marcha y Node ≥20, y cubre proyectos en JavaScript/TypeScri
 | `forge mcp`, `forge api` | Servidor MCP y API HTTP local | Ver sus guías |
 | Integraciones externas (`integraciones:` en `sdd.config.yaml`) | Traer una incidencia o ticket de GitHub, GitLab o Jira Cloud como tarea y devolver el resultado como comentario o solicitud de cambio en borrador, con aprobación humana | **En construcción y apagadas por defecto.** Hechos el núcleo y los tres adaptadores, probados contra servidores simulados; faltan la publicación con aprobación y el comando `forge integraciones`. Nunca se ejecutaron contra una plataforma real. Ver [integraciones-externas.md](docs/integraciones-externas.md) |
 
-**Qué está probado y qué no.** Cifras, evidencia y límites, con fecha y commit, están en [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md). En la última pasada completa (commit `1d728f5`, Windows 11, Node 24.20, sin Docker): 3862 pruebas, 3831 pasan, 0 fallan y 31 se saltan, que son las que exigen Docker real.
+**Qué está probado y qué no.** Cifras, evidencia y límites, con fecha y commit, están en [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md). En la última pasada completa (commit `be747d6`, Windows 11, Node 24.20, sin Docker): 3909 pruebas, 3877 pasan, 1 falla y 31 se saltan (las que exigen Docker real). El fallo es una prueba de 5000 archivos que agota su tiempo en un disco lento; pasa aislada. La suite no está verde.
 
 | Probado | Evidencia |
 |---|---|
