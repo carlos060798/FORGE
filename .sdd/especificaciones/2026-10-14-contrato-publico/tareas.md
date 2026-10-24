@@ -28,7 +28,7 @@
 - [x] **F3.1** Prueba: `veredicto` con los cuatro valores y el mapa a categorías documentado. Cubre CA-001-03.
 - [x] **F3.2** Prueba: las dos formas de entrada de tarea y la normalizada (`core/tareas.js:49-67`) validan. Cubre CA-001-04.
 - [x] **F3.3** Prueba: `estadoInicial` y un estado tras cada categoría validan contra `estado-ciclo`. Cubre CA-001-06.
-- [ ] **F3.4** Prueba: versión desconocida se rechaza con mensaje que lista las admitidas. Cubre CA-003-06.
+- [x] **F3.4** Prueba: versión desconocida se rechaza con mensaje que lista las admitidas. Cubre CA-003-06.
 
 ## F4 — Eventos
 
@@ -44,12 +44,12 @@
 
 - [x] **F6.1** Congelar v1 en `tests/fixtures/contrato/v1/`.
 - [x] **F6.2** Prueba del diferencial: añadir opcional pasa, quitar o cambiar tipo rompe sin subir mayor. Cubre CA-002-05, CA-003-02.
-- [ ] **F6.3** Prueba: las zonas de extensión admiten campos desconocidos. Cubre CA-003-04.
+- [x] **F6.3** Prueba: las zonas de extensión admiten campos desconocidos. Cubre CA-003-04.
 
 ## F7 — Documentación y comando
 
 - [x] **F7.1** `docs/CONTRATO-PUBLICO.md`: política, interno, mapa de vocabularios, códigos de salida. Cubre CA-003-01, CA-003-03, CA-003-05, CA-004-01, CA-004-03.
-- [ ] **F7.2** Comando `esquema` de solo lectura y esquemas en el paquete publicado (P2). Cubre CA-001-07.
+- [x] **F7.2** Comando `esquema` de solo lectura y esquemas en el paquete publicado (P2). Cubre CA-001-07. (`fragua esquema [nombre]`, `cli/esquema.js`; los esquemas viajan en `docs/` del paquete)
 - [ ] **F7.3** `CHANGELOG.md` y guía.
 
 ## F8 — Cierre

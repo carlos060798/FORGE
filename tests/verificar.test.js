@@ -6,7 +6,7 @@
 import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, realpathSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, realpathSync, symlinkSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -227,5 +227,31 @@ describe("forge verificar: sin modelo, sin claves, sin red", () => {
     const dir = proyecto(`import {test} from "node:test"; test("mucho", () => { console.log("x".repeat(60000)); });`);
     const j = JSON.parse(verificar(dir, ["--json"]).salida);
     assert.ok(Buffer.byteLength(j.salida) <= 8192 + 4);
+  });
+});
+
+describe("forge verificar: proyecto hostil (F5.1)", () => {
+  test("un enlace hacia fuera del proyecto no llega a la copia que ven las pruebas", () => {
+    const centinela = "CENTINELA-FUERA-DEL-PROYECTO";
+    // Las pruebas pasan solo si, dentro de la copia, el enlace NO da acceso a lo que hay fuera
+    const dir = proyecto(`import {test} from "node:test"; import assert from "node:assert"; import {existsSync} from "node:fs";
+test("el enlace no llega", () => { assert.equal(existsSync(new URL("../enlace/secreto.txt", import.meta.url)), false); });`);
+    const fuera = join(dirname(dir), "fuera");
+    mkdirSync(fuera, { recursive: true });
+    writeFileSync(join(fuera, "secreto.txt"), centinela);
+    try { symlinkSync(fuera, join(dir, "enlace"), "junction"); } catch { return; /* sin permiso para enlaces en este equipo */ }
+    const r = verificar(dir, ["--json"]);
+    assert.equal(r.codigo, 0, r.salida + r.errores);
+    assert.ok(!r.salida.includes(centinela) && !r.errores.includes(centinela));
+  });
+
+  test("un comando de pruebas con órdenes embebidas en package.json no se ejecuta con intérprete", () => {
+    const dir = proyecto(PASA);
+    const marca = join(dir, "marca-ejecutada.txt");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "demo", type: "module", scripts: { test: "node --test && node -e \"require('fs').writeFileSync('marca-ejecutada.txt','x')\"" } }));
+    const r = verificar(dir, ["--json", "--comando", `node --test && node -e "1"`]);
+    assert.equal(r.codigo, 1);
+    assert.equal(r.runs.length, 0, "no se ejecutó nada");
+    assert.ok(!existsSync(marca));
   });
 });

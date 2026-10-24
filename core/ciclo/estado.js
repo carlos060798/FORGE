@@ -157,7 +157,7 @@ export function validarEstado(estado) {
   const e = /** @type {any} */ (estado);
   if (!e || typeof e !== 'object') return ['el estado no es un objeto'];
 
-  if (e.schemaVersion !== SCHEMA_VERSION) errores.push(`schemaVersion desconocida: ${e.schemaVersion}`);
+  if (e.schemaVersion !== SCHEMA_VERSION) errores.push(`schemaVersion desconocida: ${e.schemaVersion}. Este lector entiende: ${SCHEMA_VERSION}. No se interpreta lo mejor posible.`);
   for (const campo of ['runId', 'threadId', 'taskId', 'cwd']) {
     if (typeof e[campo] !== 'string' || e[campo] === '') errores.push(`${campo} debe ser un texto no vacío`);
   }

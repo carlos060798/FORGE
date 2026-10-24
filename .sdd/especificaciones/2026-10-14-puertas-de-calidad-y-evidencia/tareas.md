@@ -42,11 +42,11 @@
 
 ## F4 — Criterios enlazados a pruebas
 
-- [ ] **F4.1** Prueba: extrae los `CA-xxx-yy` de una spec de ejemplo. Cubre CA-003-01.
-- [ ] **F4.2** Prueba: CA sin tarea y CA con tarea sin prueba citada. Cubre CA-003-02.
-- [ ] **F4.3** Prueba estática: el módulo no importa proveedores de modelo ni ejecuta procesos. Cubre CA-003-03.
-- [ ] **F4.4** Salida en `forge status`/`verificar --criterios` y `--exigir-cobertura-de-criterios`. Cubre CA-003-04, CA-003-05.
-- [ ] **F4.5** Instrucción al agente de pruebas de citar el identificador (cambio en `core/ciclo/contratos.js:34-44`; prueba de regresión del ciclo).
+- [x] **F4.1** Prueba: extrae los `CA-xxx-yy` de una spec de ejemplo. Cubre CA-003-01. (`tests/criterios-matriz.test.js`, 2026-10-24)
+- [x] **F4.2** Prueba: CA sin tarea y CA con tarea sin prueba citada. Cubre CA-003-02.
+- [x] **F4.3** Prueba estática: el módulo no importa proveedores de modelo ni ejecuta procesos. Cubre CA-003-03.
+- [x] **F4.4** Salida en `forge status`/`verificar --criterios` y `--exigir-cobertura-de-criterios`. Cubre CA-003-04, CA-003-05. (`verificar --criterios`; `forge status` no se tocó)
+- [x] **F4.5** Instrucción al agente de pruebas de citar el identificador (cambio en `core/ciclo/contratos.js:34-44`; prueba de regresión del ciclo). (hecho como sección condicional del prompt del agente de pruebas, `seccionCriterios` en `core/ciclo/nodos.js`; `CONTRATO_QA` no cambia, así que sin criterios el prompt es idéntico)
 
 ## F5 — Informe de evidencia
 
@@ -71,14 +71,14 @@
 
 ## F7 — Regresión (`no_cambiar`)
 
-- [ ] **F7.1** Prueba y código: campo opcional de tarea y su validación. Cubre CA-006-01, CA-006-05.
-- [ ] **F7.2** Prueba: línea base verde antes de implementar; si no, revisión humana. Cubre CA-006-02.
-- [ ] **F7.3** Prueba: regresión tras el cambio da `falla` con la lista. Cubre CA-006-03.
-- [ ] **F7.4** Prueba: el implementador no puede modificar lo declarado. Cubre CA-006-04.
+- [x] **F7.1** Prueba y código: campo opcional de tarea y su validación. Cubre CA-006-01, CA-006-05. (`core/ciclo/regresion.js`, `tests/regresion-no-cambiar.test.js`, 2026-10-24; `no_cambiar` admite solo archivos de prueba existentes)
+- [x] **F7.2** Prueba: línea base verde antes de implementar; si no, revisión humana. Cubre CA-006-02.
+- [x] **F7.3** Prueba: regresión tras el cambio da `falla` con la lista. Cubre CA-006-03.
+- [x] **F7.4** Prueba: el implementador no puede modificar lo declarado. Cubre CA-006-04.
 
 ## F8 — Cierre
 
-- [ ] **F8.1** Prueba de proyecto hostil: comando de puerta malicioso, salida con secretos, informe retocado.
+- [x] **F8.1** Prueba de proyecto hostil: comando de puerta malicioso, salida con secretos, informe retocado. (cubierto por `tests/puertas-verificar.test.js`: comandos con operador o intérprete, salida con secretos redactada, informe retocado detectado por `--comprobar-evidencia`)
 - [ ] **F8.2** Con Docker real, una puerta de tipos y otra de linter (`FORGE_TEST_DOCKER=1`).
 - [ ] **F8.3** Documentación: `docs/ciclo-verificado.md`, guía, `README.md`, `CHANGELOG.md`, ayuda.
 - [ ] **F8.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.

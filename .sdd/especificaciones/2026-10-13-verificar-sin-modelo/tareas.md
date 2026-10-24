@@ -37,7 +37,7 @@
 
 ## F5 — Cierre
 
-- [ ] **F5.1** Prueba de proyecto hostil: uniones hacia fuera, script de pruebas malicioso, salida con secretos.
+- [x] **F5.1** Prueba de proyecto hostil: uniones hacia fuera, script de pruebas malicioso, salida con secretos. (parcial: enlace hacia fuera y comando con órdenes embebidas, con el Docker falso; el script de pruebas malicioso necesita Docker real, F5.2)
 - [ ] **F5.2** Con Docker real, los cinco proyectos de `scripts/pruebas-independientes.mjs`, sin clave de API.
 - [ ] **F5.3** Documentación: guía, `README.md`, `CHANGELOG.md`, `forge --help`.
 - [ ] **F5.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.

@@ -20,7 +20,7 @@
 - [x] **F1.5** Prueba estática y de proceso: sin proveedores, sin integraciones, sin claves, `fetch` interceptado. Cubre CA-001-05, CA-001-06, RF-06.
 - [x] **F1.6** `archivos` de mutación con `validarRuta`. Cubre CA-001-07.
 - [x] **F1.7** Perfil sin `escribir_archivo`, `leer_archivo` ni decisión; herramienta fuera de lista es «inexistente». Cubre CA-002-02, CA-002-03.
-- [ ] **F1.8** (hecho `--perfil` en `fragua mcp`; falta la línea en `fragua doctor`) `--perfil` en `fragua mcp` y línea en `fragua doctor`. Cubre CA-002-05.
+- [x] **F1.8** (hecho `--perfil` en `fragua mcp`; falta la línea en `fragua doctor`) `--perfil` en `fragua mcp` y línea en `fragua doctor`. Cubre CA-002-05. (`tests/doctor-mcp-perfil.test.js`, 2026-10-24)
 
 ## F2 — Topes y auditoría
 

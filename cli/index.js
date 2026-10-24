@@ -2094,6 +2094,9 @@ async function main() {
     case "doctor":
       await cmdDoctor();
       break;
+    case "esquema":
+      process.exitCode = (await import("./esquema.js")).cmdEsquema(args.slice(1));
+      break;
     case "config":
       cmdConfig(args.slice(1));
       break;

@@ -366,3 +366,60 @@ function propiedadesSinVer(s, muestras, ruta) {
   }
   return faltan;
 }
+
+// ── F3.4, F6.3 y F7.2 de 2026-10-14-contrato-publico ────────────────────────────────────────────────────────────────
+
+describe("versión desconocida (CA-003-06)", () => {
+  test("un estado con otra schemaVersion se rechaza y el mensaje dice qué versión entiende", () => {
+    const e = { ...estadoInicial({ id: "T1", agente: "a", prompt: "x" }, { runId: "r", cwd: "/x" }), schemaVersion: "9.9" };
+    const errores = validarEstado(e);
+    assert.equal(errores.length, 1, errores.join(" | "));
+    assert.match(errores[0], /schemaVersion desconocida: 9\.9/);
+    assert.match(errores[0], /entiende: 1\.0/);
+  });
+});
+
+describe("zonas de extensión (CA-003-04)", () => {
+  test("estado-pipeline y el payload de un evento admiten campos desconocidos", () => {
+    const pipeline = esquema("estado-pipeline");
+    assert.deepEqual(validar(pipeline, { pipeline_step: "code", campo_futuro: { x: 1 } }), []);
+    const evento = esquema("evento");
+    assert.deepEqual(validar(evento, { id: "1-1", type: "custom", ts: "2026-10-24T00:00:00.000Z", payload: { cualquier: "cosa", nuevo: [1] } }), []);
+  });
+  test("fuera de las zonas, el esquema del estado del ciclo sigue siendo cerrado", () => {
+    const e = { ...estadoInicial({ id: "T1", agente: "a", prompt: "x" }, { runId: "r", cwd: "/x" }), campo_futuro: 1 };
+    assert.notDeepEqual(validar(esquema("estado-ciclo"), e), []);
+  });
+});
+
+describe("fragua esquema (CA-001-07)", () => {
+  /** @param {string[]} args */
+  async function correr(args) {
+    const { cmdEsquema } = await import("../cli/esquema.js");
+    /** @type {string[]} */ const s = []; /** @type {string[]} */ const er = [];
+    const codigo = cmdEsquema(args, { salida: (t) => s.push(t), errores: (t) => er.push(t) });
+    return { codigo, salida: s.join("\n"), errores: er.join("\n") };
+  }
+  test("sin nombre lista los esquemas con su versión", async () => {
+    const r = await correr([]);
+    assert.equal(r.codigo, 0);
+    for (const n of NOMBRES) assert.match(r.salida, new RegExp(`${n} +https://forge-sdd[.]dev/contrato/${n}/[0-9]+[.][0-9]+`));
+  });
+  test("con nombre imprime el esquema, idéntico al de docs/contrato", async () => {
+    const r = await correr(["veredicto"]);
+    assert.equal(r.codigo, 0);
+    assert.deepEqual(JSON.parse(r.salida), esquema("veredicto"));
+  });
+  test("un nombre desconocido o con forma de ruta se rechaza sin leer nada", async () => {
+    for (const malo of ["../package", "veredicto/../tarea", "nada", "C:\\x", ""]) {
+      const r = await correr([malo]);
+      assert.equal(r.codigo, 1, malo);
+      assert.match(r.errores, /Esquema desconocido/);
+    }
+    assert.equal((await correr(["a", "b"])).codigo, 1);
+  });
+  test("los esquemas viajan en el paquete publicado", () => {
+    const pkg = JSON.parse(readFileSync(join(RAIZ, "package.json"), "utf8"));
+    assert.ok(pkg.files.includes("docs/") && pkg.files.includes("cli/"));
+  });
+});
