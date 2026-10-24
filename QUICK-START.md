@@ -146,5 +146,5 @@ Proveedores soportados: `anthropic`, `openai`, `ollama`, `stub` (para CI/tests).
 | Arquitectura del sistema | [docs/architecture.md](docs/architecture.md) |
 | Los 14 agentes | [docs/agents.md](docs/agents.md) |
 | Configuración completa | [docs/configuration.md](docs/configuration.md) |
-| Qué funciona hoy | [docs/ESTADO-IMPLEMENTACION.md](docs/ESTADO-IMPLEMENTACION.md) |
+| Qué funciona hoy | [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md) |
 | Solución de problemas | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |

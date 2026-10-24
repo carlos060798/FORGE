@@ -60,28 +60,23 @@ Necesita Docker en marcha y Node ≥20, y cubre proyectos en JavaScript/TypeScri
 | `forge mcp`, `forge api` | Servidor MCP y API HTTP local | Ver sus guías |
 | Integraciones externas (`integraciones:` en `sdd.config.yaml`) | Traer una incidencia o ticket de GitHub, GitLab o Jira Cloud como tarea y devolver el resultado como comentario o solicitud de cambio en borrador, con aprobación humana | **En construcción y apagadas por defecto.** Hechos el núcleo y los tres adaptadores, probados contra servidores simulados; faltan la publicación con aprobación y el comando `forge integraciones`. Nunca se ejecutaron contra una plataforma real. Ver [integraciones-externas.md](docs/integraciones-externas.md) |
 
-**Qué está probado y qué no.**
+**Qué está probado y qué no.** Cifras, evidencia y límites, con fecha y commit, están en [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md). En la última pasada completa (commit `1d728f5`, Windows 11, Node 24.20, sin Docker): 3862 pruebas, 3831 pasan, 0 fallan y 31 se saltan, que son las que exigen Docker real.
 
 | Probado | Evidencia |
 |---|---|
-| `npm test` sin Docker en Windows 11 con Node 24.20: 2055 pruebas, 2045 pasan, 0 fallan, 10 omitidas el 2026-10-10 (`9180814`); 2214 pruebas, 2202 pasan, 0 fallan, 12 omitidas el 2026-10-11 (`27ea407`, según PLAN). Las de integraciones se añadieron después sin una pasada completa registrada sobre el commit actual | [docs/COBERTURA.md](docs/COBERTURA.md), [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md) |
-| Cobertura de líneas del 87,49 % de lo que cargan las pruebas de `tests/` | [docs/COBERTURA.md](docs/COBERTURA.md) |
+| Suite completa con `npm test` y comprobación de tipos (`npm run typecheck`, 0 errores) | [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md), [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) (registro de pasadas) |
 | El ciclo con un modelo real: 24 ejecuciones de tareas pequeñas en JavaScript, Python y Go, con Anthropic (2026-10-09 y 2026-10-10) | [evidencia-2026-10-09.md](.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md) |
 | El aislamiento con Docker real en Windows (Docker Desktop) | `verificacion.md` de cada spec en [.sdd/especificaciones/](.sdd/especificaciones/) |
-| Cuatro revisiones independientes del 2026-10-09, una segunda pasada y una tercera (2026-10-11) sobre las correcciones | `revision-independiente*.md` en esas mismas carpetas |
-| La comprobación de tipos (`npm run typecheck`): 0 errores (TypeScript 6.0.3; eran 36 el 2026-10-10) | PL-4 |
 
 | No probado o pendiente | Dónde se explica |
 |---|---|
-| El aislamiento en Linux con Docker real: los jobs `aislamiento` y `pruebas-docker` de la integración continua no han corrido nunca, ni la matriz ni el job `tipos`. Nada en macOS | [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md), A-1 y PL-1 |
-| El gasto calculado frente a lo que factura el proveedor | G-1 |
-| Proyectos grandes; todo se probó en proyectos de pocos archivos | C-15 |
-| Un modelo real con OpenAI u Ollama. La llamada de OpenAI no tiene ninguna prueba automática | G-3 |
-| La medición por mutación con Docker real en Python y TypeScript | P-5 |
-| Una cuarta revisión independiente de lo corregido en la tercera pasada, y la primera de las integraciones externas | [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md), I-2 |
-| Las integraciones externas contra GitHub, GitLab y Jira reales; la puntuación de mutación como garantía frente a un implementador adversario (N-02) | I-1, P-10 |
+| Docker real en Linux: los jobs `aislamiento`, `pruebas-docker` y `tipos` de la integración continua nunca han corrido. Nada en macOS | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
+| Contenedores reales medidos en este equipo: no hay Docker aquí | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
+| El gasto calculado frente a lo que factura el proveedor | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
+| Un modelo real con OpenAI u Ollama, y con las funciones nuevas de 5.0 (delimitador de datos ajenos, puertas en el ciclo, perfiles de agente) | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
+| Las integraciones externas contra cuentas reales de GitHub, GitLab y Jira: solo servidores simulados | [integraciones-externas.md](docs/integraciones-externas.md) |
 
-Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración desde 4.2.0](docs/MIGRACION-5.0.md) y [criterios para una beta](RELEASE-CHECKLIST.md). Las rutas de `.sdd/`, los planes y `RELEASE-CHECKLIST.md` están en el repositorio; el paquete de npm no los incluye.
+Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración desde 4.2.0](docs/MIGRACION-5.0.md) y [criterios para una beta](RELEASE-CHECKLIST.md). Las rutas de `.sdd/` y `RELEASE-CHECKLIST.md` están en el repositorio, y los planes antiguos en [docs/archivo/](docs/archivo/); el paquete de npm no incluye nada de eso.
 
 ---
 
@@ -300,7 +295,7 @@ npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer 
 npx forge api                   # API HTTP local con secreto
 ```
 
-Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Qué cambia al actualizar: [MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Qué está probado y qué no: sección [Estado](#estado) y [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md). Guías: [ciclo verificado](docs/ciclo-verificado.md), [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Plan y estado: [PLAN-MOTOR-AGENTICO.md](PLAN-MOTOR-AGENTICO.md) y [PLAN-CIERRE-BRECHAS.md](PLAN-CIERRE-BRECHAS.md).
+Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Qué cambia al actualizar: [MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Qué está probado y qué no: sección [Estado](#estado) y [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md). Guías: [ciclo verificado](docs/ciclo-verificado.md), [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Estado: [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md).
 
 ---
 
@@ -331,16 +326,15 @@ Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` 
 | [MIGRACION-5.0.md](docs/MIGRACION-5.0.md) | Qué cambia al actualizar desde 4.2.0 sin tocar la configuración, y cómo desactivarlo |
 | [COBERTURA.md](docs/COBERTURA.md) | Cobertura de pruebas por archivo, con fecha, versión de Node y comando |
 | [ciclo-verificado.md](docs/ciclo-verificado.md) | Guía del ciclo verificado: configuración, aislamiento, presupuesto, pausas |
-| [ESTADO-IMPLEMENTACION.md](docs/ESTADO-IMPLEMENTACION.md) | Estado por área, escrito para 4.3.0 (solo sus cifras están al día) |
+| [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md) | Estado al día: cifras, qué está probado, límites y pendientes |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Errores por fase con solución paso a paso |
 | [EJEMPLO-API-REST.md](docs/EJEMPLO-API-REST.md) | Walkthrough API REST + JWT + PostgreSQL |
-| [MEMORIA-Y-OBSERVABILIDAD.md](docs/MEMORIA-Y-OBSERVABILIDAD.md) | API de memoria persistente, SQLite, compresión |
 | [RELACION-CON-CLAUDE-CODE.md](docs/RELACION-CON-CLAUDE-CODE.md) | Mapping FORGE ↔ primitivas nativas de Claude Code |
 | [COMPATIBILIDAD.md](docs/COMPATIBILIDAD.md) | Contrato de hooks — versiones verificadas |
-| [ANALISIS-COMPARATIVO-FRAMEWORKS.md](docs/ANALISIS-COMPARATIVO-FRAMEWORKS.md) | FORGE vs CrewAI vs LangGraph — 10 dimensiones |
 | [SEGURIDAD-PARA-NOTECNICOS.md](docs/SEGURIDAD-PARA-NOTECNICOS.md) | Seguridad explicada sin jerga técnica |
 | [QUE-PASA-SI-FALLA.md](docs/QUE-PASA-SI-FALLA.md) | Recuperación cuando algo sale mal |
 | [INTEGRACIONES.md](docs/INTEGRACIONES.md) | MCPs: Vercel, GitHub, Figma |
+| [archivo/](docs/archivo/) | Planes, informes y análisis superados, con el motivo de cada uno |
 
 ---
 

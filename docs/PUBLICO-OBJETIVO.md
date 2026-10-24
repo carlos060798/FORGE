@@ -1,7 +1,7 @@
 # Público objetivo de FORGE 5.0 (beta)
 
-> Fecha: 2026-10-13. Base: `FORGE-5.0-GUIA.md`, `EVALUACION-PUBLICACION.md`, `PLAN-GO-TO-MARKET.md`, `ANALISIS-COMPETITIVO-FINAL.md`. Datos de mercado: búsqueda web (URL citada); lo no confirmado va como «no verificado».
-> Nota: `PLAN-GO-TO-MARKET.md` y el análisis competitivo describen SDD-ES/FORGE 4.2 y citan cifras («0 bugs», «40h a 15h») sin respaldo en el repositorio. No se reutilizan aquí.
+> Fecha: 2026-10-13. Base: `FORGE-5.0-GUIA.md`, `archivo/EVALUACION-PUBLICACION.md`, `archivo/PLAN-GO-TO-MARKET.md`, `archivo/ANALISIS-COMPETITIVO-FINAL.md`. Datos de mercado: búsqueda web (URL citada); lo no confirmado va como «no verificado».
+> Nota: `archivo/PLAN-GO-TO-MARKET.md` y el análisis competitivo describen SDD-ES/FORGE 4.2 y citan cifras («0 bugs», «40h a 15h») sin respaldo en el repositorio. No se reutilizan aquí.
 
 ## Contexto de mercado (fuentes)
 
@@ -58,7 +58,7 @@ Ajuste 0-5 con lo que FORGE ofrece HOY (JS/TS, Python, Go; Docker; Windows proba
 | Prueba | Evidencia en el repositorio |
 |---|---|
 | 1. El ciclo completa tareas con modelo real | 24 ejecuciones (JS, Python, Go), ~2,4 USD; `evidencia-2026-10-09.md`; ej. 8: 27/27 pruebas en 3 iteraciones |
-| 2. Funciona instalado fuera del repo | 3/3 éxitos con paquete instalado, 0,13 USD (`PLAN-EJECUCION-FINAL.md` §6; `PRUEBAS-INDEPENDIENTES.md`) |
+| 2. Funciona instalado fuera del repo | 3/3 éxitos con paquete instalado, 0,13 USD (`archivo/planes/PLAN-EJECUCION-FINAL.md` §6; `PRUEBAS-INDEPENDIENTES.md`) |
 | 3. Controles de gasto y pausa operan | Pausa por presupuesto y reanudación probadas; detección de «éxito sospechoso»; salidas 0/1/3/4 documentadas |
 
 **Qué NO prometer:** corrección garantizada; ahorro de horas o «0 bugs»; soporte Linux/macOS; integraciones funcionando; factura igual al gasto calculado; compatibilidad con cumplimiento normativo o AI Act; proyectos grandes; OpenAI/Ollama.
@@ -71,7 +71,7 @@ Ajuste 0-5 con lo que FORGE ofrece HOY (JS/TS, Python, Go; Docker; Windows proba
 | 2. Abierta acotada (6 semanas, 20-50) | Individuales y educadores, incl. Linux/macOS | Comunidad de Claude Code, dev.to, Reddit r/ClaudeAI (canales a validar) | ≥50 % repite en 7 días; mediana de coste por tarea estable; retroalimentación en issues | Linux/macOS con evidencia; ≥3 usuarios con proyecto no trivial |
 | 3. Pública `next` (continuo) | Equipos pequeños, 1-2 consultoras piloto | npm `next`, documentación, casos publicados con datos medidos | Retención a 30 días ≥30 %; casos con medición real | Una integración probada con cuenta real; decisión del dueño sobre `latest` |
 
-No publicar en `latest` hasta cumplir los bloqueantes de `EVALUACION-PUBLICACION.md` §6. Los umbrales son propuestas, no datos.
+No publicar en `latest` hasta cumplir los bloqueantes de `archivo/EVALUACION-PUBLICACION.md` §6. Los umbrales son propuestas, no datos.
 
 ## 6. Riesgos de adopción y medición
 

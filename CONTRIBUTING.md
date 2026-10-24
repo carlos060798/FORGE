@@ -1,4 +1,4 @@
-# Contribuir a SDD-ES / FORGE
+# Contribuir a Fragua (FORGE)
 
 Gracias por tu interés en mejorar FORGE. Esta guía explica cómo añadir un agente, un comando, reportar un bug o proponer una mejora.
 

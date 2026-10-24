@@ -1,247 +1,159 @@
-# 📑 Índice General de FORGE v5.0.0
+# 📑 Índice General de FORGE (Fragua) 5.0.0
 
-**Punto de entrada único a toda la documentación de FORGE**
+**Punto de entrada único a la documentación.** Versión sin publicar: el estado al día, con cifras y pendientes, está en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
-Bienvenido a FORGE. Este índice te ayuda a encontrar exactamente lo que necesitas según tu rol y objetivo.
+Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contiene planes, informes y análisis que ya no describen el proyecto.
 
 ---
 
 ## 🚀 Inicio rápido por rol
 
-Elige tu rol para obtener una ruta de lectura personalizada:
-
 ### 👤 Usuario nuevo (quiero probar FORGE)
 
-**Objetivo:** Instalar FORGE e implementar mi primer proyecto  
-**Tiempo:** 1-2 horas  
-**Ruta de lectura:**
+1. [Introducción](introduction.md): qué es y por qué existe (5 min)
+2. [Inicio rápido](getting-started.md): instalación paso a paso (10 min)
+3. [Ejemplo: API REST](EJEMPLO-API-REST.md): recorrido completo (30-45 min)
+4. [Glosario](GLOSARIO.md): términos (consúltalo cuando haga falta)
 
-1. [Introducción](introduction.md) — Qué es FORGE y por qué existe (5 min)
-2. [Inicio rápido](getting-started.md) — Instalación paso-a-paso (10 min)
-3. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Walkthrough completo (30-45 min)
-4. [Glosario](GLOSARIO.md) — Referencia rápida de términos (consúltalo cuando sea necesario)
-
-**Próximo paso:** Ejecuta `/sdd.descubrir "tu idea"` en Claude Code
-
----
+**Próximo paso:** ejecuta `/sdd.descubrir "tu idea"` en Claude Code.
 
 ### 🏗️ Arquitecto (quiero diseñar el sistema)
 
-**Objetivo:** Entender la arquitectura y tomar decisiones técnicas informadas  
-**Tiempo:** 2-4 horas  
-**Ruta de lectura:**
+1. [Introducción](introduction.md): contexto general
+2. [Conceptos fundamentales](core-concepts.md): SDD, IR, constitución, pipeline
+3. [Arquitectura](architecture.md): capas, diagramas, flujos
+4. [Agentes](agents.md): los 14 agentes y sus roles
+5. [Extender FORGE](extending-forge.md): personalizaciones
 
-1. [Introducción](introduction.md) — Contexto general (5 min)
-2. [Conceptos fundamentales](core-concepts.md) — SDD, IR, Constitución, Pipeline (20 min)
-3. [Arquitectura](architecture.md) — 6 capas, diagramas, flujos (30 min)
-4. [Agentes](agents.md) — Los 14 agentes y sus roles (15 min)
-5. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Ver arquitectura en acción (30 min)
-6. [Extender FORGE](extending-forge.md) — Customizaciones (15 min)
-
-**Consulta también:**
-- [Glosario](GLOSARIO.md) — Definiciones precisas
-- [ADRs en .sdd/arquitectura/](architecture.md) — Decisiones registradas
-
-**Próximo paso:** Lee los requisitos de tu proyecto, luego llama al arquitecto en FORGE
-
----
+**Consulta también:** [Glosario](GLOSARIO.md) y [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md), que dice qué garantiza cada parte y con qué prueba.
 
 ### 💻 Developer (quiero implementar)
 
-**Objetivo:** Escribir código que pase verificación  
-**Tiempo:** 1-2 horas  
-**Ruta de lectura:**
+1. [Inicio rápido](getting-started.md): instalación
+2. [Flujos de trabajo](workflows.md): los comandos del pipeline
+3. [Ciclo verificado](ciclo-verificado.md): cómo se da por buena una tarea
+4. [Configuración](configuration.md): `sdd.config.yaml`
+5. [Agentes](agents.md#desarrollador-backend): tu rol
 
-1. [Inicio rápido](getting-started.md) — Instalación (10 min)
-2. [Flujos de trabajo](workflows.md) — 8 comandos del pipeline (20 min)
-3. [Ejemplo: API REST](EJEMPLO-API-REST.md) — Implementación real (30 min)
-4. [Configuración](configuration.md) — Stack, convenciones, calidad (15 min)
-5. [Agentes: desarrollador](agents.md#desarrollador-backend) — Tu rol (5 min)
-
-**Consulta cuando lo necesites:**
-- [Troubleshooting](TROUBLESHOOTING.md) — Errores comunes
-- [Glosario](GLOSARIO.md) — Términos técnicos
-
-**Próximo paso:** Espera a que FORGE genere tareas, luego implementa
-
----
+**Consulta cuando lo necesites:** [Troubleshooting](TROUBLESHOOTING.md), [Glosario](GLOSARIO.md).
 
 ### 🚀 DevOps (quiero desplegar)
 
-**Objetivo:** Configurar CI/CD y desplegar a producción  
-**Tiempo:** 1-2 horas  
-**Ruta de lectura:**
+1. [Configuración](configuration.md): variables y backends
+2. [Compatibilidad](COMPATIBILIDAD.md): versiones soportadas
+3. [Integraciones](INTEGRACIONES.md) y [integraciones externas](integraciones-externas.md)
+4. [Servidor MCP](servidor-mcp.md) y [API HTTP](api-http.md)
 
-1. [Configuración](configuration.md) — Variables y backends (15 min)
-2. [Compatibilidad](COMPATIBILIDAD.md) — Versiones soportadas (5 min)
-3. [Optimización del entorno](OPTIMIZACION-ENTORNO.md) — Env vars recomendadas (10 min)
-4. [Integraciones](INTEGRACIONES.md) — Vercel, GitHub, Figma status (15 min)
-5. [Workflows: Despliegue](workflows.md#etapa-10--despliegue) — Comando `/sdd.desplegar` (10 min)
-
-**Consulta también:**
-- [Observabilidad y memoria](MEMORIA-Y-OBSERVABILIDAD.md) — Monitoring
-- [Troubleshooting](TROUBLESHOOTING.md) — Qué hacer si falla
-
-**Próximo paso:** Configura FORGE para tu infraestructura
-
----
+**Consulta también:** [Problemas conocidos](PROBLEMAS-CONOCIDOS.md) y [Qué pasa si falla](QUE-PASA-SI-FALLA.md).
 
 ### 🛠️ Contributor (quiero desarrollar FORGE)
 
-**Objetivo:** Entender cómo funciona FORGE internamente y contribuir  
-**Tiempo:** 3-5 horas  
-**Ruta de lectura:**
+1. [Introducción](introduction.md)
+2. [Arquitectura](architecture.md) y [Runtime](runtime.md)
+3. [Extender FORGE](extending-forge.md): agentes, comandos, skills
+4. [Cobertura de pruebas](COBERTURA.md)
 
-1. [Introducción](introduction.md) — Qué es FORGE (5 min)
-2. [Conceptos fundamentales](core-concepts.md) — SDD + IR + Estado (20 min)
-3. [Arquitectura](architecture.md) — 6 capas + componentes (30 min)
-4. [Runtime](runtime.md) — Hooks + Memory + Model registry (20 min)
-5. [Extender FORGE](extending-forge.md) — Crear agentes, comandos, skills (30 min)
-
-**Después, elige tu área:**
-- **Agentes:** Lee [agents.md](agents.md), luego crea uno con `/sdd.crear-agente`
-- **Comandos:** Copia estructura de [commands/*.md](../commands/), registra en plugin.json
-- **Skills:** Copia estructura de [skills/*/SKILL.md](../skills/), ¡inventa la tuya!
-
-**Próximo paso:** [CONTRIBUTING.md](../CONTRIBUTING.md) — Cómo enviar PRs
+**Después:** [CONTRIBUTING.md](../CONTRIBUTING.md) para enviar cambios, [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md) para las condiciones de la beta y [VERSIONING.md](../VERSIONING.md) para el versionado.
 
 ---
 
-## 📚 Mapa temático completo
+## 📚 Mapa temático
 
-### Nivel 1: Índices y Glosarios
-- 📍 [0-INDICE.md](0-INDICE.md) — Este archivo (punto de entrada)
-- 📖 [GLOSARIO.md](GLOSARIO.md) — 12+ términos canónicos
+### Introducción y conceptos
+- 📍 [0-INDICE.md](0-INDICE.md): este archivo
+- 🎯 [introduction.md](introduction.md): qué es FORGE y por qué existe
+- 🤔 [core-concepts.md](core-concepts.md): SDD, IR, constitución, pipeline, memoria, hooks, ADRs
+- 📖 [GLOSARIO.md](GLOSARIO.md): términos canónicos
+- 🔗 [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md): qué primitivas de Claude Code usa FORGE
 
-### Nivel 2: Introducciones (QUÉ es FORGE)
-- 🎯 [introduction.md](introduction.md) — Qué es FORGE y por qué existe
-- 🤔 [core-concepts.md](core-concepts.md) — SDD, IR, Constitución, Pipeline, Memoria, Hooks, ADRs
+### Estado, límites y garantías
+- ✅ [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md): cifras, qué está probado, límites y pendientes. **Fuente de referencia.**
+- 🛡️ [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md): qué garantiza cada parte, con su prueba
+- ⚠️ [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md): incidencias abiertas y cerradas, con su evidencia
+- 🔀 [MIGRACION-5.0.md](MIGRACION-5.0.md): qué cambia al actualizar desde 4.2.0
+- 📏 [COBERTURA.md](COBERTURA.md): cobertura de pruebas por archivo
+- 🧪 [PRUEBAS-INDEPENDIENTES.md](PRUEBAS-INDEPENDIENTES.md): cómo comprobar FORGE instalado como paquete sobre proyectos independientes
 
-### Nivel 3: Arquitectura (CÓMO funciona)
-- 🏗️ [architecture.md](architecture.md) — 6 capas, diagramas, flujos end-to-end
-- ⚙️ [runtime.md](runtime.md) — Hooks, Memory, Model registry, observabilidad
-- 🔌 [Extensiones internas](architecture.md) — APIs internas, ProjectMemory
+### Arquitectura y referencia
+- 🏗️ [architecture.md](architecture.md): capas, diagramas, flujos de extremo a extremo
+- ⚙️ [runtime.md](runtime.md): hooks, memoria, registro de modelos
+- 📋 [workflows.md](workflows.md): etapas del pipeline y flags
+- 👥 [agents.md](agents.md): los 14 agentes, roles y herramientas
+- 🛠️ [tools.md](tools.md): las 31 skills, por categoría
+- 📂 [INVENTARIO-AGENTES-Y-SKILLS.md](INVENTARIO-AGENTES-Y-SKILLS.md): inventario generado por script
+- ⚙️ [configuration.md](configuration.md): `sdd.config.yaml` completo
+- 🔗 [api-reference.md](api-reference.md): APIs públicas
+- ✅ [COMPATIBILIDAD.md](COMPATIBILIDAD.md): contrato de hooks
 
-### Nivel 4: Referencia (REFERENCIA exhaustiva)
-- 📋 [workflows.md](workflows.md) — 8 etapas del pipeline documentadas
-- 👥 [agents.md](agents.md) — 14 agentes: roles, herramientas, etapas
-- 🛠️ [tools.md](tools.md) — 31 skills: categorización, referencias
-- 📖 [commands/](../commands/) — 39 comandos, uno por archivo `.md`
-- ⚙️ [configuration.md](configuration.md) — `sdd.config.yaml` completo
-- 🔗 [api-reference.md](api-reference.md) — APIs públicas
+### Ciclo verificado y seguridad
+- 🔁 [ciclo-verificado.md](ciclo-verificado.md): configuración, aislamiento, presupuesto, pausas
+- 🧩 [puertas-de-calidad.md](puertas-de-calidad.md): puertas declarables en `sdd.config.yaml`
+- 🔗 [cadena-de-evidencia.md](cadena-de-evidencia.md): registro firmado de verificaciones
+- 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md): seguridad sin jerga
+- 🆘 [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md): recuperación
 
-### Nivel 5: Guías Especializadas (CÓMO hacer cosas)
-- 🚀 [getting-started.md](getting-started.md) — Instalación y primeros pasos
-- 🔁 [ciclo-verificado.md](ciclo-verificado.md) — El ciclo verificado: configuración, aislamiento, presupuesto, pausas
-- ⚠️ [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) — Límites conocidos, con cómo evitarlos y dónde está la evidencia
-- 🔀 [MIGRACION-5.0.md](MIGRACION-5.0.md) — Qué cambia al actualizar desde 4.2.0
-- 📏 [COBERTURA.md](COBERTURA.md) — Cobertura de pruebas por archivo
-- 📝 [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) — Walkthrough completo
-- 🐛 [Troubleshooting.md](TROUBLESHOOTING.md) — Errores por fase
-- 🆘 [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md) — Recuperación
-- 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md) — Security sin jerga
-- ⚙️ [OPTIMIZACION-ENTORNO.md](OPTIMIZACION-ENTORNO.md) — Tuning
-- 🧠 [MEMORIA-Y-OBSERVABILIDAD.md](MEMORIA-Y-OBSERVABILIDAD.md) — API memoria, SQLite
-- 📊 [EJEMPLOS-MEMORIA-API.md](EJEMPLOS-MEMORIA-API.md) — Código JS/TS
-- 🔗 [INTEGRACIONES.md](INTEGRACIONES.md) — MCP: Vercel, GitHub, Figma
-- 🔌 [integraciones-externas.md](integraciones-externas.md) — GitHub, GitLab y Jira: leer incidencias y publicar resultados con aprobación (en construcción)
-- [PRUEBAS-INDEPENDIENTES.md](PRUEBAS-INDEPENDIENTES.md): cómo comprobar FORGE instalado como paquete sobre proyectos independientes.
-- ✅ [COMPATIBILIDAD.md](COMPATIBILIDAD.md) — Contrato de hooks
-- 📦 [VERIFICACION-SQLITE-AUTODETECT.md](VERIFICACION-SQLITE-AUTODETECT.md) — Auto-detectión
+### Integraciones y servidores
+- 🔌 [servidor-mcp.md](servidor-mcp.md): servidor MCP
+- 🧾 [mcp-verificar.md](mcp-verificar.md): perfil `verificacion` del servidor MCP
+- 🌐 [api-http.md](api-http.md): API HTTP local
+- 🔗 [INTEGRACIONES.md](INTEGRACIONES.md): MCPs de Vercel, GitHub y Figma
+- 🎫 [integraciones-externas.md](integraciones-externas.md): GitHub, GitLab y Jira, apagadas por defecto
+- 🧠 [memoria-semantica.md](memoria-semantica.md): índice de memoria por agente
+- 🧭 [guia-anadir-proveedor.md](guia-anadir-proveedor.md): cómo añadir un proveedor de modelos
 
-### Nivel 6: Casos de Uso (soluciones end-to-end)
-- 📚 [FABRICA.md](FABRICA.md) — Narrativas para no-técnicos
-- 📊 [ANALISIS-COMPARATIVO-FRAMEWORKS.md](ANALISIS-COMPARATIVO-FRAMEWORKS.md) — FORGE vs CrewAI vs LangGraph
+### Guías y ejemplos
+- 🚀 [getting-started.md](getting-started.md): instalación y primeros pasos
+- 🧰 [FORGE-5.0-GUIA.md](FORGE-5.0-GUIA.md): para qué sirve la 5.0 y qué trae
+- 📝 [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md): recorrido completo
+- 📚 [examples.md](examples.md): ejemplos de extremo a extremo
+- 🐛 [TROUBLESHOOTING.md](TROUBLESHOOTING.md): errores por fase
+- 🧱 [extending-forge.md](extending-forge.md): crear agentes, comandos y skills
 
-### Nivel 7: Contribuir y Mantener (para developers de FORGE)
-- 🤝 [../CONTRIBUTING.md](../CONTRIBUTING.md) — Cómo contribuir
-- 🏗️ [extending-forge.md](extending-forge.md) — Crear agentes, comandos, skills
-- 🧪 [COBERTURA.md](COBERTURA.md) — Cobertura de pruebas por archivo
-- 📢 [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md) — Lista de release y criterios de beta
-- 🔖 [VERSIONING.md](../VERSIONING.md) — Versionado
+### Mercado y público
+- 🗺️ [MERCADO-CLASIFICACION.md](MERCADO-CLASIFICACION.md): en qué categoría se sitúa FORGE
+- 👥 [PUBLICO-OBJETIVO.md](PUBLICO-OBJETIVO.md): a quién va dirigido y con qué pruebas
+- 🧩 [ADECUACION-DEL-CATALOGO.md](ADECUACION-DEL-CATALOGO.md): plan para el catálogo de agentes y skills
+- 📚 [FABRICA.md](FABRICA.md): narrativa para no técnicos (pendiente de revisar sus nombres antiguos)
 
-### Nivel 8: Especiales (investigaciones + futuro)
-- 🗜️ [COMPRESION.md](COMPRESION.md) — Técnica caveman-lite
-- 🗺️ [MAPAS.md](MAPAS.md) — Estrategia de mapas estáticos
-- 📊 [INFORME-MEMORIA-OSS.md](INFORME-MEMORIA-OSS.md) — Investigación OSS
-- 📋 [ESTANDAR-EJEMPLOS-CODIGO.md](ESTANDAR-EJEMPLOS-CODIGO.md) — Formato único ejemplos
+### Contribuir y publicar
+- 🤝 [../CONTRIBUTING.md](../CONTRIBUTING.md): cómo contribuir
+- 📢 [../RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md): condiciones de la beta y registro de pasadas
+- 🔖 [../VERSIONING.md](../VERSIONING.md): versionado
+- 📜 [../CHANGELOG.md](../CHANGELOG.md): historial de cambios
+
+### Archivo
+- 🗄️ [archivo/](archivo/): planes, informes y análisis superados, con el motivo de cada uno. Se conservan como historia.
 
 ---
 
 ## 🎯 Búsqueda por tema
 
-¿Buscas información sobre un tema específico? Usa esta tabla:
-
-| Tema | Documento | Ubicación |
-|------|-----------|-----------|
-| **SDD (Spec-Driven Development)** | core-concepts.md | Nivel 2 |
-| **IR (Interpreted Requirement)** | core-concepts.md | Nivel 2 |
-| **Pipeline completo** | workflows.md | Nivel 4 |
-| **Agentes disponibles** | agents.md | Nivel 4 |
-| **Skills disponibles** | tools.md | Nivel 4 |
-| **Configuración** | configuration.md | Nivel 4 |
-| **Seguridad** | SEGURIDAD-PARA-NOTECNICOS.md | Nivel 5 |
-| **Memoria persistente** | MEMORIA-Y-OBSERVABILIDAD.md | Nivel 5 |
-| **Despliegue** | workflows.md#etapa-10 | Nivel 4 |
-| **Troubleshooting** | Troubleshooting.md | Nivel 5 |
-| **Ejemplos de código** | EJEMPLOS-MEMORIA-API.md | Nivel 5 |
-| **Integraciones (MCP)** | INTEGRACIONES.md | Nivel 5 |
-| **Crear agente personalizado** | extending-forge.md | Nivel 7 |
-| **Crear skill personalizada** | extending-forge.md | Nivel 7 |
-| **Comparativa de frameworks** | ANALISIS-COMPARATIVO-FRAMEWORKS.md | Nivel 6 |
+| Tema | Documento |
+|------|-----------|
+| SDD (Spec-Driven Development) | [core-concepts.md](core-concepts.md) |
+| Pipeline completo | [workflows.md](workflows.md) |
+| Agentes disponibles | [agents.md](agents.md) |
+| Skills disponibles | [tools.md](tools.md) |
+| Configuración | [configuration.md](configuration.md) |
+| Seguridad | [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md), [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md) |
+| Qué está probado y qué no | [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md) |
+| Despliegue | [workflows.md](workflows.md) |
+| Troubleshooting | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| Integraciones | [INTEGRACIONES.md](INTEGRACIONES.md), [integraciones-externas.md](integraciones-externas.md) |
+| Crear agente o skill | [extending-forge.md](extending-forge.md) |
 
 ---
 
-## ❓ No encuentras lo que buscas?
+## 📖 Convenciones
 
-### Busca en el Glosario
-[GLOSARIO.md](GLOSARIO.md) tiene definiciones de 12+ términos clave. Si un término te parece ambiguo, búscalo allí.
-
-### Consulta Troubleshooting
-[Troubleshooting.md](TROUBLESHOOTING.md) tiene soluciones por fase del pipeline.
-
-### Lee el Ejemplo completo
-[EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) es un walkthrough paso-a-paso que toca casi todo.
-
-### Revisa Architecture
-[architecture.md](architecture.md) tiene diagramas detallados de cómo funciona FORGE por dentro.
+- **Enlaces internos:** apuntan a documentos de esta carpeta o del repositorio. `tests/consistencia-cifras.test.js` comprueba que existan.
+- **Rutas de archivo:** relativas a `FORGE/`.
+- **Cifras:** las de agentes, skills y comandos se cuentan contra el disco en cada prueba. Las de pruebas y tipos están en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 ---
 
-## 📖 Convenciones de esta documentación
+## 🔄 Actualización
 
-- 🔗 **Links internos:** Siempre apuntan a documentos en esta carpeta o repo
-- 📁 **Rutas de archivo:** Relativas a `FORGE/`
-- 💻 **Ejemplos de código:** Verificados contra APIs documentadas
-- 📊 **Diagramas:** Mermaid v10.6+ (100% válidos)
-- 🏷️ **Etiquetas:** Cada sección tiene [GLOSARIO.md](GLOSARIO.md) referencias para términos clave
+**Última actualización:** 2026-10-24 · **Versión:** 5.0.0 (sin publicar) · **Historial:** [../CHANGELOG.md](../CHANGELOG.md)
 
----
-
-## 🔄 Actualización de documentación
-
-Esta documentación se mantiene con cada versión de FORGE.
-
-**Última actualización:** 2026-10-12  
-**Versión:** 5.0.0 (sin publicar)  
-**Estado:** los enlaces de este índice los comprueba `tests/consistencia-cifras.test.js`
-
-[Ver CHANGELOG.md](../CHANGELOG.md) para historial de cambios.
-
----
-
-## 💡 Recomendaciones finales
-
-1. **Primeira visita:** Sigue la ruta para tu rol arriba
-2. **Referencia rápida:** Guarda el [GLOSARIO.md](GLOSARIO.md) para buscar términos
-3. **Profundidad:** El nivel 4 (Referencia) es exhaustivo; el nivel 2-3 es introductorio
-4. **Ejemplos:** [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md) y [EJEMPLOS-MEMORIA-API.md](EJEMPLOS-MEMORIA-API.md) son tutoriales paso-a-paso
-
----
-
-**Índice preparado por:** Principal Documentation Architect  
-**Fecha:** 2026-06-22  
-**Versión:** 1.0  
-**Estado:** ✅ Listo como punto de entrada principal
-
-> **Nota (2026-10-14):** FORGE pasa a llamarse **Fragua** (paquete `fragua`). Estos documentos conservan el nombre con el que se escribieron; la equivalencia está en el README.
+> FORGE pasa a llamarse **Fragua** (paquete `fragua`). Los documentos conservan el nombre con el que se escribieron; la equivalencia está en el README.

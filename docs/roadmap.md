@@ -1,79 +1,66 @@
 # Hoja de ruta
 
-Este documento describe el estado actual de FORGE (5.0.0, sin publicar; la 4.3.0 nunca se publicó) y las mejoras planificadas para versiones futuras.
+Estado a 2026-10-24. Versión 5.0.0, sin publicar (la 4.3.0 nunca se publicó). Las cifras y los límites detallados están en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md); este documento solo dice qué falta y en qué orden.
 
 ---
 
-## Completado en v4.2.0
+## Hecho en 5.0.0 (en la rama `feature/motor-agentico`)
 
-Todos los ítems siguientes están implementados y verificados contra el código fuente:
+- **Ciclo verificado** por defecto: planificación, pruebas, implementación y mutación, dentro de un contenedor sin red. Ver [ciclo-verificado.md](ciclo-verificado.md).
+- **`fragua verificar`**: veredicto aislado sobre un proyecto, con mutación, `--registrar` y `--comprobar-evidencia`.
+- **Puertas de calidad** declaradas en `sdd.config.yaml`, aplicadas también dentro del ciclo.
+- **Perfiles de agente por rol**: el proyecto solo puede apretar, nunca ampliar.
+- **Estado del ciclo sellado** con una clave del usuario, fuera del proyecto.
+- **Proveedores** Anthropic, OpenAI y Ollama, con niveles neutrales.
+- **Instalación agnóstica** para 9 herramientas con carpeta confirmada.
+- **Servidor MCP** con perfil `verificacion`, y API HTTP local.
+- **Contrato público** versionado en `docs/contrato/`.
+- **Cierre de hallazgos de seguridad** de la revisión independiente: un repositorio ajeno ya no puede subir el tope de gasto, ampliar los recursos del contenedor ni fabricar un estado aceptado. Lista completa en ESTADO-ACTUAL.md.
 
-- **998 tests pasando / 0 fallos** — node:test, sin mocks del sistema de archivos
-- **Motor LLM agnóstico** — Anthropic, OpenAI (+ Azure/GitHub Models), Ollama, Stub
-- **Hooks multi-lenguaje** — `.sh` equivalentes de los 3 hooks principales; funcionan en proyectos sin Node
-- **Aprobación humana obligatoria** — guard `spec_aprobado` en state machine; `forge aprobar spec`
-- **SSE en tiempo real** — dashboard en localhost:3001 con Server-Sent Events; fallback polling
-- **EventLog streaming** — `/events` emite `events.jsonl` en tiempo real; `/eventlog` últimas 50 entradas
-- **Memoria compartida entre agentes** — `.sdd/memoria/compartida/decisiones-clave.md`
-- **`forge run` y `forge resume`** — expuestos en CLI principal, delegan a `engine-cli.js`
-- **`forge doctor` completo** — ping real al LLM, latencia, validación JSON, SQLite
-- **Fix await orchestrator** — bug silencioso en `_runTests()` corregido
-- **24 tests E2E** — `tests/e2e/pipeline-flow.test.js`, pipeline completo sin LLM
-- **Decision store TF-IDF** — búsqueda semántica de ADRs con similitud coseno
-- **Circuit breaker por agente** — sandbox / local / confirmado en `core/execution-context.js`
-- **Stack detector 18 lenguajes** — auto-detecta Node, Python, Go, Rust, PHP, etc.
-- **SQLite auto-detect** — `node:sqlite` nativo si Node ≥22.5, fallback Markdown
-- **Migración core/ a JS puro** — eliminado TypeScript, no se necesita `npm run build` ni `dist/`
+## Pendiente en el código
 
----
+Trabajo ya empezado, en las especificaciones de `.sdd/especificaciones/`:
 
-## Completado en 4.3.0 (sin publicar)
+- **Perfiles de agente, tareas F6 y F7.**
+- **Puertas de calidad, tareas F4 y F7**, y el evento `ciclo:llamada` con `modeloServido`.
+- **Ciclo por MCP, tareas F4 y F5.**
+- **Servidor MCP de edición**: decidir si pasa también por el perfil de agente.
+- **Puertas ligadas a los `tsconfig` referenciados** (`extends`).
 
-Mejora incremental, opt-in. Detalle y límites en [PLAN-MOTOR-AGENTICO.md](../PLAN-MOTOR-AGENTICO.md) y `.sdd/INDICE.md`:
+## Pendiente para publicar (responsabilidad de la persona)
 
-- **Saneamiento** del motor y del instalador (rutas de Windows, claves entre el motor y los comandos `/sdd.*`, tests portables)
-- **Ciclo verificado** — `forge run --motor ciclo`, ver [ciclo-verificado.md](ciclo-verificado.md)
-- **Servidor MCP** — `forge mcp`, ver [servidor-mcp.md](servidor-mcp.md)
-- **API HTTP local** — `forge api`, ver [api-http.md](api-http.md)
-- **`forge probar-modelo`** — la prueba con un modelo real. Se ejecutó con uno de pago el 2026-10-09 (ver `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`)
-- Suite al cerrar 4.3.0: 1405 tests pasando en Windows con Docker (3 saltados, 0 fallos). El recuento actual está en [COBERTURA.md](COBERTURA.md)
+No los puede hacer el código solo:
 
-## En desarrollo activo
+1. Abrir la PR a `main`, para que corra la integración continua en Linux (los jobs `aislamiento`, `pruebas-docker` y `tipos` nunca han corrido).
+2. Rotar la clave de Anthropic que apareció en la conversación.
+3. Medir contenedores reales con Docker en un equipo que lo tenga.
+4. Aprobar formalmente las especificaciones.
+5. Comprobar la marca y el dominio de «Fragua», y el nombre exacto del paquete.
+6. Probar las integraciones con cuentas reales de GitHub, GitLab y Jira.
+7. Decidir la publicación: `5.0.0-beta.1` con la etiqueta `next`.
 
-- **Memoria semántica** (FASE 3 de `PLAN-MOTOR-AGENTICO.md`): hecha con un índice propio en un archivo, sin dependencias (ADR-14); guía en [memoria-semantica.md](memoria-semantica.md). LanceDB (embeddings reales, opcional, Node ≥22) quedó diferido.
-- **Ciclo por defecto** (FASE 5, 5.0.0): hecho en el código (`motor.modo: ciclo` por defecto, Node ≥20). **Sin publicar hasta ejecutar en CI los jobs `aislamiento` y `pruebas-docker` (nunca han corrido); el ciclo ya se probó con un modelo de pago en tareas pequeñas.**
-
-Estas funcionalidades tienen trabajo iniciado pero no están disponibles en la versión publicada:
-
-### Routing por confidence score
-Asignar el modelo por agente según la complejidad estimada de la tarea. Tareas simples → haiku, decisiones arquitectónicas → opus. Hoy el modelo por agente es fijo en la configuración.
-
-### AST delta incremental
-El indexer AST hoy reindexea el archivo completo en cada write. El objetivo es calcular solo el delta de símbolos afectados para reducir latencia en proyectos grandes (>50k LOC).
-
-### TF-IDF distribuido para decision store
-Hoy el índice TF-IDF se recalcula completo al iniciar. Con cientos de ADRs, la startup se ralentiza. La mejora es carga incremental + cache persistente.
+Las condiciones de la beta están en [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md).
 
 ---
 
-## Backlog (sin fecha)
+## Ideas sin fecha
 
-Funcionalidades planificadas pero no iniciadas. El orden no implica prioridad:
+Venían del roadmap anterior. No se han vuelto a verificar contra el código actual, así que son intenciones, no compromisos:
 
-- **Marketplace de templates**: publicar templates de proyectos (`api-rest`, `saas-mvp`, `cli-tool`) como paquetes instalables vía `forge template add`
-- **Embeddings para memory**: reemplazar TF-IDF por embeddings locales (via Ollama) para recuperación semántica más precisa en proyectos con >1000 entradas de memoria
-- **Driver headless v2**: modo completamente no interactivo para pipelines en CI — hoy el modo `stub` funciona para tests, pero el driver headless completo (con replay de sesiones) no está implementado
-- **Plugin hot-reload**: hoy añadir un comando o agente requiere reiniciar Claude Code. El objetivo es cargar plugins en caliente sin reiniciar la sesión
-- **Workspace multi-proyecto**: coordinar agentes entre repositorios en un monorepo o proyecto distribuido
-- **Dashboard persistente**: hoy el dashboard cierra a los 30 min sin actividad (IDLE_TIMEOUT_MS). La opción de hacerlo persistente como proceso daemon está en evaluación
+- **Routing por complejidad**: elegir el modelo por tarea y no fijo por agente.
+- **Análisis incremental del AST**: reindexar solo los símbolos afectados por un cambio, en proyectos grandes.
+- **Índice TF-IDF persistente** para las decisiones: hoy se recalcula al arrancar.
+- **Marketplace de plantillas** de proyecto instalables.
+- **Embeddings locales** (vía Ollama) para la memoria, en lugar de TF-IDF.
+- **Modo headless completo** con repetición de sesiones, para CI.
+- **Carga en caliente de plugins**, sin reiniciar Claude Code.
+- **Coordinación entre repositorios** en un monorepo o en un proyecto distribuido.
 
 ---
 
-## Lo que FORGE deliberadamente no hará
+## Lo que FORGE no hará
 
-Estas funcionalidades fueron evaluadas y descartadas:
-
-- **Integración con Google/Gemini**: no hay roadmap para añadir este provider. Los cuatro existentes cubren los casos de uso principales.
-- **CLI interactivo tipo TUI**: FORGE usa Claude Code como interfaz. No se construirá una TUI propia.
-- **ORM o cliente de base de datos**: FORGE genera código que usa ORMs del proyecto, pero no incluye ni gestiona dependencias de bases de datos propias.
-- **WebSockets en el dashboard**: SSE es suficiente para el caso de uso (flujo unidireccional servidor → cliente). No se migrará a WebSockets.
+- **Un proveedor de Google/Gemini**: los cuatro existentes cubren los casos previstos.
+- **Una interfaz de terminal propia**: Claude Code es la interfaz.
+- **Un ORM o un cliente de base de datos propios**: FORGE genera código que usa las herramientas del proyecto.
+- **WebSockets en el panel**: el flujo es unidireccional, y SSE basta.

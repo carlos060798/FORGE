@@ -56,7 +56,7 @@ Hecho verificado de SLSA: L1 la provenance existe (puede ser incompleta o sin fi
 
 ## 3. Qué cubre ya Fragua
 
-Limitación: `PLAN-MAESTRO.md` no se analizó a fondo; esta tabla se basa en `docs/FORGE-5.0-GUIA.md` y `core/verificar/resultado.js`.
+Limitación: `../archivo/planes/PLAN-MAESTRO.md` no se analizó a fondo; esta tabla se basa en `docs/FORGE-5.0-GUIA.md` y `core/verificar/resultado.js`.
 
 | Tema | Estado |
 |---|---|

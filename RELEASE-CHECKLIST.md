@@ -55,7 +55,9 @@ Además, antes de anunciarla: `docs/PROBLEMAS-CONOCIDOS.md`, `docs/MIGRACION-5.0
 | 2026-10-10 | el mismo | el mismo | `npm test`, 2.ª (222 s) | 2055 | 2045 | 0 | 10 |
 | 2026-10-10 | el mismo | el mismo | `npm test`, 3.ª (192 s) | 2055 | 2045 | 0 | 10 |
 | 2026-10-10 | el mismo | el mismo | `node --test tests/*.test.js` (223 s) | 2004 | 1996 | 0 | 8 |
-| 2026-10-11 | `27ea407` | equipo, versión de Node y uso de Docker sin anotar (cifras tomadas de `PLAN-CIERRE-BRECHAS.md`) | `npm test` | 2214 | 2202 | 0 | 12 |
+| 2026-10-11 | `27ea407` | equipo, versión de Node y uso de Docker sin anotar (cifras tomadas de `docs/archivo/planes/PLAN-CIERRE-BRECHAS.md`) | `npm test` | 2214 | 2202 | 0 | 12 |
+| 2026-10-24 | `f195354` (fusión de puertas en el ciclo) | Windows 11, Node 24.20.0, sin Docker | `npm test` | 3820 | 3786 | 3 | 31 |
+| 2026-10-24 | `1d728f5` (fusión de perfiles de agente) | el mismo | `npm test` | 3862 | 3831 | 0 | 31 |
 
 Las tres últimas se lanzaron una tras otra con una sola orden. Durante la primera se editó el texto de tres documentos (`docs/PROBLEMAS-CONOCIDOS.md`, `docs/MIGRACION-5.0.md` y `VERSIONING.md`), cuyo contenido no lee ninguna prueba; durante la segunda y la tercera no cambió nada. El equipo ejecutaba otros trabajos a la vez. **Esto cubre B2 solo sin Docker y solo en Windows**: no hay tres pasadas seguidas con `FORGE_TEST_DOCKER=1`, ni ninguna en Linux.
 

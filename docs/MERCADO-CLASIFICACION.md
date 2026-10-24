@@ -1,7 +1,7 @@
 # FORGE 5.0 en el mercado de herramientas de ingeniería con IA
 
 > Fecha de consulta: 2026-10-13. Fuentes de terceros: búsqueda web, mayormente agregadores y blogs; ninguna es hoja de precios oficial. Lo no confirmado va marcado «no verificado». Los precios cambian: confirmar en el sitio del proveedor.
-> Evidencia propia de FORGE (de `FORGE-5.0-GUIA.md` y `EVALUACION-PUBLICACION.md`): ciclo verificado demostrado en Windows 11 con Docker y modelo Anthropic real, 24 ejecuciones y proyectos pequeños; Linux, OpenAI/Ollama, integraciones GitHub/GitLab/Jira y CI **sin validar**; 5.0.0 **no publicada en npm**; spec 0 de 10 completadas por el dueño.
+> Evidencia propia de FORGE (de `FORGE-5.0-GUIA.md` y `archivo/EVALUACION-PUBLICACION.md`): ciclo verificado demostrado en Windows 11 con Docker y modelo Anthropic real, 24 ejecuciones y proyectos pequeños; Linux, OpenAI/Ollama, integraciones GitHub/GitLab/Jira y CI **sin validar**; 5.0.0 **no publicada en npm**; spec 0 de 10 completadas por el dueño.
 
 ## 1. Taxonomía del mercado
 

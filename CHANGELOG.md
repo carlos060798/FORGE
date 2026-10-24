@@ -115,7 +115,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
   - `forge status` muestra cuántas tareas están exentas del rojo obligatorio, con su identificador (el registro ya anotaba cada exención aplicada). Muestra también los cambios descartados.
   - `medirMutacion` valida las rutas por sí misma (rutas con `..`, absolutas o vetadas se descartan) y las líneas `antes`/`despues` se redactan antes de ir al registro, a la revisión y al prompt del agente de pruebas.
   - El avance guardado de una medición con el formato anterior no se reutiliza (se mide de nuevo).
-**Puesta al día** (spec `2026-10-09-puesta-al-dia`, FASE 9 de `PLAN-CIERRE-BRECHAS.md`):
+**Puesta al día** (spec `2026-10-09-puesta-al-dia`, FASE 9 de `docs/archivo/planes/PLAN-CIERRE-BRECHAS.md`):
 
 - **Caché de prompts con Anthropic.** El prompt de sistema (instrucciones del agente y contrato de salida) se marca como reutilizable; las llamadas siguientes de la misma tarea lo pagan reducido. **Cambia el gasto calculado**: el libro de gasto anota y cobra por separado la entrada a precio normal, lo guardado (1,25 veces la entrada) y lo reutilizado, con los precios por modelo de `core/precios.js`. Una tarea de una sola llamada paga algo más por la parte fija. `llm.cache: false` lo desactiva y deja la petición como antes. Precios de caché propios, opcionales: `<identificador>_cache_escritura` y `<identificador>_cache_lectura` en `precios:`. Los demás proveedores no cambian. **El ahorro real no está medido** (hace falta un modelo de pago): `docs/ciclo-verificado.md` dice cómo medirlo.
 - El prompt de sistema de los agentes pone ahora el contrato de salida antes que el estado: lo que cambia va al final. Solo afecta al modo clásico, que es el único que envía el estado.
@@ -162,7 +162,7 @@ Lo que sigue es el contenido de las 4.3.0 que no se llegó a publicar.
 
 ## [4.3.0] — No publicada
 
-Dos trabajos, cada uno con su spec en `.sdd/especificaciones/`: el saneamiento previo (`2026-10-03-saneamiento`) y el Ciclo Verificado (`2026-10-03-ciclo-verificado`). Ver `PLAN-MOTOR-AGENTICO.md`.
+Dos trabajos, cada uno con su spec en `.sdd/especificaciones/`: el saneamiento previo (`2026-10-03-saneamiento`) y el Ciclo Verificado (`2026-10-03-ciclo-verificado`). Ver `docs/archivo/planes/PLAN-MOTOR-AGENTICO.md`.
 
 ### Memoria semántica — `motor.recuperador: semantico` (spec `2026-10-04-memoria-semantica`)
 

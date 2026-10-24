@@ -1,33 +1,35 @@
 # Estado actual de Fragua (5.0.0, sin publicar)
 
-> **Fecha:** 2026-10-23 · **Rama:** `feature/motor-agentico` · **Último commit con suite completa:** `b4f234d`
+> **Fecha:** 2026-10-24 · **Rama:** `feature/motor-agentico` · **Última suite completa:** `1d728f5` (fusión de perfiles de agente y puertas de calidad)
 > Este documento es el estado de referencia. Las guías (`FORGE-5.0-GUIA.md`, `README.md`) enlazan aquí en vez de repetir cifras. Si una cifra de otro documento no coincide con esta página, manda esta.
 
 ## Qué es, en una frase
 
 Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo verificado**: el código que escribe un modelo solo se da por bueno si pasa las pruebas en un contenedor sin red y lo confirma una persona. El veredicto lo decide el código de salida de las pruebas, no el modelo. Sigue llamándose `forge` en su comando antiguo; el nombre nuevo es `fragua`.
 
-## Cifras (último commit verificado)
+## Cifras (última suite completa)
 
 | Medida | Valor | Cómo se midió |
 |---|---|---|
-| Pruebas | 3782 en total: 3750 pasan, 31 saltadas, 1 fallo | `npm test` completo en `b4f234d` |
-| El fallo | Una batería hostil de 52 entradas, que solo falla bajo la carga de la suite completa | Pasa aislada (19 de 19); no es un fallo del código |
-| Tipos | 0 errores | `npm run typecheck` |
-| Agentes | 14 (en `agents/`) | Inventario, `scripts/inventario-agentes.mjs` |
-| Skills | 31 | Inventario |
-| Comandos | 39, con una skill generada cada uno | Inventario |
+| Pruebas | 3862 en total: 3831 pasan, 31 saltadas, 0 fallan | `npm test` en `1d728f5`, Windows 11, Node 24.20 |
+| Tipos | 0 errores | `npm run typecheck` en `1d728f5` |
+| Agentes | 14 (en `agents/`) | Conteo de archivos |
+| Skills | 31 (en `skills/`) | Conteo de carpetas |
+| Comandos | 39, con una skill generada cada uno | Inventario, `scripts/inventario-agentes.mjs` |
 | Especificaciones | 20 en `.sdd/especificaciones/` (10 de antes, 10 de hoy) | Conteo de carpetas |
 
 Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no se ejecutan en este equipo.
+
+**Pasadas intermitentes.** En la primera pasada completa, en `f195354` (antes de fusionar los perfiles de agente), fallaron tres pruebas, todas con la carga de la suite entera: la de memoria SQLite (`tests/agent-memory.test.js`), la batería hostil de 52 entradas (`tests/integraciones-extremo-a-extremo.test.js`) y un límite de tiempo de `adfATexto` (`tests/integraciones-revision1.test.js`). Los tres archivos, ejecutados solos, pasan: 96 de 96. No se ha identificado la causa de la intermitencia; queda anotada como deuda.
 
 ## Lo que funciona y está probado
 
 Probado con pruebas automáticas, y en parte con modelo real en la validación anterior:
 
 - **Ciclo verificado** de planificación, pruebas, implementación y mutación, con aislamiento de Docker (probado de forma real solo en Windows 11 con Docker Desktop).
+- **Puertas de calidad en el ciclo**: tras las pruebas, cada puerta declarada en `sdd.config.yaml` se ejecuta; si una no pasa, la tarea vuelve al implementador con la salida. Solo una herramienta ausente (código 127) pide revisión humana. Probado con Docker falso y un modelo guionizado, no con un modelo real.
 - **`fragua verificar`**: veredicto aislado sobre un proyecto sin llamar a ningún modelo. Incluye mutación, `--desde` con git neutralizado, `--registrar` con cadena de evidencia firmada y `--comprobar-evidencia`.
-- **Puertas declarables** (`sdd.config.yaml`, sección `puertas:`): tipos, linter, seguridad y cobertura, con un comando por clave fija. Dentro de `fragua verificar` y, desde esta semana, también en el ciclo: si una puerta falla, la tarea no se da por buena.
+- **Perfiles de agente por rol** (planificador, QA, implementador): el proyecto solo puede apretar; lo que intente ampliar se ignora y se anota. Pruebas por capas, con mutaciones que las pruebas detectan. Faltan las tareas F6 y F7 de su especificación.
 - **Estado del ciclo sellado**: los puntos de guardado y la sesión llevan un sello con una clave del usuario, fuera del proyecto. Un repositorio no puede fabricar un estado que el ciclo acepte.
 - **Proveedores**: Anthropic, OpenAI y Ollama con herramientas (conformidad común), niveles neutrales `alto`, `medio` y `economico`.
 - **Instalación agnóstica**: `forge init --integracion <clave>` para 9 herramientas con carpeta confirmada en su documentación oficial.
@@ -36,7 +38,7 @@ Probado con pruebas automáticas, y en parte con modelo real en la validación a
 
 ## Seguridad: lo que ya no puede hacer un repositorio ajeno
 
-La mayor parte de la revisión de hoy consistió en un patrón: **un archivo del proyecto, que puede venir de un repositorio ajeno, decidía algo que protege al usuario**. Todo lo siguiente está cerrado con prueba que fallaba antes:
+La mayor parte de la revisión consistió en un patrón: **un archivo del proyecto, que puede venir de un repositorio ajeno, decidía algo que protege al usuario**. Todo lo siguiente está cerrado con prueba que fallaba antes:
 
 | Lo que el repositorio ya no puede |
 |---|
@@ -49,25 +51,31 @@ La mayor parte de la revisión de hoy consistió en un patrón: **un archivo del
 | Llevar al modelo un archivo ajeno con una ruta `../` o un enlace |
 | Autorizar destinos de red con un URL plantado en el propio código |
 | Forzar la bifurcación de la cadena de evidencia con dos registros a la vez |
+| Ampliar sus herramientas, rutas o topes desde su propio perfil de agente |
+| Escribir la configuración de las herramientas de calidad (`tsconfig`, `biome`, etc.) desde el implementador |
 
 ## Límites conocidos (sin cerrar)
 
 - **Ningún contenedor real está medido en este equipo.** No hay Docker aquí. Las cifras de tiempo, consumo y comportamiento en contenedor son de pruebas con un Docker falso.
 - **La integración continua en Linux nunca ha corrido.** Está escrita (`tipos`, `pruebas-docker`, `aislamiento`) pero no se ha ejecutado. Requiere abrir la PR a `main`.
-- **El modelo real no se ha usado con las funciones nuevas de hoy.** El delimitador de datos ajenos y las puertas en el ciclo no se han probado con un modelo de verdad.
+- **El modelo real no se ha usado con las funciones nuevas.** El delimitador de datos ajenos, las puertas en el ciclo y los perfiles de agente no se han probado con un modelo de verdad.
 - **Gasto calculado frente a factura:** no comparado. Las tarifas son una lista interna.
 - **Integraciones GitHub, GitLab y Jira:** probadas solo contra servidores falsos.
 - **Estado del ciclo sellado:** un estado guardado en otro equipo, o tras perder la clave, no se puede reanudar. Es el precio de que el repositorio no pueda fabricarlo.
 - **Un adversario deliberado** puede imitar la señal de aserción de la medición de mutación. Está documentado en `GARANTIAS-Y-LIMITES.md`.
 - **Secretos partidos, en base64 o en hexadecimal** no los detecta el control de salida. Documentado como límite.
-- **Trabajo de perfiles de agente a medias:** la primera entrega está integrada; partes de las tareas F2 a F5 se están completando (ver abajo).
+- **Servidor MCP de edición** (`editar` en `core/mcp/herramientas.js`): escribe con las reglas de coder y qa, sin pasar por el perfil de agente. Está fuera del ciclo; pendiente de decidir si entra en esta entrega.
+- **Política del usuario para los perfiles de agente**: hoy solo viene de variables de entorno, no de un archivo de estado. Decisión pendiente.
+- **Pruebas intermitentes bajo carga**: ver «Pasadas intermitentes» arriba.
 
 ## En curso al redactar este documento
 
 Se actualiza cuando terminen; si lees esto y no hay una fecha posterior, no están integrados:
 
-- Perfiles de agente, tareas F2 a F5: validación del perfil del proyecto, política fuera del árbol, filtrado de herramientas por perfil y regresión de los tres roles.
-- Puertas, tareas F3, F6.6, F6.7 y F1.5: pruebas del nodo y del grafo, motivo `puerta` en el estado, lista de archivos protegidos (`tsconfig`, `biome`, etc.) cableada al protocolo de escritura, y candado de lectura de la cabeza de evidencia.
+- Perfiles de agente, tareas F6 y F7 (`.sdd/especificaciones/2026-10-14-perfiles-de-agente/`).
+- Puertas, tareas F4 y F7 (criterios de aceptación y cierre), y F6.7 en lo que queda: `ciclo:llamada` con `modeloServido` (un evento nuevo con contrato) y `DockerCli.identidadImagen`.
+- Ciclo por MCP, tareas F4 y F5.
+- Ligar las puertas a los `tsconfig` referenciados (`extends`) y la verificación con Docker real (F8.2): documentados como límites, sin implementar.
 
 ## Lo que solo puede hacer la persona responsable
 
@@ -86,3 +94,4 @@ Se actualiza cuando terminen; si lees esto y no hay una fecha posterior, no est�
 - [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md): incidencias abiertas y cerradas, con su evidencia.
 - [INVENTARIO-AGENTES-Y-SKILLS.md](INVENTARIO-AGENTES-Y-SKILLS.md): agentes, skills y comandos, generado por script.
 - [ADECUACION-DEL-CATALOGO.md](ADECUACION-DEL-CATALOGO.md): plan para el catálogo de agentes y skills.
+- [archivo/](archivo/): planes, informes y análisis superados. Se conservan como historia, no como guía.

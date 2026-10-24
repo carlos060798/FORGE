@@ -18,7 +18,7 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 | PD-V, PD-R | lo mismo, de `2026-10-09-puesta-al-dia/` |
 | REV-3 | `revision-independiente-3.md` de `2026-10-09-validacion-modelo-real/` (tercera revisión, 2026-10-11): hallazgos N-01 a N-14 |
 | INT-V, INT-S | `verificacion.md` y `spikes/` de `.sdd/especificaciones/2026-10-11-integraciones-externas/` |
-| PLAN | `PLAN-CIERRE-BRECHAS.md`, secciones «Estado de ejecución» y «Pendiente para las próximas sesiones» |
+| PLAN | `archivo/planes/PLAN-CIERRE-BRECHAS.md`, secciones «Estado de ejecución» y «Pendiente para las próximas sesiones» |
 
 ## Antes de nada
 
@@ -466,7 +466,7 @@ Encontrados al reunir este documento. **El 2026-10-12 se corrigieron en su sitio
 | Dónde | Qué dice | Qué es cierto hoy | Evidencia |
 |---|---|---|---|
 | `.sdd/memoria/constitucion.md`, razón del Principio IV | «El paquete tiene dos dependencias» | Tiene **tres** desde que `@anthropic-ai/sdk` pasó a `dependencies` (`@anthropic-ai/sdk`, `@sqlite.org/sqlite-wasm` y `acorn`). **No se ha editado: la constitución es decisión del dueño (Principio II)**; la corrección es una enmienda PATCH de la razón, sin tocar el principio | `package.json`, `dependencies` |
-| `docs/ESTADO-IMPLEMENTACION.md` | Describe 4.3.0 entero | Solo se pusieron al día sus cifras y la fila del ciclo verificado; el resto del documento sigue siendo el estado de 4.3.0, como avisa su cabecera | Aviso al comienzo de ese archivo |
+| `docs/archivo/ESTADO-IMPLEMENTACION.md` | Describe 4.3.0 entero | Solo se pusieron al día sus cifras y la fila del ciclo verificado; el resto del documento sigue siendo el estado de 4.3.0, como avisa su cabecera | Aviso al comienzo de ese archivo |
 | `.sdd/especificaciones/2026-10-03-herramientas-mcp/verificacion.md` | Cabecera: «sin verificación independiente todavía» | `CHANGELOG.md` (4.3.0, «Corregido tras la tercera ronda») dice que el MCP tuvo verificación independiente, aprobada con observaciones. No se ha podido comprobar cuál de las dos describe la carpeta, porque no guarda ese informe | `CHANGELOG.md`; esa cabecera |
 
 ## 9. Integraciones externas (en construcción)
@@ -556,7 +556,7 @@ Estas entradas estaban en la versión del 2026-10-10 de este documento, o eran h
 **Otros**
 
 - La lista de archivos del mapa descartaba los nombres con acentos u otros alfabetos (REV-2, N8): corregido (`nombreListable`).
-- Las contradicciones puramente documentales de la sección 8 de la versión del 2026-10-10: `docs/ciclo-verificado.md` (pasos 3 y 4 repetidos, tres entradas duplicadas de «Límites conocidos», el límite de pytest, la frase «todavía no se ha ejecutado con un modelo de pago» y la medición del ahorro de caché), `docs/servidor-mcp.md` (decía que no cubría Go), `CHANGELOG.md` 4.3.0 (dos afirmaciones opuestas sobre la revisión de la API), `docs/roadmap.md`, `docs/ESTADO-IMPLEMENTACION.md`, `docs/0-INDICE.md` (enlaces a archivos que no existen o con otra capitalización: rotos en Linux), `VERSIONING.md` (nombre antiguo del paquete, `sdd-es`) y `docs-site/assets/data.js` (decía que 6 agentes son de solo lectura y 8 escriben; son 7 y 7).
+- Las contradicciones puramente documentales de la sección 8 de la versión del 2026-10-10: `docs/ciclo-verificado.md` (pasos 3 y 4 repetidos, tres entradas duplicadas de «Límites conocidos», el límite de pytest, la frase «todavía no se ha ejecutado con un modelo de pago» y la medición del ahorro de caché), `docs/servidor-mcp.md` (decía que no cubría Go), `CHANGELOG.md` 4.3.0 (dos afirmaciones opuestas sobre la revisión de la API), `docs/roadmap.md`, `docs/archivo/ESTADO-IMPLEMENTACION.md`, `docs/0-INDICE.md` (enlaces a archivos que no existen o con otra capitalización: rotos en Linux), `VERSIONING.md` (nombre antiguo del paquete, `sdd-es`) y `docs-site/assets/data.js` (decía que 6 agentes son de solo lectura y 8 escriben; son 7 y 7).
 - La comprobación de tipos: de 36 errores a 0 (PL-4).
 - `forge config set` y `forge aprobar` escriben por el módulo de escritura segura.
 - Pruebas frágiles estabilizadas (`docker info`, rendimiento, doctor).

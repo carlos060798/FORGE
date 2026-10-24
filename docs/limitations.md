@@ -54,7 +54,7 @@ Si cambias `memoria.backend` de `markdown` a `sqlite` en un proyecto existente, 
 
 Ya no hay archivos `.skip` en `tests/`: los cinco que se listaban aquí (`agent-enforcement`, `ast-compressor`, `delta-encoding`, `episodic-memory`, `hybrid-indexer`) son hoy archivos de prueba activos.
 
-Lo que sí se omite depende del equipo. El 2026-10-10, en Windows 11 con Node 24.20.0 y sin `FORGE_TEST_DOCKER`, `npm test` ejecutó 2055 pruebas: 2045 pasaron, 0 fallaron y 10 se omitieron. Las omisiones de `tests/*.test.js` son 17 (8 pruebas y 9 bloques enteros, cuyas pruebas no entran en el total): 11 piden `FORGE_TEST_DOCKER=1` y Docker en marcha, 4 piden crear enlaces simbólicos de archivo (Windows lo impide sin privilegios), 1 comprueba permisos POSIX y 1 pide el cliente oficial de MCP instalado.
+Lo que sí se omite depende del equipo. En la última pasada completa (commit `1d728f5`, Windows 11, Node 24.20.0, sin `FORGE_TEST_DOCKER`), `npm test` ejecutó 3862 pruebas: 3831 pasaron, 0 fallaron y 31 se omitieron. Las omisiones son las pruebas que piden Docker real (`FORGE_TEST_DOCKER=1`) o, en algunos casos, enlaces simbólicos de archivo. El registro de pasadas está en [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md).
 
 **Impacto:** lo que solo se comprueba con Docker real, con enlaces de archivo o en un sistema POSIX no queda cubierto por un `npm test` normal en Windows. La cobertura por archivo está en [COBERTURA.md](COBERTURA.md).
 

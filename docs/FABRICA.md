@@ -191,7 +191,7 @@ Para alguien sin conocimiento técnico, eso es todo. No necesitas ser ingeniero 
 |-----------|-----------|-----------|
 | [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md) | No-técnicos | Respuestas: "¿y si cambio de idea?", "¿y si falla?", etc. |
 | [FLUJO.md](FLUJO.md) | Programadores | Comandos técnicos, workflows, pipes |
-| [MEMORIA-Y-OBSERVABILIDAD.md](MEMORIA-Y-OBSERVABILIDAD.md) | Arquitectos/developers | Sistema de memoria persistente y observabilidad de tokens |
+| [MEMORIA-Y-OBSERVABILIDAD.md](archivo/MEMORIA-Y-OBSERVABILIDAD.md) | Arquitectos/developers | Sistema de memoria persistente y observabilidad de tokens |
 
 ---
 
