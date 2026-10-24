@@ -961,7 +961,7 @@ function wizardGuiado() {
   }
 
   console.log("\n  ╔══════════════════════════════════════╗");
-  console.log("  ║   SDD-ES — Configuración guiada      ║");
+  console.log("  ║   Fragua — Configuración guiada      ║");
   console.log("  ╚══════════════════════════════════════╝");
   console.log("  Responde con el número de tu elección (Enter = opción 1)\n");
 
