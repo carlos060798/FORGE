@@ -82,9 +82,12 @@ Hay **dos** archivos `events.jsonl` con el mismo sobre:
 
 El esquema antiguo exige `schemaVersion`; el `.sdd/estado.json` real **no lo tiene** y trae claves que el esquema antiguo no conoce, así que el propio estado del proyecto no lo cumple (nadie lo valida hoy). Decisión con evidencia: **no se toca** el esquema antiguo (su `$id` está publicado) y el contrato describe el archivo real en `estado-pipeline` (`schemaVersion` opcional, sin obligatorios, claves desconocidas admitidas). Una prueba valida el `.sdd/estado.json` del repositorio contra él.
 
+## Ver los esquemas desde la línea de comandos
+
+`fragua esquema` lista los esquemas con su versión; `fragua esquema <nombre>` imprime uno en JSON. Es de solo lectura, usa una lista cerrada de nombres y lee `docs/contrato/` del paquete, no del proyecto.
+
 ## Pendiente
 
 - `fragua run --json` y `fragua status --json` no existen; añadirlos es una función nueva con su propia especificación.
-- Comando de solo lectura `fragua esquema <nombre>` (CA-001-07, P2). Los esquemas ya van en el paquete (`docs/`).
 - Que `validateArtefacto` y `validarArgumentos` del MCP deleguen en `core/contrato/validar.js` (se deja a otros frentes: tocan `core/mcp/`).
-- Lectores con rechazo explícito de versión desconocida para el resultado y los eventos (hoy solo lo hace el estado del ciclo).
+- Lectores con rechazo explícito de versión desconocida para el resultado y los eventos (hoy solo lo hace el estado del ciclo, y su mensaje dice qué versión entiende).

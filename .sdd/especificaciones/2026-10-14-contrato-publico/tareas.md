@@ -50,7 +50,7 @@
 
 - [x] **F7.1** `docs/CONTRATO-PUBLICO.md`: política, interno, mapa de vocabularios, códigos de salida. Cubre CA-003-01, CA-003-03, CA-003-05, CA-004-01, CA-004-03.
 - [x] **F7.2** Comando `esquema` de solo lectura y esquemas en el paquete publicado (P2). Cubre CA-001-07. (`fragua esquema [nombre]`, `cli/esquema.js`; los esquemas viajan en `docs/` del paquete)
-- [ ] **F7.3** `CHANGELOG.md` y guía.
+- [x] **F7.3** `CHANGELOG.md` y guía. (CHANGELOG 2026-10-24 y `docs/contrato/LEEME.md`)
 
 ## F8 — Cierre
 

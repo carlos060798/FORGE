@@ -31,6 +31,25 @@ puertas:
 5. El resultado lleva un bloque opcional `puertas` (esquema `resultado-verificar` 1.2; `formato` sigue siendo 1): `declaradas`, `topes`, `ejecutadas`, `motivo`, `resultados[]` con nombre, comando redactado, categoría, código de salida, duración y salida acotada y redactada. Sin sección `puertas:` el bloque no aparece y el resultado es el de siempre.
 6. Con `--registrar`, el bloque `puertas` y un resumen en `evidencia.puertas` entran en el informe y en su `sha256`: retocar una puerta rompe la cadena (ver `docs/cadena-de-evidencia.md`).
 
+## Criterios de aceptación sin prueba
+
+`fragua verificar --criterios` cruza los identificadores `CA-xxx-yy` de la `spec.md` activa con los `cubre_cas` de las tareas y con los archivos de prueba del proyecto. Solo lee archivos y compara texto: no llama a ningún modelo y no ejecuta nada.
+
+- **sin tarea**: ninguna tarea cubre el criterio.
+- **sin prueba**: una tarea lo cubre, pero ningún archivo de prueba contiene su identificador (en un comentario o en el nombre de la prueba). El agente de pruebas recibe en su prompt los criterios de la tarea y la instrucción de citarlos.
+- Por defecto solo informa (código 0). Con `--exigir-cobertura-de-criterios`, un criterio sin tarea o sin prueba da el código 1. `--json` devuelve la matriz.
+- **Límite:** citar un identificador no demuestra que la prueba lo compruebe; solo que alguien la enlazó. La calidad de la prueba la mide la mutación.
+
+## Lo que no debe cambiar (`no_cambiar`)
+
+Una tarea puede declarar `no_cambiar`: una lista de archivos de prueba que ya existen y deben pasar antes y después del cambio (`.estado-tareas.json`: `"no_cambiar": ["tests/legado.test.js"]`).
+
+1. Se validan al empezar: lista no vacía, hasta 20 rutas relativas con caracteres seguros, que existan dentro del proyecto y sean archivos de prueba. Algo distinto no se acepta en silencio: la tarea pide revisión humana (motivo `regresion`) con el mensaje.
+2. **Antes de implementar** se ejecutan en el mismo contenedor sin red (el comando de pruebas del proyecto con esas rutas añadidas; con `npm`, tras `--`). Si ya fallan, la tarea pide revisión humana: no se parte de una línea base roja. Una vez en verde queda anotado en el estado.
+3. **Después de implementar**, y solo si pasan las pruebas de la tarea, se vuelven a ejecutar como una puerta más. Si alguna falla, la ejecución es `fail` con el motivo «Regresión» y la lista de lo declarado, y vuelve al implementador.
+4. El implementador no puede modificar esos archivos (`prueba_inmutable`).
+- **Límite:** la lista dice qué archivos se ejecutan, no cuál de ellos se rompió; la salida acotada lo indica. Declarar una lista irrelevante oculta regresiones: revisa la lista al aprobar la tarea. Probado con un ejecutor falso; con Docker real, sin medir.
+
 ## Topes
 
 Valor por defecto / techo (ni el entorno del usuario lo supera): `timeout_s` 120 / 600, `timeout_total_s` 300 / 900, `salida_max_bytes` 262144 / 1048576. Además, cada puerta respeta el `sandbox.timeout_s` del ejecutor. El usuario los fija con `FRAGUA_PUERTAS_TIMEOUT_S`, `FRAGUA_PUERTAS_TIMEOUT_TOTAL_S` y `FRAGUA_PUERTAS_SALIDA_MAX_BYTES` (o `FORGE_...`). El proyecto solo puede bajarlos: si pide más, se ignora y se avisa.

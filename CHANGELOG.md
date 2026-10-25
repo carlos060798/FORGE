@@ -15,6 +15,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Criterios sin prueba, `no_cambiar` y `fragua esquema` (2026-10-24)
+
+- **Nuevo.** `fragua verificar --criterios [--exigir-cobertura-de-criterios] [--json]`: matriz criterio de aceptación → pruebas, solo lectura y sin modelo. El agente de pruebas recibe los criterios de su tarea y la instrucción de citarlos. Ver `docs/puertas-de-calidad.md`.
+- **Nuevo.** `no_cambiar` en una tarea: pruebas existentes que deben pasar antes (línea base verde) y después del cambio (regresión como puerta); el implementador no puede modificarlas. Motivo de revisión nuevo `regresion` y evento `ciclo:regresion`.
+- **Nuevo.** `fragua esquema [nombre]`: lista y muestra los esquemas del contrato público.
+- **Contrato.** `tarea`, `tarea-entrada` y `tarea-sdd` pasan a 1.1 (campo opcional `no_cambiar`); `estado-ciclo` añade el motivo `regresion` y el campo opcional `regresion`. Un estado con otra `schemaVersion` se rechaza diciendo qué versión entiende el lector.
+- **Pruebas.** Los servidores falsos de integraciones cierran la conexión en cada petición: bajo carga la suite fallaba de forma intermitente con «fetch failed».
+- **No hecho.** `no_cambiar` con Docker real; `forge status` no muestra la matriz de criterios.
+
 ### Puertas de calidad declarables en `fragua verificar` (spec `2026-10-14-puertas-de-calidad-y-evidencia`, fase B1, 2026-10-17)
 
 - **Nuevo.** Una sección `puertas:` en `.sdd/sdd.config.yaml` declara `tipos`, `linter`, `seguridad` y `cobertura` (un comando cada una). Corren en el mismo contenedor sin red, en serie, solo si las pruebas pasan; cualquier puerta que no pase (fallo, tiempo, herramienta ausente 127, fallo del aislamiento) impide el éxito y el resultado la nombra. Sin la sección, nada cambia. Ver `docs/puertas-de-calidad.md`.
