@@ -162,3 +162,24 @@ describe('F4.5 el agente de pruebas recibe la instrucción de citar el identific
     assert.equal(t, '');
   });
 });
+
+describe('fragua status muestra el resumen de criterios (CA-003-04)', () => {
+  const CLI = join(RAIZ, 'cli', 'index.js');
+  /** @param {string} cwd */
+  async function status(cwd) {
+    const { spawnSync } = await import('node:child_process');
+    const r = spawnSync(process.execPath, [CLI, 'status'], { cwd, encoding: 'utf8', timeout: 60_000 });
+    return `${r.stdout}\n${r.stderr}`;
+  }
+  test('con una spec activa que tiene criterios, status da el resumen y apunta a verificar --criterios', async () => {
+    const t = await status(proyecto('CA-001-01'));
+    assert.match(t, /Criterios de 2026-01-01-demo: 1 con prueba citada · 1 sin prueba · 1 sin tarea \(de 3\)/);
+    assert.match(t, /verificar --criterios/);
+  });
+  test('sin especificación activa, status no menciona criterios', async () => {
+    const cwd = join(base, `sinspec${++n}`);
+    mkdirSync(join(cwd, '.sdd'), { recursive: true });
+    writeFileSync(join(cwd, '.sdd', 'estado.json'), JSON.stringify({ pipeline_step: 'idea' }));
+    assert.doesNotMatch(await status(cwd), /Criterios de/);
+  });
+});

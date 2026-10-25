@@ -4,42 +4,42 @@
 
 ## Cómo leerlo
 
-Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador. Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
+Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
 
 ## Resumen
 
-- Criterios: 25 · con prueba citada: 19 · sin prueba citada: 6.
+- Criterios: 25 · cita exacta: 19 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 0 · sin cita: 6.
 - Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 10.
 
 ## Criterio → pruebas
 
-| Criterio | Marcado en la spec | Prueba citada | Pruebas |
+| Criterio | Marcado en la spec | Cita | Pruebas |
 |---|---|---|---|
-| CA-001-01 | no | **no** | — |
-| CA-001-02 | no | **no** | — |
-| CA-001-03 | no | **no** | — |
-| CA-001-04 | no | sí | `tests/ciclo-turnos.test.js`, `tests/proveedores-conformidad.test.js` |
-| CA-001-05 | no | **no** | — |
-| CA-002-01 | no | **no** | — |
-| CA-002-02 | no | sí | `tests/openai-conversar.test.js` |
-| CA-002-03 | no | sí | `tests/ciclo-turnos.test.js`, `tests/openai-conversar.test.js` |
-| CA-002-04 | no | sí | `tests/ciclo-turnos.test.js` |
-| CA-002-05 | no | sí | `tests/openai-conversar.test.js` |
-| CA-002-06 | no | sí | `tests/openai-conversar.test.js` |
-| CA-003-01 | no | sí | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
-| CA-003-02 | no | sí | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
-| CA-004-01 | no | sí | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js`, `tests/gasto-sin-precio.test.js`, `tests/precios-openai-cache.test.js` |
-| CA-004-02 | no | sí | `tests/ciclo-turnos.test.js`, `tests/gasto-sin-precio.test.js` |
-| CA-004-03 | no | sí | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js` |
-| CA-004-04 | no | sí | `tests/ciclo-turnos.test.js`, `tests/precios-openai-cache.test.js` |
-| CA-004-05 | no | sí | `tests/precios-openai-cache.test.js` |
-| CA-005-01 | no | sí | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
-| CA-005-02 | no | sí | `tests/niveles.test.js` |
-| CA-005-03 | no | sí | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
-| CA-005-04 | no | **no** | — |
-| CA-006-01 | no | sí | `tests/ciclo-turnos.test.js`, `tests/pruebas-independientes-opciones.test.js` |
-| CA-006-02 | no | sí | `tests/ciclo-turnos.test.js` |
-| CA-006-03 | no | sí | `tests/ciclo-turnos.test.js` |
+| CA-001-01 | no | **ninguna** | — |
+| CA-001-02 | no | **ninguna** | — |
+| CA-001-03 | no | **ninguna** | — |
+| CA-001-04 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/proveedores-conformidad.test.js` |
+| CA-001-05 | no | **ninguna** | — |
+| CA-002-01 | no | **ninguna** | — |
+| CA-002-02 | no | exacta | `tests/openai-conversar.test.js` |
+| CA-002-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/openai-conversar.test.js` |
+| CA-002-04 | no | exacta | `tests/ciclo-turnos.test.js` |
+| CA-002-05 | no | exacta | `tests/openai-conversar.test.js` |
+| CA-002-06 | no | exacta | `tests/openai-conversar.test.js` |
+| CA-003-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
+| CA-003-02 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
+| CA-004-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js`, `tests/gasto-sin-precio.test.js`, `tests/precios-openai-cache.test.js` |
+| CA-004-02 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-sin-precio.test.js` |
+| CA-004-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js` |
+| CA-004-04 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/precios-openai-cache.test.js` |
+| CA-004-05 | no | exacta | `tests/precios-openai-cache.test.js` |
+| CA-005-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
+| CA-005-02 | no | exacta | `tests/niveles.test.js` |
+| CA-005-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
+| CA-005-04 | no | **ninguna** | — |
+| CA-006-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/pruebas-independientes-opciones.test.js` |
+| CA-006-02 | no | exacta | `tests/ciclo-turnos.test.js` |
+| CA-006-03 | no | exacta | `tests/ciclo-turnos.test.js` |
 
 ## Sin cerrar
 

@@ -45,7 +45,7 @@
 - [x] **F4.1** Prueba: extrae los `CA-xxx-yy` de una spec de ejemplo. Cubre CA-003-01. (`tests/criterios-matriz.test.js`, 2026-10-24)
 - [x] **F4.2** Prueba: CA sin tarea y CA con tarea sin prueba citada. Cubre CA-003-02.
 - [x] **F4.3** Prueba estática: el módulo no importa proveedores de modelo ni ejecuta procesos. Cubre CA-003-03.
-- [x] **F4.4** Salida en `forge status`/`verificar --criterios` y `--exigir-cobertura-de-criterios`. Cubre CA-003-04, CA-003-05. (`verificar --criterios`; `forge status` no se tocó)
+- [x] **F4.4** Salida en `forge status`/`verificar --criterios` y `--exigir-cobertura-de-criterios`. Cubre CA-003-04, CA-003-05. (`verificar --criterios` y un resumen en `fragua status`)
 - [x] **F4.5** Instrucción al agente de pruebas de citar el identificador (cambio en `core/ciclo/contratos.js:34-44`; prueba de regresión del ciclo). (hecho como sección condicional del prompt del agente de pruebas, `seccionCriterios` en `core/ciclo/nodos.js`; `CONTRATO_QA` no cambia, así que sin criterios el prompt es idéntico)
 
 ## F5 — Informe de evidencia

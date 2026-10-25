@@ -165,6 +165,18 @@ async function cmdStatus(cwd) {
     ciclo.forEach((l) => console.log(l));
   }
 
+  // Criterios de aceptación de la spec activa sin tarea o sin prueba citada (solo lectura; callado si no hay criterios)
+  try {
+    const { matrizDelProyecto } = await import('../core/evidencia/criterios.js');
+    const r = matrizDelProyecto(cwd);
+    if (r.ok && r.matriz.criterios.length > 0) {
+      const m = r.matriz;
+      console.log('');
+      console.log(`Criterios de ${r.spec}: ${m.conPrueba.length} con prueba citada · ${m.sinPrueba.length} sin prueba · ${m.sinTarea.length} sin tarea (de ${m.criterios.length})`);
+      if (m.sinPrueba.length + m.sinTarea.length > 0) console.log(COLORES.gris('  → fragua verificar --criterios'));
+    }
+  } catch { /* el estado no debe fallar por la matriz */ }
+
   // Integraciones externas: solo si hay alguna activa (carga perezosa)
   if ((await import('./integraciones-activas.js')).integracionesActivas(cwd)) {
     const { lineasEstado } = await import('./integraciones.js');

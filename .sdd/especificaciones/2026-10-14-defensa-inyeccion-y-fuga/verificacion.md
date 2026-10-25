@@ -4,39 +4,39 @@
 
 ## Cómo leerlo
 
-Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador. Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
+Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
 
 ## Resumen
 
-- Criterios: 22 · con prueba citada: 5 · sin prueba citada: 17.
+- Criterios: 22 · cita exacta: 5 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 2 · sin cita: 15.
 - Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 6.
 
 ## Criterio → pruebas
 
-| Criterio | Marcado en la spec | Prueba citada | Pruebas |
+| Criterio | Marcado en la spec | Cita | Pruebas |
 |---|---|---|---|
-| CA-001-01 | sí | **no** | — |
-| CA-001-02 | sí | **no** | — |
-| CA-001-03 | sí | **no** | — |
-| CA-001-04 | sí | **no** | — |
-| CA-001-05 | sí | **no** | — |
-| CA-001-06 | sí | **no** | — |
-| CA-001-07 | sí | **no** | — |
-| CA-002-01 | sí | sí | `tests/defensa-inyeccion.test.js` |
-| CA-002-02 | sí | **no** | — |
-| CA-002-03 | sí | **no** | — |
-| CA-002-04 | sí | sí | `tests/defensa-inyeccion.test.js` |
-| CA-002-05 | sí | **no** | — |
-| CA-002-06 | sí | sí | `tests/defensa-inyeccion.test.js` |
-| CA-003-01 | sí | **no** | — |
-| CA-003-02 | sí | **no** | — |
-| CA-003-03 | sí | **no** | — |
-| CA-003-04 | sí | **no** | — |
-| CA-003-05 | sí | **no** | — |
-| CA-004-01 | sí | sí | `tests/garantias-documentadas.test.js` |
-| CA-004-02 | sí | **no** | — |
-| CA-004-03 | sí | **no** | — |
-| CA-004-04 | sí | sí | `tests/garantias-documentadas.test.js` |
+| CA-001-01 | sí | **ninguna** | — |
+| CA-001-02 | sí | **ninguna** | — |
+| CA-001-03 | sí | **ninguna** | — |
+| CA-001-04 | sí | **ninguna** | — |
+| CA-001-05 | sí | **ninguna** | — |
+| CA-001-06 | sí | **ninguna** | — |
+| CA-001-07 | sí | **ninguna** | — |
+| CA-002-01 | sí | exacta | `tests/defensa-inyeccion.test.js` |
+| CA-002-02 | sí | **ninguna** | — |
+| CA-002-03 | sí | **ninguna** | — |
+| CA-002-04 | sí | exacta | `tests/defensa-inyeccion.test.js` |
+| CA-002-05 | sí | **ninguna** | — |
+| CA-002-06 | sí | exacta | `tests/defensa-inyeccion.test.js` |
+| CA-003-01 | sí | **ninguna** | — |
+| CA-003-02 | sí | **ninguna** | — |
+| CA-003-03 | sí | **ninguna** | — |
+| CA-003-04 | sí | **ninguna** | — |
+| CA-003-05 | sí | **ninguna** | — |
+| CA-004-01 | sí | exacta | `tests/garantias-documentadas.test.js` |
+| CA-004-02 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
+| CA-004-03 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
+| CA-004-04 | sí | exacta | `tests/garantias-documentadas.test.js` |
 
 ## Sin cerrar
 

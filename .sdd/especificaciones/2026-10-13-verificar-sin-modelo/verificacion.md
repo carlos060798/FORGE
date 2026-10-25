@@ -4,40 +4,39 @@
 
 ## Cómo leerlo
 
-Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador. Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
+Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
 
 ## Resumen
 
-- Criterios: 19 · con prueba citada: 0 · sin prueba citada: 19.
+- Criterios: 19 · cita exacta: 0 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 0 · sin cita: 19.
 - Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 2.
 
 ## Criterio → pruebas
 
-| Criterio | Marcado en la spec | Prueba citada | Pruebas |
+| Criterio | Marcado en la spec | Cita | Pruebas |
 |---|---|---|---|
-| CA-001-01 | no | **no** | — |
-| CA-001-02 | no | **no** | — |
-| CA-001-03 | no | **no** | — |
-| CA-001-04 | no | **no** | — |
-| CA-001-05 | no | **no** | — |
-| CA-001-06 | no | **no** | — |
-| CA-002-01 | no | **no** | — |
-| CA-002-02 | no | **no** | — |
-| CA-002-03 | no | **no** | — |
-| CA-002-04 | no | **no** | — |
-| CA-002-05 | no | **no** | — |
-| CA-003-01 | no | **no** | — |
-| CA-003-02 | no | **no** | — |
-| CA-003-03 | no | **no** | — |
-| CA-003-04 | no | **no** | — |
-| CA-003-05 | no | **no** | — |
-| CA-004-01 | no | **no** | — |
-| CA-004-02 | no | **no** | — |
-| CA-004-03 | no | **no** | — |
+| CA-001-01 | no | **ninguna** | — |
+| CA-001-02 | no | **ninguna** | — |
+| CA-001-03 | no | **ninguna** | — |
+| CA-001-04 | no | **ninguna** | — |
+| CA-001-05 | no | **ninguna** | — |
+| CA-001-06 | no | **ninguna** | — |
+| CA-002-01 | no | **ninguna** | — |
+| CA-002-02 | no | **ninguna** | — |
+| CA-002-03 | no | **ninguna** | — |
+| CA-002-04 | no | **ninguna** | — |
+| CA-002-05 | no | **ninguna** | — |
+| CA-003-01 | no | **ninguna** | — |
+| CA-003-02 | no | **ninguna** | — |
+| CA-003-03 | no | **ninguna** | — |
+| CA-003-04 | no | **ninguna** | — |
+| CA-003-05 | no | **ninguna** | — |
+| CA-004-01 | no | **ninguna** | — |
+| CA-004-02 | no | **ninguna** | — |
+| CA-004-03 | no | **ninguna** | — |
 
 ## Sin cerrar
 
-- **F5.1** Prueba de proyecto hostil: uniones hacia fuera, script de pruebas malicioso, salida con secretos.
 - **F5.2** Con Docker real, los cinco proyectos de `scripts/pruebas-independientes.mjs`, sin clave de API.
 - **F5.3** Documentación: guía, `README.md`, `CHANGELOG.md`, `forge --help`.
 - **F5.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.

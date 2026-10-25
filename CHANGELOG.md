@@ -22,7 +22,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - **Nuevo.** `fragua esquema [nombre]`: lista y muestra los esquemas del contrato público.
 - **Contrato.** `tarea`, `tarea-entrada` y `tarea-sdd` pasan a 1.1 (campo opcional `no_cambiar`); `estado-ciclo` añade el motivo `regresion` y el campo opcional `regresion`. Un estado con otra `schemaVersion` se rechaza diciendo qué versión entiende el lector.
 - **Pruebas.** Los servidores falsos de integraciones cierran la conexión en cada petición: bajo carga la suite fallaba de forma intermitente con «fetch failed».
-- **No hecho.** `no_cambiar` con Docker real; `forge status` no muestra la matriz de criterios.
+- **Nuevo.** `fragua status` resume los criterios de la spec activa (con prueba citada, sin prueba, sin tarea) y apunta a `verificar --criterios`.
+- **No hecho.** `no_cambiar` con Docker real.
 
 ### Puertas de calidad declarables en `fragua verificar` (spec `2026-10-14-puertas-de-calidad-y-evidencia`, fase B1, 2026-10-17)
 
