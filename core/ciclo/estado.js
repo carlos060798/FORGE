@@ -108,7 +108,8 @@ export function estadoInicial(tarea, opciones) {
       // La tarea declara que parte de un comportamiento que ya existe: exenta del rojo obligatorio (ADR-20)
       ...(tarea.parte_de_codigo_existente === true ? { parte_de_codigo_existente: true } : {}),
       // Pruebas existentes que no deben romperse (HU-006). Se conserva tal cual: la validación pide revisión si no vale
-      ...(tarea.no_cambiar !== undefined ? { no_cambiar: tarea.no_cambiar } : {}),
+      // Lo que no sea una lista de textos se guarda como lista vacía: el estado sigue siendo válido y la revisión lo rechaza con un mensaje
+      ...(tarea.no_cambiar !== undefined ? { no_cambiar: Array.isArray(tarea.no_cambiar) && tarea.no_cambiar.every((r) => typeof r === 'string') ? tarea.no_cambiar : [] } : {}),
     },
     plan: null,
     contexto: { fragmentos: [], bytesTotales: 0, truncado: false },
@@ -157,7 +158,7 @@ export function validarEstado(estado) {
   const e = /** @type {any} */ (estado);
   if (!e || typeof e !== 'object') return ['el estado no es un objeto'];
 
-  if (e.schemaVersion !== SCHEMA_VERSION) errores.push(`schemaVersion desconocida: ${e.schemaVersion}. Este lector entiende: ${SCHEMA_VERSION}. No se interpreta lo mejor posible.`);
+  if (e.schemaVersion !== SCHEMA_VERSION) errores.push(`schemaVersion desconocida: ${JSON.stringify(String(e.schemaVersion).slice(0, 40))}. Este lector entiende: ${SCHEMA_VERSION}. No se interpreta lo mejor posible.`);
   for (const campo of ['runId', 'threadId', 'taskId', 'cwd']) {
     if (typeof e[campo] !== 'string' || e[campo] === '') errores.push(`${campo} debe ser un texto no vacío`);
   }
@@ -177,7 +178,7 @@ export function validarEstado(estado) {
 
   // Opcional: los puntos de guardado anteriores a la regresión (HU-006) no lo llevan
   if (e.regresion !== undefined && e.regresion?.base !== 'verde') errores.push('regresion.base debe ser "verde"');
-  if (e.tarea?.no_cambiar !== undefined && !Array.isArray(e.tarea.no_cambiar)) errores.push('tarea.no_cambiar debe ser una lista');
+  if (e.tarea?.no_cambiar !== undefined && !(Array.isArray(e.tarea.no_cambiar) && e.tarea.no_cambiar.every((r) => typeof r === 'string'))) errores.push('tarea.no_cambiar debe ser una lista de textos');
 
   // Opcionales: los puntos de guardado anteriores a ADR-20 no los llevan
   if (e.rojo !== undefined && e.rojo !== null && !ESTADOS_ROJO.includes(e.rojo?.estado)) errores.push(`estado del rojo desconocido: ${e.rojo?.estado}`);

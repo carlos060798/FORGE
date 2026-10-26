@@ -184,7 +184,7 @@ async function refuerzoInterno(estado, deps, perfil) {
     + `\n\n## Comando de pruebas del proyecto\n${deps.testCmd}`;
 
   const r = await generarArchivos(estado, deps, 'refuerzo', {
-    agente: 'tester', userPrompt, contrato: CONTRATO_REFUERZO, rol: 'qa', pruebas: [], clavePrompt: userPrompt, perfil,
+    agente: 'tester', userPrompt, contrato: CONTRATO_REFUERZO, rol: 'qa', pruebas: Array.isArray(estado.tarea.no_cambiar) ? estado.tarea.no_cambiar : [], clavePrompt: userPrompt, perfil,
   });
   if ('fallo' in r) return r.fallo;
 

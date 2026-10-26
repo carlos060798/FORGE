@@ -6,12 +6,12 @@
 
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, realpathSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { extraerCriterios, calcularMatriz, matrizDelProyecto, textoMatriz, LIMITE_DECLARADO } from '../core/evidencia/criterios.js';
+import { extraerCriterios, calcularMatriz, matrizDelProyecto, textoMatriz, leerArchivosDePrueba, LIMITE_DECLARADO } from '../core/evidencia/criterios.js';
 import { cmdVerificar, leerOpciones } from '../cli/verificar.js';
 import { seccionCriterios } from '../core/ciclo/nodos.js';
 
@@ -181,5 +181,107 @@ describe('fragua status muestra el resumen de criterios (CA-003-04)', () => {
     mkdirSync(join(cwd, '.sdd'), { recursive: true });
     writeFileSync(join(cwd, '.sdd', 'estado.json'), JSON.stringify({ pipeline_step: 'idea' }));
     assert.doesNotMatch(await status(cwd), /Criterios de/);
+  });
+});
+
+describe('revisión independiente de la matriz (2026-10-25)', () => {
+  const unaTarea = (/** @type {string} */ id, /** @type {string[]} */ cas) => ({ [id]: { estado: 'pendiente', cubre_cas: cas } });
+
+  test('M2: también lee .sdd/estado-tareas.json (formato del engine) y no se cae con elementos nulos', () => {
+    const cwd = proyecto('CA-001-01 CA-001-02');
+    writeFileSync(join(cwd, '.sdd', 'estado-tareas.json'), JSON.stringify({ tareas: [null, { id: 'T9', cubre_cas: ['CA-002-01'] }, 5] }));
+    const r = matrizDelProyecto(cwd);
+    assert.equal(r.ok, true);
+    if (r.ok) {
+      assert.deepEqual(r.matriz.sinTarea, [], 'CA-002-01 lo cubre T9 del archivo global');
+      assert.deepEqual(r.matriz.sinPrueba, ['CA-002-01']);
+    }
+  });
+  test('un estado de tareas corrupto no tira la matriz ni el comando', async () => {
+    const cwd = proyecto('CA-001-01');
+    writeFileSync(join(cwd, '.sdd', 'estado-tareas.json'), '{ no es json');
+    writeFileSync(join(cwd, '.sdd', 'especificaciones', '2026-01-01-demo', '.estado-tareas.json'), JSON.stringify({ tareas: [null] }));
+    assert.equal(matrizDelProyecto(cwd).ok, true);
+    const { cmdVerificar } = await import('../cli/verificar.js');
+    /** @type {string[]} */ const s = [];
+    const codigo = await cmdVerificar(['--criterios', '--cwd', cwd], { salida: (t) => s.push(t), errores: () => {} });
+    assert.equal(codigo, 0);
+  });
+  test('M1 (documentado): a nivel de proyecto cuenta cualquier archivo de prueba, y el texto lo dice', () => {
+    const cwd = proyecto('nada');
+    writeFileSync(join(cwd, 'tests', 'de-otra-tarea.test.js'), '// CA-001-02\n');
+    const r = matrizDelProyecto(cwd);
+    assert.equal(r.ok && r.matriz.conPrueba.includes('CA-001-02'), true);
+    assert.match(LIMITE_DECLARADO, /cualquier archivo de prueba/);
+  });
+  test('T3: un nombre de especificación «.» o «..» no sale de .sdd/especificaciones', () => {
+    for (const malo of ['.', '..', '', 'a\0b']) {
+      const cwd = proyecto('CA-001-01');
+      writeFileSync(join(cwd, '.sdd', 'estado.json'), JSON.stringify({ spec_activa: malo }));
+      assert.equal(matrizDelProyecto(cwd).ok, false, JSON.stringify(malo));
+    }
+  });
+  test('B4: --exigir-cobertura-de-criterios sobre una spec sin criterios CA-xxx-yy no pasa en vacío', async () => {
+    const cwd = proyecto('x');
+    writeFileSync(join(cwd, '.sdd', 'especificaciones', '2026-01-01-demo', 'spec.md'), '# Spec sin criterios con esa forma\n- [ ] AC-1: algo\n');
+    const { cmdVerificar } = await import('../cli/verificar.js');
+    /** @type {string[]} */ const e = [];
+    assert.equal(await cmdVerificar(['--criterios', '--exigir-cobertura-de-criterios', '--cwd', cwd], { salida: () => {}, errores: (t) => e.push(t) }), 1);
+    assert.match(e.join('\n'), /no tiene criterios/);
+    assert.equal(await cmdVerificar(['--criterios', '--cwd', cwd], { salida: () => {}, errores: () => {} }), 0, 'sin exigir solo informa');
+  });
+});
+
+describe('leerArchivosDePrueba: los topes y las exclusiones (T5, B1)', () => {
+  const crear = (/** @type {string} */ cwd, /** @type {string} */ rel, /** @type {string} */ txt) => {
+    mkdirSync(dirname(join(cwd, rel)), { recursive: true });
+    writeFileSync(join(cwd, rel), txt);
+  };
+  const vacio = () => { const cwd = join(base, `lap${++n}`); mkdirSync(cwd, { recursive: true }); return cwd; };
+
+  test('solo recoge archivos de prueba y guarda los ids, no el contenido', () => {
+    const cwd = vacio();
+    crear(cwd, 'tests/a.test.js', '// CA-001-01\n');
+    crear(cwd, 'src/b.js', '// CA-001-02\n');
+    crear(cwd, 'tests_py/test_c.py', '# CA-001-03\n');
+    const r = leerArchivosDePrueba(cwd);
+    assert.deepEqual(r.map((x) => x.ruta).sort(), ['tests/a.test.js', 'tests_py/test_c.py']);
+    assert.ok(r[0].ids instanceof Set && !('contenido' in r[0]));
+  });
+  test('omite node_modules, vendor, .venv y compañía aunque contengan pruebas que citan ids', () => {
+    const cwd = vacio();
+    for (const d of ['node_modules/x', 'vendor/x', '.venv/x', 'target/x', '.next/x']) crear(cwd, `${d}/a.test.js`, '// CA-001-01\n');
+    assert.deepEqual(leerArchivosDePrueba(cwd), []);
+  });
+  test('descarta archivos por encima del tope de tamaño', () => {
+    const cwd = vacio();
+    crear(cwd, 'tests/grande.test.js', '// CA-001-01\n' + 'x'.repeat(2000));
+    crear(cwd, 'tests/pequeno.test.js', '// CA-001-02\n');
+    assert.deepEqual(leerArchivosDePrueba(cwd, { maxBytes: 1000 }).map((x) => x.ruta), ['tests/pequeno.test.js']);
+  });
+  test('respeta el tope de archivos aceptados y el de entradas visitadas', () => {
+    const cwd = vacio();
+    for (let i = 0; i < 10; i++) crear(cwd, `tests/t${i}.test.js`, '// CA-001-01\n');
+    assert.equal(leerArchivosDePrueba(cwd, { maxArchivos: 3 }).length, 3);
+    // Muchas entradas que no son pruebas: el recorrido se corta aunque no haya aceptado ninguna
+    const ruido = vacio();
+    for (let i = 0; i < 30; i++) crear(ruido, `datos/f${i}.txt`, 'x');
+    crear(ruido, 'zzz/tests/ultimo.test.js', '// CA-001-01\n');
+    assert.deepEqual(leerArchivosDePrueba(ruido, { maxEntradas: 10 }), []);
+    assert.equal(leerArchivosDePrueba(ruido).length, 1);
+  });
+  test('no sigue enlaces ni junctions hacia fuera del proyecto', (t) => {
+    const cwd = vacio();
+    const fuera = vacio();
+    crear(fuera, 'tests/secreto.test.js', '// CA-001-01\n');
+    try { symlinkSync(fuera, join(cwd, 'enlace'), 'junction'); } catch { t.skip('sin permiso para crear enlaces en este equipo'); return; }
+    assert.deepEqual(leerArchivosDePrueba(cwd), []);
+  });
+  test('un identificador pegado a otro texto no cuenta como cita', () => {
+    const cwd = vacio();
+    crear(cwd, 'tests/a.test.js', '// CA-001-011 y xCA-001-02 y CA-001-03-b\n');
+    const [a] = leerArchivosDePrueba(cwd);
+    assert.equal(a.ids.has('CA-001-01'), false);
+    assert.equal(a.ids.has('CA-001-02'), false);
   });
 });

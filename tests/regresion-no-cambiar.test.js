@@ -25,7 +25,8 @@ function proyecto() {
   const cwd = join(base, `p${++n}`);
   mkdirSync(join(cwd, 'tests'), { recursive: true });
   mkdirSync(join(cwd, 'src'), { recursive: true });
-  writeFileSync(join(cwd, 'tests', 'legado.test.js'), '// existente\n');
+  writeFileSync(join(cwd, 'tests', 'legado.test.js'), "import { test } from 'node:test';\ntest('existente', () => {});\n");
+  writeFileSync(join(cwd, 'tests', 'vacio.test.js'), '// sin ninguna prueba\n');
   writeFileSync(join(cwd, 'src', 'legado.js'), 'export const x = 1;\n');
   writeFileSync(join(cwd, 'tests', 'nueva.test.js'), '// escrita por el agente de pruebas\n');
   return cwd;
@@ -197,5 +198,51 @@ describe('F7.4 el implementador no puede modificar lo declarado (CA-006-04)', ()
     });
     assert.deepEqual(r.rechazados.map((x) => [x.ruta, x.motivo]), [['tests/legado.test.js', 'prueba_inmutable']]);
     assert.deepEqual(r.escritos.map((x) => x.ruta), ['src/nuevo.js']);
+  });
+});
+
+describe('revisión independiente de no_cambiar (2026-10-25)', () => {
+  test('M1: el agente de pruebas tampoco puede reescribir lo declarado', () => {
+    const cwd = proyecto();
+    const r = aplicarArchivos(cwd, [{ ruta: 'tests/legado.test.js', contenido: "test('ok', () => {});\n" }, { ruta: 'tests/otra.test.js', contenido: "test('otra', () => {});\n" }], {
+      rol: 'qa', pruebas: ['tests/legado.test.js'], politicaDestinos: [],
+    });
+    assert.deepEqual(r.rechazados.map((x) => [x.ruta, x.motivo]), [['tests/legado.test.js', 'prueba_inmutable']]);
+    assert.deepEqual(r.escritos.map((x) => x.ruta), ['tests/otra.test.js']);
+    // Sin declarar nada, el agente de pruebas escribe donde quiera, como siempre
+    const libre = aplicarArchivos(cwd, [{ ruta: 'tests/legado.test.js', contenido: "test('ok', () => {});\n" }], { rol: 'qa', pruebas: [], politicaDestinos: [] });
+    assert.equal(libre.escritos.length, 1);
+  });
+  test('M2: un archivo sin ninguna prueba reconocible no vale como línea base', () => {
+    const r = validarNoCambiar(proyecto(), ['tests/vacio.test.js']);
+    assert.equal(r.ok, false);
+    assert.match(/** @type {any} */ (r).error, /ninguna prueba reconocible/);
+  });
+  test('M2: una bandera que hace salir con 0 sin ejecutar nada se rechaza', async () => {
+    for (const cmd of ['npx jest --passWithNoTests', 'pytest --pass-with-no-tests', 'npx mocha --allow-empty']) {
+      assert.throws(() => comandoConArchivos(cmd, ['tests/a.test.js']), /no vale para no_cambiar/);
+    }
+    const { runner } = ejecutorFalso(() => 0);
+    const r = await ejecutarNoCambiar({ runner, cwd: proyecto(), testCmd: 'npx jest --passWithNoTests', rutas: ['tests/legado.test.js'], fase: 'base' });
+    assert.notEqual(r.categoria, 'pass');
+  });
+  test('B3: un argumento vacío en el comando de pruebas se rechaza en vez de comerse la ruta', () => {
+    assert.throws(() => comandoConArchivos("pytest -k ''", ['tests/a.test.py']), /argumento vacío/);
+  });
+  test('B4: herramienta ausente (127) es no_ejecutable y pide revisión, no gasta iteraciones del implementador', async () => {
+    const { runner } = ejecutorFalso(() => 127);
+    const r = await ejecutarNoCambiar({ runner, cwd: proyecto(), testCmd: 'node --test', rutas: ['tests/legado.test.js'], fase: 'regresion' });
+    assert.equal(r.categoria, 'no_ejecutable');
+    const { decidirTrasPuertas } = await import('../core/puertas/ciclo.js');
+    assert.equal(decidirTrasPuertas({ resultados: [r] }).revision, true);
+  });
+  test('B1: una ruta que pasa por un enlace dentro del proyecto se rechaza', () => {
+    const cwd = proyecto();
+    mkdirSync(join(cwd, 'real'), { recursive: true });
+    writeFileSync(join(cwd, 'real', 'x.test.js'), "test('x', () => {});\n");
+    try { symlinkSync(join(cwd, 'real'), join(cwd, 'tests', 'lnk'), 'junction'); } catch { return; /* sin permiso para enlaces */ }
+    const r = validarNoCambiar(cwd, ['tests/lnk/x.test.js']);
+    assert.equal(r.ok, false);
+    assert.match(/** @type {any} */ (r).error, /enlace/);
   });
 });

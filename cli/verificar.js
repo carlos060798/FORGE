@@ -113,6 +113,8 @@ export async function cmdVerificar(argv, deps = {}) {
     if (!r.ok) { errores(`✗ ${r.motivo}`); return 1; }
     salida(o.json ? JSON.stringify({ spec: r.spec, ...r.matriz }) : textoMatriz(r.spec, r.matriz));
     // Por defecto solo informa; con la opción explícita, un criterio sin tarea o sin prueba da el código 1
+    // Sin criterios con la forma CA-xxx-yy no hay nada que exigir: exigir cobertura en vacío no puede salir bien
+    if (o.criterios.exigir && r.matriz.criterios.length === 0) { errores('✗ --exigir-cobertura-de-criterios: la especificación no tiene criterios CA-xxx-yy, no hay cobertura que comprobar.'); return 1; }
     return o.criterios.exigir && (r.matriz.sinTarea.length > 0 || r.matriz.sinPrueba.length > 0) ? 1 : 0;
   }
 

@@ -7,14 +7,14 @@ Esta guía explica cómo comprobar FORGE sobre proyectos que **no** son su repos
 | Comprueba | No comprueba |
 |---|---|
 | Que el paquete empaquetado con `npm pack` contiene lo necesario y se instala | La integración continua en Linux (eso lo hace GitHub al abrir la solicitud de cambio) |
-| Que `forge run --motor ciclo` arranca en un proyecto ajeno, usa Docker y termina o se pausa con un motivo | Proyectos grandes: los cinco de prueba son pequeños |
+| Que `forge run --motor ciclo` arranca en un proyecto ajeno, usa Docker y termina o se pausa con un motivo | Proyectos grandes: los seis de prueba son pequeños |
 | Con modelo real: que un modelo resuelve la tarea, cuántas iteraciones y cuánto cuesta | Las integraciones con GitHub, GitLab y Jira (necesitan cuentas reales; ver `docs/integraciones-externas.md`) |
 | Lo que ocurre con código existente, dos tareas encadenadas, Python y Go | Que el gasto calculado coincida con la factura: eso lo miras tú en la consola del proveedor |
 
 ## Requisitos
 
 - Node 20 o superior y Docker en marcha (el ciclo no ejecuta código generado fuera de un contenedor).
-- Para el modo real: una clave de un proveedor de pago en `ANTHROPIC_API_KEY`. **No la guardes en ningún archivo**; ponla solo en el entorno de la sesión.
+- Para el modo real: la clave del proveedor elegido en su variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`; con un servicio compatible con OpenAI, además `OPENAI_BASE_URL` y `--proveedor openai`). **No la guardes en ningún archivo**; ponla solo en el entorno de la sesión.
 - Conexión a internet la primera vez: se descargan las imágenes base de los contenedores y las dependencias del paquete.
 
 ## Paso 1: humo, sin gasto
@@ -23,7 +23,7 @@ Esta guía explica cómo comprobar FORGE sobre proyectos que **no** son su repos
 node scripts/pruebas-independientes.mjs --modelo humo
 ```
 
-Empaqueta FORGE, lo instala en una carpeta temporal, crea cinco proyectos y lanza el ciclo con el proveedor de pruebas. **No se espera «éxito»**: ese proveedor no resuelve tareas. Se comprueba que todo arranca y que cada proyecto termina con un motivo explicado, no con un error sin explicar. Cuesta 0.
+Empaqueta FORGE, lo instala en una carpeta temporal, crea seis proyectos y lanza el ciclo con el proveedor de pruebas. **No se espera «éxito»**: ese proveedor no resuelve tareas. Se comprueba que todo arranca y que cada proyecto termina con un motivo explicado, no con un error sin explicar. Cuesta 0.
 
 Si falla aquí, no tiene sentido gastar: corrige primero. Los fallos típicos están en la sección «Si algo falla».
 
@@ -42,7 +42,7 @@ Un proyecto, nivel económico, tope de 0.15 USD. Si termina en `exito`, sigue co
 node scripts/pruebas-independientes.mjs --modelo real --tope 0.30
 ```
 
-Los cinco proyectos con tope de 0.30 USD cada uno. **El gasto máximo posible es el tope por el número de proyectos** (1.50 USD con los valores anteriores); en la práctica, con el nivel económico, cada proyecto cuesta entre 0.02 y 0.15 USD. Para tareas más difíciles usa `--nivel sonnet`.
+Los seis proyectos con tope de 0.30 USD cada uno. **El gasto máximo posible es el tope por el número de proyectos** (1.80 USD con los valores anteriores); en la práctica, con el nivel económico, cada proyecto cuesta entre 0.02 y 0.15 USD. Para tareas más difíciles usa `--nivel sonnet`.
 
 ## Los proyectos de prueba
 
@@ -53,6 +53,7 @@ Los cinco proyectos con tope de 0.30 USD cada uno. **El gasto máximo posible es
 | `py-pytest` | Python con `pytest` declarado en `requirements.txt` |
 | `go-modulo` | Go con módulo, Unicode y pruebas de tabla |
 | `dos-tareas` | Dos tareas encadenadas: la segunda usa el módulo de la primera |
+| `gestor-tareas` | Repositorio existente con pruebas propias y cuatro tareas encadenadas en varios módulos (validación, servicio, exportación CSV, informe) |
 
 ## Cómo leer el informe
 
@@ -86,7 +87,7 @@ Cada carpeta de proyecto conserva `.sdd/events.jsonl` (qué pasó, paso a paso) 
 - **Rota la clave** si la usaste en un equipo o sesión que no controlas.
 - Si encuentras algo, guarda `informe.json` y el `.sdd/events.jsonl` del proyecto afectado (revisa antes que no lleven datos tuyos) y abre una incidencia con la plantilla `fallo.md`.
 
-## Registro: ejecución con Gemini (2026-10-26)
+## Registro: ejecución con Gemini (2026-10-25)
 
 Proveedor `openai` (compatible) apuntando a Gemini con `OPENAI_BASE_URL`, nivel económico, Docker Desktop 29.7.2 en Windows, paquete instalado con `npm pack`. Los cuatro proyectos más exigentes, con tope de 1.00 USD calculado cada uno:
 
@@ -102,7 +103,7 @@ Proveedor `openai` (compatible) apuntando a Gemini con `OPENAI_BASE_URL`, nivel 
 - Es una sola ejecución por proyecto y proyectos pequeños; no demuestra fiabilidad, solo que el flujo completo funciona con un segundo proveedor real (CA-006-02 de `proveedores-agnosticos` pide tres proyectos con tope y evidencia en la carpeta de la spec).
 - La clave de Anthropic de prueba fue rechazada por la API (`401 invalid x-api-key`): no hay ejecución con Claude en este registro.
 
-## Registro: proyecto `gestor-tareas` con Claude y con Gemini (2026-10-26)
+## Registro: proyecto `gestor-tareas` con Claude y con Gemini (2026-10-25)
 
 `gestor-tareas` es un proyecto más parecido a uno real: un repositorio existente con pruebas propias y **cuatro tareas encadenadas** (validación, servicio, exportación CSV, informe) en varios módulos. Se lanza con `--proyectos gestor-tareas`.
 
@@ -111,6 +112,7 @@ Proveedor `openai` (compatible) apuntando a Gemini con `OPENAI_BASE_URL`, nivel 
 | Anthropic, `claude-haiku-5-5` | exito | 4/4 | 12 | 39 587 / 18 628 | 0.0153 USD | 363 s |
 | Gemini, `gemini-3.5-flash` | pausa: infraestructura (429, cuota) | 1/4 | 4 | — | 0.2756 USD | 154 s |
 
+- Las tablas de estos registros se transcribieron a mano del `informe.md` y del libro de gasto (`gasto.jsonl`); los tokens no los emite el script.
 - **Claude:** el ciclo terminó en éxito. Comprobación aparte: las 48 pruebas del proyecto (las 3 originales y las 45 nuevas) pasan al ejecutarlas yo en un contenedor sin red, de solo lectura y sin capacidades. El código revisado a mano (`src/exportar.js`) cumple RFC 4180 como pedía la tarea.
 - **El gasto de Claude no está contrastado.** 0.0153 USD para 58 000 tokens parece bajo; la tabla de precios de Fragua puede no tener la tarifa vigente de ese modelo. Compáralo con la consola de Anthropic antes de fiarte de la cifra.
 - **Gemini:** completó la tarea 1 (validación) y se detuvo en la 2 por `429 You exceeded your current quota`. Reanudar más tarde con `fragua resume --decision continuar` dio el mismo error: la cuota de esa clave está agotada, no es un fallo del ciclo.

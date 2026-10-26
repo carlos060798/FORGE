@@ -324,6 +324,12 @@ export function aplicarArchivos(cwd, archivos, opciones) {
       rechazados.push({ ruta, motivo: 'prueba_inmutable' });
       continue;
     }
+    // Lo que una tarea declara en `no_cambiar` tampoco lo reescribe el agente de pruebas: si no, la línea base se mediría
+    // sobre una prueba vaciada. Para este rol `pruebas` solo trae esas rutas.
+    if (opciones.rol === 'qa' && pruebas.has(clave)) {
+      rechazados.push({ ruta, motivo: 'prueba_inmutable' });
+      continue;
+    }
 
     // Perfil del rol: las rutas que el ciclo le deja escribir (solo puede estrechar la regla del rol)
     if (opciones.rutasEscribir && !opciones.rutasEscribir.some((p) => (p.endsWith('/') ? v.rutaPosix.startsWith(p) : v.rutaPosix === p))) {

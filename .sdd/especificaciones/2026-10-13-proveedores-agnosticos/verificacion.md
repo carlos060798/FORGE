@@ -4,12 +4,12 @@
 
 ## Cómo leerlo
 
-Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
+Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar. Los identificadores `CA-xxx-yy` se repiten entre especificaciones: solo se atribuye un archivo de prueba a esta si la nombra en su cabecera (primeras 40 líneas) o en su nombre, y aun así una cita exacta en un archivo compartido puede ser de otro criterio. Además hay pruebas que cubren un criterio sin nombrarlo (p. ej. `tests/integration.test.js` para el binario `fragua`): el recuento de «ninguna» es un máximo, no una medida de falta de pruebas.
 
 ## Resumen
 
-- Criterios: 25 · cita exacta: 19 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 0 · sin cita: 6.
-- Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 10.
+- Criterios: 25 · cita exacta: 16 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 0 · sin cita: 9.
+- Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 9.
 
 ## Criterio → pruebas
 
@@ -18,30 +18,32 @@ Un criterio figura como **con prueba citada** cuando algún archivo de prueba de
 | CA-001-01 | no | **ninguna** | — |
 | CA-001-02 | no | **ninguna** | — |
 | CA-001-03 | no | **ninguna** | — |
-| CA-001-04 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/proveedores-conformidad.test.js` |
+| CA-001-04 | no | exacta | `tests/proveedores-conformidad.test.js` |
 | CA-001-05 | no | **ninguna** | — |
 | CA-002-01 | no | **ninguna** | — |
 | CA-002-02 | no | exacta | `tests/openai-conversar.test.js` |
-| CA-002-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/openai-conversar.test.js` |
-| CA-002-04 | no | exacta | `tests/ciclo-turnos.test.js` |
+| CA-002-03 | no | exacta | `tests/openai-conversar.test.js` |
+| CA-002-04 | no | **ninguna** | — |
 | CA-002-05 | no | exacta | `tests/openai-conversar.test.js` |
 | CA-002-06 | no | exacta | `tests/openai-conversar.test.js` |
-| CA-003-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
-| CA-003-02 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/ollama-conversar.test.js` |
-| CA-004-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js`, `tests/gasto-sin-precio.test.js`, `tests/precios-openai-cache.test.js` |
-| CA-004-02 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-sin-precio.test.js` |
-| CA-004-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/gasto-destino-y-sin-precio.test.js` |
-| CA-004-04 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/precios-openai-cache.test.js` |
+| CA-003-01 | no | exacta | `tests/ollama-conversar.test.js` |
+| CA-003-02 | no | exacta | `tests/ollama-conversar.test.js` |
+| CA-004-01 | no | exacta | `tests/gasto-destino-y-sin-precio.test.js`, `tests/gasto-sin-precio.test.js`, `tests/precios-openai-cache.test.js` |
+| CA-004-02 | no | exacta | `tests/gasto-sin-precio.test.js` |
+| CA-004-03 | no | exacta | `tests/gasto-destino-y-sin-precio.test.js` |
+| CA-004-04 | no | exacta | `tests/precios-openai-cache.test.js` |
 | CA-004-05 | no | exacta | `tests/precios-openai-cache.test.js` |
-| CA-005-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
+| CA-005-01 | no | exacta | `tests/niveles.test.js` |
 | CA-005-02 | no | exacta | `tests/niveles.test.js` |
-| CA-005-03 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/niveles.test.js` |
+| CA-005-03 | no | exacta | `tests/niveles.test.js` |
 | CA-005-04 | no | **ninguna** | — |
-| CA-006-01 | no | exacta | `tests/ciclo-turnos.test.js`, `tests/pruebas-independientes-opciones.test.js` |
-| CA-006-02 | no | exacta | `tests/ciclo-turnos.test.js` |
-| CA-006-03 | no | exacta | `tests/ciclo-turnos.test.js` |
+| CA-006-01 | no | exacta | `tests/pruebas-independientes-opciones.test.js` |
+| CA-006-02 | no | **ninguna** | — |
+| CA-006-03 | no | **ninguna** | — |
 
 ## Sin cerrar
+
+> Copiado de `tareas.md` el 2026-10-25: puede estar desactualizado; manda `tareas.md`.
 
 - **F6.2** **(Dueño)** Tres proyectos con un segundo proveedor real, con tope; evidencia en la carpeta. Cubre CA-006-02.
 - **F6.3** Documentación coherente con lo que se haya probado. Cubre CA-006-03.

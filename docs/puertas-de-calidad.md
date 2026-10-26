@@ -38,16 +38,16 @@ puertas:
 - **sin tarea**: ninguna tarea cubre el criterio.
 - **sin prueba**: una tarea lo cubre, pero ningún archivo de prueba contiene su identificador (en un comentario o en el nombre de la prueba). El agente de pruebas recibe en su prompt los criterios de la tarea y la instrucción de citarlos.
 - Por defecto solo informa (código 0). Con `--exigir-cobertura-de-criterios`, un criterio sin tarea o sin prueba da el código 1. `--json` devuelve la matriz.
-- **Límite:** citar un identificador no demuestra que la prueba lo compruebe; solo que alguien la enlazó. La calidad de la prueba la mide la mutación.
+- **Límite:** citar un identificador no demuestra que la prueba lo compruebe; solo que alguien la enlazó. La calidad de la prueba la mide la mutación. A nivel de proyecto cuenta **cualquier** archivo de prueba que lo cite, aunque sea de otra especificación (los identificadores se repiten entre especificaciones). Se leen como máximo 2000 archivos de hasta 1 MiB, se omiten `node_modules`, `vendor`, `.venv` y similares y no se siguen enlaces. Lee las dos fuentes de tareas del ciclo (`.sdd/estado-tareas.json` y el de la especificación). Una especificación sin criterios con la forma `CA-xxx-yy` no tiene nada que cruzar: con `--exigir-cobertura-de-criterios` eso es un error, no un éxito.
 
 ## Lo que no debe cambiar (`no_cambiar`)
 
 Una tarea puede declarar `no_cambiar`: una lista de archivos de prueba que ya existen y deben pasar antes y después del cambio (`.estado-tareas.json`: `"no_cambiar": ["tests/legado.test.js"]`).
 
-1. Se validan al empezar: lista no vacía, hasta 20 rutas relativas con caracteres seguros, que existan dentro del proyecto y sean archivos de prueba. Algo distinto no se acepta en silencio: la tarea pide revisión humana (motivo `regresion`) con el mensaje.
+1. Se validan al empezar: lista de textos no vacía, hasta 20 rutas relativas con caracteres seguros, que existan dentro del proyecto sin pasar por enlaces, que sean archivos de prueba y que contengan alguna prueba reconocible (un archivo sin ninguna saldría con 0 sin comprobar nada). Un comando de pruebas con `--passWithNoTests` o similares no vale. Algo distinto no se acepta en silencio: la tarea pide revisión humana (motivo `regresion`) con el mensaje.
 2. **Antes de implementar** se ejecutan en el mismo contenedor sin red (el comando de pruebas del proyecto con esas rutas añadidas; con `npm`, tras `--`). Si ya fallan, la tarea pide revisión humana: no se parte de una línea base roja. Una vez en verde queda anotado en el estado.
 3. **Después de implementar**, y solo si pasan las pruebas de la tarea, se vuelven a ejecutar como una puerta más. Si alguna falla, la ejecución es `fail` con el motivo «Regresión» y la lista de lo declarado, y vuelve al implementador.
-4. El implementador no puede modificar esos archivos (`prueba_inmutable`).
+4. Ni el implementador ni el agente de pruebas (ni el refuerzo) pueden modificar esos archivos (`prueba_inmutable`). Si tras implementar la declaración deja de ser válida (p. ej. se borró un archivo), la ejecución también es `fail`. Una herramienta ausente (127) pide revisión humana en vez de gastar iteraciones.
 - **Límite:** la lista dice qué archivos se ejecutan, no cuál de ellos se rompió; la salida acotada lo indica. Declarar una lista irrelevante oculta regresiones: revisa la lista al aprobar la tarea. Probado con un ejecutor falso; con Docker real, sin medir.
 
 ## Topes

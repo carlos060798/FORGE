@@ -18,7 +18,8 @@ const NOMBRE_VALIDO = /^[a-z][a-z0-9-]*$/;
 function listar() {
   return fs.readdirSync(DIR).filter((f) => f.endsWith(SUFIJO)).sort().map((f) => {
     const nombre = f.slice(0, -SUFIJO.length);
-    const id = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')).$id ?? '';
+    let id = '(ilegible)';
+    try { id = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')).$id ?? ''; } catch { /* un esquema corrupto no tira el listado */ }
     return { nombre, id };
   });
 }

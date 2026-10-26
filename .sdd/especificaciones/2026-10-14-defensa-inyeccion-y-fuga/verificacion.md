@@ -4,12 +4,12 @@
 
 ## Cómo leerlo
 
-Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar.
+Un criterio figura como **con prueba citada** cuando algún archivo de prueba de esta especificación contiene su identificador (**exacta**) o lo abarca con un rango como «CA-001-01 a CA-001-05» o «CA-001-xx» (**por rango**, más débil: no prueba que ese criterio concreto se compruebe). Eso **no demuestra** que la prueba compruebe el criterio, solo que alguien la enlazó; la calidad de la prueba la mide la mutación. Un criterio **sin prueba citada** puede estar cubierto por una prueba que no lo nombra: en ese caso falta el enlace, no necesariamente la prueba. La columna «Marcado en la spec» es lo que dice el propio `spec.md`, sin contrastar. Los identificadores `CA-xxx-yy` se repiten entre especificaciones: solo se atribuye un archivo de prueba a esta si la nombra en su cabecera (primeras 40 líneas) o en su nombre, y aun así una cita exacta en un archivo compartido puede ser de otro criterio. Además hay pruebas que cubren un criterio sin nombrarlo (p. ej. `tests/integration.test.js` para el binario `fragua`): el recuento de «ninguna» es un máximo, no una medida de falta de pruebas.
 
 ## Resumen
 
-- Criterios: 22 · cita exacta: 5 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 2 · sin cita: 15.
-- Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 6.
+- Criterios: 22 · cita exacta: 3 · solo por rango («CA-001-01 a CA-001-05» o «CA-001-xx»): 4 · sin cita: 15.
+- Archivos de prueba atribuidos a esta especificación (nombran su carpeta o su nombre): 5.
 
 ## Criterio → pruebas
 
@@ -33,12 +33,14 @@ Un criterio figura como **con prueba citada** cuando algún archivo de prueba de
 | CA-003-03 | sí | **ninguna** | — |
 | CA-003-04 | sí | **ninguna** | — |
 | CA-003-05 | sí | **ninguna** | — |
-| CA-004-01 | sí | exacta | `tests/garantias-documentadas.test.js` |
+| CA-004-01 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
 | CA-004-02 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
 | CA-004-03 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
-| CA-004-04 | sí | exacta | `tests/garantias-documentadas.test.js` |
+| CA-004-04 | sí | por rango | `tests/garantias-documentadas.test.js` (rango) |
 
 ## Sin cerrar
+
+> Copiado de `tareas.md` el 2026-10-25: puede estar desactualizado; manda `tareas.md`.
 
 - **S0.4** Efecto del delimitador con un modelo real. Salida: `spikes/modelo-real.md` con el **protocolo**, **sin ejecutar** (sin credenciales ni presupuesto aprobado). Pendiente del dueño; se ejecuta d
 - **F6.1** Suite completa en Windows y en el contenedor Linux; tipos en 0. (Hecho parcialmente: las pruebas afectadas y `npm run typecheck`; la suite completa **no** se ejecutó.)

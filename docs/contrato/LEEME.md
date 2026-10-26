@@ -64,7 +64,7 @@ Reglas:
 | Veredicto de verificación | `pasa`, `falla`, `sin_pruebas`, `infraestructura` | `resultado-verificar.veredicto` |
 | Categoría de una ejecución | `pass`, `fail`, `timeout`, `infra_error` | `estado-ciclo.ejecuciones[].categoria` |
 | Resultado de la tarea | `en_curso`, `exito`, `revision_pendiente`, `aceptada_por_humano`, `abortada` | `estado-ciclo.resultado` |
-| Motivo de revisión | `iteraciones`, `presupuesto`, `infraestructura`, `dependencias`, `salida_invalida`, `exito_sospechoso`, `sin_progreso`, `pruebas_no_fallan`, `pruebas_debiles`, `puerta` (una puerta declarada no pasa, o falta su herramienta: 127) | `estado-ciclo.revision.motivo` |
+| Motivo de revisión | `iteraciones`, `presupuesto`, `infraestructura`, `dependencias`, `salida_invalida`, `exito_sospechoso`, `sin_progreso`, `pruebas_no_fallan`, `pruebas_debiles`, `perfil` (el perfil de un rol no se resuelve o se estrechó al reanudar), `puerta` (una puerta declarada no pasa, o falta su herramienta: 127), `regresion` (`no_cambiar` inválido, línea base roja o regresión) | `estado-ciclo.revision.motivo` |
 | Veredicto de la medición por mutación | `medida`, `cumple_el_minimo`, `bajo_el_minimo`, `no_concluyente` | `resultado-verificar.mutacion.veredicto` |
 
 Aproximación categoría → veredicto: `pass`→`pasa`, `fail`/`timeout`→`falla`, `infra_error`→`infraestructura`. `sin_pruebas` no tiene categoría propia en el ciclo. La categoría describe **una ejecución**; el resultado, **la tarea entera**; el veredicto, **una verificación**: son conceptos distintos. El mapa legible por máquina está en `veredicto.schema.json` (`x-mapa`) y una prueba lo contrasta con el código.
@@ -81,6 +81,14 @@ Hay **dos** archivos `events.jsonl` con el mismo sobre:
 ## `estado-pipeline` frente a `core/schemas/estado.schema.json`
 
 El esquema antiguo exige `schemaVersion`; el `.sdd/estado.json` real **no lo tiene** y trae claves que el esquema antiguo no conoce, así que el propio estado del proyecto no lo cumple (nadie lo valida hoy). Decisión con evidencia: **no se toca** el esquema antiguo (su `$id` está publicado) y el contrato describe el archivo real en `estado-pipeline` (`schemaVersion` opcional, sin obligatorios, claves desconocidas admitidas). Una prueba valida el `.sdd/estado.json` del repositorio contra él.
+
+## Versiones del esquema del estado y lectores
+
+- `estado-ciclo` está en 1.2: 1.1 se editó varias veces mientras el paquete estaba sin publicar (motivos `perfil`, `puerta`, `regresion`, campos `no_cambiar` y `regresion`); la copia 1.1 congelada es la anterior a `regresion`. `schemaVersion` del estado sigue siendo `"1.0"`: es la versión del formato guardado, no la del esquema.
+- Cada `$id` vigente tiene su copia congelada en `tests/fixtures/contrato/v<mayor>.<menor>/` y la suite falla si falta o difiere: subir la versión obliga a congelar la nueva.
+- **`revision.motivo` es una lista abierta para terceros**: ignora los valores que no conozcas. El lector de Fragua, en cambio, **falla cerrado**: un punto de guardado con un motivo que su versión no conoce se descarta (CA-003-06). Un Fragua más antiguo no reanuda lo que escribió uno más nuevo con un motivo nuevo.
+- La API HTTP (`core/api`) acepta solo un subconjunto de `tarea-entrada` (`id`, `agente`, `prompt`, `dependencias`, `archivos`); `no_cambiar`, `cubre_cas`, `parte_de_codigo_existente`, `criterioCmd` y `modelo` solo se pueden dar por `--tasks` o por `.estado-tareas.json`.
+- El esquema de `no_cambiar` es más laxo que el código: describe una lista de textos; el código exige de 1 a 20 rutas existentes de archivos de prueba con caracteres seguros (`core/ciclo/regresion.js`).
 
 ## Ver los esquemas desde la línea de comandos
 

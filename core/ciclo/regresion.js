@@ -14,14 +14,18 @@
  */
 
 import * as fs from 'fs';
-import { clonar } from '../puertas/ejecutar.js';
-import { clasificar } from './router.js';
+import * as path from 'path';
+import { categoriaDePuerta, clonar } from '../puertas/ejecutar.js';
 import { cola, redactar } from './redactar.js';
-import { esRutaDePrueba, validarRuta } from './protocolo-archivos.js';
+import { canonica, esRutaDePrueba, validarRuta } from './protocolo-archivos.js';
 import { dividirComando } from '../sandbox/sandbox-runner.js';
 
 export const MAX_NO_CAMBIAR = 20;
 const RUTA_SEGURA = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,199}$/;
+/** Una declaración de prueba reconocible en JS/TS, Python, Go o Java. */
+const RE_PRUEBA_DECLARADA = /(?:^|[^\w.])(?:test|it|describe|suite)(?:\.\w+)*\s*\(|^\s*(?:async\s+)?def\s+test_|^\s*func\s+Test\w*\s*\(|@Test\b/m;
+/** Banderas que hacen que un ejecutor salga con 0 sin haber ejecutado ninguna prueba. */
+const BANDERAS_VACIAS = /^--(?:passWithNoTests|pass-with-no-tests|no-error-on-unmatched-pattern|allow-empty|allowEmpty)$/;
 export const NOMBRE_REGRESION = 'regresion';
 const SALIDA_MAX = 8192;
 
@@ -32,7 +36,7 @@ const SALIDA_MAX = 8192;
  */
 export function validarNoCambiar(cwd, lista) {
   if (!Array.isArray(lista) || lista.length === 0) {
-    return { ok: false, error: 'no_cambiar debe ser una lista con al menos un archivo de prueba existente; una declaración vacía no se acepta en silencio.' };
+    return { ok: false, error: 'no_cambiar debe ser una lista de textos con al menos un archivo de prueba existente; una declaración vacía o que no es una lista de textos no se acepta en silencio.' };
   }
   if (lista.length > MAX_NO_CAMBIAR) return { ok: false, error: `no_cambiar admite como máximo ${MAX_NO_CAMBIAR} archivos (hay ${lista.length}).` };
   /** @type {string[]} */ const rutas = [];
@@ -46,6 +50,15 @@ export function validarNoCambiar(cwd, lista) {
     try { esArchivo = fs.statSync(v.absoluta).isFile(); } catch { /* no existe */ }
     if (!esArchivo) return { ok: false, error: `no_cambiar: «${r}» no existe en el proyecto.` };
     if (!esRutaDePrueba(v.rutaPosix)) return { ok: false, error: `no_cambiar: «${r}» no es un archivo de prueba.` };
+    // Una ruta que pasa por un enlace dentro del proyecto sería un alias: el implementador podría escribir el destino real
+    try {
+      const real = path.relative(fs.realpathSync(cwd), fs.realpathSync(v.absoluta)).split(path.sep).join('/');
+      if (canonica(real) !== canonica(v.rutaPosix)) return { ok: false, error: `no_cambiar: «${r}» pasa por un enlace (apunta a «${real}»); declara la ruta real.` };
+    } catch { return { ok: false, error: `no_cambiar: «${r}» no se pudo resolver.` }; }
+    // Un archivo sin ninguna prueba reconocible sale con 0 sin comprobar nada: no vale como línea base
+    let texto = '';
+    try { if (fs.statSync(v.absoluta).size <= 1024 * 1024) texto = fs.readFileSync(v.absoluta, 'utf8'); } catch { /* ilegible */ }
+    if (!RE_PRUEBA_DECLARADA.test(texto)) return { ok: false, error: `no_cambiar: «${r}» no contiene ninguna prueba reconocible (test(), it(), def test_…, func Test…): no comprobaría nada.` };
     if (!rutas.includes(v.rutaPosix)) rutas.push(v.rutaPosix);
   }
   return { ok: true, rutas };
@@ -59,6 +72,10 @@ export function validarNoCambiar(cwd, lista) {
  */
 export function comandoConArchivos(testCmd, rutas) {
   const partes = dividirComando(testCmd);
+  // Se vuelve a serializar a texto: una parte vacía desaparecería y la siguiente se comería la ruta (`-k ''`)
+  if (partes.some((p) => p === '')) throw new Error('El comando de pruebas tiene un argumento vacío: no se puede añadir de forma segura la lista de no_cambiar.');
+  const vacia = partes.find((p) => BANDERAS_VACIAS.test(p));
+  if (vacia) throw new Error(`El comando de pruebas lleva ${vacia}: con esa bandera salir con 0 no prueba que se ejecutara nada, así que no vale para no_cambiar.`);
   if (['npm', 'pnpm', 'yarn'].includes(partes[0]) && !partes.includes('--')) partes.push('--');
   return [...partes, ...rutas].map((p) => (/\s/.test(p) ? `"${p}"` : p)).join(' ');
 }
@@ -80,8 +97,8 @@ export async function ejecutarNoCambiar(o) {
   } catch (e) {
     r = { exitCode: null, infraError: true, timedOut: false, stdout: '', stderr: e instanceof Error ? e.message : String(e) };
   }
-  // 127 (herramienta ausente) y cualquier otro código distinto de 0 no son éxito: falla cerrado
-  const categoria = clasificar(r, { hayPruebas: true, pruebasIntactas: true });
+  // Como en las puertas: 127 (herramienta ausente) es `no_ejecutable` y pide revisión; cualquier otro código distinto de 0 no es éxito
+  const categoria = categoriaDePuerta(r);
   const salida = cola([r.stdout, r.stderr].filter(Boolean).join('\n'), SALIDA_MAX);
   return { nombre: NOMBRE_REGRESION, categoria, exitCode: typeof r.exitCode === 'number' ? r.exitCode : null, salida, rutas: o.rutas };
 }

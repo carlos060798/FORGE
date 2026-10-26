@@ -196,7 +196,7 @@ describe("veredicto: vocabulario y mapa documentado", () => {
 
 describe("estado-ciclo y tarea", () => {
   const e = esquema("estado-ciclo");
-  const tarea = { id: "T1", agente: "desarrollador-backend", prompt: "Implementa suma", archivos: ["src/suma.js"], cubre_cas: ["CA-001-01"], criterioCmd: "npm test", parte_de_codigo_existente: true };
+  const tarea = { id: "T1", agente: "desarrollador-backend", prompt: "Implementa suma", archivos: ["src/suma.js"], cubre_cas: ["CA-001-01"], criterioCmd: "npm test", parte_de_codigo_existente: true, no_cambiar: ["tests/legado.test.js"] };
   const base0 = estadoInicial(tarea, { runId: "r1", cwd: "/tmp/p" });
   const hash = "a".repeat(64);
 
@@ -214,11 +214,23 @@ describe("estado-ciclo y tarea", () => {
       pruebas: { archivos: [{ ruta: "tests/a.test.js", sha256: hash }], comando: "npm test" },
       implementacion: { archivos: [{ ruta: "src/a.js", sha256: hash }] },
       rojo: { estado: "fallan", reintentado: false },
+      regresion: { base: "verde" },
       mutacion: { probadas: 3, detectadas: 2, puntuacion: 0.66, parcial: false, sobrevivientes: [], refuerzos: 0 },
       revision: { motivo: "iteraciones", reanudarEn: "implementar", detalle: "d", decision: "aceptar", ts: "2026-10-17T00:00:00.000Z" },
       implementador: "turnos", turnos: 2, resultado: "revision_pendiente" };
     assert.deepEqual(validar(e, lleno), []);
     assert.deepEqual(validarEstado(lleno), []);
+  });
+
+  test("no_cambiar: una declaracion que no es una lista de textos se guarda como lista vacia y el estado sigue siendo valido", () => {
+    assert.deepEqual(base0.tarea.no_cambiar, ["tests/legado.test.js"]);
+    for (const malo of ["tests/a.test.js", ["a", 1], null, { 0: "a" }]) {
+      const m = estadoInicial({ ...tarea, no_cambiar: /** @type {any} */ (malo) }, { runId: "r1", cwd: "/tmp/p" });
+      assert.deepEqual(m.tarea.no_cambiar, [], JSON.stringify(malo));
+      assert.deepEqual(validar(e, m), []);
+      assert.deepEqual(validarEstado(m), []);
+    }
+    assert.match(validarEstado({ ...base0, tarea: { ...base0.tarea, no_cambiar: ["a", 1] } }).join("|"), /lista de textos/);
   });
 
   test("las listas de valores del esquema coinciden con las del codigo", () => {
@@ -322,14 +334,34 @@ describe("evento: el sobre y los dos archivos", () => {
 });
 
 describe("copia congelada: un esquema publicado no cambia sin subir su version", () => {
-  test("cada esquema es identico a tests/fixtures/contrato/v1/ o lleva otro $id", () => {
-    const dirCongelado = join(RAIZ, "tests", "fixtures", "contrato", "v1");
+  /** Todas las copias congeladas, por $id (carpetas tests/fixtures/contrato/v1, v1.1, v1.2...). */
+  function congelados() {
+    const raiz = join(RAIZ, "tests", "fixtures", "contrato");
+    /** @type {Map<string, any>} */ const porId = new Map();
+    for (const d of readdirSync(raiz, { withFileTypes: true })) {
+      if (!d.isDirectory() || !/^v[0-9]/.test(d.name)) continue;
+      for (const f of readdirSync(join(raiz, d.name)).filter((x) => x.endsWith(".schema.json"))) {
+        const c = JSON.parse(readFileSync(join(raiz, d.name, f), "utf8"));
+        porId.set(c.$id, c);
+      }
+    }
+    return porId;
+  }
+
+  test("cada $id vigente tiene su copia congelada, identica al esquema (subir la version obliga a congelar la nueva)", () => {
+    const copias = congelados();
     for (const nombre of NOMBRES) {
       const actual = esquema(nombre);
-      const rutaCongelada = join(dirCongelado, `${nombre}.schema.json`);
-      assert.ok(existsSync(rutaCongelada), `falta la copia congelada de ${nombre}`);
-      const congelado = JSON.parse(readFileSync(rutaCongelada, "utf8"));
-      if (actual.$id === congelado.$id) assert.deepEqual(actual, congelado, `${nombre} cambio sin subir la version de $id (y sin congelar la nueva: ver docs/contrato/LEEME.md)`);
+      const congelado = copias.get(actual.$id);
+      assert.ok(congelado, `${nombre} (${actual.$id}) no tiene copia congelada: copiala a tests/fixtures/contrato/v<mayor>.<menor>/ (ver docs/contrato/LEEME.md)`);
+      assert.deepEqual(actual, congelado, `${nombre} cambio sin subir la version de $id`);
+    }
+  });
+
+  test("las versiones anteriores siguen congeladas (no se borran copias)", () => {
+    const copias = congelados();
+    for (const id of ["https://forge-sdd.dev/contrato/estado-ciclo/1.1", "https://forge-sdd.dev/contrato/tarea/1.1", "https://forge-sdd.dev/contrato/resultado-verificar/1.1"]) {
+      assert.ok(copias.has(id), id);
     }
   });
 });
@@ -374,8 +406,11 @@ describe("versión desconocida (CA-003-06)", () => {
     const e = { ...estadoInicial({ id: "T1", agente: "a", prompt: "x" }, { runId: "r", cwd: "/x" }), schemaVersion: "9.9" };
     const errores = validarEstado(e);
     assert.equal(errores.length, 1, errores.join(" | "));
-    assert.match(errores[0], /schemaVersion desconocida: 9\.9/);
+    assert.match(errores[0], /schemaVersion desconocida: "9\.9"/);
     assert.match(errores[0], /entiende: 1\.0/);
+    // Una versión hostil no se imprime sin acotar ni con secuencias de escape tal cual
+    const hostil = validarEstado({ ...e, schemaVersion: "\u001b[31m" + "x".repeat(500) });
+    assert.ok(hostil[0].length < 200 && !hostil[0].includes("\u001b"), hostil[0]);
   });
 });
 

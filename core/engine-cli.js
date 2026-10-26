@@ -206,6 +206,8 @@ const MOTIVOS_LEGIBLES = {
   sin_progreso:    'las pruebas fallan igual varias veces seguidas: puede que estén rotas (mira el detalle)',
   pruebas_no_fallan: 'las pruebas recién escritas pasan sin que exista la implementación: no demuestran nada (mira el detalle)',
   pruebas_debiles: 'las pruebas pasan, pero detectan pocos cambios deliberados en el código (mira el detalle)',
+  perfil:          'el perfil de un rol no se pudo resolver o es ahora más estrecho que con el que empezó la tarea (mira el detalle)',
+  puerta:          'las pruebas pasan, pero una puerta de calidad declarada no pasa (mira el detalle)',
   regresion:       'las pruebas declaradas en no_cambiar no pasan, o la declaración no es válida (mira el detalle)',
 };
 

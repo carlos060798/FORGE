@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge-sdd.dev/contrato/estado-ciclo/1.1",
+  "$id": "https://forge-sdd.dev/contrato/estado-ciclo/1.2",
   "title": "Estado del ciclo verificado (por tarea)",
   "description": "EstadoCiclo de core/ciclo/estado.js. Version del artefacto: `schemaVersion` (cadena \"1.0\"). Distinto del estado del pipeline (.sdd/estado.json: ver estado-pipeline). Las reglas que JSON Schema no expresa (umbral_degradacion_usd <= tope_usd, detectadas <= probadas) las comprueba validarEstado.",
   "type": "object",

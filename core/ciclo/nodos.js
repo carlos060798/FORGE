@@ -184,6 +184,14 @@ export function seccionTarea(estado) {
 }
 
 /**
+ * Rutas que `no_cambiar` declara: ningún agente que escribe puede tocarlas, ni el de pruebas ni el implementador.
+ * @param {EstadoCiclo} estado
+ */
+export function noCambiarDe(estado) {
+  return Array.isArray(estado.tarea.no_cambiar) ? estado.tarea.no_cambiar.filter((r) => typeof r === 'string') : [];
+}
+
+/**
  * Criterios de aceptación que cubre la tarea y la instrucción de citarlos en las pruebas (HU-003, CA-003-02).
  * Solo ids con la forma `CA-xxx-yy`: nada libre de la tarea llega al prompt por esta vía. Sin criterios, no añade nada.
  * @param {EstadoCiclo} estado
@@ -461,7 +469,7 @@ async function qaInterno(estado, deps, perfil) {
   let presupuesto = estado.presupuesto;
   /** Pide las pruebas al agente; `extra` es lo que se le añade en el reintento. */
   const pedir = (extra = '') => generarArchivos({ ...estado, presupuesto }, deps, 'qa', {
-    agente: 'tester', userPrompt: partes(seccionMapa(estado.cwd, deps.vetadas), extra), contrato: CONTRATO_QA, rol: 'qa', pruebas: [], perfil,
+    agente: 'tester', userPrompt: partes(seccionMapa(estado.cwd, deps.vetadas), extra), contrato: CONTRATO_QA, rol: 'qa', pruebas: noCambiarDe(estado), perfil,
     // El mapa cambia cuando este mismo nodo escribe las pruebas: fuera de la clave del diario
     clavePrompt: partes('', extra),
   });
@@ -655,7 +663,11 @@ export async function sandbox(estado, deps) {
         // Una declaración que dejó de ser válida tras implementar (p. ej. se borró un archivo) tampoco es éxito
         resultados.push(noCambiar.ok === false
           ? { nombre: 'regresion', categoria: 'fail', exitCode: null, salida: noCambiar.error }
-          : await ejecutarNoCambiar({ runner: deps.runner, cwd: estado.cwd, testCmd: deps.testCmd, rutas: noCambiar.rutas, fase: 'regresion' }));
+          : await (async () => {
+            const rr = await ejecutarNoCambiar({ runner: deps.runner, cwd: estado.cwd, testCmd: deps.testCmd, rutas: noCambiar.rutas, fase: 'regresion' });
+            deps.log.append('ciclo:regresion', { fase: 'regresion', categoria: rr.categoria, exitCode: rr.exitCode, archivos: rr.rutas.length }, { taskId: estado.taskId });
+            return rr;
+          })());
       }
       return resultados;
     } : null,
