@@ -101,3 +101,17 @@ Proveedor `openai` (compatible) apuntando a Gemini con `OPENAI_BASE_URL`, nivel 
 - El gasto calculado es una **cota alta**: Fragua no tiene el precio de Gemini y cuenta cada llamada al precio más caro conocido. No se comparó con la factura de Google.
 - Es una sola ejecución por proyecto y proyectos pequeños; no demuestra fiabilidad, solo que el flujo completo funciona con un segundo proveedor real (CA-006-02 de `proveedores-agnosticos` pide tres proyectos con tope y evidencia en la carpeta de la spec).
 - La clave de Anthropic de prueba fue rechazada por la API (`401 invalid x-api-key`): no hay ejecución con Claude en este registro.
+
+## Registro: proyecto `gestor-tareas` con Claude y con Gemini (2026-10-26)
+
+`gestor-tareas` es un proyecto más parecido a uno real: un repositorio existente con pruebas propias y **cuatro tareas encadenadas** (validación, servicio, exportación CSV, informe) en varios módulos. Se lanza con `--proyectos gestor-tareas`.
+
+| Proveedor y modelo | Resultado | Tareas | Llamadas | Tokens (entrada / salida) | Gasto calculado | Tiempo |
+|---|---|---|---|---|---|---|
+| Anthropic, `claude-haiku-5-5` | exito | 4/4 | 12 | 39 587 / 18 628 | 0.0153 USD | 363 s |
+| Gemini, `gemini-3.5-flash` | pausa: infraestructura (429, cuota) | 1/4 | 4 | — | 0.2756 USD | 154 s |
+
+- **Claude:** el ciclo terminó en éxito. Comprobación aparte: las 48 pruebas del proyecto (las 3 originales y las 45 nuevas) pasan al ejecutarlas yo en un contenedor sin red, de solo lectura y sin capacidades. El código revisado a mano (`src/exportar.js`) cumple RFC 4180 como pedía la tarea.
+- **El gasto de Claude no está contrastado.** 0.0153 USD para 58 000 tokens parece bajo; la tabla de precios de Fragua puede no tener la tarifa vigente de ese modelo. Compáralo con la consola de Anthropic antes de fiarte de la cifra.
+- **Gemini:** completó la tarea 1 (validación) y se detuvo en la 2 por `429 You exceeded your current quota`. Reanudar más tarde con `fragua resume --decision continuar` dio el mismo error: la cuota de esa clave está agotada, no es un fallo del ciclo.
+- Una ejecución por proveedor. Con los dos juntos y la de la sección anterior se cumple el hecho de haber probado un segundo proveedor real, pero `CA-006-02` de `proveedores-agnosticos` sigue pidiendo tres proyectos con tope y evidencia en la carpeta de la spec.
