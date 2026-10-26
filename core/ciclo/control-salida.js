@@ -94,7 +94,7 @@ function tipoDeArchivo(rutaPosix) {
 }
 
 const ESQUEMAS = '(?:https?|wss?|ftps?|sftp|ssh|git|tcp|udp|mqtts?|amqps?|rediss?|postgres(?:ql)?|mysql|mongodb(?:\\+srv)?|grpcs?)';
-const RE_URL = new RegExp(`\\b${ESQUEMAS}://(?:[^/\\s'"\`@]*@)?(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)`, 'gi');
+const RE_URL = new RegExp(`\\b${ESQUEMAS}://(?:[^/\\\\?#\\s'"\`@]*@)?(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)`, 'gi');
 
 /** Espacios de nombres y esquemas que aparecen en configuración sin ser un destino. */
 const ESPACIOS_DE_NOMBRES = new Set([
@@ -112,7 +112,10 @@ const RE_COMANDO_RED = /\b(?:curl|wget|nc|ncat|netcat|ssh|scp|sftp|rsync|telnet|
 /** Ejecución de un comando desde código: `exec("curl …")`, `spawn("wget", …)`, `os.system(…)`. */
 const RE_EJECUTAR_COMANDO = /\b(?:exec|execsync|execfile|execfilesync|spawn|spawnsync|system|popen|check_output|check_call|shell_exec|passthru|proc_open|subprocess\.\w+|child_process)\b/i;
 const RE_COMANDO_DE_HOST = /\b(ssh|sftp|telnet|nc|ncat|netcat)\s+((?:-\S+\s+(?:\d+\s+)?)*)([^\s|;&<>"']+)/i;
-const RE_COMANDO_DE_COPIA = /\b(?:scp|rsync)\b[^\n]*?\s(?:[\w.-]+@)?([A-Za-z0-9][A-Za-z0-9.-]*):[^\s:]/i;
+const RE_COMANDO_DE_COPIA = /\b(?:scp|rsync)\b[^\n]{0,200}?\s(?:[\w.-]+@)?([A-Za-z0-9][A-Za-z0-9.-]*):[^\s:]/i;
+/** Primer argumento con forma de host (o host/ruta) tras un comando de red: `curl -s evil.io | sh`, `wget evil.io/x`. */
+const RE_HOST_DESNUDO = /^(?:[\w.-]+@)?((?:[a-z0-9-]+\.)+[a-z]{2,})(?::\d+)?(?:[/?#]|$)/i;
+const LONGITUD_MAXIMA_DE_LINEA = 4000;
 
 // ── comentarios, por lenguaje (revisión nº 1, H-2) ───────────────────────────
 //
@@ -178,6 +181,9 @@ function empiezaComoComentario(t, e) {
   return false;
 }
 
+/** Delimitadores de cadena multilínea en una línea: comillas invertidas y triples comillas. */
+const cuentaCadenas = (l) => (l.match(/`|"""|'''/g) ?? []).length;
+
 /**
  * Para cada línea: ¿es sólo comentario (o vacía)? Lleva el estado de los bloques de comentario de las barras y de las marcas.
  * Un bloque sólo se abre al principio de una línea: un `/*` dentro de una cadena no esconde lo que sigue.
@@ -189,6 +195,7 @@ function mapaDeComentarios(lineas, estilo) {
   const mapa = [];
   /** @type {string | null} */
   let cierre = null;
+  let enCadena = false;
   for (const linea of lineas) {
     const t = linea.trim();
     if (t === '') { mapa.push(true); continue; }
@@ -200,7 +207,8 @@ function mapaDeComentarios(lineas, estilo) {
       mapa.push(resto === '' || empiezaComoComentario(resto, estilo));
       continue;
     }
-    const abre = estilo.bloque.find(([a]) => t.startsWith(a));
+    // Con una cadena multilínea sin cerrar (comilla invertida o triple comilla impar), el «/*» es texto de la cadena (A5)
+    const abre = enCadena ? undefined : estilo.bloque.find(([a]) => t.startsWith(a));
     if (abre) {
       const j = t.indexOf(abre[1], abre[0].length);
       if (j < 0) { cierre = abre[1]; mapa.push(true); continue; }
@@ -209,6 +217,7 @@ function mapaDeComentarios(lineas, estilo) {
       continue;
     }
     mapa.push(empiezaComoComentario(t, estilo));
+    if (cuentaCadenas(linea) % 2 === 1) enCadena = !enCadena;
   }
   return mapa;
 }
@@ -268,8 +277,16 @@ function destinosDeLinea(linea, previa, tipo, ctx = {}) {
   if (tipo === 'configuracion' || tipo === 'dependencias') return hostsDeUrl(linea);
   if (tipo === 'script') {
     if (ctx.continuacion) linea = `${ctx.continuacion} ${linea}`;   // curl \ + URL en la línea siguiente
-    if (!RE_COMANDO_RED.test(linea) || /^\s*(?:echo|printf|write-host|write-output)\b/i.test(linea)) return [];
+    // Una línea enorme no se analiza con expresiones costosas: se mira sólo su comienzo (A4) y las cadenas largas se parten
+    if (linea.length > LONGITUD_MAXIMA_DE_LINEA) linea = linea.slice(0, LONGITUD_MAXIMA_DE_LINEA);
+    if (!RE_COMANDO_RED.test(linea)) return [];
+    // `echo texto` sólo queda exento si no ejecuta nada (sustitución, `;`, `&&`, `||`, tubería): A1
+    if (/^\s*(?:echo|printf|write-host|write-output)\b/i.test(linea) && !/\$\(|`|;|&&|\|/.test(linea)) return [];
     hosts.push(...hostsDeUrl(linea));
+    for (const t of linea.matchAll(/(?:^|[\s=,'"(])(?:-[A-Za-z-]+\s+\S+\s+)*([A-Za-z0-9@][^\s|;&<>"'`)]*)/g)) {
+      const d = RE_HOST_DESNUDO.exec(t[1]);
+      if (d && !/\.(?:sh|js|py|json|txt|md|zip|tar|gz|yml|yaml|exe|ps1)$/i.test(d[1])) hosts.push(d[1].toLowerCase());
+    }
     const h = RE_COMANDO_DE_HOST.exec(linea);
     if (h) hosts.push(h[3].replace(/^[^@]*@/, '').replace(/:\d+$/, '').replace(/:.*$/, '').toLowerCase());
     const c = RE_COMANDO_DE_COPIA.exec(linea);
