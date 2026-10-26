@@ -5,7 +5,7 @@
  * Solo lee archivos y compara texto: no llama a ningún modelo ni ejecuta nada (CA-003-03).
  * Un criterio «tiene prueba» cuando algún archivo de prueba cita su identificador. Fuera del ciclo no se sabe qué
  * pruebas escribió cada tarea, así que a nivel de proyecto cuenta CUALQUIER archivo de prueba del proyecto; el alcance
- * por tarea (`archivosDePrueba`) solo se aplica cuando quien llama lo da. Y citar el identificador NO demuestra que la
+ * por tarea (`archivosDePrueba`) solo se aplica cuando la tarea declara `pruebas: [...]` en su estado de tareas. Y citar el identificador NO demuestra que la
  * prueba compruebe el criterio, solo que alguien la enlazó (CA-003-05): la calidad de la prueba la mide la mutación.
  */
 
@@ -31,7 +31,7 @@ const OMITIR = new Set([
 ]);
 const ES_PRUEBA = /(?:^|[\\/])(?:tests?|__tests__)[\\/]|\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|[\\/])test_[^\\/]*\.py$|_test\.py$/i;
 
-export const LIMITE_DECLARADO = 'Que un archivo de prueba cite el identificador de un criterio no demuestra que la prueba lo compruebe: solo que alguien la enlazó. A nivel de proyecto cuenta cualquier archivo de prueba, no solo los de la tarea que lo cubre. La calidad de la prueba la mide la mutación.';
+export const LIMITE_DECLARADO = 'Que un archivo de prueba cite el identificador de un criterio no demuestra que la prueba lo compruebe: solo que alguien la enlazó. A nivel de proyecto cuenta cualquier archivo de prueba, salvo que la tarea declare sus `pruebas`. La calidad de la prueba la mide la mutación.';
 
 /**
  * Identificadores `CA-xxx-yy` de una spec, sin repetidos y en orden de aparición.
@@ -140,9 +140,10 @@ function leerJsonSdd(ruta) {
 
 /**
  * Tareas con sus `cubre_cas` de un JSON de estado de tareas: el formato del engine (lista) o el de /sdd.tareas (mapa).
- * Incluye también las ya cerradas. Ignora lo que no tenga la forma esperada.
+ * Una tarea puede declarar además `pruebas`: sus archivos de prueba (rutas relativas); si lo hace, solo esos cuentan para
+ * sus criterios. Incluye también las ya cerradas. Ignora lo que no tenga la forma esperada.
  * @param {any} crudo
- * @returns {Array<{ id: string, cubre_cas: string[] }>}
+ * @returns {Array<{ id: string, cubre_cas: string[], pruebas?: string[] }>}
  */
 function tareasDe(crudo) {
   const t = crudo?.tareas;
@@ -150,7 +151,11 @@ function tareasDe(crudo) {
   const pares = Array.isArray(t) ? t.map((x) => [String(x?.id), x]) : Object.entries(t && typeof t === 'object' ? t : {});
   return pares
     .filter(([id, x]) => id !== 'undefined' && x && typeof x === 'object')
-    .map(([id, x]) => ({ id, cubre_cas: (Array.isArray(x.cubre_cas) ? x.cubre_cas : Array.isArray(x.cas) ? x.cas : []).filter((c) => typeof c === 'string') }));
+    .map(([id, x]) => ({
+      id,
+      cubre_cas: (Array.isArray(x.cubre_cas) ? x.cubre_cas : Array.isArray(x.cas) ? x.cas : []).filter((c) => typeof c === 'string'),
+      ...(Array.isArray(x.pruebas) ? { pruebas: x.pruebas.filter((r) => typeof r === 'string' && r.length > 0 && r.length <= 512).map((r) => r.split('\\').join('/')) } : {}),
+    }));
 }
 
 /**
@@ -167,12 +172,16 @@ export function matrizDelProyecto(cwd) {
     const dir = path.join(cwd, '.sdd', 'especificaciones', spec);
     const specMd = leerTextoSdd(path.join(dir, 'spec.md'));
     if (specMd === null) return { ok: false, motivo: `No se pudo leer .sdd/especificaciones/${spec}/spec.md.` };
-    /** @type {Map<string, Set<string>>} */
+    /** @type {Map<string, { cas: Set<string>, pruebas?: Set<string> }>} */
     const porTarea = new Map();
     for (const origen of [leerJsonSdd(path.join(cwd, '.sdd', 'estado-tareas.json')), leerJsonSdd(path.join(dir, '.estado-tareas.json'))]) {
-      for (const t of tareasDe(origen)) porTarea.set(t.id, new Set([...(porTarea.get(t.id) ?? []), ...t.cubre_cas]));
+      for (const t of tareasDe(origen)) {
+        const previa = porTarea.get(t.id);
+        const pruebas = t.pruebas || previa?.pruebas ? new Set([...(previa?.pruebas ?? []), ...(t.pruebas ?? [])]) : undefined;
+        porTarea.set(t.id, { cas: new Set([...(previa?.cas ?? []), ...t.cubre_cas]), ...(pruebas ? { pruebas } : {}) });
+      }
     }
-    const tareas = [...porTarea].map(([id, cas]) => ({ id, cubre_cas: [...cas] }));
+    const tareas = [...porTarea].map(([id, v]) => ({ id, cubre_cas: [...v.cas], ...(v.pruebas ? { archivosDePrueba: [...v.pruebas] } : {}) }));
     return { ok: true, spec, matriz: calcularMatriz({ specMd, tareas, archivos: leerArchivosDePrueba(cwd) }) };
   } catch (e) {
     return { ok: false, motivo: `No se pudo calcular la matriz: ${e instanceof Error ? e.message.slice(0, 200) : 'error desconocido'}.` };

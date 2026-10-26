@@ -101,7 +101,16 @@ export function validarTareas(tareas) {
     for (const campo of ['dependencias', 'archivos']) {
       if (t[campo] !== undefined && (!Array.isArray(t[campo]) || t[campo].length > 100 || t[campo].some((x) => typeof x !== 'string' || x.length > 512))) return `"${campo}" de ${t.id} debe ser una lista de textos`;
     }
-    const extra = Object.keys(t).filter((k) => !['id', 'agente', 'prompt', 'dependencias', 'archivos'].includes(k));
+    // `no_cambiar` (rutas de pruebas existentes) y `cubre_cas` (ids de criterios) se admiten con forma estricta. Siguen fuera `criterioCmd` (es
+    // un comando), `parte_de_codigo_existente` (exime del rojo obligatorio) y `modelo`: una petición HTTP no los fija.
+    if (t.no_cambiar !== undefined && (!Array.isArray(t.no_cambiar) || t.no_cambiar.length === 0 || t.no_cambiar.length > 20
+      || t.no_cambiar.some((x) => typeof x !== 'string' || !/^[A-Za-z0-9_][A-Za-z0-9_./-]{0,199}$/.test(x) || x.split('/').includes('..')))) {
+      return `"no_cambiar" de ${t.id} debe ser una lista de 1 a 20 rutas relativas (letras, cifras, "_", ".", "-" y "/")`;
+    }
+    if (t.cubre_cas !== undefined && (!Array.isArray(t.cubre_cas) || t.cubre_cas.length > 100 || t.cubre_cas.some((x) => typeof x !== 'string' || !/^CA-[0-9]{3}-[0-9]{2}$/.test(x)))) {
+      return `"cubre_cas" de ${t.id} debe ser una lista de identificadores CA-xxx-yy`;
+    }
+    const extra = Object.keys(t).filter((k) => !['id', 'agente', 'prompt', 'dependencias', 'archivos', 'no_cambiar', 'cubre_cas'].includes(k));
     if (extra.length > 0) return `campos desconocidos en ${t.id}: ${extra.join(', ')}`;
   }
   return null;

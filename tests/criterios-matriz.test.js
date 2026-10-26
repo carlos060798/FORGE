@@ -285,3 +285,33 @@ describe('leerArchivosDePrueba: los topes y las exclusiones (T5, B1)', () => {
     assert.equal(a.ids.has('CA-001-02'), false);
   });
 });
+
+describe('alcance por tarea: pruebas declaradas (revisión 2026-10-25)', () => {
+  test('si la tarea declara sus pruebas, una cita en el archivo de otra tarea no cuenta', () => {
+    const cwd = proyecto('nada');
+    writeFileSync(join(cwd, 'tests', 'de-t002.test.js'), '// CA-001-02\n');
+    writeFileSync(join(cwd, 'tests', 'de-otra.test.js'), '// CA-001-02\n');
+    writeFileSync(join(cwd, '.sdd', 'especificaciones', '2026-01-01-demo', '.estado-tareas.json'), JSON.stringify({ tareas: {
+      T001: { estado: 'completada', cubre_cas: ['CA-001-01'] },
+      T002: { estado: 'pendiente', cubre_cas: ['CA-001-02'], pruebas: ['tests/otra-cosa.test.js'] },
+    } }));
+    const r = matrizDelProyecto(cwd);
+    assert.equal(r.ok, true);
+    if (r.ok) assert.deepEqual(r.matriz.sinPrueba, ['CA-001-01', 'CA-001-02'], 'la cita de CA-001-02 está en archivos que T002 no declara');
+  });
+  test('con el archivo declarado, sí cuenta; las rutas con barra invertida se normalizan', () => {
+    const cwd = proyecto('nada');
+    writeFileSync(join(cwd, 'tests', 'de-t002.test.js'), '// CA-001-02\n');
+    writeFileSync(join(cwd, '.sdd', 'especificaciones', '2026-01-01-demo', '.estado-tareas.json'), JSON.stringify({ tareas: {
+      T002: { estado: 'pendiente', cubre_cas: ['CA-001-02'], pruebas: [['tests', 'de-t002.test.js'].join(String.fromCharCode(92))] },
+    } }));
+    const r = matrizDelProyecto(cwd);
+    assert.equal(r.ok && r.matriz.conPrueba.includes('CA-001-02'), true);
+  });
+  test('una tarea sin `pruebas` sigue contando cualquier archivo del proyecto', () => {
+    const cwd = proyecto('nada');
+    writeFileSync(join(cwd, 'tests', 'suelto.test.js'), '// CA-001-02\n');
+    const r = matrizDelProyecto(cwd);
+    assert.equal(r.ok && r.matriz.conPrueba.includes('CA-001-02'), true);
+  });
+});

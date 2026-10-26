@@ -292,6 +292,24 @@ describe("validarTareas", () => {
   test("acepta una lista correcta", () => {
     assert.equal(validarTareas([{ id: "T1", agente: "tester", prompt: "p", dependencias: ["T0"], archivos: ["a.js"] }]), null);
   });
+
+  test("admite no_cambiar y cubre_cas con forma estricta", () => {
+    const t = { id: "T1", agente: "tester", prompt: "p" };
+    assert.equal(validarTareas([{ ...t, no_cambiar: ["tests/legado.test.js"], cubre_cas: ["CA-001-01"] }]), null);
+    for (const malo of [[], "tests/a.test.js", ["../x.test.js"], ["-rf"], ["a b.test.js"], ["a;b.test.js"], [5], Array.from({ length: 21 }, (_, i) => `tests/${i}.test.js`)]) {
+      assert.match(String(validarTareas([{ ...t, no_cambiar: /** @type {any} */ (malo) }])), /no_cambiar/, JSON.stringify(malo));
+    }
+    for (const malo of ["CA-001-01", ["ca-001-01"], ["CA-1-1"], ["CA-001-01; rm"], [1]]) {
+      assert.match(String(validarTareas([{ ...t, cubre_cas: /** @type {any} */ (malo) }])), /cubre_cas/, JSON.stringify(malo));
+    }
+  });
+
+  test("siguen fuera los campos que debilitan una garantía o son un comando", () => {
+    const t = { id: "T1", agente: "tester", prompt: "p" };
+    for (const campo of ["criterioCmd", "parte_de_codigo_existente", "modelo"]) {
+      assert.match(String(validarTareas([{ ...t, [campo]: campo === "parte_de_codigo_existente" ? true : "x" }])), /campos desconocidos/, campo);
+    }
+  });
 });
 
 describe("forge api — proceso real", () => {

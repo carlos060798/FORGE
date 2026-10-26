@@ -2169,11 +2169,13 @@ async function main() {
     }
     case "mcp": {
       // Servidor MCP por stdin/stdout: nada más que mensajes del protocolo debe salir por stdout
-      const i = args.indexOf("--cwd");
-      const ip = args.indexOf("--perfil");
+      // Un argumento mal escrito no arranca el servidor: antes se ignoraba y se exponía el perfil por defecto (completo)
+      const { leerArgumentosMcp } = await import("../core/mcp/argumentos.js");
+      const a = leerArgumentosMcp(args.slice(1));
+      if (a.ok === false) { process.stderr.write(`[forge mcp] ${a.error}\n`); process.exitCode = 1; break; }
       const { iniciarServidor } = await import("../core/mcp/servidor.js");
       try {
-        await iniciarServidor({ cwd: i !== -1 && args[i + 1] ? args[i + 1] : undefined, perfil: ip !== -1 ? (args[ip + 1] ?? "") : undefined });
+        await iniciarServidor({ cwd: a.cwd, perfil: a.perfil });
       } catch (e) {
         process.stderr.write(`[forge mcp] ${e instanceof Error ? e.message : e}\n`);
         process.exitCode = 1;

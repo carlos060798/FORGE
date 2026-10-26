@@ -141,6 +141,11 @@ export function esRutaDePrueba(rutaPosix) {
   const nombre = rutaPosix.split('/').pop() ?? '';
   return /^(tests?|__tests__|spec)\//.test(rutaPosix)
     || /\/__tests__\//.test(rutaPosix)
+    // Los datos de referencia de las pruebas (instantáneas de jest, `testdata/` de Go, `__fixtures__/`) son oráculo: si el
+    // implementador pudiera cambiarlos, haría pasar una prueba cambiando la respuesta esperada. `fixtures/` a secas no se
+    // incluye: en algunos marcos (Django) son datos de la aplicación.
+    || /(?:^|\/)(?:__snapshots__|__fixtures__|testdata)\//.test(rutaPosix)
+    || /\.snap$/.test(nombre)
     || /[-_.](test|spec)\.[cm]?[jt]sx?$/.test(nombre)
     || /^test[-_.].*\.[cm]?[jt]sx?$/.test(nombre)
     || /^test\.[cm]?[jt]sx?$/.test(nombre)
@@ -213,7 +218,7 @@ function rutaReal(absoluta) {
  * @param {string} cwd
  * @param {string} ruta                       tal como la propuso el agente
  * @param {{ vetadas?: string[] }} [opciones]
- * @returns {{ ok: true, rutaPosix: string, absoluta: string } | { ok: false, motivo: 'ruta_absoluta'|'fuera_del_proyecto'|'ruta_no_portable'|'enlace_simbolico'|'ruta_vetada'|'dependencias'|'configuracion' }}
+ * @returns {{ ok: true, rutaPosix: string, rutaPosixReal: string, absoluta: string } | { ok: false, motivo: 'ruta_absoluta'|'fuera_del_proyecto'|'ruta_no_portable'|'enlace_simbolico'|'ruta_vetada'|'dependencias'|'configuracion' }}
  */
 export function validarRuta(cwd, ruta, opciones = {}) {
   if (path.isAbsolute(ruta) || /^[a-zA-Z]:/.test(ruta) || ruta.startsWith('\\\\')) return { ok: false, motivo: 'ruta_absoluta' };
@@ -245,7 +250,7 @@ export function validarRuta(cwd, ruta, opciones = {}) {
   const clase = clases.find(Boolean);
   if (clase) return { ok: false, motivo: clase, ...(rutaPosixReal !== rutaPosix ? { rutaReal: rutaPosixReal } : {}) };
 
-  return { ok: true, rutaPosix, absoluta };
+  return { ok: true, rutaPosix, rutaPosixReal, absoluta };
 }
 
 /**
@@ -332,7 +337,9 @@ export function aplicarArchivos(cwd, archivos, opciones) {
     }
 
     // Perfil del rol: las rutas que el ciclo le deja escribir (solo puede estrechar la regla del rol)
-    if (opciones.rutasEscribir && !opciones.rutasEscribir.some((p) => (p.endsWith('/') ? v.rutaPosix.startsWith(p) : v.rutaPosix === p))) {
+    // Tanto la ruta lógica como la real deben estar permitidas: un enlace intermedio (`src/enlace -> otro/`) no puede sacar la escritura del perfil
+    const permitida = (/** @type {string} */ r) => opciones.rutasEscribir?.some((p) => (p.endsWith('/') ? r.startsWith(p) : r === p));
+    if (opciones.rutasEscribir && !(permitida(v.rutaPosix) && permitida(v.rutaPosixReal ?? v.rutaPosix))) {
       rechazados.push({ ruta, motivo: 'fuera_de_perfil' });
       continue;
     }

@@ -6,7 +6,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -260,5 +260,39 @@ describe("seguridad — rutas que en Windows y macOS apuntan a otro archivo (T03
     for (const ruta of ["src/mi-módulo.v2.js", "src/a.b.c/índice.ts", "docs/LÉEME.md", "src/console.js", "src/auxiliar.py"]) {
       assert.equal(validarRuta(dir, ruta).ok, true, ruta);
     }
+  });
+});
+
+describe("esRutaDePrueba: datos de referencia de las pruebas (revisión 2026-10-25)", () => {
+  test("instantáneas, __fixtures__ y testdata cuentan como pruebas, también fuera de tests/", () => {
+    for (const r of ["src/__snapshots__/a.test.js.snap", "src/a.snap", "pkg/testdata/entrada.json", "__fixtures__/datos.json", "src/__fixtures__/x.json"]) {
+      assert.ok(esRutaDePrueba(r), r);
+    }
+  });
+  test("lo que se parece pero no lo es sigue siendo código de producción", () => {
+    for (const r of ["src/snapshots.js", "src/testdata.js", "src/fixtures/seed.json", "src/snap/a.js", "app/mi_testdata/x.json"]) {
+      assert.ok(!esRutaDePrueba(r), r);
+    }
+  });
+  test("el implementador no puede cambiar una instantánea para que una prueba pase", () => {
+    const dir = mkdtempSync(join(tmpdir(), "forge-snap-"));
+    const r = aplicarArchivos(dir, [{ ruta: "src/__snapshots__/a.test.js.snap", contenido: "x" }, { ruta: "src/a.js", contenido: "export const a = 1;\n" }], { rol: "coder", politicaDestinos: [] });
+    assert.deepEqual(r.rechazados.map((x) => [x.ruta, x.motivo]), [["src/__snapshots__/a.test.js.snap", "prueba_inmutable"]]);
+    assert.deepEqual(r.escritos.map((x) => x.ruta), ["src/a.js"]);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("rutas escribibles del perfil y enlaces intermedios (revisión 2026-10-25, A1)", () => {
+  test("un enlace dentro del proyecto no saca la escritura de las rutas permitidas", (t) => {
+    const dir = mkdtempSync(join(tmpdir(), "forge-perfil-enlace-"));
+    mkdirSync(join(dir, "src"), { recursive: true });
+    mkdirSync(join(dir, "otro"), { recursive: true });
+    try { symlinkSync(join(dir, "otro"), join(dir, "src", "enlace"), "junction"); } catch { t.skip("sin permiso para crear enlaces en este equipo"); rmSync(dir, { recursive: true, force: true }); return; }
+    const r = aplicarArchivos(dir, [{ ruta: "src/enlace/x.js", contenido: "export const x = 1;\n" }, { ruta: "src/ok.js", contenido: "export const y = 2;\n" }], { rol: "coder", rutasEscribir: ["src/"], politicaDestinos: [] });
+    assert.deepEqual(r.rechazados.map((x) => [x.ruta, x.motivo]), [["src/enlace/x.js", "fuera_de_perfil"]]);
+    assert.deepEqual(r.escritos.map((x) => x.ruta), ["src/ok.js"]);
+    assert.equal(existsSync(join(dir, "otro", "x.js")), false, "nada se escribió fuera de las rutas permitidas");
+    rmSync(dir, { recursive: true, force: true });
   });
 });
