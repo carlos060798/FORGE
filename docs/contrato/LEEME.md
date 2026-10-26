@@ -87,7 +87,7 @@ El esquema antiguo exige `schemaVersion`; el `.sdd/estado.json` real **no lo tie
 - `estado-ciclo` está en 1.2: 1.1 se editó varias veces mientras el paquete estaba sin publicar (motivos `perfil`, `puerta`, `regresion`, campos `no_cambiar` y `regresion`); la copia 1.1 congelada es la anterior a `regresion`. `schemaVersion` del estado sigue siendo `"1.0"`: es la versión del formato guardado, no la del esquema.
 - Cada `$id` vigente tiene su copia congelada en `tests/fixtures/contrato/v<mayor>.<menor>/` y la suite falla si falta o difiere: subir la versión obliga a congelar la nueva.
 - **`revision.motivo` es una lista abierta para terceros**: ignora los valores que no conozcas. El lector de Fragua, en cambio, **falla cerrado**: un punto de guardado con un motivo que su versión no conoce se descarta (CA-003-06). Un Fragua más antiguo no reanuda lo que escribió uno más nuevo con un motivo nuevo.
-- La API HTTP (`core/api`) acepta solo un subconjunto de `tarea-entrada` (`id`, `agente`, `prompt`, `dependencias`, `archivos`); `no_cambiar`, `cubre_cas`, `parte_de_codigo_existente`, `criterioCmd` y `modelo` solo se pueden dar por `--tasks` o por `.estado-tareas.json`.
+- La API HTTP (`core/api`) acepta un subconjunto de `tarea-entrada` (`id`, `agente`, `prompt`, `dependencias`, `archivos`, `no_cambiar`, `cubre_cas`); `parte_de_codigo_existente`, `criterioCmd` y `modelo` solo se pueden dar por `--tasks` o por `.estado-tareas.json`.
 - El esquema de `no_cambiar` es más laxo que el código: describe una lista de textos; el código exige de 1 a 20 rutas existentes de archivos de prueba con caracteres seguros (`core/ciclo/regresion.js`).
 
 ## Ver los esquemas desde la línea de comandos

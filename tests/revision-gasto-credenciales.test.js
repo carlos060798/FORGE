@@ -92,3 +92,14 @@ describe('M-2 de verificar: la salida acotada no lleva secuencias de terminal', 
     assert.equal(cola('acentos ñ ü 日本語 ✓'), 'acentos ñ ü 日本語 ✓');
   });
 });
+
+describe('M-1: un precio casi cero de un modelo desconocido se trata como cero', () => {
+  test('1e-30 se descarta; uno normal se conserva; con FRAGUA_PRECIOS_CERO se acepta', async () => {
+    const { limitarPreciosDelProyecto } = await import('../core/ciclo/config.js');
+    const r = limitarPreciosDelProyecto({ 'x-raro': { input: 1e-30, output: 1e-30 }, 'y-ok': { input: 1e-6, output: 2e-6 } }, { avisar: () => {}, env: {} });
+    assert.equal(r['x-raro'], undefined);
+    assert.ok(r['y-ok']);
+    const r2 = limitarPreciosDelProyecto({ 'x-raro': { input: 1e-30, output: 1e-30 } }, { avisar: () => {}, env: { FRAGUA_PRECIOS_CERO: 'x-raro' } });
+    assert.ok(r2['x-raro']);
+  });
+});

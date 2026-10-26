@@ -246,6 +246,9 @@ export function limitarSandboxDelProyecto(sandbox, o = {}) {
  */
 export const VARIABLE_PRECIOS_CERO = 'PRECIOS_CERO';
 
+/** Por debajo de 0,01 USD por millón de tokens un precio de un modelo desconocido equivale a 0 (revisión de gasto, M-1). */
+const PISO_DE_PRECIO = 1e-8;
+
 /**
  * Aplica «el proyecto puede apretar, nunca aflojar» a los precios declarados:
  *  - modelo de la tabla incluida: vale el MAYOR entre el del proyecto y el de la tabla (entrada y salida);
@@ -271,7 +274,7 @@ export function limitarPreciosDelProyecto(precios, o = {}) {
         avisar(`[Fragua] .sdd/sdd.config.yaml: el precio de «${id}» está por debajo de la tabla incluida y se ignora: un archivo del proyecto no puede bajar un precio (el gasto contaría menos del real).`);
       }
       salida[id] = { ...p, input, output };
-    } else if ((p.input <= 0 || p.output <= 0) && !permitidosCero.has(id)) {
+    } else if ((!(p.input >= PISO_DE_PRECIO) || !(p.output >= PISO_DE_PRECIO)) && !permitidosCero.has(id)) {
       avisar(`[Fragua] .sdd/sdd.config.yaml: «${id}» declara precio 0 y no está en la tabla incluida: se ignora (se contará al precio más caro conocido). Si de verdad no te cuesta, nómbralo en FRAGUA_${VARIABLE_PRECIOS_CERO} en tu entorno.`);
     } else {
       salida[id] = p;
