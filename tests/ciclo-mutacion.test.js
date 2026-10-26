@@ -10,7 +10,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -1279,5 +1279,35 @@ describe("medición con Docker real", { skip: !dockerActivo && "requiere FORGE_T
     assert.equal(readFileSync(join(cwd, "src/clasificar.js"), "utf8"), IMPL_REAL);
     const nodo = (nombre) => eventos.find((x) => x.type === "ciclo:nodo_completado" && x.payload.nodo === nombre)?.payload.durationMs;
     console.log(`  ciclo con Docker real: nodo sandbox ${nodo("sandbox")} ms · nodo mutacion ${nodo("mutacion")} ms (9 alteraciones)`);
+  });
+});
+
+describe("medirMutacion: enlaces plantados en la copia (revisión independiente 2026-10-25, A-1)", () => {
+  test("si una prueba cambia src/ por un enlace, el anfitrión no escribe a través de él y la medición se abandona", async (t) => {
+    const cwd = proyecto("// FUERTE\n");
+    const fuera = tmp("forge-mut-fuera-");
+    writeFileSync(join(fuera, "suma.js"), "ORIGINAL");
+    const base = ejecutorFalso();
+    let llamadas = 0;
+    const runner = {
+      ...base,
+      test: async (dir) => {
+        llamadas++;
+        // La primera es la línea base; en la segunda (primera alteración) «el contenedor» sustituye src/ por un enlace
+        if (llamadas === 2) {
+          renameSync(join(dir, "src"), join(dir, "src-original"));
+          try { symlinkSync(fuera, join(dir, "src"), "junction"); } catch { return { ...(await base.test(dir)), enlaceNoCreado: true }; }
+        }
+        return base.test(dir);
+      },
+    };
+    const r = await medirMutacion({ cwd, archivos: ["src/suma.js"], runner });
+    if (llamadas < 2 || !existsSync(join(fuera, "suma.js"))) { t.skip("no se pudo preparar el escenario"); return; }
+    assert.equal(readFileSync(join(fuera, "suma.js"), "utf8"), "ORIGINAL", "nada se escribió a través del enlace");
+    assert.ok(r);
+    assert.equal(r.parcial, true);
+    assert.equal(r.motivoParcial, "infraestructura");
+    assert.match(r.detalleInfra ?? "", /enlace/);
+    assert.equal(llamadas, 2, "no se siguió midiendo sobre una copia comprometida");
   });
 });

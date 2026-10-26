@@ -268,7 +268,10 @@ export function cola(texto, maxBytes = 8192) {
     const salto = entrada.indexOf('\n');
     if (salto !== -1 && salto < 4096) entrada = entrada.slice(salto + 1);
   }
-  const buffer = Buffer.from(redactar(entrada), 'utf8');
+  // La salida es del código bajo prueba y se imprime en una terminal: sin ESC ni otros controles (limpiar pantalla, OSC 52, texto
+  // bidi) que falsifiquen lo que ve la persona. Se conservan los saltos de línea y el tabulador; un \r suelto pasa a salto.
+  const limpia = redactar(entrada).replace(/\r(?!\n)/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g, '?');
+  const buffer = Buffer.from(limpia, 'utf8');
   if (buffer.length <= maxBytes) return buffer.toString('utf8');
   return buffer.subarray(buffer.length - maxBytes).toString('utf8').replace(/^�+/, '');
 }

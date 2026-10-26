@@ -211,6 +211,13 @@ export function crearProvider(opts = {}) {
     detectarProvider()
   ).toLowerCase();
 
+  // Quienes llaman pasan `api_key` leída de ANTHROPIC_API_KEY: esa clave solo vale para Anthropic. Con otro proveedor (OpenAI, Gemini por
+  // el endpoint compatible, Ollama...) viajaría como credencial a un servidor ajeno a Anthropic y taparía la variable del proveedor elegido.
+  if (!['anthropic', 'claude'].includes(nombreProvider) && config.api_key !== undefined) {
+    const deAnthropic = [process.env.ANTHROPIC_API_KEY, process.env.CLAUDE_API_KEY].filter(Boolean);
+    if (deAnthropic.includes(config.api_key)) delete config.api_key;
+  }
+
   switch (nombreProvider) {
     case 'anthropic':
     case 'claude':

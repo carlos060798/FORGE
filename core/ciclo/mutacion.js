@@ -1466,13 +1466,26 @@ export async function medirMutacion(entrada) {
         const original = /** @type {string} */ (contenidoDe.get(a.ruta));
         const destino  = path.join(copia, a.ruta);
         let ejecucion;
-        fs.mkdirSync(path.dirname(destino), { recursive: true });
-        fs.writeFileSync(destino, aplicarAlteracion(original, a), 'utf8');
-        try {
-          ejecucion = await medidor.test(copia);
-        } finally {
-          // La copia vuelve a quedar como el proyecto: la siguiente alteración parte de código sin alterar
-          fs.writeFileSync(destino, original, 'utf8');
+        // La copia está montada con escritura en el contenedor: una prueba hostil puede cambiar un archivo o un directorio de la
+        // copia por un enlace. Antes de escribir desde el anfitrión se comprueba que ninguna parte de la ruta lo sea.
+        let enlaceVisto = !rutaSinEnlaces(copia, destino);
+        if (!enlaceVisto) {
+          fs.mkdirSync(path.dirname(destino), { recursive: true });
+          fs.writeFileSync(destino, aplicarAlteracion(original, a), 'utf8');
+          try {
+            ejecucion = await medidor.test(copia);
+          } finally {
+            // La copia vuelve a quedar como el proyecto: la siguiente alteración parte de código sin alterar
+            try {
+              if (rutaSinEnlaces(copia, destino)) fs.writeFileSync(destino, original, 'utf8'); else enlaceVisto = true;
+            } catch { enlaceVisto = true; }
+          }
+        }
+        if (enlaceVisto) {
+          r.parcial = true;
+          r.motivoParcial = 'infraestructura';
+          r.detalleInfra = 'La copia de trabajo cambió durante la medición: donde había un archivo del proyecto hay un enlace. Se abandona la medición sin escribir a través de él.';
+          break;
         }
         const categoria = clasificar(ejecucion, { hayPruebas: true, pruebasIntactas: true });
         if (categoria === 'infra_error') {
@@ -1502,4 +1515,22 @@ export async function medirMutacion(entrada) {
   r.puntuacion = puntuar(r.probadas, r.detectadas);
   if (reparto.size > 0) r.porArchivo = [...reparto].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([ruta, c]) => ({ ruta, ...c }));
   return r;
+}
+
+/**
+ * ¿Ninguna parte de `destino` (desde la raíz de la copia) es un enlace simbólico o una unión? Lo que no existe aún no lo es.
+ * @param {string} copia @param {string} destino
+ */
+function rutaSinEnlaces(copia, destino) {
+  const partes = path.relative(copia, destino).split(path.sep).filter(Boolean);
+  let actual = copia;
+  for (const parte of partes) {
+    actual = path.join(actual, parte);
+    try {
+      if (fs.lstatSync(actual).isSymbolicLink()) return false;
+    } catch (e) {
+      return /** @type {any} */ (e)?.code === 'ENOENT';
+    }
+  }
+  return true;
 }

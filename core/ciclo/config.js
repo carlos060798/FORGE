@@ -176,7 +176,12 @@ export function leerPrecios(yaml) {
       throw new Error(`precios.${clave} no es válido en .sdd/sdd.config.yaml: "${texto}". Debe ser un número mayor o igual que 0 (USD por millón de tokens)`);
     }
     const id = clave.slice(0, -sufijo.length);
-    (precios[id] ??= {})[SUFIJOS_TODOS[sufijo]] = valor / 1_000_000;
+    // Un identificador como `__proto__` haría que `precios[id] ??= {}` escribiera en Object.prototype y contaminara todo el proceso
+    if (['__proto__', 'constructor', 'prototype'].includes(id)) {
+      throw new Error(`precios.${clave} no es válido en .sdd/sdd.config.yaml: "${id}" no puede ser un identificador de modelo`);
+    }
+    if (!Object.hasOwn(precios, id)) precios[id] = {};
+    precios[id][SUFIJOS_TODOS[sufijo]] = valor / 1_000_000;
   }
   for (const [id, p] of Object.entries(precios)) {
     for (const [sufijo, campo] of Object.entries(SUFIJOS_PRECIO)) {
