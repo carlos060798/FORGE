@@ -52,9 +52,11 @@ function buscarSecreto(contenido, anterior) {
 
   const lineas = contenido.split(/\r?\n/);
   const previas = new Set(anterior === null ? [] : anterior.split(/\r?\n/));
-  const conClave = contenido.includes('PRIVATE KEY-----') && !(anterior ?? '').includes('PRIVATE KEY-----');
+  // M5: se cuentan los bloques, no la mera presencia; un segundo bloque en un archivo que ya tenía uno también cuenta
+  const bloquesDe = (t) => (t.match(/-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----/g) ?? []).length;
+  const conClave = bloquesDe(contenido) > bloquesDe(anterior ?? '');
   if (conClave && contar(redactarFormatos(contenido), '[REDACTADO: clave privada]') > 0) {
-    const i = lineas.findIndex((l) => l.includes('PRIVATE KEY-----'));
+    const i = lineas.findIndex((l) => /PRIVATE KEY(?: BLOCK)?-----/.test(l));
     return { regla: 'clave_privada', linea: i + 1 };
   }
   for (let i = 0; i < lineas.length; i++) {

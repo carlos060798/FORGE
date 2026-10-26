@@ -42,6 +42,23 @@ const PATRONES = [
   [/\bglpat-[A-Za-z0-9_-]{20,}\b/g, '[REDACTADO]'],
   [/\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g, '[REDACTADO]'],
   [/\bnpm_[A-Za-z0-9]{30,}\b/g, '[REDACTADO]'],
+  // Más formatos de proveedor (revisión nº 3, M6)
+  [/\bxapp-\d-[A-Za-z0-9-]{10,}/g, '[REDACTADO]'],
+  [/\bxox[cde]-[A-Za-z0-9-]{10,}/g, '[REDACTADO]'],
+  [/\b\d{8,10}:AA[A-Za-z0-9_-]{30,}\b/g, '[REDACTADO]'],
+  [/\b(?:dop|doo|dor)_v1_[a-f0-9]{40,}\b/g, '[REDACTADO]'],
+  [/\bpypi-AgE[A-Za-z0-9_-]{20,}/g, '[REDACTADO]'],
+  [/\bdckr_pat_[A-Za-z0-9_-]{20,}/g, '[REDACTADO]'],
+  [/\bshp(?:at|ca|pa|ss)_[a-f0-9]{32}\b/g, '[REDACTADO]'],
+  [/\blin_api_[A-Za-z0-9]{30,}\b/g, '[REDACTADO]'],
+  [/\bPMAK-[A-Za-z0-9-]{20,}/g, '[REDACTADO]'],
+  [/\bdapi[a-f0-9]{32}\b/g, '[REDACTADO]'],
+  [/\bglsa_[A-Za-z0-9_]{20,}/g, '[REDACTADO]'],
+  [/\bsbp_[a-f0-9]{40}\b/g, '[REDACTADO]'],
+  [/\bvercel_blob_rw_[A-Za-z0-9_-]{10,}/g, '[REDACTADO]'],
+  [/\bAGE-SECRET-KEY-1[A-Z0-9]{50,}/g, '[REDACTADO]'],
+  [/\bAuthorization:\s*Digest\s+\S[^\n]{10,}/gi, 'Authorization: [REDACTADO]'],
+  [/\bmachine\s+\S+\s+login\s+\S+\s+password\s+\S+/gi, 'machine [REDACTADO]'],
   [/\bhttps:\/\/hooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9/_-]{8,}/g, 'https://hooks.slack.com/[REDACTADO]'],
   [/\bya29\.[A-Za-z0-9_-]{20,}/g, '[REDACTADO]'],
   [/\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b/g, '[REDACTADO]'],
@@ -61,10 +78,10 @@ const LIMITE_ENTRADA = 64 * 1024;
  * (U+3164 hangul, U+115F, U+1160, U+FFA0), braille en blanco (U+2800), CGJ (U+034F), controles bidi y
  * marcas de dirección. Solo se quitan ENTRE dos caracteres de token ASCII (R13).
  */
-const ENTRE_TOKEN = /(?<=[A-Za-z0-9_-])[\u200B-\u200F\u2060-\u2064\uFEFF\u00AD\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E\u061C\u202A-\u202E\u2066-\u2069]+(?=[A-Za-z0-9_-])/g;
+const ENTRE_TOKEN = /(?<=[A-Za-z0-9_-])[\u200B-\u200F\u2060-\u2064\uFEFF\u00AD\u3164\u2800\u034F\u115F\u1160\uFFA0\u180E\u061C\u202A-\u202E\u2066-\u2069\u0001-\u0008\uFE00-\uFE0F\u17B4\u17B5\u180B-\u180D\u00A0\u2028\u2029\u{E0000}-\u{E007F}]+(?=[A-Za-z0-9_-])/gu;
 
-const CABECERA_PRIVADA = /-----BEGIN [A-Z ]*PRIVATE KEY-----/y;
-const FIN_PRIVADA = /-----END [A-Z ]*PRIVATE KEY-----/y;
+const CABECERA_PRIVADA = /-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----/y;
+const FIN_PRIVADA = /-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----/y;
 
 /**
  * Sustituye los bloques de clave privada en UNA pasada: cada posición se visita una vez, sin
@@ -74,7 +91,7 @@ const FIN_PRIVADA = /-----END [A-Z ]*PRIVATE KEY-----/y;
  * @param {boolean} cortada
  */
 function quitarClavesPrivadas(texto, cortada) {
-  if (!texto.includes('PRIVATE KEY-----')) return texto;
+  if (!texto.includes('PRIVATE KEY-----') && !texto.includes('PRIVATE KEY BLOCK-----')) return texto;
   let salida = '';
   let desde = 0;
   let pos = 0;

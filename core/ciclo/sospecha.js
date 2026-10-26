@@ -29,7 +29,7 @@ const EVIDENCIA = [
 ];
 
 /** Salidas forzadas al comienzo de línea: se ejecutan al importar el módulo. */
-const SALIDA_FORZADA = /^(?:process\.(?:exit|abort|reallyExit)|os\._exit|sys\.exit|Deno\.exit|exit|quit)\s*\(/m;
+const SALIDA_FORZADA = /^(?:process\.(?:exit|abort|reallyExit|kill)|os\._exit|os\.Exit|os\.kill|sys\.exit|Deno\.exit|exit|quit|raise\s+SystemExit|process\.on\s*\(\s*['"]exit['"])\s*\(?/m;
 
 /**
  * Pruebas que declaran unos archivos de prueba (JS/TS, Python, Go). Se cuenta por defecto: una prueba
@@ -46,13 +46,29 @@ export function contarPruebasDeclaradas(archivos) {
   return n;
 }
 
+/** Pruebas omitidas, canceladas, pendientes o falladas del último resumen de node:test. */
+function omitidas(texto) {
+  let n = 0;
+  for (const nombre of ['fail', 'cancelled', 'skipped', 'todo']) {
+    const m = [...texto.matchAll(new RegExp('^(?:ℹ|#)\\s*' + nombre + '\\s+(\\d+)', 'gm'))].pop();
+    if (m) n += Number(m[1]);
+  }
+  return n;
+}
+
 /**
  * Pruebas que dice haber ejecutado el ejecutor, o null si su resumen no da una cuenta que se pueda leer.
  * @param {string} texto
  */
 export function contarPruebasInformadas(texto) {
-  const nodo = /^(?:ℹ|#)\s*tests\s+(\d+)/m.exec(texto);
-  if (nodo) return Number(nodo[1]);
+  // El resumen verdadero es el ÚLTIMO: una línea «tests 99» impresa antes por el código de producción no lo suplanta (M7)
+  const nodos = [...texto.matchAll(/^(?:ℹ|#)\s*tests\s+(\d+)/gm)];
+  if (nodos.length > 0) {
+    const total = Number(nodos[nodos.length - 1][1]);
+    const pasadas = [...texto.matchAll(/^(?:ℹ|#)\s*pass\s+(\d+)/gm)].pop();
+    // Un resumen incoherente (más pruebas que pasadas sin fallos declarados) se lee por la cifra baja
+    return pasadas ? Math.min(total, Number(pasadas[1]) + omitidas(texto)) : total;
+  }
   const jest = /Tests:\s+(?:\d+\s+\w+,\s+)*(\d+)\s+total/i.exec(texto);
   if (jest) return Number(jest[1]);
   const unittest = /^Ran (\d+) tests?\b/m.exec(texto);

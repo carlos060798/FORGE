@@ -75,3 +75,45 @@ describe("A5: un falso bloque de comentario no esconde la llamada", () => {
     pasa("a.js", "/*\n ver https://docs.ajeno.net\n*/\nconst a = 1;\n");
   });
 });
+
+import { redactarFormatos } from "../core/ciclo/redactar.js";
+import { detectarSospecha, contarPruebasInformadas } from "../core/ciclo/sospecha.js";
+
+describe("M5: un segundo bloque de clave privada cuenta aunque el archivo ya tuviera uno", () => {
+  const pem = (c) => `-----BEGIN PRIVATE KEY-----\n${c}\n-----END PRIVATE KEY-----\n`;
+  test("añadir otro bloque se bloquea; dejar el mismo no", () => {
+    const a = pem("QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo=");
+    const b = pem("MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODk=");
+    assert.equal(revisarContenido("k.pem", a + b, a, {}).ok, false);
+    assert.equal(revisarContenido("k.pem", a, a, {}).ok, true);
+  });
+});
+
+describe("M6: más formatos de secreto", () => {
+  test("se redactan", () => {
+    const casos = [
+      "xapp-1-A0123456789-0123456789-abcdef",
+      "pypi-AgEIcHlwaS5vcmcCJGFiY2RlZmdoaWprbG1ub3A",
+      "dckr_pat_abcdefghijklmnopqrstu",
+      "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc\n-----END PGP PRIVATE KEY BLOCK-----",
+      "Authorization: Digest username=\"a\", response=\"0123456789abcdef\"",
+    ];
+    for (const c of casos) assert.notEqual(redactarFormatos(c), c, c);
+  });
+});
+
+describe("M7: la detección de éxito sospechoso no se suplanta con una línea impresa", () => {
+  test("un resumen falso al principio no vale: manda el último", () => {
+    const salida = "ℹ tests 99\nℹ pass 99\nℹ tests 1\nℹ pass 1\n";
+    assert.equal(contarPruebasInformadas(salida), 1);
+  });
+  test("más pruebas totales que pasadas sin fallos declarados se lee por la cifra baja", () => {
+    assert.equal(contarPruebasInformadas("ℹ tests 5\nℹ pass 2\n"), 2);
+  });
+  test("salidas forzadas de otros lenguajes", () => {
+    for (const c of ["os.Exit(0)", "raise SystemExit(0)", "process.kill(process.pid)"]) {
+      const m = detectarSospecha({ stdout: "ℹ tests 1\nℹ pass 1\n", archivos: [{ ruta: "x", contenido: c + "\n" }] });
+      assert.ok(m.length > 0, c);
+    }
+  });
+});
