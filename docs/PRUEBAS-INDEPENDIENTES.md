@@ -85,3 +85,19 @@ Cada carpeta de proyecto conserva `.sdd/events.jsonl` (qué pasó, paso a paso) 
 - Borra la carpeta de salida cuando termines (el script no la borra, para que puedas inspeccionarla).
 - **Rota la clave** si la usaste en un equipo o sesión que no controlas.
 - Si encuentras algo, guarda `informe.json` y el `.sdd/events.jsonl` del proyecto afectado (revisa antes que no lleven datos tuyos) y abre una incidencia con la plantilla `fallo.md`.
+
+## Registro: ejecución con Gemini (2026-10-26)
+
+Proveedor `openai` (compatible) apuntando a Gemini con `OPENAI_BASE_URL`, nivel económico, Docker Desktop 29.7.2 en Windows, paquete instalado con `npm pack`. Los cuatro proyectos más exigentes, con tope de 1.00 USD calculado cada uno:
+
+| Proyecto | Resultado | Iteraciones | Llamadas | Gasto calculado | Tiempo |
+|---|---|---|---|---|---|
+| js-existente | exito | 1 | 3 | 0.1926 USD | 72 s |
+| dos-tareas | exito | 2 | 6 | 0.3514 USD | 146 s |
+| py-pytest | exito | 1 | 3 | 0.1699 USD | 97 s |
+| go-modulo | exito | 1 | 3 | 0.2230 USD | 421 s |
+
+- Modelo usado: `gemini-3.5-flash`. Antes se intentó `gemini-2.5-pro` (404: ya no está disponible para cuentas nuevas) y `gemini-3.1-pro-preview` (429: sin cuota en esa clave); ninguno gastó nada. Con `gemini-2.5-flash`, `js-nuevo` pausó con `salida_invalida` (JSON del implementador mal formado) tras 6 llamadas.
+- El gasto calculado es una **cota alta**: Fragua no tiene el precio de Gemini y cuenta cada llamada al precio más caro conocido. No se comparó con la factura de Google.
+- Es una sola ejecución por proyecto y proyectos pequeños; no demuestra fiabilidad, solo que el flujo completo funciona con un segundo proveedor real (CA-006-02 de `proveedores-agnosticos` pide tres proyectos con tope y evidencia en la carpeta de la spec).
+- La clave de Anthropic de prueba fue rechazada por la API (`401 invalid x-api-key`): no hay ejecución con Claude en este registro.
