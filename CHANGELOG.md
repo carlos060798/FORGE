@@ -15,6 +15,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Flujo nativo de IA (2026-10-27)
+
+- **Seguridad.** El guardián (`pre-tool-guard`) bloquea escribir o editar la configuración de tipos, linter, seguridad y cobertura (`tsconfig*`, `biome`, `ruff`, `mypy`, `semgrep`, `codecov`…). Los hooks instalados llevan una copia autónoma de la lista (`shared/protegidos.js`).
+- **Nuevo.** `forge mantenimiento [--escribir] [--json]`: señales del registro de eventos (fallos repetidos, verificaciones fallidas seguidas, regresiones) y borradores de idea en `.sdd/mantenimiento/ideas/`. No despliega ni corrige.
+- **Nuevo.** `forge status` muestra indicadores del flujo (éxito al primer intento, reintentos y tiempo medio por tarea) y avisa de las señales de mantenimiento.
+- **Calidad.** `REVIEW.md`; job de CI `evidencia` (criterios y cadena de evidencia, sin Docker ni modelo); tabla de evals del guardián en `tests/evals/` dentro de `npm test`; workflow manual `evals-modelo-real.yml`. Ver `.sdd/especificaciones/2026-10-27-flujo-nativo-de-ia/`.
+
 ### Criterios sin prueba, `no_cambiar` y `fragua esquema` (2026-10-24)
 
 - **Nuevo.** `fragua verificar --criterios [--exigir-cobertura-de-criterios] [--json]`: matriz criterio de aceptación → pruebas, solo lectura y sin modelo. El agente de pruebas recibe los criterios de su tarea y la instrucción de citarlos. Ver `docs/puertas-de-calidad.md`.
@@ -27,6 +34,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - **No hecho.** `no_cambiar` con Docker real.
 - **Segunda tanda de revisiones (2026-10-25).** Seis revisiones más. Corregido: la matriz se acota a las `pruebas` que declara la tarea; la API HTTP acepta `no_cambiar` y `cubre_cas`; `__snapshots__`, `__fixtures__`, `testdata` y `.snap` son inmutables como las pruebas; `fragua mcp` rechaza argumentos desconocidos y acepta `--perfil=x`; un perfil MCP no se salta por enlaces; la mutación aborta si el proyecto planta un enlace; `precios:` del proyecto no puede contaminar `Object.prototype` ni fijar un precio casi cero; la clave de Anthropic no viaja a otro proveedor; la salida acotada no lleva secuencias de terminal; `verificar` por MCP avisa de que `salida` es dato no confiable.
 - **Control de salida (revisión nº 3).** `echo` ya no exime una línea que ejecuta algo; se detecta el host sin esquema tras `curl`/`wget`/`Invoke-WebRequest`; el userinfo con ``, `#` o `?` no esconde el host; las líneas enormes no bloquean el proceso; un `/*` dentro de una cadena multilínea no esconde código; un segundo bloque de clave privada se detecta; más formatos de secreto (PGP, Slack, PyPI, Docker…); el resumen de pruebas verdadero es el último, no el primero.
+- **Nuevo.** Los patrones prohibidos de un ADR aceptado (`.sdd/arquitectura`) se hacen cumplir en el motor con cualquier modelo (motivo `adr_prohibido`); antes solo los aplicaba el hook de Claude Code. Garantía G55.
 - **Pendiente** (hallazgos medios y bajos sin corregir): MCP (auditoría y cupos solo en `verificar`; rutas absolutas en mensajes; escritura de `.sdd/motor`); integraciones (la aprobación no muestra el contenido; rutas de CI sin excluir; pendientes sin caducidad); perfiles (coder sin `editar` en modo bloque; `perfiles:` con sangría se ignora en silencio); gasto (niveles de precio por encima de 100k tokens, llamada cancelada solo cuenta la entrada, sin reserva de peor caso, orquestador clásico sin tope duro, `*_BASE_URL` sin política); `verificar` sin modelo (enlaces en manifiestos, detección de «cero pruebas», `--comprobar-evidencia` con cadenas sin firma); control de salida (esquema-relativo `//host`, clientes de red de otros lenguajes, archivos ejecutables sin extensión, dependencias por repositorio, hosts no ASCII, IPv6 mapeado).
 
 ### Puertas de calidad declarables en `fragua verificar` (spec `2026-10-14-puertas-de-calidad-y-evidencia`, fase B1, 2026-10-17)
