@@ -38,6 +38,7 @@ export const MOTIVOS = {
   secreto: 'el contenido parece contener un secreto (clave, token o contraseña): no se escribe',
   destino_nuevo: 'el contenido apunta a un destino de red nuevo que el usuario no ha autorizado: requiere revisión humana',
   contenido_ilegible: 'el contenido no se pudo comprobar (binario o de más de 1 MB)',
+  adr_prohibido: 'el contenido usa un patrón que una decisión de arquitectura aceptada prohíbe',
   marcador_de_dato: 'el contenido lleva un marcador de dato («<<<forge-dato:…»), que no es parte de ningún archivo',
 };
 

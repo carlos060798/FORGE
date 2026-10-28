@@ -16,6 +16,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import { coincide } from '../glob.js';
 import { revisarContenido, MAX_CONTENIDO_BYTES } from './control-salida.js';
+import { cargarPatronesDeArquitectura, violacionDeArquitectura } from './adr-prohibidos.js';
 import { leerPoliticaDestinos } from './politica-destinos.js';
 import { esConfiguracionProtegida } from '../evidencia/protegidos.js';
 
@@ -310,6 +311,7 @@ export function aplicarArchivos(cwd, archivos, opciones) {
   const escritos   = [];
   const rechazados = [];
   const avisos     = [];
+  const patronesAdr = cargarPatronesDeArquitectura(cwd);
   const politica   = opciones.politicaDestinos !== undefined ? { destinos_permitidos: opciones.politicaDestinos } : leerPoliticaDestinos();
 
   for (const { ruta, contenido } of archivos) {
@@ -351,6 +353,9 @@ export function aplicarArchivos(cwd, archivos, opciones) {
       continue;
     }
     for (const a of revision.avisos) avisos.push({ ruta: v.rutaPosix, ...a });
+    // Decisiones de arquitectura aceptadas: lo que un ADR prohíbe no se reintroduce (mismo criterio que el hook de Claude Code)
+    const prohibido = violacionDeArquitectura(v.rutaPosix, contenido, patronesAdr);
+    if (prohibido !== null) { rechazados.push({ ruta, motivo: 'adr_prohibido', regla: prohibido }); continue; }
 
     try {
       opciones.antesDeEscribir?.(v.rutaPosix);

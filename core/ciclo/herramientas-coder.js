@@ -49,6 +49,7 @@ const MOTIVOS = {
   destino_nuevo: 'el contenido apunta a un destino de red nuevo que el usuario no ha autorizado',
   contenido_ilegible: 'el contenido no se pudo comprobar (es binario o supera 1 MB)',
   marcador_de_dato: 'el contenido lleva un marcador de dato («<<<forge-dato:…»), que no es parte de ningún archivo',
+  adr_prohibido: 'el contenido usa un patrón que una decisión de arquitectura aceptada (.sdd/arquitectura) prohíbe: usa la alternativa que el ADR indica',
   fuera_de_perfil: 'tu perfil de implementador no permite escribir en esa ruta',
 };
 
