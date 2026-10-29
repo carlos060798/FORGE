@@ -15,6 +15,8 @@ import { crearHerramientas } from './herramientas.js';
 import { crearHerramientaVerificar } from './herramientas-verificar.js';
 import { aplicarPerfil, resolverPerfil } from './perfiles.js';
 import { ServidorMcp } from './protocolo.js';
+import { directorioDeEstado } from '../estado-usuario.js';
+import { auditar, estadoInterruptor } from './limites.js';
 
 const INSTRUCCIONES = [
   'Herramientas de FORGE sobre un proyecto.',
@@ -85,6 +87,35 @@ async function crearRunnerDocker(cwd) {
 }
 
 /**
+ * Interruptor y auditoría para las herramientas del perfil `completo` (revisión M4): antes solo `verificar` los tenía.
+ * Si el usuario apaga el servidor (FRAGUA_MCP_CICLO o el archivo de apagado) ninguna herramienta ejecuta, y cada llamada
+ * deja una línea en la auditoría del usuario: herramienta, nombres de los argumentos (nunca sus valores), error o no.
+ * @param {import('./protocolo.js').Herramienta[]} herramientas
+ * @param {{ cwd: string, env?: Record<string, string|undefined> }} o
+ * @returns {import('./protocolo.js').Herramienta[]}
+ */
+export function conInterruptorYAuditoria(herramientas, o) {
+  const env = o.env ?? process.env;
+  /** @type {string|null} */
+  let dirEstado = null;
+  try { dirEstado = directorioDeEstado(o.cwd, env); } catch { dirEstado = null; }
+  return herramientas.map((h) => ({
+    ...h,
+    async ejecutar(args, senal) {
+      const t0 = Date.now();
+      const apagado = estadoInterruptor(env, dirEstado);
+      if (apagado.apagado) {
+        if (dirEstado) auditar(dirEstado, { herramienta: h.name, argumentos: Object.keys(args ?? {}), veredicto: 'apagado', duracionMs: 0 });
+        return { texto: `La herramienta está apagada: ${apagado.motivo}.`, error: true };
+      }
+      const r = await h.ejecutar(args, senal);
+      if (dirEstado) auditar(dirEstado, { herramienta: h.name, argumentos: Object.keys(args ?? {}), veredicto: r?.error ? 'error' : 'ok', duracionMs: Date.now() - t0 });
+      return r;
+    },
+  }));
+}
+
+/**
  * @param {{ cwd?: string, perfil?: string, env?: Record<string, string|undefined>, cli?: import('../sandbox/docker-cli.js').DockerCli,
  *   entrada?: import('stream').Readable, salida?: import('stream').Writable }} [opciones]
  * @returns {Promise<void>} se resuelve cuando el cliente cierra la conexión
@@ -97,7 +128,7 @@ export function iniciarServidor(opciones = {}) {
   const perfil = p.perfil;
   const herramientas = perfil === 'verificacion'
     ? [crearHerramientaVerificar({ cwd, env: opciones.env, cli: opciones.cli })]
-    : crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) });
+    : conInterruptorYAuditoria(crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) }), { cwd, env: opciones.env });
   const servidor = new ServidorMcp({
     nombre: 'forge',
     version: versionDelPaquete(),
