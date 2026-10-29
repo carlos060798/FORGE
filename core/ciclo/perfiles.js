@@ -189,7 +189,12 @@ function pedidoDeUsuario(rol) {
 export function leerPerfilesDeProyecto(cwd) {
   const ruta = join(cwd, '.sdd', 'sdd.config.yaml');
   if (!existsSync(ruta)) return {};
-  const seccion = leerSeccion(readFileSync(ruta, 'utf8').replace(/^﻿/, ''), 'perfiles');
+  const yaml = readFileSync(ruta, 'utf8').replace(/^﻿/, '');
+  // M2: una cabecera `perfiles:` con sangría no la lee este analizador; sin aviso, el proyecto parecería no pedir nada
+  if (!/^perfiless*:/m.test(yaml) && /^[ 	]+perfiless*:/m.test(yaml)) {
+    throw new ErrorPerfil('.sdd/sdd.config.yaml: la sección "perfiles:" tiene sangría y no se lee. Escríbela en la primera columna.');
+  }
+  const seccion = leerSeccion(yaml, 'perfiles');
   /** @type {Record<string, Record<string, string>>} */
   const porRol = {};
   for (const [clave, valor] of Object.entries(seccion)) {

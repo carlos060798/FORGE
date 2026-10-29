@@ -124,7 +124,8 @@ export async function generarArchivos(estado, deps, nodo, { agente, userPrompt, 
 
     const aplicado = aplicarArchivos(estado.cwd, bloque.archivos, {
       rol, pruebas, vetadas: deps.vetadas,
-      ...(perfil?.rutasEscribir.prefijos ? { rutasEscribir: perfil.rutasEscribir.prefijos } : {}),
+      // M1: un implementador cuyo perfil no incluye `editar` no escribe en modo bloque tampoco
+      ...(rol === 'coder' && perfil && !perfil.herramientas.includes('editar') ? { rutasEscribir: [] } : perfil?.rutasEscribir.prefijos ? { rutasEscribir: perfil.rutasEscribir.prefijos } : {}),
       antesDeEscribir: (ruta) => deps.respaldo.registrar(ruta),
     });
     for (const rechazo of aplicado.rechazados) {

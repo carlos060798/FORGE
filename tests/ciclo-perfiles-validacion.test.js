@@ -82,3 +82,19 @@ describe("F2.1 — errores del perfil del proyecto: nombran archivo y clave", ()
     assert.doesNotMatch(m, /sdd\.config\.yaml/);
   });
 });
+
+import * as fsM2 from 'node:fs';
+import * as osM2 from 'node:os';
+import * as pathM2 from 'node:path';
+import { leerPerfilesDeProyecto as leerPerfilesM2 } from '../core/ciclo/perfiles.js';
+
+test('M2: una cabecera «perfiles:» con sangría se rechaza en vez de ignorarse', () => {
+  const dir = fsM2.mkdtempSync(pathM2.join(osM2.tmpdir(), 'perf-'));
+  try {
+    fsM2.mkdirSync(pathM2.join(dir, '.sdd'));
+    fsM2.writeFileSync(pathM2.join(dir, '.sdd', 'sdd.config.yaml'), 'motor:\n  x: 1\n  perfiles:\n    coder_herramientas: leer_archivo\n');
+    assert.throws(() => leerPerfilesM2(dir), /sangría/);
+    fsM2.writeFileSync(pathM2.join(dir, '.sdd', 'sdd.config.yaml'), 'perfiles:\n  coder_herramientas: leer_archivo\n');
+    assert.deepEqual(leerPerfilesM2(dir), { coder: { herramientas: 'leer_archivo' } });
+  } finally { fsM2.rmSync(dir, { recursive: true, force: true }); }
+});
