@@ -309,8 +309,16 @@ describe("integración continua — ci.yml", () => {
     }
   });
 
-  test("hay exactamente los jobs test, tipos, aislamiento y pruebas-docker", () => {
-    assert.deepEqual(jobs.map((j) => j.id).sort(), ["aislamiento", "pruebas-docker", "test", "tipos"]);
+  test("hay exactamente los jobs test, tipos, evidencia, aislamiento y pruebas-docker", () => {
+    assert.deepEqual(jobs.map((j) => j.id).sort(), ["aislamiento", "evidencia", "pruebas-docker", "test", "tipos"]);
+  });
+
+  test("evidencia: criterios y cadena de evidencia, sin Docker ni modelo", () => {
+    const j = porId("evidencia");
+    assert.match(j.texto, /verificar --criterios --exigir-cobertura-de-criterios/);
+    assert.match(j.texto, /verificar --comprobar-evidencia/);
+    assert.doesNotMatch(j.texto, /FORGE_TEST_DOCKER: "1"/);
+    assert.doesNotMatch(j.texto, /ANTHROPIC_API_KEY/);
   });
 
   test("test: la suite completa en la matriz de Node 20 y 22, sin Docker real", () => {

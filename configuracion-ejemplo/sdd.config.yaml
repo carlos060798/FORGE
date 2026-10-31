@@ -145,7 +145,7 @@ agentes:
 
   revisor:
     activo: true
-    modelo: opus          # HIGH — Recomendado: opus (revisión profunda atrapa más bugs; crítico para EvaluatorOptimizer)
+    modelo: opus          # HIGH — Recomendado: opus (revisión profunda atrapa más bugs)
     descripcion: "Revisa código contra spec, calidad y constitución."
 
   critico:

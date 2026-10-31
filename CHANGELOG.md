@@ -7,6 +7,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ## [5.0.0] — Sin publicar
 
+> **Suite en Linux (2026-10-31):** la suite completa se ejecutó en `node:22-alpine` y `node:24-alpine` (con git): 4043 pasan, 0 fallan. En Node 22 se cancelaban 51 pruebas de `proveedores-conformidad` porque el cliente falso de Anthropic esperaba solo un `AbortSignal.timeout`, que no mantiene vivo el proceso; corregido en el doble de prueba, sin cambios en el código de producción. Sin git la imagen Alpine falla 6 pruebas de `verificar --desde`: es un requisito del entorno, no un defecto.
+
 > **Endurecimientos menores (2026-10-17):** (H-4) el entorno del usuario (`OPENAI_BASE_URL`, `OLLAMA_BASE_URL`) manda sobre el `llm.base_url` del proyecto y un loopback fijado por el proyecto ya no recibe la clave de un proveedor remoto salvo que lo nombres en `FRAGUA_LLM_HOSTS`; (H-5) la carpeta de estado existente debe ser tuya y sin permisos de grupo/otros en POSIX (en Windows solo se comprueba que no sea enlace o unión); la API local limita `presupuestoExtra` a 5 USD por llamada y 20 USD por sesión (`FRAGUA_API_PRESUPUESTO_EXTRA_MAX` / `_TOTAL`); `fragua doctor` y la ayuda dicen Fragua y `doctor` muestra el perfil MCP y sus límites.
 
 > **Seguridad (2026-10-17):** el archivo de configuración de un proyecto ya no puede subir el tope de gasto, bajar los precios ni pedir recursos del contenedor por encima de un techo; el tope ampliado va firmado con la clave local del usuario. Si tenías estos valores en el archivo de tu proyecto, define las variables `FRAGUA_BUDGET_USD`, `FRAGUA_PRECIOS_CERO` o `FRAGUA_SANDBOX_*` en tu entorno. Ver `docs/PROBLEMAS-CONOCIDOS.md`.

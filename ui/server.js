@@ -17,6 +17,7 @@
  *
  * Seguridad:
  *   - Solo escucha en 127.0.0.1 (loopback)
+ *   - Valida la cabecera Host y rechaza peticiones con otro Origin; no abre CORS
  *   - Valida path traversal en rutas estáticas
  *   - Se cierra automáticamente tras 30 minutos sin peticiones
  */
@@ -103,7 +104,6 @@ function json(res, data, status = 200) {
   res.writeHead(status, {
     "Content-Type":  "application/json; charset=utf-8",
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
   });
   res.end(body);
 }
@@ -125,7 +125,23 @@ function staticFile(res, filePath) {
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
+// Hosts con los que se atiende (se fijan al conocer el puerto). Vacío = nadie: más vale cerrar que abrir.
+let hostsPermitidos = new Set();
+
 function handleRequest(req, res) {
+  // Una página ajena puede apuntar su dominio a 127.0.0.1 (reasignación de DNS) o pedir con fetch:
+  // se atiende solo a quien se dirige a nosotros por loopback y no viene de otro origen.
+  const host = String(req.headers.host ?? "").toLowerCase();
+  if (!hostsPermitidos.has(host)) {
+    json(res, { error: "Host no permitido" }, 403);
+    return;
+  }
+  const origen = req.headers.origin;
+  if (origen !== undefined && origen !== `http://${host}`) {
+    json(res, { error: "Origen no permitido" }, 403);
+    return;
+  }
+
   const url = new URL(req.url ?? "/", "http://localhost");
   const path = url.pathname;
 
@@ -233,7 +249,6 @@ function handleRequest(req, res) {
       "Content-Type":  "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache",
       "Connection":    "keep-alive",
-      "Access-Control-Allow-Origin": "*",
     });
     // Enviar estado inicial inmediatamente
     const estadoActual = readJson(join(SDD_DIR, "estado.json"));
@@ -293,6 +308,7 @@ export function startServer(port = 3001) {
   server.listen(port, "127.0.0.1", () => {
     const addr = server.address();
     const p = typeof addr === "object" ? addr?.port : port;
+    hostsPermitidos = new Set([`127.0.0.1:${p}`, `localhost:${p}`]);
     process.stdout.write(`[forge ui] Dashboard en http://localhost:${p}\n`);
     process.stdout.write(`[forge ui] SSE activo en http://localhost:${p}/events\n`);
     resetIdle(server);

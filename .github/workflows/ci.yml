@@ -30,7 +30,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run tests (suite completa, sin Docker real)
         run: npm test
@@ -54,10 +54,46 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Comprobación de tipos
         run: npm run typecheck
+
+  # Comprobaciones de solo lectura de la spec activa y de la cadena de evidencia: sin modelo, sin Docker, sin red.
+  # El informe JSON queda como artefacto para quien revise el PR (REVIEW.md, pasada 3).
+  evidencia:
+    name: Criterios y evidencia (sin modelo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Criterios de aceptación con prueba citada
+        run: |
+          mkdir -p informes
+          node cli/index.js verificar --criterios --json > informes/criterios.json
+          node cli/index.js verificar --criterios --exigir-cobertura-de-criterios
+
+      - name: Cadena de evidencia
+        run: node cli/index.js verificar --comprobar-evidencia --json > informes/evidencia.json
+
+      - name: Subir informes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-evidencia
+          path: informes/
 
   aislamiento:
     name: Aislamiento con Docker real
@@ -75,7 +111,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Suite de aislamiento
         run: node --test tests/sandbox-real.test.js
@@ -104,7 +140,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Versión de Docker
         run: docker version

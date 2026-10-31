@@ -54,6 +54,6 @@
 
 ## F8 — Cierre
 
-- [ ] **F8.1** Suite completa en Windows y en el contenedor Linux; tipos en 0. Cubre CA-002-06.
+- [x] **F8.1** Suite completa en Windows y en el contenedor Linux; tipos en 0. Cubre CA-002-06. **Hecho 2026-10-31**: tipos en 0; Windows (Node 24.20) 4035 pasan, 0 fallan, 31 omitidas; Linux en `node:22-alpine` y `node:24-alpine` (con git) 4043 pasan, 0 fallan, 0 canceladas. En Node 22 fallaba el doble `cliente-anthropic-falso.js` (51 canceladas); corregido.
 - [ ] **F8.2** Revisión independiente (ver `plan.md`, sección 9); hallazgos altos corregidos.
 - [ ] **F8.3** `verificacion.md` con cada criterio y su prueba.

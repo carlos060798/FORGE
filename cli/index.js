@@ -23,7 +23,7 @@ import {
 import { join, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { generarAgentsMd } from "../core/agents-md.js";
 import { leerVariable } from "../core/entorno.js";
 import { ordenInvocada, debeAvisarOrdenAntigua, PRODUCTO } from "../core/nombres.js";
@@ -292,6 +292,8 @@ function copiarNucleo(claudeDir, inst = null) {
       copiarSeguro(join(hooksSrc, entry.name), join(hooksDest, entry.name));
     }
   }
+  // shared/protegidos.js reexporta core/, que no existe en el proyecto: se sustituye por la fuente (sin dependencias)
+  copiarSeguro(join(PLUGIN_DIR, "core", "evidencia", "protegidos.js"), join(hooksDest, "shared", "protegidos.js"));
   info(`Hooks instalados (${hooksDest})`);
 }
 
@@ -1380,7 +1382,8 @@ async function cmdDoctor() {
           info(`  Ejecuta: npx forge init  para reinstalar los hooks`);
         } else {
           try {
-            execSync(`node --check "${hookPath}"`, { stdio: "pipe" });
+            // Sin shell: una ruta con comillas o metacaracteres no puede inyectar comandos
+            execFileSync(process.execPath, ["--check", hookPath], { stdio: "pipe" });
             info(`Hook válido: .claude/hooks/${hookFile} ✓`);
           } catch {
             problemas++;
@@ -1999,6 +2002,9 @@ Uso:
   npx forge probar-modelo [--tope USD] [--conservar]
                                      Prueba mínima del ciclo con un modelo real (necesita ANTHROPIC_API_KEY); gasta
                                      como máximo el tope (0,50 USD por defecto) y resume formato, iteraciones y coste
+  npx forge mantenimiento [--escribir] [--json]
+                                     Señales del registro de eventos (fallos repetidos, regresiones); con --escribir
+                                     deja un borrador de idea por señal en .sdd/mantenimiento/ideas/. Sale 1 si hay señales
   npx forge api [--port N] [--cwd <ruta>]
                                      API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
                                      estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
@@ -2153,6 +2159,22 @@ async function main() {
       process.stderr.write(`FORGE API en ${url}. Envía el token en la cabecera "Authorization: Bearer ...". Ctrl+C para parar.\n`);
       await new Promise((resolver) => { process.on("SIGINT", resolver); process.on("SIGTERM", resolver); });
       await api.cerrar();
+      break;
+    }
+    case "mantenimiento": {
+      // Señales objetivas del registro de eventos -> borradores de idea (core/mantenimiento.js). No despliega ni corrige.
+      const { detectarSenales, leerEventosDe, escribirBorradores } = await import("../core/mantenimiento.js");
+      const senales = detectarSenales(leerEventosDe(process.cwd()));
+      const creados = args.includes("--escribir") ? escribirBorradores(process.cwd(), senales, new Date().toISOString()) : [];
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ senales, borradores: creados }, null, 2));
+      } else if (senales.length === 0) {
+        console.log("Sin señales de mantenimiento.");
+      } else {
+        for (const s of senales) console.log(`- ${s.tipo}: ${s.detalle}`);
+        console.log(creados.length > 0 ? `Borradores creados:\n${creados.map((c) => `  ${c}`).join("\n")}` : "Usa --escribir para dejar un borrador por señal en .sdd/mantenimiento/ideas/.");
+      }
+      process.exitCode = senales.length > 0 ? 1 : 0;
       break;
     }
     case "probar-modelo": {

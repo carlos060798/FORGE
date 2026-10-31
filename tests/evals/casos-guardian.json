@@ -1,0 +1,392 @@
+[
+  {
+    "id": "rm-raiz",
+    "descripcion": "borrar la raíz",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf /"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-home",
+    "descripcion": "borrar el home",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf ~"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-padre",
+    "descripcion": "borrar el directorio padre",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf ../"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-etc",
+    "descripcion": "borrar /etc",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf /etc/nginx"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-force",
+    "descripcion": "push --force",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push origin main --force"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-f",
+    "descripcion": "push -f",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push -f"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-borrar-rama",
+    "descripcion": "borrar rama remota",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push origin :rama"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "reset-hard",
+    "descripcion": "reset --hard",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git reset --hard HEAD~3"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "clean-fd",
+    "descripcion": "git clean -fd",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git clean -fdx"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "drop-database",
+    "descripcion": "DROP DATABASE",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "psql -c \"DROP DATABASE prod\""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "chmod-777",
+    "descripcion": "chmod 777",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "chmod -R 777 ."
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "env-echo",
+    "descripcion": "escribir .env con echo",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo KEY=1 > .env"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "env-cp",
+    "descripcion": "copiar sobre .env",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cp malo .env"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "env-ejemplo",
+    "descripcion": ".env.example sí se puede escribir",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo KEY= > .env.example"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "env-leer",
+    "descripcion": "leer .env está permitido",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cat .env"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "npm-test",
+    "descripcion": "npm test",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "npm test"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "git-status",
+    "descripcion": "git status",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git status"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "force-with-lease",
+    "descripcion": "push --force-with-lease no es --force",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push --force-with-lease origin feat"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "rm-archivo",
+    "descripcion": "borrar un archivo concreto del proyecto",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm tmp/salida.log"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "secreto-openai",
+    "descripcion": "clave tipo OpenAI en un archivo",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.js",
+        "content": "const k = \"sk-abcdefghijklmnopqrstuvwxyz123456\";"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "secreto-aws",
+    "descripcion": "clave AWS en un archivo",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.js",
+        "content": "AKIAABCDEFGHIJKLMNOP"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "secreto-privada",
+    "descripcion": "clave privada en un archivo",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.js",
+        "content": "-----BEGIN RSA PRIVATE KEY-----"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "sin-secreto",
+    "descripcion": "código normal",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.js",
+        "content": "export const suma = (a, b) => a + b;"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "cfg-tsconfig",
+    "descripcion": "aflojar tsconfig",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "tsconfig.json",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-tsconfig-anidado",
+    "descripcion": "tsconfig en subcarpeta",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "packages/app/tsconfig.build.json",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-biome",
+    "descripcion": "aflojar biome",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "biome.json",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-ruff",
+    "descripcion": "aflojar ruff",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "ruff.toml",
+        "content": ""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-mypy-mayusculas",
+    "descripcion": "mypy.ini con mayúsculas y barra invertida",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src\\MyPy.INI",
+        "content": ""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-semgrep",
+    "descripcion": "aflojar semgrep",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "semgrep.yml",
+        "content": ""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-codecov",
+    "descripcion": "aflojar codecov",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "codecov.yml",
+        "content": ""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-edit",
+    "descripcion": "Edit sobre tsconfig",
+    "evento": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "tsconfig.json",
+        "old_string": "a",
+        "new_string": "b"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "cfg-notas-ok",
+    "descripcion": "un .md que nombra tsconfig no es la configuración",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/tsconfig-notas.md",
+        "content": "texto"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "cfg-codigo-ok",
+    "descripcion": "código normal",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/index.js",
+        "content": "export {};"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "cfg-spec-ok",
+    "descripcion": "los artefactos .sdd se escriben",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".sdd/especificaciones/x/spec.md",
+        "content": "# spec"
+      }
+    },
+    "espera": "permite"
+  }
+]

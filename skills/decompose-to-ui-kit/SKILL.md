@@ -31,7 +31,7 @@ Input (imagen / descripción)
         ↓
   components-kit.md + tokens.css
         ↓
-  [EvaluatorOptimizer] — Verificación RV-01 a RV-12
+  [Revisión manual] — Lista RV-01 a RV-12
 ```
 
 ## Paso 1 — Análisis visual (product-designer)
@@ -126,7 +126,7 @@ Variables CSS generadas desde DESIGN.md:
 
 ## Verificación de paridad visual
 
-Al finalizar el kit, el `EvaluatorOptimizer` ejecuta la rubric de 12 checks (`RUBRIC_VISUAL` de `core/evaluator-optimizer.ts`) sobre una muestra de los componentes generados. Score mínimo para aprobación: **8.0/10**.
+Al finalizar el kit, el agente que revisa recorre a mano una lista de 12 checks (RV-01 a RV-12) sobre una muestra de los componentes generados. Score mínimo para aprobación: **8.0/10** (checks aprobados ÷ 12 × 10). Ningún código del motor calcula esta nota: la lista era un módulo (`core/evaluator-optimizer.js`) que nada ejecutaba y se eliminó.
 
 ## Activación
 

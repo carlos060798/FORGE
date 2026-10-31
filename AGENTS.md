@@ -14,6 +14,7 @@ npm test
 ```
 
 - Usa el ejecutor nativo de Node (`node:test`). No hay que compilar nada antes.
+- `npm run test:rapido` salta los archivos lentos (los de `tests/lentos.txt`) y `npm run test:lento` ejecuta solo esos. `npm test` sigue ejecutándolos todos y es lo que corre la CI; usa la rápida mientras trabajas y la completa antes de entregar.
 - Las pruebas que necesitan Docker se saltan solas. Para ejecutarlas, con Docker en marcha: `FORGE_TEST_DOCKER=1 npm test` (o un archivo concreto: `FORGE_TEST_DOCKER=1 node --test tests/sandbox-real.test.js`).
 - Un archivo suelto: `node --test tests/<módulo>.test.js`.
 - Tipos (opcional): `npm run typecheck`, que comprueba `core/**/*.js` sobre JSDoc.

@@ -1,0 +1,36 @@
+# Archivos de prueba lentos (>= 30 s medidos con 3 en paralelo, Windows 11, Node 24, 2026-10-29).
+# 'npm run test:rapido' los salta y 'npm run test:lento' solo los ejecuta; 'npm test' ejecuta todos.
+# Para volver a medir: node --test <archivo> y mirar 'duration_ms'. Un archivo por línea; '#' comenta.
+tests/agent-memory.test.js
+tests/agents-md.test.js
+tests/ciclo-hallazgos.test.js
+tests/ciclo-motor.test.js
+tests/ciclo-mutacion.test.js
+tests/ciclo-rojo-obligatorio.test.js
+tests/ciclo-sin-progreso.test.js
+tests/ciclo-tercera-pasada.test.js
+tests/ciclo-turnos.test.js
+tests/cli-config.test.js
+tests/concurrencia.test.js
+tests/contrato-publico.test.js
+tests/corte-real.test.js
+tests/doctor-banner-mcp.test.js
+tests/doctor-instalacion.test.js
+tests/doctor-mcp-perfil.test.js
+tests/e2e/ciclo-flow.test.js
+tests/escritura-global.test.js
+tests/evals/guardian.test.js
+tests/evidencia-cadena.test.js
+tests/hook-instalado.test.js
+tests/instalacion-equivalencia.test.js
+tests/instalacion-integraciones.test.js
+tests/instalacion-skills-comandos.test.js
+tests/integraciones-aislamiento.test.js
+tests/integraciones-extremo-a-extremo.test.js
+tests/mutacion-cobertura.test.js
+tests/mutacion-lineas-cambiadas.test.js
+tests/proyecto-hostil.test.js
+tests/puertas-ciclo-completo.test.js
+tests/puertas-verificar.test.js
+tests/puesta-al-dia-revision.test.js
+tests/verificar-mutacion.test.js

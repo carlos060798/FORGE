@@ -1108,6 +1108,9 @@ describe("forge status muestra la puntuación de cada tarea medida", () => {
     await e.ciclo().ejecutar(TAREA);
     const lineas = lineasEstadoCiclo(e.cwd);
     assert.ok(lineas.some((l) => /T1: iteración 1\/5 · exito · mutación: 1\/6 detectadas \(17 %\)/.test(l)), lineas.join("\n"));
+    // CA-006-03 (spec 2026-10-27-flujo-nativo-de-ia): los indicadores del flujo salen bajo el ciclo; éxito en la primera pasada = iteración 1
+    assert.ok(lineas.some((l) => /éxito al primer intento: 1 de 1 \(100 %\)/.test(l)), lineas.join("\n"));
+    assert.ok(lineas.some((l) => /tiempo medio por tarea: /.test(l)), lineas.join("\n"));
 
     const p = entorno({ tester: [pruebas("MEDIA"), pruebas("MEDIA 2")], motor: { mutacion: "exigir" } });
     sesion(p.cwd);

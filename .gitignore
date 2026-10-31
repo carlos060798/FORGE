@@ -1,13 +1,8 @@
-# Dependencias — nunca se versionan
+# Dependencias — node_modules no se versiona; package-lock.json sí (la CI instala con `npm ci`)
 node_modules/
-package-lock.json
 
 # Artefactos de compilación TypeScript — generados por `npm run build`
 dist/
-
-# MCP — dependencias y compilado (no se versionan)
-sdd-lite/mcp-figma/node_modules/
-sdd-lite/mcp-figma/dist/
 
 # Estado local del proyecto (generado en cada repo donde se instala SDD-ES).
 # Se versionan solo los artefactos SDD del propio FORGE (ver ADR-10);
@@ -22,6 +17,9 @@ sdd-lite/mcp-figma/dist/
 .sdd/memoria/*
 !.sdd/memoria/constitucion.md
 .sdd/arquitectura/*.jsonl
+
+# Copias de trabajo de las sesiones de agentes: no se versionan
+.claude/worktrees/
 
 # Variables de entorno
 .env

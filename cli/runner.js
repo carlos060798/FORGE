@@ -165,6 +165,16 @@ async function cmdStatus(cwd) {
     ciclo.forEach((l) => console.log(l));
   }
 
+  // Señales de mantenimiento (solo lectura; callado si no hay o el registro no se puede leer)
+  try {
+    const { lineasMantenimiento } = await import('../core/mantenimiento.js');
+    const mant = lineasMantenimiento(cwd);
+    if (mant.length > 0) {
+      console.log('');
+      mant.forEach((l) => console.log(l));
+    }
+  } catch { /* sin aviso */ }
+
   // Criterios de aceptación de la spec activa sin tarea o sin prueba citada (solo lectura; callado si no hay criterios)
   try {
     const { matrizDelProyecto } = await import('../core/evidencia/criterios.js');

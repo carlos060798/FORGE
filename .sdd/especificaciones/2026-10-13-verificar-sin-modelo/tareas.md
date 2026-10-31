@@ -40,7 +40,7 @@
 - [x] **F5.1** Prueba de proyecto hostil: uniones hacia fuera, script de pruebas malicioso, salida con secretos. (parcial: enlace hacia fuera y comando con órdenes embebidas, con el Docker falso; el script de pruebas malicioso necesita Docker real, F5.2)
 - [ ] **F5.2** Con Docker real, los cinco proyectos de `scripts/pruebas-independientes.mjs`, sin clave de API.
 - [ ] **F5.3** Documentación: guía, `README.md`, `CHANGELOG.md`, `forge --help`.
-- [ ] **F5.4** Suite completa en Windows y en el contenedor Linux; tipos en 0.
+- [x] **F5.4** Suite completa en Windows y en el contenedor Linux; tipos en 0. **Hecho 2026-10-31**: tipos en 0; Windows (Node 24.20) 4035 pasan, 0 fallan, 31 omitidas; Linux en `node:22-alpine` y `node:24-alpine` (con git) 4043 pasan, 0 fallan, 0 canceladas. En Node 22 fallaba el doble `cliente-anthropic-falso.js` (51 canceladas); corregido.
 - [ ] **F5.5** Revisión independiente con la guía OWASP de agentes; hallazgos altos corregidos.
 - [ ] **F5.6** `verificacion.md` con cada criterio y su prueba.
 

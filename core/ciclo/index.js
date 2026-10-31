@@ -20,6 +20,8 @@ import { elegirMotor } from './motores/index.js';
 import { costoDe, estadoDe, MAX_TOKENS_ESTIMADOS, sinPrecioConocido } from './presupuesto.js';
 import { esRecuentoValido, esSinCosto } from '../session-budget.js';
 import { Respaldo } from './respaldo.js';
+import { calcularMetricas, lineasMetricas } from './metricas.js';
+import { leerEventosDe } from '../mantenimiento.js';
 
 const ARCHIVO_SESION = 'sesion.json';
 const ID_VALIDO = /^\w[\w.-]*$/;
@@ -191,6 +193,10 @@ export function lineasEstadoCiclo(cwd) {
       : '';
     lineas.push(`  ${t.taskId}: iteración ${t.iteracion}/${t.maxIteraciones} · ${situacion}${turnos}${textoMutacion(t.mutacion)}`);
   }
+  // Indicadores del flujo (spec 2026-10-27-flujo-nativo-de-ia): un registro ilegible no debe romper `status`
+  let eventos = [];
+  try { eventos = leerEventosDe(cwd); } catch { /* sin tiempos medidos */ }
+  lineas.push(...lineasMetricas(calcularMetricas({ tareas, eventos, gasto })));
   return lineas;
 }
 

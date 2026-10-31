@@ -22,7 +22,15 @@ export function clienteAnthropicFalso(escenarios) {
         const { signal } = opciones;
         if (signal?.aborted) throw Object.assign(new Error('abortada'), { name: 'AbortError' });
         if (spec.colgar) {
-          await new Promise((_, rechazar) => signal?.addEventListener('abort', () => rechazar(Object.assign(new Error('abortada'), { name: 'AbortError' }))));
+          // El temporizador de `AbortSignal.timeout` no mantiene vivo el proceso: en Node 22 el bucle
+          // de eventos salía y la prueba se cancelaba. Este temporizador lo mantiene hasta abortar.
+          await new Promise((_, rechazar) => {
+            const vivo = setInterval(() => {}, 1000);
+            signal?.addEventListener('abort', () => {
+              clearInterval(vivo);
+              rechazar(Object.assign(new Error('abortada'), { name: 'AbortError' }));
+            });
+          });
         }
         if (spec.http) throw Object.assign(new Error(`Anthropic error ${spec.http}: ${spec.mensaje ?? 'fallo del servidor'}`), { status: spec.http });
         const t = spec.tokens ?? { prompt: 12, completion: 5 };

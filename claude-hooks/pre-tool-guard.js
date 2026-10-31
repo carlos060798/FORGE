@@ -15,7 +15,8 @@
 
 import { createInterface } from "node:readline";
 import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, relative } from "node:path";
+import { clasificarConfiguracionProtegida } from "./shared/protegidos.js";
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
 import { leerForgeConfig, leerNivelEjecucion, dlqAppend } from "./shared/config.js";
@@ -225,6 +226,21 @@ function main(raw) {
     // Los artefactos de .sdd/ pueden nombrar los términos que prohíben sin bloquearse a sí mismos
     const destino = String(toolInput?.file_path ?? toolInput?.path ?? '').replace(/\\/g, '/');
     const esArtefactoSdd = /(^|\/)\.sdd\//.test(destino);
+
+    // 0ab. Configuración de calidad protegida (tipos, linter, seguridad, cobertura):
+    // un agente no la reescribe para aflojar la puerta que lo juzga (core/evidencia/protegidos.js)
+    if (destino !== '') {
+      const relativo = relative(process.cwd(), resolve(process.cwd(), destino)).replace(/\\/g, '/');
+      const { protegida, herramienta } = clasificarConfiguracionProtegida(relativo);
+      if (protegida) {
+        bloquear(
+          `FORGE detuvo esta acción: "${relativo}" es configuración protegida (${herramienta}). ` +
+          `Un agente no la modifica; pídele el cambio al dueño del proyecto.`,
+          { tool: toolName, input: { file_path: relativo }, hook: "pre-tool-guard" }
+        );
+      }
+    }
+
     const patronesArquitectura = esArtefactoSdd ? [] : cargarPatronesDeArquitectura(process.cwd());
     if (adrs.length > 0 || patronesArquitectura.length > 0) {
       const patrones = [...new Set([...extraerPatronesProhibidos(adrs), ...patronesArquitectura])];

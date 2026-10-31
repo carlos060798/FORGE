@@ -1,7 +1,7 @@
 # DESIGN.md — Sistema de Diseño del Proyecto
 
 > Generado por el agente `product-designer` de FORGE.  
-> Este archivo es la fuente de verdad visual del proyecto. El agente `desarrollador-frontend` y el `EvaluatorOptimizer` (checks RV-01, RV-12) lo consultan para evaluar paridad visual.
+> Este archivo es la fuente de verdad visual del proyecto. El agente `desarrollador-frontend` y quien revise la paridad visual (lista RV-01 a RV-12 de la skill `decompose-to-ui-kit`) lo consultan.
 
 ---
 

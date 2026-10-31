@@ -1,5 +1,6 @@
 // @ts-check
 /**
+ * Spec 2026-10-27-flujo-nativo-de-ia: CA-002-01, CA-002-02
  * Tests para pre-tool-guard.js — Hook PreToolUse
  *
  * Verifica:
@@ -331,5 +332,56 @@ describe("pre-tool-guard — Edit sobre archivo inexistente", () => {
   test("Write sobre archivo inexistente → exit 0 (Write crea archivos nuevos)", () => {
     const r = runHook(writeEvent("/ruta/que/no/existe/nuevo.ts", "export const x = 1;"));
     assert.equal(r.exitCode, 0, "Write sobre inexistente debe permitirse");
+  });
+});
+
+// ── Configuración de calidad protegida (Write/Edit) ──────────────────────────
+
+describe("pre-tool-guard — configuración de calidad protegida", () => {
+  const protegidas = [
+    "tsconfig.json",
+    "src/tsconfig.build.json",
+    "SRC\\TSConfig.JSON",
+    "biome.json",
+    "ruff.toml",
+    "mypy.ini",
+    "semgrep.yml",
+    "codecov.yml",
+  ];
+  const permitidas = [
+    "src/index.js",
+    "tests/pre-tool-guard.test.js",
+    "docs/tsconfig-notas.md",
+    ".sdd/especificaciones/x/spec.md",
+  ];
+
+  for (const ruta of protegidas) {
+    test(`bloquea escribir ${ruta}`, () => {
+      const r = runHook(writeEvent(ruta, "{}"));
+      assert.equal(r.exitCode, 2);
+      assert.match(r.stderr, /protegid/i);
+    });
+  }
+
+  for (const ruta of permitidas) {
+    test(`permite escribir ${ruta}`, () => {
+      const r = runHook(writeEvent(ruta, "texto"));
+      assert.equal(r.exitCode, 0);
+    });
+  }
+
+  test("bloquea también con ruta absoluta dentro del proyecto", () => {
+    const r = runHook(writeEvent(join(process.cwd(), "tsconfig.json"), "{}"));
+    assert.equal(r.exitCode, 2);
+  });
+
+  test("bloquea Edit sobre configuración protegida", () => {
+    const r = runHook({ tool_name: "Edit", tool_input: { file_path: "tsconfig.json", new_string: "x", old_string: "y" } });
+    assert.equal(r.exitCode, 2);
+  });
+
+  test("Write sin ruta no se bloquea como protegido", () => {
+    const r = runHook({ tool_name: "Write", tool_input: { content: "x" } });
+    assert.doesNotMatch(r.stderr, /protegid/i);
   });
 });

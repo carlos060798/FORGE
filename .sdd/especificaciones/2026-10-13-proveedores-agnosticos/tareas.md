@@ -54,7 +54,7 @@
 ## F7 — Cierre
 
 - [ ] **F7.1** Documentación: guía, `configuration.md`, `CHANGELOG.md`.
-- [ ] **F7.2** Suite completa en Windows y en el contenedor Linux; tipos en 0.
+- [x] **F7.2** Suite completa en Windows y en el contenedor Linux; tipos en 0. **Hecho 2026-10-31**: tipos en 0; Windows (Node 24.20) 4035 pasan, 0 fallan, 31 omitidas; Linux en `node:22-alpine` y `node:24-alpine` (con git) 4043 pasan, 0 fallan, 0 canceladas. En Node 22 fallaba el doble `cliente-anthropic-falso.js` (51 canceladas); corregido.
 - [ ] **F7.3** Revisión independiente de gasto y credenciales; hallazgos altos corregidos.
 - [ ] **F7.4** `verificacion.md` con cada criterio y su prueba.
 

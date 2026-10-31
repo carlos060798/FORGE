@@ -500,7 +500,6 @@ utils/
           <tr><td><code>core/project-memory.js</code></td><td>Core JS</td><td>Memoria de proyecto compartida entre agentes</td><td>✅ Core</td></tr>
           <tr><td><code>core/checkpoint.js</code></td><td>Core JS</td><td>Snapshots atómicos del estado — permite forge resume</td><td>✅ Core</td></tr>
           <tr><td><code>core/agent-registry.js</code></td><td>Core JS</td><td>Registro de agentes disponibles, sus modelos y permisos</td><td>✅ Core</td></tr>
-          <tr><td><code>core/evaluator-optimizer.js</code></td><td>Core JS</td><td>Evalúa calidad del output de agentes y propone optimizaciones</td><td>🔵 Beta</td></tr>
           <tr><td><code>model-registry.js</code></td><td>Librería hook</td><td>Resolución de provider/modelo (observabilidad, no routing)</td><td>🧪 Experimental</td></tr>
           <tr><td><code>cli/index.js</code></td><td>CLI</td><td>forge init/update/doctor/logs/ui/config</td><td>✅ Core</td></tr>
           <tr><td><code>ui/server.js</code></td><td>Dashboard</td><td>HTTP loopback, SSE /events, 6 endpoints read-only</td><td>🔵 Beta</td></tr>
