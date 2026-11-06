@@ -82,7 +82,7 @@
     "acorn": "^8.17.0"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.6.6",
     "typescript": "^6.0.3"
   }
 }
