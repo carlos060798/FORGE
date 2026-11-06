@@ -220,7 +220,9 @@ describe('R1 el repositorio hostil no elige variable ni host', () => {
 
 // ════════════════════════════════════════════════════════════════════════════════════════════
 describe('R2 denegación de servicio por CPU', () => {
-  const LIMITE_MS = 500;
+  // 2 s: una expresión de verdad cuadrática o exponencial con 256 KiB tarda minutos, así que este tope sigue
+  // detectándola. Con 500 ms la prueba fallaba por ruido (529 ms en un contenedor Linux con otro contenedor corriendo).
+  const LIMITE_MS = 2000;
   const MIB = 1024 * 1024;
   /** @param {() => void} fn */
   const tiempo = (fn) => { const t0 = performance.now(); fn(); return performance.now() - t0; };
