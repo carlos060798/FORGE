@@ -182,7 +182,7 @@ describe("N-05 — un corte entre escribir y reemplazar no pierde el archivo", (
   test("si el destino es un enlace, no se crea ni el temporal", (t) => {
     const raiz = temporal(), fuera = temporal();
     const dir = join(raiz, "d");
-    if (!union(fuera, dir)) return t.skip("sin uniones");
+    if (!union(fuera, dir)) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
     assert.throws(() => escribirArchivo(raiz, join(dir, "x.txt"), "x"), ErrorEnlace);
     assert.deepEqual(readdirSync(fuera), []);
   });
@@ -209,7 +209,7 @@ describe("N-07 — init no lee a través de enlaces", () => {
     const home = temporal("forge-home-"), cwd = proyecto(), fuera = temporal("forge-fuera-");
     escribir(join(fuera, "constitucion.md"), "# Constitución\n\n## Principios\n\n- PRIVADO-DE-FUERA\n");
     mkdirSync(join(cwd, ".sdd"), { recursive: true });
-    if (!union(fuera, join(cwd, ".sdd", "memoria"))) return t.skip("sin uniones");
+    if (!union(fuera, join(cwd, ".sdd", "memoria"))) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
     const r = forge(cwd, home, "init");
     assert.ok(!/PRIVADO-DE-FUERA/.test(readFileSync(join(cwd, "AGENTS.md"), "utf8")), "el contenido ajeno no está en AGENTS.md");
     assert.match(r.salida, /No se lee|enlace|unión/i);
@@ -228,7 +228,7 @@ describe("N-08 — el proyecto abierto a través de una unión se inicializa ent
   test("CLAUDE.md, AGENTS.md y .claudeignore se crean en el proyecto real", (t) => {
     const home = temporal("forge-home-"), real = proyecto(), base = temporal("forge-via-");
     const via = join(base, "via");
-    if (!union(real, via)) return t.skip("sin uniones");
+    if (!union(real, via)) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
     const r = forge(via, home, "init");
     assert.equal(r.status, 0, r.salida);
     for (const f of ["CLAUDE.md", "AGENTS.md", ".claudeignore", join(".sdd", "sdd.config.yaml"), join(".claude", "commands", "forge.md")]) {
@@ -239,7 +239,7 @@ describe("N-08 — el proyecto abierto a través de una unión se inicializa ent
 
   test("crearDirectorio acepta como raíz una unión", (t) => {
     const real = temporal(), base = temporal();
-    if (!union(real, join(base, "via"))) return t.skip("sin uniones");
+    if (!union(real, join(base, "via"))) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
     assert.doesNotThrow(() => crearDirectorio(join(base, "via"), join(base, "via")));
     assert.doesNotThrow(() => crearArchivo(join(base, "via"), join(base, "via", "a", "b.txt"), "x"));
     assert.equal(readFileSync(join(real, "a", "b.txt"), "utf8"), "x");
@@ -285,7 +285,7 @@ describe("N-13 — destinos raros: aviso y se sigue, nunca una traza ni un cuelg
     if (process.platform === "win32") return t.skip("las tuberías con nombre de Unix no existen en Windows");
     const home = temporal("forge-home-"), cwd = proyecto();
     const m = spawnSync("mkfifo", [join(cwd, "CLAUDE.md")]);
-    if (m.status !== 0) return t.skip("mkfifo no disponible");
+    if (m.status !== 0) return t.skip("el comando mkfifo no está disponible en este sistema, no se puede crear la tubería con nombre");
     const t0 = Date.now();
     const r = forge(cwd, home, "init");
     assert.ok(Date.now() - t0 < 120_000, "terminó");

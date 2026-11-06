@@ -765,7 +765,7 @@ describe("agent-memory — backend SQLite", () => {
     try { rmSync(tmpDir, { recursive: true }); } catch { /* */ }
   });
 
-  test("crea memoria.db cuando backend es sqlite (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+  test("crea memoria.db cuando backend es sqlite (Node >= 22.5)", { skip: !sqliteDisponible && "requiere node:sqlite (Node >= 22.5); este Node no lo trae" }, () => {
     runHook(
       writeEvent(join(tmpDir, "src/auth.ts"), "export function login() { return true; }"),
       { agentName: "arquitecto", cwd: tmpDir }
@@ -775,7 +775,7 @@ describe("agent-memory — backend SQLite", () => {
     assert.ok(existsSync(dbPath), "debe crear memoria.db con backend sqlite");
   });
 
-  test("NO crea agente-arquitecto.md con backend sqlite (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+  test("NO crea agente-arquitecto.md con backend sqlite (Node >= 22.5)", { skip: !sqliteDisponible && "requiere node:sqlite (Node >= 22.5); este Node no lo trae" }, () => {
     runHook(
       writeEvent(join(tmpDir, "src/auth.ts"), "export function login() {}"),
       { agentName: "arquitecto", cwd: tmpDir }
@@ -785,7 +785,7 @@ describe("agent-memory — backend SQLite", () => {
     assert.ok(!existsSync(mdFile), "con backend sqlite no debe crear archivo .md");
   });
 
-  test("la entrada en memoria.db tiene los campos correctos (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+  test("la entrada en memoria.db tiene los campos correctos (Node >= 22.5)", { skip: !sqliteDisponible && "requiere node:sqlite (Node >= 22.5); este Node no lo trae" }, () => {
     runHook(
       writeEvent(join(tmpDir, "src/service.ts"), "export class UserService { find() {} }"),
       { agentName: "arquitecto", cwd: tmpDir }
@@ -808,7 +808,7 @@ describe("agent-memory — backend SQLite", () => {
     assert.ok(typeof row.bytes === "number" && row.bytes > 0, "debe tener bytes");
   });
 
-  test("deduplicación: misma escritura el mismo día actualiza en lugar de duplicar (Node >= 22.5)", { skip: !sqliteDisponible }, () => {
+  test("deduplicación: misma escritura el mismo día actualiza en lugar de duplicar (Node >= 22.5)", { skip: !sqliteDisponible && "requiere node:sqlite (Node >= 22.5); este Node no lo trae" }, () => {
     runHook(
       writeEvent(join(tmpDir, "src/auth.ts"), "function login() { return true; }"),
       { agentName: "arquitecto", cwd: tmpDir }
@@ -828,7 +828,7 @@ describe("agent-memory — backend SQLite", () => {
     assert.ok(rows[0].resumen.includes("user.active"), "debe tener el resumen de la última escritura");
   });
 
-  test("indice.jsonl se crea igualmente con backend sqlite", { skip: !sqliteDisponible }, () => {
+  test("indice.jsonl se crea igualmente con backend sqlite", { skip: !sqliteDisponible && "requiere node:sqlite (Node >= 22.5); este Node no lo trae" }, () => {
     runHook(
       writeEvent(join(tmpDir, "src/api.ts"), "export const router = {}"),
       { agentName: "disenador-api", cwd: tmpDir }

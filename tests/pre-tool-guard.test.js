@@ -207,22 +207,30 @@ describe("pre-tool-guard — pass-through de herramientas no-Bash", () => {
       "Write sin agente read-only y sin secrets debe pasar");
   });
 
-  test("JSON inválido como input: exit 0 (no bloquear por error del hook)", () => {
+  test("JSON inválido como input: exit 2 (falla cerrado, C-07)", () => {
     const result = spawnSync(process.execPath, [HOOK], {
       input: "esto no es JSON",
       encoding: "utf8",
       timeout: 60_000,
     });
-    assert.equal(result.status, 0, "JSON inválido debe pasar sin bloquear");
+    assert.equal(result.status, 2, "si el guardián no entiende el evento, no lo deja pasar");
+    assert.match(result.stderr, /no pudo leer el evento/);
   });
 
-  test("input vacío: exit 0", () => {
+  test("input vacío: exit 2 (falla cerrado)", () => {
     const result = spawnSync(process.execPath, [HOOK], {
       input: "",
       encoding: "utf8",
       timeout: 60_000,
     });
-    assert.equal(result.status, 0);
+    assert.equal(result.status, 2);
+  });
+
+  test("un evento que no es un objeto se bloquea", () => {
+    for (const input of ["[]", "42", "null", "\"x\""]) {
+      const r = spawnSync(process.execPath, [HOOK], { input, encoding: "utf8", timeout: 60_000 });
+      assert.equal(r.status, 2, input);
+    }
   });
 });
 

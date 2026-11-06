@@ -207,3 +207,23 @@ Positivo: `TSCONFIG.JSON`, `tsconfig.json.` y `tsconfig.json::$DATA` sí se bloq
 2. **C-03**: sacar la clave HMAC del alcance del agente o exigir un TTY humano para aprobar.
 3. **C-02, C-04 y C-07**: parser de argv, fallo cerrado, cobertura de NotebookEdit y bloqueo de lectura de `.env`.
 4. **C-08 a C-11**: pip seguro, digests, redacción en los registros y acciones fijadas por SHA.
+
+## Estado de la mitigación (2026-11-06)
+
+| Hallazgo | Estado | Cómo |
+|---|---|---|
+| C-01 reescribir hooks y registro | **Cerrado** | `esRutaCriticaDelGuardian` en el hook; `Write/Edit/MultiEdit/NotebookEdit` y redirecciones por shell. Excepción del dueño: `FORGE_EDITAR_GUARDIAN=1` |
+| C-02 variantes de `rm`, `git push`, `Remove-Item` | **Cerrado** para las formas del informe | análisis por argv (`core/evidencia/guardian-reglas.js`); los avisos ya no cortan la evaluación. Límite: alias, `eval` y scripts no se resuelven |
+| C-03 clave HMAC legible por el agente | **Mitigado, no cerrado** | `forge aprobar` exige TTY real y código de un solo uso; registro firmado con identidad; el hook bloquea leer la clave. Con el mismo usuario de SO no hay separación total (llavero del SO = ADR futuro) |
+| C-04 `.env` y configuración por shell | **Cerrado** | escritura y lectura de secretos, nombres 8.3, `NotebookEdit` y `Read` |
+| C-05 CircuitBreaker | **Cerrado** | nivel antes de cualquier salida, PowerShell y Write, `path.relative`; su archivo está protegido |
+| C-06 solo lectura por shell | **Cerrado** en el hook | depende de `CLAUDE_AGENT_NAME` |
+| C-07 falla abierto | **Cerrado** | JSON ilegible, error interno o módulo roto ⇒ exit 2; el `.sh` sin Node bloquea |
+| C-08 imagen del sandbox | **Parcial** | `--only-binary=:all:`, `--require-hashes` si hay hashes, `--ipc none`. **Deuda:** bases sin fijar por digest (sin red para obtenerlos) |
+| C-09 secretos en registros | **Parcial** | auditoría del hook y `event-log` redactados. **Deuda:** el diario del ciclo guarda respuestas del modelo sin redactar para poder reproducirlas |
+| C-10 cadena de suministro en CI | **Parcial** | `npm ci --ignore-scripts`, Dependabot. **Deuda:** acciones por etiqueta (no SHA) y sin `npm audit signatures` |
+| C-11 detector de secretos | **Cerrado** | `sk-ant-…` en el hook y en `redactar.js` |
+| C-12 permisos del plugin | **Cerrado** | plantilla de settings sin `WebSearch` ni `git commit *` |
+| C-13 vía heredada de ADR | **Cerrado** | retirada `.sdd/adrs/` |
+
+Ver las specs `2026-11-06-guardian-endurecido` y `2026-11-06-aprobaciones-con-identidad` (ambas en borrador, sin aprobación del dueño).

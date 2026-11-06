@@ -144,6 +144,8 @@ export function argvRun(opciones) {
     ...(opciones.proyectoId ? ['--label', etiquetaProyecto(opciones.proyectoId)] : []),
     ...(runtime ? ['--runtime', runtime] : []),
     '--network', 'none',
+    // Sin IPC compartido: ni memoria compartida ni colas de mensajes con el anfitrión u otros contenedores (C-08)
+    '--ipc', 'none',
     '--user', USUARIO,
     '--cap-drop', 'ALL',
     '--security-opt', 'no-new-privileges',

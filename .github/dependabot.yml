@@ -1,0 +1,11 @@
+# Actualizaciones semanales de las acciones de CI (fijadas por etiqueta, no por SHA) y de npm
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly

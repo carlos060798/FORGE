@@ -2,8 +2,8 @@
 # pre-tool-guard.sh — Hook PreToolUse universal (Bash wrapper)
 #
 # Estrategia:
-#   1. Si Node >= 18 está disponible → delega a pre-tool-guard.js (lógica completa)
-#   2. Sin Node → lógica mínima de seguridad en Bash puro
+#   1. Si Node >= 20 está disponible → delega a pre-tool-guard.js (lógica completa)
+#   2. Sin Node → bloquea (falla cerrado)
 #
 # Protocolo Claude Code:
 #   exit 0  → permitir
@@ -14,13 +14,13 @@ set -euo pipefail
 # ── Leer stdin completo ───────────────────────────────────────────────────────
 INPUT="$(cat)"
 
-# ── Detectar Node >= 18 ───────────────────────────────────────────────────────
+# ── Detectar Node >= 20 ───────────────────────────────────────────────────────
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE_OK=0
 
 if command -v node &>/dev/null; then
   NODE_MAJOR="$(node -e 'process.stdout.write(String(process.versions.node.split(".")[0]))'  2>/dev/null || echo 0)"
-  if [ "$NODE_MAJOR" -ge 18 ] 2>/dev/null; then
+  if [ "$NODE_MAJOR" -ge 20 ] 2>/dev/null; then
     NODE_OK=1
   fi
 fi
@@ -45,51 +45,9 @@ if [ "$NODE_OK" -eq 1 ] && [ -n "$JS_HOOK" ]; then
   exit $?
 fi
 
-# ── Fallback Bash puro: guardia mínima de seguridad ──────────────────────────
-# Extraer campo relevante del JSON (sin jq — solo grep/sed)
-TOOL_NAME="$(echo "$INPUT" | grep -o '"tool_name"\s*:\s*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/' || true)"
-CONTENT="$(echo "$INPUT" | grep -o '"content"\s*:\s*"[^"]*"' | sed 's/.*"content"\s*:\s*"\(.*\)"/\1/' || true)"
-COMMAND="$(echo "$INPUT" | grep -o '"command"\s*:\s*"[^"]*"' | sed 's/.*"command"\s*:\s*"\(.*\)"/\1/' || true)"
-
-SUBJECT="$CONTENT $COMMAND"
-
-# Patrones prohibidos — bloqueo duro
-BLOCK_PATTERNS=(
-  "rm -rf /"
-  "rm -rf ~"
-  "rm -rf \."
-  "git push --force"
-  "git push -f"
-  "git reset --hard"
-  "DROP DATABASE"
-  "DROP SCHEMA"
-  "chmod 777"
-  "chmod -R 777"
-  "Remove-Item.*-Recurse.*-Force.*[/\\\\]"
-)
-
-for pat in "${BLOCK_PATTERNS[@]}"; do
-  if echo "$SUBJECT" | grep -qiE "$pat" 2>/dev/null; then
-    echo "[pre-tool-guard] BLOQUEADO: operación destructiva detectada: $pat" >&2
-    exit 2
-  fi
-done
-
-# Secrets hardcodeados en contenido de Write/Edit
-if [ "$TOOL_NAME" = "Write" ] || [ "$TOOL_NAME" = "Edit" ]; then
-  SECRET_PATTERNS=(
-    "password\s*=\s*['\"][^'\"]{4,}"
-    "api[_-]?key\s*=\s*['\"][^'\"]{8,}"
-    "sk-[a-zA-Z0-9]{20,}"
-    "AKIA[0-9A-Z]{16}"
-    "ghp_[a-zA-Z0-9]{36}"
-  )
-  for pat in "${SECRET_PATTERNS[@]}"; do
-    if echo "$CONTENT" | grep -qiE "$pat" 2>/dev/null; then
-      echo "[pre-tool-guard] BLOQUEADO: posible secret hardcodeado detectado." >&2
-      exit 2
-    fi
-  done
-fi
-
-exit 0
+# ── Sin Node, el guardián NO adivina: falla cerrado ──────────────────────────
+# El análisis por argv vive en pre-tool-guard.js. Extraer campos de un JSON con grep se rompe con comillas
+# escapadas y dejaba pasar lo que no entendía (informe SEGURIDAD-CIBER C-07), así que sin Node se bloquea.
+echo "[pre-tool-guard] BLOQUEADO: no hay Node >= 20 (o falta pre-tool-guard.js junto a este script)." >&2
+echo "  El guardián no puede evaluar la acción sin Node. Instala Node 20 o superior y vuelve a intentarlo." >&2
+exit 2

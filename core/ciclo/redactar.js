@@ -292,3 +292,13 @@ export function cola(texto, maxBytes = 8192) {
   if (buffer.length <= maxBytes) return buffer.toString('utf8');
   return buffer.subarray(buffer.length - maxBytes).toString('utf8').replace(/^�+/, '');
 }
+
+/**
+ * JSON de una línea con cada texto redactado (el JSON sigue siendo válido). Para registros de
+ * auditoría, eventos y observabilidad, que no deben guardar secretos.
+ * @param {unknown} valor
+ */
+export function jsonRedactado(valor) {
+  const nombre = new RegExp(NOMBRE_SECRETO, 'i');
+  return JSON.stringify(valor, (k, v) => (typeof v !== 'string' ? v : nombre.test(k) && v.length >= 4 ? '[REDACTADO]' : redactar(v)));
+}

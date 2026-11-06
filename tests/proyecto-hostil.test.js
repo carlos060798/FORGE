@@ -909,12 +909,16 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
     assert.match(readFileSync(join(m.cwd, ".sdd", "sdd.config.yaml"), "utf8"), /modo: "?rapido"?/);
   });
 
-  test("aprobar spec: caso normal", () => {
+  // C-03: `forge aprobar` exige un TTY real; estas pruebas no tienen terminal, así que comprueban que NO se
+  // aprueba nada (el camino con TTY inyectado está en tests/aprobaciones-identidad.test.js).
+  test("aprobar spec: sin terminal real no aprueba (antes: caso normal)", () => {
     const m = montar();
     escribir(m.cwd, ".sdd/estado.json", ESTADO);
+    escribir(m.cwd, ".sdd/especificaciones/001-demo/spec.md", "# spec\n");
     const r = forge(m.cwd, "aprobar", "spec");
-    assert.equal(r.codigo, 0, r.salida);
-    assert.equal(JSON.parse(readFileSync(join(m.cwd, ".sdd", "estado.json"), "utf8")).spec_aprobado, true);
+    assert.notEqual(r.codigo, 0, r.salida);
+    assert.match(r.salida, /terminal interactivo real/);
+    assert.equal(JSON.parse(readFileSync(join(m.cwd, ".sdd", "estado.json"), "utf8")).spec_aprobado, false);
   });
 
   test("aprobar spec: si `.sdd` es una unión hacia fuera, no aprueba nada al otro lado y lo dice", (t) => {
@@ -923,7 +927,7 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
     const antes = foto(m.fuera);
     const r = forge(m.cwd, "aprobar", "spec");
     assert.notEqual(r.codigo, 0, r.salida);
-    assert.match(r.salida, /No se escribe/);
+    assert.match(r.salida, /No se escribe|No se lee|terminal interactivo real|No se encuentra/);
     assert.doesNotMatch(r.salida, /Spec aprobada/);
     assert.deepEqual(foto(m.fuera), antes);
   });
@@ -931,10 +935,11 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
   test("aprobar spec: un enlace duro hacia un archivo de fuera no se pisa", (t) => {
     const { m, hayEnlace } = conEnlaceDuro("estado.json", ESTADO);
     if (!hayEnlace) return t.skip("este sistema no permite crear enlaces duros");
+    escribir(m.cwd, ".sdd/especificaciones/001-demo/spec.md", "# spec\n");
     const r = forge(m.cwd, "aprobar", "spec");
-    assert.equal(r.codigo, 0, r.salida);
+    assert.notEqual(r.codigo, 0, r.salida);
+    assert.match(r.salida, /terminal interactivo real/);
     assert.equal(readFileSync(join(m.fuera, "estado.json"), "utf8"), ESTADO, "el archivo de fuera conserva su contenido");
-    assert.equal(JSON.parse(readFileSync(join(m.cwd, ".sdd", "estado.json"), "utf8")).spec_aprobado, true);
   });
 
   test("un enlace simbólico de archivo como destino tampoco se sigue", (t) => {

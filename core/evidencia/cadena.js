@@ -21,6 +21,9 @@
  *    «encadenada, no firmada»: quien tenga el repositorio puede reconstruirla entera.
  *  - La firma es HMAC simétrico: solo la verifica quien tiene la clave (esta máquina y este usuario). No
  *    sirve a un tercero.
+ *  - La clave la puede leer el MISMO usuario del SO que ejecuta el agente: no hay separación criptográfica
+ *    total entre la persona y el agente (hallazgo C-03). Llavero del SO (DPAPI/Keychain) = ADR futuro. Ver
+ *    core/aprobaciones-identidad.js y la spec 2026-11-06-aprobaciones-con-identidad.
  *  - Lo que el informe afirma (spec aprobada, modelo) lo declara el proyecto o el cliente; la cadena
  *    prueba que no se retocó DESPUÉS, no que fuera cierto.
  *

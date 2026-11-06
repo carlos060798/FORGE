@@ -78,7 +78,7 @@ describe("forge aprobar spec — CLI", () => {
       "debe mencionar estado.json");
   });
 
-  test("escribe spec_aprobado: true en estado.json existente", () => {
+  test("sin terminal real NO escribe spec_aprobado (C-03; el camino con TTY se prueba en aprobaciones-identidad.test.js)", () => {
     const dir = mkdtempSync(join(tmpdir(), "forge-cli-aprobar-ok-"));
     mkdirSync(join(dir, ".sdd"), { recursive: true });
     writeFileSync(join(dir, ".sdd", "estado.json"), JSON.stringify({
@@ -88,13 +88,16 @@ describe("forge aprobar spec — CLI", () => {
       spec_aprobado: false,
       ultima_actualizacion: new Date().toISOString(),
     }), "utf8");
+    mkdirSync(join(dir, ".sdd", "especificaciones", "spec-test-001"), { recursive: true });
+    writeFileSync(join(dir, ".sdd", "especificaciones", "spec-test-001", "spec.md"), "# spec\n", "utf8");
 
     const r = spawnSync(process.execPath, [join(ROOT, "cli", "index.js"), "aprobar", "spec"],
-      { cwd: dir, encoding: "utf8" });
+      { cwd: dir, encoding: "utf8", input: "" });
 
-    assert.equal(r.status, 0, `CLI falló: ${r.stderr}`);
+    assert.notEqual(r.status, 0, "sin TTY debe fallar");
+    assert.match(r.stderr + r.stdout, /terminal interactivo real/);
     const estadoFinal = JSON.parse(readFileSync(join(dir, ".sdd", "estado.json"), "utf8"));
-    assert.equal(estadoFinal.spec_aprobado, true, "spec_aprobado debe ser true tras el comando");
+    assert.equal(estadoFinal.spec_aprobado, false, "spec_aprobado no debe cambiar sin terminal");
   });
 
   test("es idempotente — no falla si ya estaba aprobada", () => {

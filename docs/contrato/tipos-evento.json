@@ -6,6 +6,7 @@
   },
   "tipos": {
     "pipeline_step_changed": { "contrato": true, "archivo": "ambos", "nota": "status/step/state la escriben en el archivo de observabilidad; la API HTTP, en el principal." },
+    "pipeline_step_forzado": { "contrato": false, "archivo": "principal", "nota": "interno: `step --force` salta etapas y deja este evento firmado con motivo (spec 2026-11-06-aprobaciones-con-identidad)." },
     "task_started": { "contrato": true, "archivo": "principal" },
     "task_completed": { "contrato": true, "archivo": "principal" },
     "task_failed": { "contrato": true, "archivo": "principal" },

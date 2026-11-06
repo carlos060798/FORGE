@@ -11,12 +11,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CON_VALOR = new Set(['cwd', 'comando', 'archivos', 'desde', 'mutacion-minima']);
-const BOOLEANAS = new Set(['json', 'mutacion', 'registrar', 'comprobar-evidencia', 'criterios', 'exigir-cobertura-de-criterios']);
-const USO = 'Uso: forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json] [--registrar] [--mutacion (--archivos <a,b> | --desde <ref>) [--mutacion-minima <0..1>]]\n       forge verificar --comprobar-evidencia [--cwd <dir>] [--json]';
+const BOOLEANAS = new Set(['json', 'mutacion', 'registrar', 'comprobar-evidencia', 'comprobar-aprobaciones', 'criterios', 'exigir-cobertura-de-criterios']);
+const USO = 'Uso: forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json] [--registrar] [--mutacion (--archivos <a,b> | --desde <ref>) [--mutacion-minima <0..1>]]\n       forge verificar --comprobar-evidencia [--cwd <dir>] [--json]\n       forge verificar --comprobar-aprobaciones [--cwd <dir>] [--json]';
 const NUMERO_0_1 = /^(?:0(?:\.\d+)?|1(?:\.0+)?|\.\d+)$/;
 
 /**
- * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean, comprobarEvidencia?: boolean, criterios?: { exigir: boolean },
+ * @typedef {{ cwd?: string, comando?: string, json: boolean, registrar: boolean, comprobarEvidencia?: boolean, comprobarAprobaciones?: boolean, criterios?: { exigir: boolean },
  *   mutacion?: { archivos?: string[], desde?: string, minima?: number } }} OpcionesCli
  */
 
@@ -44,6 +44,13 @@ export function leerOpciones(argv) {
   const o = { json: activas.has('json'), registrar: activas.has('registrar') };
   if (v.cwd !== undefined) o.cwd = v.cwd;
   if (v.comando !== undefined) o.comando = v.comando;
+  if (activas.has('comprobar-aprobaciones')) {
+    // Solo lectura: exige un registro verificable para cada `aprobado_por_delegacion`
+    const otras = ['comando', 'archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
+    if (activas.has('registrar') || activas.has('mutacion') || activas.has('comprobar-evidencia') || otras.length > 0) return { error: '--comprobar-aprobaciones solo lee: no se combina con --registrar, --mutacion, --comprobar-evidencia, --comando, --archivos, --desde ni --mutacion-minima.' };
+    o.comprobarAprobaciones = true;
+    return o;
+  }
   if (activas.has('comprobar-evidencia')) {
     // Solo lectura: no se combina con nada que ejecute o registre
     const otras = ['comando', 'archivos', 'desde', 'mutacion-minima'].filter((n) => v[n] !== undefined);
@@ -99,6 +106,18 @@ export async function cmdVerificar(argv, deps = {}) {
 
   const cwd = path.resolve(o.cwd ?? process.cwd());
   if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) { errores(`✗ --cwd no es una carpeta: ${cwd}`); return 1; }
+
+  if (o.comprobarAprobaciones) {
+    const { comprobarDelegaciones } = await import('../core/aprobaciones-identidad.js');
+    const c = comprobarDelegaciones(cwd);
+    if (o.json) salida(JSON.stringify(c));
+    else {
+      salida(c.delegaciones.length === 0 ? 'Aprobaciones: no hay archivos con «aprobado_por_delegacion».' : `Aprobaciones por delegación: ${c.ok ? 'todas con registro verificable' : 'FALTA registro verificable'}.`);
+      for (const d of c.delegaciones) salida(`  ${d.ok ? '✓' : '✗'} ${d.id}${d.motivo ? `: ${d.motivo}` : ''}`);
+      for (const e of c.errores) salida(`  ✗ registro: ${e}`);
+    }
+    return c.ok ? 0 : 1;
+  }
 
   if (o.comprobarEvidencia) {
     const { comprobarEvidencia } = await import('../core/evidencia/cadena.js');

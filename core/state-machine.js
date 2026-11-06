@@ -118,10 +118,11 @@ export class PipelineStateMachine {
 
   /**
    * @param {PipelineStep} to
-   * @param {boolean} [force]
+   * @param {boolean} [force]  salta los guards; exige `opciones.motivo` y deja un evento firmado
+   * @param {{ motivo?: string, quien?: Record<string, unknown>, firmar?: (payload: Record<string, unknown>) => string }} [opciones]
    * @returns {TransitionResult}
    */
-  advance(to, force = false) {
+  advance(to, force = false, opciones = {}) {
     const from = this.currentStep();
     const transition = TRANSITIONS.find(t => t.from === from && t.to === to);
 
@@ -142,6 +143,20 @@ export class PipelineStateMachine {
       if (guardError) {
         return { ok: false, from, to, error: `Guard bloqueó la transición: ${guardError}` };
       }
+    }
+
+    // --force: motivo obligatorio y evento firmado ANTES de escribir el estado (spec 2026-11-06-aprobaciones-con-identidad).
+    // Sin motivo o sin forma de firmar no se salta nada.
+    if (force) {
+      const motivo = String(opciones.motivo ?? '').trim();
+      if (motivo.length < 10) {
+        return { ok: false, from, to, error: 'Forzar una transición exige un motivo de al menos 10 caracteres (forge step <paso> --force --motivo "por qué")' };
+      }
+      if (typeof opciones.firmar !== 'function') {
+        return { ok: false, from, to, error: 'Forzar una transición exige poder firmar el evento; no se fuerza nada.' };
+      }
+      const datos = { step: to, from, motivo: motivo.slice(0, 500), quien: opciones.quien ?? null, cuando: new Date().toISOString() };
+      this.log.append('pipeline_step_forzado', { ...datos, firma: opciones.firmar(datos) }, { pipelineStep: to });
     }
 
     const nuevoEstado = transition.action ? transition.action(estado) : { ...estado, pipeline_step: to };

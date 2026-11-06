@@ -41,13 +41,8 @@
       "Bash(node --test tests/commands.test.js)",
       "Bash(node --test --reporter=spec tests/commands.test.js tests/agents.test.js tests/presets.test.js tests/consistency.test.js)",
       "Bash(node --test tests/commands.test.js tests/agents.test.js tests/presets.test.js tests/consistency.test.js)",
-      "WebSearch",
       "WebFetch(domain:arxiv.org)",
-      "Bash(node --test tests/)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git rm *)",
-      "Bash(rm .gitmodules)"
+      "Bash(node --test tests/)"
     ]
   }
 }

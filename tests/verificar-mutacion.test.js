@@ -65,9 +65,10 @@ function entorno(dir, args, env = {}) {
 const leerRegistro = (registro) => (existsSync(registro) ? readFileSync(registro, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : []);
 
 /** @param {string} dir @param {string[]} args @param {Record<string, string>} [env] */
+// Tope generoso (10 min) a propósito: aislada tarda ~40 s, pero en la suite completa (muchos procesos en paralelo) pasa de 70 s; el tope solo evita colgarse, no esconde fallos.
 function verificar(dir, args, env = {}) {
   const x = entorno(dir, args, env);
-  const r = spawnSync(process.execPath, x.argv, { encoding: "utf8", timeout: 240_000, env: x.e });
+  const r = spawnSync(process.execPath, x.argv, { encoding: "utf8", timeout: 600_000, env: x.e });
   const docker = leerRegistro(x.registro);
   return { codigo: r.status, salida: r.stdout, errores: r.stderr, temporal: x.temporal, runs: docker.filter((l) => l.orden === "run") };
 }

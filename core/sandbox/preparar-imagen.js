@@ -17,6 +17,9 @@ import { problemaConPytest } from '../pytest-deteccion.js';
 export const DIR_DEPS    = '/deps';
 export const DIR_TRABAJO = '/deps/work';
 
+// DEUDA (C-09): las bases se identifican por etiqueta y no por digest (`node:22-alpine@sha256:…`).
+// No se inventan digests: hay que obtenerlos con red (`docker buildx imagetools inspect <etiqueta>`)
+// y sustituir aquí las etiquetas. La prueba de tests/endurecimiento-f3.test.js avisa mientras falte.
 export const IMAGENES_BASE = {
   javascript: 'node:22-alpine',
   typescript: 'node:22-alpine',
@@ -103,11 +106,13 @@ function declaraDependencias(cwd, lenguaje, presentes) {
  * @param {string} lenguaje
  * @param {string} base
  * @param {string[]} presentes
+ * @param {boolean} [conHashes] requirements.txt trae hashes (--hash=sha256:…): se exigen
  */
-export function dockerfile(lenguaje, base, presentes) {
+export function dockerfile(lenguaje, base, presentes, conHashes = false) {
   const lineas = [`FROM ${base}`, `WORKDIR ${DIR_DEPS}`, `COPY ${presentes.join(' ')} ./`];
   if (lenguaje === 'python') {
-    lineas.push('RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt');
+    // --only-binary: sin ruedas no se ejecuta setup.py (código ajeno con red durante la instalación)
+    lineas.push(`RUN pip install --no-cache-dir --disable-pip-version-check --only-binary=:all:${conHashes ? ' --require-hashes' : ''} -r requirements.txt`);
   } else if (lenguaje === 'go') {
     // Los módulos se descargan aquí, con red; después se ejecuta sin red y de solo lectura
     lineas.push(`ENV GOMODCACHE=${DIR_DEPS}/gomod GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE=${DIR_DEPS}/gocache CGO_ENABLED=0`);
@@ -155,7 +160,8 @@ export async function prepararImagen(opciones) {
     return { imagen: base, construida: false, huella: null };
   }
 
-  const texto  = dockerfile(lenguaje, base, presentes);
+  const conHashes = lenguaje === 'python' && /--hash=sha256:/.test(fs.readFileSync(path.join(cwd, 'requirements.txt'), 'utf8'));
+  const texto  = dockerfile(lenguaje, base, presentes, conHashes);
   const hash   = createHash('sha256').update(texto);
   for (const m of presentes) hash.update(m).update(fs.readFileSync(path.join(cwd, m)));
   const huella = hash.digest('hex').slice(0, 16);

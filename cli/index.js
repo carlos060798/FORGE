@@ -294,6 +294,7 @@ function copiarNucleo(claudeDir, inst = null) {
   }
   // shared/protegidos.js reexporta core/, que no existe en el proyecto: se sustituye por la fuente (sin dependencias)
   copiarSeguro(join(PLUGIN_DIR, "core", "evidencia", "protegidos.js"), join(hooksDest, "shared", "protegidos.js"));
+  copiarSeguro(join(PLUGIN_DIR, "core", "evidencia", "guardian-reglas.js"), join(hooksDest, "shared", "guardian-reglas.js"));
   info(`Hooks instalados (${hooksDest})`);
 }
 
@@ -1993,7 +1994,7 @@ Uso:
   npx forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json]
                                      Veredicto de las pruebas en contenedor aislado, sin modelo
   npx forge status                   Estado del pipeline + transiciones disponibles
-  npx forge step <paso> [--force]    Avanzar el pipeline al paso indicado (sin LLM)
+  npx forge step <paso> [--force --motivo ".."]  Avanzar el pipeline al paso indicado (sin LLM)
   npx forge state                    Volcar estado.json formateado
   npx forge validate                 Verificar precondiciones del paso actual
   npx forge reset --force            Resetear pipeline a 'idea'
@@ -2033,13 +2034,49 @@ Tras instalar, abre Claude Code y escribe:
 
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
-function cmdAprobar(subArgs) {
+/**
+ * forge aprobar spec | forge aprobar delegacion <carpeta>/<archivo>.md
+ *
+ * Exige un terminal interactivo real y que la persona teclee un código de un solo uso; deja la aprobación en
+ * `.sdd/aprobaciones.jsonl` con quién, cuándo, qué y el hash del archivo. NO existe opción para saltarse el
+ * terminal. Límite: con el mismo usuario del SO no hay separación criptográfica total (ver
+ * core/aprobaciones-identidad.js y la spec 2026-11-06-aprobaciones-con-identidad).
+ */
+async function cmdAprobar(subArgs) {
   const objetivo = subArgs[0];
-  if (objetivo !== "spec") {
-    aviso("Uso: forge aprobar spec");
-    aviso("  Aprueba la spec activa para permitir avanzar a la fase de planificación.");
+  const desconocida = subArgs.slice(1).find((a) => a.startsWith("-"));
+  if (desconocida) error(`Opción desconocida: ${desconocida}. «forge aprobar» no tiene opciones: exige un terminal real y un código que tecleas tú.`);
+  if (objetivo !== "spec" && objetivo !== "delegacion") {
+    aviso("Uso: forge aprobar spec | forge aprobar delegacion <carpeta>/<archivo>.md");
+    aviso("  spec: aprueba la spec activa para permitir avanzar a la fase de planificación.");
+    aviso("  delegacion: registra que TÚ aprobaste un archivo marcado «aprobado_por_delegacion».");
     return;
   }
+  const idm = await import("../core/aprobaciones-identidad.js");
+  const real = {
+    stdin: process.stdin, stdout: process.stdout,
+    leerLinea: (p) => idm.leerLineaDeTerminal(process.stdin, process.stdout, p),
+    escribir: (t) => process.stdout.write(t),
+  };
+  const aprobar = async (datos) => {
+    try { return await idm.aprobarConIdentidad({ cwd: process.cwd(), ...datos, ...real }); } catch (e) {
+      if (e instanceof idm.ErrorIdentidad) error(e.message);
+      throw e;
+    }
+  };
+
+  if (objetivo === "delegacion") {
+    const rel = subArgs[1];
+    if (!rel || !/^[\w.-]+\/[\w.-]+\.md$/.test(rel)) { aviso("Uso: forge aprobar delegacion <carpeta>/<archivo>.md  (dentro de .sdd/especificaciones/)"); return; }
+    const abs = join(process.cwd(), ".sdd", "especificaciones", rel);
+    let sha = null;
+    try { sha = idm.hashDeArchivo(process.cwd(), abs); } catch (e) { error(`No se lee ${rel}: ${e.message}`); }
+    if (sha === null) { error(`No existe .sdd/especificaciones/${rel}`); }
+    const r = await aprobar({ tipo: "delegacion", id: rel, artefacto: `.sdd/especificaciones/${rel}`, sha256: sha });
+    info(`Aprobación registrada en .sdd/aprobaciones.jsonl (${r.quien.email ?? r.quien.usuarioSO}, ${r.cuando}).`);
+    return;
+  }
+
   const estadoPath = join(process.cwd(), ".sdd", "estado.json");
   if (!existsSync(estadoPath)) {
     aviso("No existe .sdd/estado.json — ejecuta primero 'forge init' y luego /forge en Claude Code");
@@ -2058,12 +2095,23 @@ function cmdAprobar(subArgs) {
     info("La spec ya está aprobada ✓ — puedes avanzar a la planificación.");
     return;
   }
+  // Qué se aprueba: el archivo de la spec (borrador indicado, o spec.md de la spec activa) y su hash
+  const rutaSpec = estado.spec_draft_path
+    ? (isAbsolute(String(estado.spec_draft_path)) ? String(estado.spec_draft_path) : join(process.cwd(), String(estado.spec_draft_path)))
+    : join(process.cwd(), ".sdd", "especificaciones", String(estado.spec_activa), "spec.md");
+  let sha = null;
+  try { sha = idm.hashDeArchivo(process.cwd(), rutaSpec); } catch (e) { error(`No se lee la spec: ${e.message}`); }
+  if (sha === null) error(`No se encuentra el archivo de la spec a aprobar (${relative(process.cwd(), rutaSpec)}): no se aprueba algo que no se puede leer ni fijar con un hash.`);
+
+  await aprobar({
+    tipo: "spec", id: String(estado.spec_activa ?? estado.spec_draft_path), artefacto: relative(process.cwd(), rutaSpec).split("\\").join("/"), sha256: sha,
+  });
   const nuevo = { ...estado, spec_aprobado: true, ultima_actualizacion: new Date().toISOString() };
   // Por escritura segura: no se aprueba "a través" de un enlace hacia fuera del proyecto
   if (!escribirSeguro(estadoPath, JSON.stringify(nuevo, null, 2))) {
     error("No se aprobó nada: .sdd/estado.json o su carpeta es un enlace.");
   }
-  info("✅ Spec aprobada. Ahora puedes avanzar a la fase de planificación.");
+  info("✅ Spec aprobada y registrada en .sdd/aprobaciones.jsonl. Ahora puedes avanzar a la fase de planificación.");
   info("   Siguiente paso: /sdd.planificar en Claude Code");
 }
 
@@ -2135,7 +2183,7 @@ async function main() {
       import("./decisions.js").then(({ cmdDecisions }) => cmdDecisions(args.slice(1))).catch(e => error(e.message));
       break;
     case "aprobar":
-      cmdAprobar(args.slice(1));
+      await cmdAprobar(args.slice(1));
       break;
     case "integraciones": {
       // Carga perezosa: solo quien invoca este comando importa el paquete de integraciones (HU-005)
@@ -2232,6 +2280,7 @@ async function main() {
     case "--help":
     case "-h":
     case "help":
+    case "ayuda":
     case undefined:
       uso();
       break;

@@ -52,7 +52,7 @@ describe('leerArchivosDeEstado', () => {
 
   test('ATAQUE: un enlace dentro del proyecto hacia fuera no se sigue', (t) => {
     const { cwd, fuera } = escenario();
-    try { symlinkSync(fuera, join(cwd, 'enlace'), 'junction'); } catch { t.skip('no se pueden crear enlaces'); return; }
+    try { symlinkSync(fuera, join(cwd, 'enlace'), 'junction'); } catch { t.skip('el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)'); return; }
     const r = leerArchivosDeEstado(cwd, [{ ruta: 'enlace/id_rsa' }]);
     assert.ok(!JSON.stringify(r).includes(SECRETO));
     assert.equal(r[0].contenido, null);

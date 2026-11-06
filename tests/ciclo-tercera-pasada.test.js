@@ -406,7 +406,7 @@ describe("H3 y H4 — el respaldo y el barrido no tocan lo vetado ni siguen enla
     const cwd = join(base, "p"); const fuera = join(base, "fuera");
     mkdirSync(cwd); mkdirSync(fuera);
     writeFileSync(join(fuera, "victima.txt"), "no");
-    try { symlinkSync(fuera, join(cwd, "enlace"), "junction"); } catch { return t.skip("sin enlaces"); }
+    try { symlinkSync(fuera, join(cwd, "enlace"), "junction"); } catch { return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)"); }
     const d = mkdtempSync(join(base, "r-"));
     writeFileSync(join(d, "manifiesto.json"), JSON.stringify({ entradas: [{ ruta: "enlace/victima.txt", existia: false }] }));
     assert.throws(() => new Respaldo(cwd, d), /anifiesto/);
@@ -417,7 +417,7 @@ describe("H3 y H4 — el respaldo y el barrido no tocan lo vetado ni siguen enla
     const motor = join(base, "motor"); const fuera = join(base, "fuera");
     mkdirSync(motor); mkdirSync(join(fuera, "a"), { recursive: true });
     writeFileSync(join(fuera, "a", "x.txt"), "no");
-    try { symlinkSync(fuera, join(motor, "staging"), "junction"); } catch { return t.skip("sin enlaces"); }
+    try { symlinkSync(fuera, join(motor, "staging"), "junction"); } catch { return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)"); }
     const sbx = new SandboxRunner({ dirMotor: motor, runId: "r1", lenguaje: "javascript", testCmd: "npm test", cli: /** @type {any} */ ({}), imagenBase: "n" });
     assert.equal(sbx.barrerCopias().length, 1, "se informa y no se toca");
     assert.ok(existsSync(join(fuera, "a", "x.txt")));

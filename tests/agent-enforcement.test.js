@@ -91,9 +91,9 @@ test('2.1.7 — Hook detecta secret hardcodeado en comando Bash', async (t) => {
   assert.match(result.stderr, /secret|credential|clave|contraseña/i, 'Debería mencionar la detección');
 });
 
-test('2.1.8 — Hook funciona con event JSON malformado (default: permitir)', async (t) => {
+test('2.1.8 — Hook con event JSON malformado falla cerrado (spec 2026-11-06-guardian-endurecido, C-07)', async (t) => {
   const result = await runHookWithAgent('{"invalid}', null);
-  assert.strictEqual(result.code, 0, 'Debería permitir por defecto ante JSON inválido');
+  assert.strictEqual(result.code, 2, 'Si no entiende el evento, el guardián no lo deja pasar');
 });
 
 test('2.1.9 — Hook permite desarrollador-backend usar Write', async (t) => {

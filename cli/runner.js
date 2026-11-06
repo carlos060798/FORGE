@@ -11,7 +11,8 @@
  * Comandos:
  *   forge status          → estado actual + transiciones disponibles
  *   forge step <paso>     → avanzar al paso indicado (con guards)
- *   forge step <paso> --force → forzar sin guards (recuperación)
+ *   forge step <paso> --force --motivo "por qué" → forzar sin guards (recuperación); el motivo es
+ *                           obligatorio y queda un evento firmado `pipeline_step_forzado` en el EventLog
  *   forge state           → volcar estado.json formateado
  *   forge validate        → validar que el paso actual cumple precondiciones
  *   forge reset           → resetear pipeline a 'idea'
@@ -208,7 +209,7 @@ async function cmdStep(args, cwd) {
   const force  = args.includes('--force');
 
   if (!paso) {
-    console.error('✗ Uso: forge step <paso> [--force]');
+    console.error('✗ Uso: forge step <paso> [--force --motivo "por qué"]');
     console.error('  Pasos válidos: ' + STEPS_PIPELINE.join(', '));
     process.exit(1);
   }
@@ -230,12 +231,22 @@ async function cmdStep(args, cwd) {
     return;
   }
 
-  const resultado = fsm.advance(paso, force);
+  let opcionesForce = {};
+  if (force) {
+    const idm = await import('../core/aprobaciones-identidad.js');
+    const motivo = idm.motivoDeArgs(args);
+    if (!motivo || motivo.length < idm.MIN_MOTIVO) {
+      console.error(`✗ --force exige un motivo de al menos ${idm.MIN_MOTIVO} caracteres: forge step ${paso} --force --motivo "por qué"`);
+      process.exit(1);
+    }
+    opcionesForce = { motivo, quien: idm.identidadDelAprobador(cwd), firmar: (payload) => idm.firmarEvento(cwd, payload) };
+  }
+  const resultado = fsm.advance(paso, force, opcionesForce);
 
   if (!resultado.ok) {
     console.error(`✗ ${resultado.error}`);
     if (!force) {
-      console.error(`  Para forzar la transición: forge step ${paso} --force`);
+      console.error(`  Para forzar la transición: forge step ${paso} --force --motivo "por qué"`);
     }
     process.exit(1);
   }

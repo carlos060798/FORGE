@@ -155,14 +155,14 @@
   },
   {
     "id": "env-leer",
-    "descripcion": "leer .env está permitido",
+    "descripcion": "leer .env está bloqueado (C-04): contiene secretos",
     "evento": {
       "tool_name": "Bash",
       "tool_input": {
         "command": "cat .env"
       }
     },
-    "espera": "permite"
+    "espera": "bloquea"
   },
   {
     "id": "npm-test",
@@ -388,5 +388,378 @@
       }
     },
     "espera": "permite"
+  },
+  {
+    "id": "rm-banderas-separadas",
+    "descripcion": "C-02: rm -r -f /",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -r -f /"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-fr",
+    "descripcion": "C-02: rm -fr /",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -fr /"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-largas",
+    "descripcion": "C-02: rm --recursive --force ~",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm --recursive --force ~"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-comodin",
+    "descripcion": "C-02: rm -rf *",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf *"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-encadenado",
+    "descripcion": "C-02: rm tras ;",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo ok; rm -r -f /"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-bash-c",
+    "descripcion": "C-02: rm dentro de bash -c",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "bash -c \"rm -rf /\""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-sustitucion",
+    "descripcion": "C-02: rm dentro de $(…)",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo $(rm -rf /)"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "rm-legitimo",
+    "descripcion": "rm -rf node_modules sigue permitido",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "rm -rf node_modules"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "find-delete",
+    "descripcion": "C-02: find . -delete",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "find . -delete"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "powershell-orden",
+    "descripcion": "C-02: Remove-Item con parámetros invertidos",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "Remove-Item -Force -Recurse C:\\"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-mas",
+    "descripcion": "C-02: git push origin +main",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push origin +main"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-c",
+    "descripcion": "C-02: git -c x=y push --force",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git -c x=y push --force origin main"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "push-normal",
+    "descripcion": "git push normal solo avisa",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push origin rama"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "push-comentario",
+    "descripcion": "C-02: un comentario no corta la evaluación",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git push --force origin main # git push"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "sed-env",
+    "descripcion": "C-04: sed -i sobre .env",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "sed -i s/a/b/ .env"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "node-e-env",
+    "descripcion": "C-04: node -e escribe .env",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "node -e \"require('fs').writeFileSync('.env','X')\""
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "redir-tsconfig",
+    "descripcion": "C-04: redirección a tsconfig.json",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo {} > tsconfig.json"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "nombre-corto",
+    "descripcion": "C-04: nombre 8.3",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo x > TSCONF~1.JSO"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "redir-settings",
+    "descripcion": "C-01: redirección a .claude/settings.json",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo {} > .claude/settings.json"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "redir-nivel",
+    "descripcion": "C-05: redirección al nivel de ejecución",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo {} > .sdd/execution-level.json"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "leer-clave",
+    "descripcion": "C-03: leer la clave HMAC",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cat ~/.fragua/integraciones/abc/clave"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-settings",
+    "descripcion": "C-01: Write sobre .claude/settings.json",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".claude/settings.json",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-hook",
+    "descripcion": "C-01: Write sobre el hook",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "claude-hooks/pre-tool-guard.js",
+        "content": "process.exit(0)"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-nivel",
+    "descripcion": "C-05: Write sobre execution-level.json",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".sdd/execution-level.json",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-git",
+    "descripcion": "C-01: Write dentro de .git",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".git/config",
+        "content": "x"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-env",
+    "descripcion": "C-04: Write sobre .env",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".env",
+        "content": "A=1"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "write-env-example",
+    "descripcion": ".env.example sí se escribe",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".env.example",
+        "content": "A="
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "write-8-3",
+    "descripcion": "C-04: Write sobre nombre 8.3",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "TSCONF~1.JSO",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "notebook-tsconfig",
+    "descripcion": "C-04: NotebookEdit sobre tsconfig.json",
+    "evento": {
+      "tool_name": "NotebookEdit",
+      "tool_input": {
+        "notebook_path": "tsconfig.json",
+        "new_source": "x"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "read-env",
+    "descripcion": "C-04: Read de .env",
+    "evento": {
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": ".env"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "read-env-example",
+    "descripcion": "Read de .env.example",
+    "evento": {
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": ".env.example"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "write-normal",
+    "descripcion": "Write de código normal",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/nuevo.js",
+        "content": "export const a = 1;"
+      }
+    },
+    "espera": "permite"
+  },
+  {
+    "id": "clave-anthropic",
+    "descripcion": "C-11: clave sk-ant en el contenido",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.js",
+        "content": "const k = \"sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789\";"
+      }
+    },
+    "espera": "bloquea"
   }
 ]

@@ -129,7 +129,11 @@ describe('F3.2 prueba estática: ninguna lectura directa fuera de core/entorno.j
       else if (/\.(m?js)$/.test(n)) yield p;
     }
   }
+  // El guardián lee FORGE_EDITAR_GUARDIAN a propósito sin pasar por un módulo: es la única variable que desactiva su
+  // protección y no debe depender de que otro módulo cargue (falla cerrado; spec 2026-11-06-guardian-endurecido).
+  // La prueba de abajo comprueba que sea solo esa línea.
   const PERMITIDOS = new Set(['core/entorno.js', 'claude-hooks/shared/entorno.js']);
+  const EXCEPCION_GUARDIAN = { archivo: 'claude-hooks/pre-tool-guard.js', variable: /process\.env\.FORGE_EDITAR_GUARDIAN\b/ };
   const DIRECTA = /process\.env\s*(?:\.|\[\s*['"`])\s*(?:FORGE|FRAGUA)_|\benv\s*\.\s*(?:FORGE|FRAGUA)_|\benv\s*\[\s*['"`](?:FORGE|FRAGUA)_|\{\s*(?:FORGE|FRAGUA)_[A-Z_]+\s*(?::[^}]*)?\}\s*=\s*(?:process\.)?env\b|\benv\s*\[\s*(?:VARIABLE_|nombre\b)/;
   test('no queda ninguna', () => {
     const malas = [];
@@ -138,6 +142,7 @@ describe('F3.2 prueba estática: ninguna lectura directa fuera de core/entorno.j
       if (PERMITIDOS.has(rel)) continue;
       readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
         if (/^\s*(\/\/|\*)/.test(l)) return;
+        if (rel === EXCEPCION_GUARDIAN.archivo && EXCEPCION_GUARDIAN.variable.test(l)) return;
         if (DIRECTA.test(l)) malas.push(`${rel}:${i + 1}: ${l.trim().slice(0, 100)}`);
       });
     }

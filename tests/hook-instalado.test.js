@@ -26,6 +26,11 @@ describe("hook instalado en un proyecto", () => {
       assert.doesNotMatch(texto, /from\s+['"]\.\.\/\.\.\/core/, "la copia no puede apuntar a core/, que no existe en el proyecto");
       assert.equal(texto, readFileSync(join(RAIZ, "core", "evidencia", "protegidos.js"), "utf8"), "debe ser la fuente");
 
+      // Las reglas del guardián (argv, rutas críticas, secretos) también se copian como fuente autónoma
+      const reglas = join(proyecto, ".claude", "hooks", "shared", "guardian-reglas.js");
+      assert.ok(existsSync(reglas), "falta shared/guardian-reglas.js");
+      assert.equal(readFileSync(reglas, "utf8"), readFileSync(join(RAIZ, "core", "evidencia", "guardian-reglas.js"), "utf8"), "debe ser la fuente");
+
       const hook = join(proyecto, ".claude", "hooks", "pre-tool-guard.js");
       const evento = (ruta) => JSON.stringify({ tool_name: "Write", tool_input: { file_path: ruta, content: "{}" } });
       const bloqueada = spawnSync(process.execPath, [hook], { cwd: proyecto, input: evento("tsconfig.json"), encoding: "utf8", timeout: 60_000 });
@@ -33,6 +38,12 @@ describe("hook instalado en un proyecto", () => {
       assert.match(bloqueada.stderr, /protegida/);
       const libre = spawnSync(process.execPath, [hook], { cwd: proyecto, input: evento("src/index.js"), encoding: "utf8", timeout: 60_000 });
       assert.equal(libre.status, 0, libre.stderr);
+      // El guardián instalado también analiza por argv y protege su propio registro
+      const bash = (command) => spawnSync(process.execPath, [hook], { cwd: proyecto, input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }), encoding: "utf8", timeout: 60_000 });
+      assert.equal(bash("rm -r -f /").status, 2);
+      assert.equal(bash("echo {} > .claude/settings.json").status, 2);
+      assert.equal(bash("ls").status, 0);
+      assert.equal(spawnSync(process.execPath, [hook], { cwd: proyecto, input: evento(".claude/settings.json"), encoding: "utf8", timeout: 60_000 }).status, 2);
     } finally {
       rmSync(proyecto, { recursive: true, force: true });
     }

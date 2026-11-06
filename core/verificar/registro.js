@@ -11,6 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
+import { jsonRedactado } from '../ciclo/redactar.js';
 import { crearArchivo, crearDirectorio, verificarRuta, ErrorEnlace } from '../escritura-segura.js';
 import { registrarEncadenado } from '../evidencia/cadena.js';
 
@@ -49,7 +50,7 @@ export function registrarVerificacion(cwd, resultado, opciones = {}) {
         } } : {}),
       },
     };
-    fs.appendFileSync(destino, JSON.stringify(evento) + '\n', { encoding: 'utf8', flag: 'a' });
+    fs.appendFileSync(destino, jsonRedactado(evento) + '\n', { encoding: 'utf8', flag: 'a' });
     return { ok: true, id, archivo, eventos };
   } catch (e) {
     return { ok: false, error: `No se pudo registrar la verificación: ${e instanceof Error ? e.message : String(e)}` };

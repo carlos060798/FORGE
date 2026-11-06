@@ -148,7 +148,7 @@ describe("H-02 — fallo de carga frente a fallo de prueba", () => {
 
   const hayNode = spawnSync(process.execPath, ["--version"]).status === 0;
 
-  test("reproducción de la revisión: un archivo con cables trampa y pruebas sin aserciones ya NO infla la puntuación (node --test real)", { skip: !hayNode }, async () => {
+  test("reproducción de la revisión: un archivo con cables trampa y pruebas sin aserciones ya NO infla la puntuación (node --test real)", { skip: !hayNode && "no se pudo ejecutar node --version como subproceso" }, async () => {
     const trampas = Array.from({ length: 12 }, (_, i) => `export const K${i} = ${i + 1};\nif (K${i} !== ${i + 1}) throw new Error('trampa ${i}');`).join("\n") + "\n";
     const cwd = proyecto({
       "src/guardia.js": trampas,
