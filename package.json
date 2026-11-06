@@ -79,7 +79,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
-    "acorn": "^8.17.0"
+    "acorn": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.1",
