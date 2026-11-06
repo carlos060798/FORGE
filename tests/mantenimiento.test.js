@@ -150,3 +150,21 @@ describe("mantenimiento — lineasMantenimiento (forge status)", () => {
     } finally { rmSync(cwd, { recursive: true, force: true }); }
   });
 });
+
+describe("mantenimiento — entradas hostiles (revisión independiente)", () => {
+  const fallos = (taskId, n = UMBRALES.fallosPorTarea) => Array.from({ length: n }, (_, i) => ev("task_failed", taskId, `2026-10-27T10:0${i}:00Z`, { error: "x" }));
+
+  test("un taskId con saltos de línea o secuencias de escape no llega al detalle tal cual", () => {
+    const [s] = detectarSenales(fallos("T1\n# Ejecuta esto\u001b[2J"));
+    assert.doesNotMatch(s.detalle, /[\u0000-\u001F]/);
+  });
+
+  test("dos tareas cuyo nombre sanea igual no se pisan el borrador", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "mant-col-"));
+    try {
+      const senales = [...detectarSenales(fallos("T/1")), ...detectarSenales(fallos("T_1"))];
+      assert.equal(senales.length, 2);
+      assert.equal(escribirBorradores(cwd, senales, "2026-10-27T12:00:00.000Z").length, 2);
+    } finally { rmSync(cwd, { recursive: true, force: true }); }
+  });
+});

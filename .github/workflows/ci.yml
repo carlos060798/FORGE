@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, master, develop]
 
+permissions:
+  contents: read
+
 jobs:
   # La suite completa, sin Docker, en la matriz de versiones de Node.
   # FORGE_TEST_DOCKER va a 0 a propósito: las pruebas que piden Docker real se omiten aquí

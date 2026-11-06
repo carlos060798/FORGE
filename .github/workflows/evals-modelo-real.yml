@@ -10,6 +10,9 @@ on:
         required: false
         default: "0.50"
 
+permissions:
+  contents: read
+
 jobs:
   probar-modelo:
     name: Prueba mínima del ciclo con un modelo real
@@ -43,6 +46,7 @@ jobs:
 
       - name: Prueba con modelo real
         if: steps.clave.outputs.hay == 'si'
-        run: node cli/index.js probar-modelo --tope "${{ inputs.tope }}"
+        run: node cli/index.js probar-modelo --tope "$TOPE"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TOPE: ${{ inputs.tope }}

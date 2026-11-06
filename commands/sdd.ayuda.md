@@ -78,6 +78,7 @@ Muestra esta guía formateada:
    /sdd.modo [normal|rapido|prototipo]  Cambiar modo de sesión (normal=completo, rapido=sin crítico, prototipo=sin revisores)
    /sdd.mapear                       Indexar estructura, símbolos y dependencias del proyecto
    /sdd.comprimir                    Comprimir archivos de memoria para ahorrar tokens
+   /compact                          Alias de /sdd.comprimir aplicar (comprimir el contexto de la sesión)
    /sdd.optimizar                    Optimizar artefactos SDD para reducir uso de contexto
    /sdd.optimizar-memoria            Compactar la memoria del agente activo
 

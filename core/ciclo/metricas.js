@@ -30,12 +30,13 @@ export function calcularMetricas({ tareas, eventos, gasto }) {
   const porResultado = (r) => lista.filter((t) => t && t.resultado === r);
 
   const exitos = porResultado('exito');
-  const exitoPrimerIntento = exitos.filter((t) => Number(t.iteracion) <= 1).length;
+  const iteracionDe = (t) => (Number.isFinite(Number(t?.iteracion)) ? Number(t.iteracion) : null);
+  const exitoPrimerIntento = exitos.filter((t) => { const i = iteracionDe(t); return i !== null && i <= 1; }).length;
   const aceptadas = porResultado('aceptada_por_humano').length;
   const abortadas = porResultado('abortada').length;
   const terminadas = exitos.length + aceptadas + abortadas;
 
-  const reintentos = lista.reduce((n, t) => n + (t && t.resultado !== 'en_curso' ? Math.max(0, Number(t.iteracion) - 1 || 0) : 0), 0);
+  const reintentos = lista.reduce((n, t) => n + (t && t.resultado !== 'en_curso' ? Math.max(0, (iteracionDe(t) ?? 0) - 1) : 0), 0);
 
   // Tiempo por tarea: del último task_started al task_completed siguiente
   /** @type {Map<string, number>} */
@@ -65,7 +66,7 @@ export function calcularMetricas({ tareas, eventos, gasto }) {
     abortadas,
     tiempoMedioMs: duraciones.length === 0 ? null : duraciones.reduce((a, b) => a + b, 0) / duraciones.length,
     tareasConTiempo: duraciones.length,
-    gasto: gasto && typeof gasto.usd === 'number' && typeof gasto.llamadas === 'number' ? { usd: gasto.usd, llamadas: gasto.llamadas } : null,
+    gasto: gasto && Number.isFinite(gasto.usd) && gasto.usd >= 0 && Number.isFinite(gasto.llamadas) && gasto.llamadas >= 0 ? { usd: gasto.usd, llamadas: gasto.llamadas } : null,
   };
 }
 

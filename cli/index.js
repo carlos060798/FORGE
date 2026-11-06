@@ -2164,7 +2164,11 @@ async function main() {
     case "mantenimiento": {
       // Señales objetivas del registro de eventos -> borradores de idea (core/mantenimiento.js). No despliega ni corrige.
       const { detectarSenales, leerEventosDe, escribirBorradores } = await import("../core/mantenimiento.js");
-      const senales = detectarSenales(leerEventosDe(process.cwd()));
+      let senales;
+      try { senales = detectarSenales(leerEventosDe(process.cwd())); } catch (e) {
+        console.error(`No se pudo leer el registro de eventos: ${e instanceof Error ? e.message : String(e)}`);
+        process.exit(2);
+      }
       const creados = args.includes("--escribir") ? escribirBorradores(process.cwd(), senales, new Date().toISOString()) : [];
       if (args.includes("--json")) {
         console.log(JSON.stringify({ senales, borradores: creados }, null, 2));

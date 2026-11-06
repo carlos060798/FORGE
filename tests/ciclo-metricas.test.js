@@ -100,3 +100,12 @@ describe("ciclo/metricas — lineasMetricas", () => {
     assert.match(texto, /tiempo medio por tarea: sin medir/);
   });
 });
+
+describe("ciclo/metricas — valores no numéricos (revisión independiente)", () => {
+  test("una iteración ausente o infinita no rompe los totales", () => {
+    const m = calcularMetricas({ tareas: [{ taskId: "A", resultado: "exito" }, { taskId: "B", resultado: "exito", iteracion: Infinity }, tarea("C", "exito", 2)], eventos: [], gasto: { usd: NaN, llamadas: 1 } });
+    assert.ok(Number.isFinite(m.reintentos));
+    assert.equal(m.reintentos, 1);
+    assert.equal(m.gasto, null);
+  });
+});

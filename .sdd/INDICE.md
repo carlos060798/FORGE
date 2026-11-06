@@ -5,10 +5,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 16
+- Total: 21
 - Completadas: 0
-- En progreso: 13
-- En borrador: 3
+- En progreso: 15
+- En borrador: 6
 
 ## Especificaciones
 
@@ -34,6 +34,8 @@
 | 2026-10-14-defensa-inyeccion-y-fuga | Defensa frente a inyección y fuga: contenido del proyecto como dato, control de salida y batería de ataques | en_implementacion (aprobada **por delegación del dueño**, 2026-10-17; F1 a F5 hechas: 16 puntos de entrada delimitados con identificador derivado del contenido, control de salida de secretos y destinos, batería permanente y documento de garantías; **pendientes** S0.4 con modelo real (no ejecutado) y F6: revisión independiente, suite completa y Docker real) | grande | ✅ | ✅ | ✅ | ⚠️ autoevaluación (pruebas afectadas y tipos; sin revisión independiente) | 2026-10-14 |
 | 2026-10-14-puertas-de-calidad-y-evidencia | Puertas de calidad declarables, criterios enlazados e informe de evidencia a prueba de alteraciones | en_implementacion (aprobada por delegación del dueño el 2026-10-17; fase A: evidencia encadenada y firmada con la clave local, `verificar --comprobar-evidencia`, lista de configuración protegida; fase B1: puertas declarables en `fragua verificar` (`core/puertas/`, `docs/puertas-de-calidad.md`); la integración con el ciclo y el enrutador espera a los perfiles; autoevaluada, sin revisión independiente) | grande | ✅ | ✅ | ✅ | — | 2026-10-14 |
 | 2026-10-27-flujo-nativo-de-ia | Flujo nativo de IA: barreras en el guardián, revisión en capas, evals, mantenimiento por señal e indicadores | en_implementacion (por instrucción del dueño; autoevaluada, sin revisión independiente; instalación de hooks y job de CI sin probar en real) | mediano | ✅ | — | ✅ | ⚠️ autoevaluación | 2026-10-27 |
+| 2026-10-14-despliegue-con-aprobacion | Despliegue con aprobación: puerto de despliegue con un adaptador de AWS; el modelo propone, una persona aprueb | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
+| 2026-10-14-perfiles-de-agente | Perfiles de agente: herramientas, rutas, contexto y pasos por rol, impuestos por el motor | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 
 ## Previstas (sin especificar todavía)
 

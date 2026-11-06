@@ -6,6 +6,7 @@
  * No despliega, no corrige y no aprueba nada: el borrador es una propuesta del sistema, no una decisión.
  */
 
+import { createHash } from 'crypto';
 import { join } from 'path';
 import { crearArchivo, leerArchivo } from './escritura-segura.js';
 import { bloqueDeCodigo, unaLinea } from './agents-md.js';
@@ -71,7 +72,7 @@ export function detectarSenales(eventos, umbrales = UMBRALES) {
   }
   for (const [taskId, { n, error }] of fallos) {
     if (n >= umbrales.fallosPorTarea) {
-      senales.push({ tipo: 'fallos_repetidos', taskId, cantidad: n, detalle: `${taskId} falló ${n} veces desde su último éxito; último error: ${unaLinea(error).slice(0, 200) || 'sin mensaje'}` });
+      senales.push({ tipo: 'fallos_repetidos', taskId, cantidad: n, detalle: `${unaLinea(taskId).slice(0, 80)} falló ${n} veces desde su último éxito; último error: ${unaLinea(error).slice(0, 200) || 'sin mensaje'}` });
     }
   }
 
@@ -156,7 +157,8 @@ export function escribirBorradores(cwd, senales, ts) {
   const sello = ts.replace(/[^0-9]/g, '').slice(0, 14);
   const creados = [];
   for (const s of senales) {
-    const sufijo = s.taskId ? `-${s.taskId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40)}` : '';
+    // El nombre sanea el taskId y lleva una huella del original: dos tareas distintas no comparten archivo
+    const sufijo = s.taskId ? `-${s.taskId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40)}-${createHash('sha256').update(s.taskId).digest('hex').slice(0, 8)}` : '';
     const relativa = join('.sdd', 'mantenimiento', 'ideas', `${sello}-${s.tipo}${sufijo}.md`);
     if (crearArchivo(cwd, join(cwd, relativa), borradorDeIdea(s, ts))) creados.push(relativa);
   }

@@ -504,7 +504,7 @@ ls sdd.config.yaml
 ### "Gap reportado es falso positivo"
 
 ```bash
-# Abre docs/COMPLIANCE.md para entender qué busca el agente
+# Relee el hallazgo del informe: cita el requisito y el archivo que lo motivó
 # Ajusta tu especificación o sdd.config.yaml según corresponda
 # Si aún así es falso, reporta:
 /sdd.issue "compliance-gap-false-positive"

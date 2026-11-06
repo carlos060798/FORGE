@@ -41,6 +41,7 @@
     "claude-hooks/",
     "configuracion-ejemplo/",
     "docs/",
+    "!docs/archivo/",
     "ui/",
     ".claude-plugin/",
     "scripts/",

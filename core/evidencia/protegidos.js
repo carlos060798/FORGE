@@ -44,8 +44,10 @@ export function clasificarConfiguracionProtegida(ruta) {
   const partes = ruta.replace(/\\/g, '/').split('/').filter((p) => p !== '' && p !== '.');
   const nombre = partes[partes.length - 1];
   if (nombre === undefined) return { protegida: true, herramienta: null };
+  // Windows ignora el punto y el espacio finales y trata `nombre:flujo` como el mismo archivo: se comprueban las dos formas
+  const sinAdornos = nombre.replace(/:.*$/s, '').replace(/[ .]+$/, '');
   for (const { patron, herramienta } of CONFIGURACION_PROTEGIDA) {
-    if (patron.test(nombre)) return { protegida: true, herramienta };
+    if (patron.test(nombre) || patron.test(sinAdornos)) return { protegida: true, herramienta };
   }
   return { protegida: false, herramienta: null };
 }

@@ -46,3 +46,13 @@ describe('configuración protegida', () => {
     assert.ok(Object.isFrozen(CONFIGURACION_PROTEGIDA));
   });
 });
+
+test("Windows normaliza el nombre: punto o espacio final y flujo ::$DATA siguen siendo la misma configuración", () => {
+  for (const ruta of ["tsconfig.json ", "tsconfig.json.", "tsconfig.json. .", "src/tsconfig.json::$DATA", "ruff.toml:flujo", "SRC\\TSConfig.JSON "]) {
+    assert.equal(clasificarConfiguracionProtegida(ruta).protegida, true, ruta);
+  }
+  // Lo que no es configuración no se aprieta de más
+  for (const ruta of ["tsconfig.json.bak", "docs/tsconfig-notas.md", "src/index.js", "notas.txt."]) {
+    assert.equal(clasificarConfiguracionProtegida(ruta).protegida, false, ruta);
+  }
+});
