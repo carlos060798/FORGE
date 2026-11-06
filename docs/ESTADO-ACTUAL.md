@@ -1,6 +1,6 @@
 # Estado actual de Fragua (5.0.0, sin publicar)
 
-> **Fecha:** 2026-10-24 · **Rama:** `feature/motor-agentico` · **Última suite completa:** `be747d6` (3877 de 3909 pasan; un fallo por lentitud del disco, ver abajo)
+> **Fecha:** 2026-11-06 · **Rama:** `main` · **Última suite completa:** árbol de trabajo previo al commit `17cbbc4` (4131 de 4162 pasan, 0 fallos, 31 saltadas)
 > Este documento es el estado de referencia. Las guías (`FORGE-5.0-GUIA.md`, `README.md`) enlazan aquí en vez de repetir cifras. Si una cifra de otro documento no coincide con esta página, manda esta.
 
 ## Qué es, en una frase
@@ -11,20 +11,20 @@ Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo veri
 
 | Medida | Valor | Cómo se midió |
 |---|---|---|
-| Pruebas | 3909 en total: 3877 pasan, 1 falla, 31 saltadas | `npm test` en `be747d6`, Windows 11, Node 24.20, sin otras suites en marcha; 1277 s |
-| Tipos | 0 errores | `npm run typecheck` en `1d728f5`; no repetido en `be747d6` |
+| Pruebas | 4162 en total: 4131 pasan, 0 fallan, 31 saltadas | `npm test` el 2026-11-06 sobre el árbol previo a `17cbbc4`, Windows 11, Node 24, un solo `npm test` en marcha; 385 s |
+| Tipos | 0 errores | `npm run typecheck` el 2026-11-06, mismo árbol |
 | Agentes | 14 (en `agents/`) | Conteo de archivos |
 | Skills | 31 (en `skills/`) | Conteo de carpetas |
 | Comandos | 39, con una skill generada cada uno | Inventario, `scripts/inventario-agentes.mjs` |
-| Especificaciones | 20 en `.sdd/especificaciones/` (10 de antes, 10 de hoy) | Conteo de carpetas |
+| Especificaciones | 24 en `.sdd/especificaciones/` (9 en borrador, 15 en implementación; ninguna completada) | `.sdd/INDICE.md`, recalculado el 2026-11-06 |
 
 Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no se ejecutan en este equipo.
 
-**La suite no está verde.** En la pasada de `be747d6` falla una prueba: «5000 archivos pequeños» (`tests/proyecto-hostil.test.js`), que agotó su tiempo a los 568 s. Aislada, en la misma `HEAD`, pasa (208 s). Según la medición de la sesión que la lanzó, el disco de esa máquina es muy lento (escribir 5000 archivos de una línea tarda unos 52 s y copiarlos unos 18 s); no se ha comprobado en otra máquina. Por eso la cifra se da como «1 fallo por lentitud del disco», no como verde.
+**La última pasada completa salió verde, pero no es estable en todas las máquinas.** Antes (`be747d6`) falló «5000 archivos pequeños» por lentitud del disco y, en otras pasadas, pruebas de tiempo límite bajo carga; aisladas, pasan. `tests/verificar-mutacion.test.js` tarda unos 42 s aislado y 74 s dentro de la suite; su tope por invocación ahora es de 600 s y está en `npm run test:lento`. La causa del agotamiento de tiempo que se vio antes no se confirmó. Las 31 saltadas son las de Docker real. **No hay una pasada verde en Linux ni en macOS**: el CI de GitHub corre desde el 2026-11-05 y su resultado no consta aquí.
 
 **Pasadas anteriores con fallos intermitentes.** En `f195354` fallaron tres pruebas con la carga de la suite entera (memoria SQLite, batería hostil de 52 entradas y un límite de tiempo de `adfATexto`); aisladas pasan. En `03d4baa`, con otra suite corriendo en la misma máquina, fallaron pruebas de tiempo límite (`comoDato`, «una cadena enorme», «5000 archivos»). Todas las de tiempo límite pasan aisladas.
 
-**Pendiente antes de empujar la rama:** una pasada completa sin otras suites en marcha, con un disco que no sea el de la prueba de 5000 archivos, o un ajuste explícito de su tiempo límite con su justificación.
+**Pendiente:** mirar el resultado del CI de GitHub (jobs `tipos`, `aislamiento`, `pruebas-docker`, `evidencia`) y corregir lo que falle.
 
 ## Lo que funciona y está probado
 

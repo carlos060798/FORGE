@@ -1,5 +1,7 @@
 # Cobertura de pruebas
 
+> **Nota (2026-11-06):** las cifras de cobertura de este documento **no se han vuelto a medir** desde su fecha. Desde entonces se añadieron el guardián endurecido, `core/aprobaciones-identidad.js` y `core/mantenimiento.js`, con pruebas propias. Se actualizan al medir de nuevo, no a mano.
+
 > Medida el **2026-10-10** sobre el commit `9180814` de `feature/motor-agentico` (más el script nuevo de `package.json`, que no cambia código).
 > Equipo: Windows 11, **Node v24.20.0**. Sin `FORGE_TEST_DOCKER`: las pruebas que piden Docker real no se ejecutaron.
 > Una sola pasada. Es una foto de ese día: repite la medición antes de citarla.

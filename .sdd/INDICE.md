@@ -5,10 +5,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 23
+- Total: 24
 - Completadas: 0
 - En progreso: 15
-- En borrador: 8
+- En borrador: 9
 
 ## Especificaciones
 
@@ -36,6 +36,7 @@
 | 2026-10-27-flujo-nativo-de-ia | Flujo nativo de IA: barreras en el guardián, revisión en capas, evals, mantenimiento por señal e indicadores | en_implementacion (por instrucción del dueño; autoevaluada, sin revisión independiente; instalación de hooks y job de CI sin probar en real) | mediano | ✅ | — | ✅ | ⚠️ autoevaluación | 2026-10-27 |
 | 2026-11-06-guardian-endurecido | Guardián endurecido: análisis por argv, falla cerrado y registro propio protegido | borrador (implementada por instrucción del dueño; sin aprobación ni revisión independiente) | mediano | ✅ | — | ✅ | ⚠️ autoevaluación | 2026-11-06 |
 | 2026-11-06-aprobaciones-con-identidad | Aprobaciones con identidad: terminal real, código de un solo uso y registro firmado | borrador (implementada por instrucción del dueño; sin aprobación ni revisión independiente; no probada en un TTY real) | mediano | ✅ | — | ✅ | ⚠️ autoevaluación | 2026-11-06 |
+| 2026-11-06-aislamiento-opcional | Aislamiento opcional: nivel base sin Docker y nivel aislado, con el nivel usado visible en cada veredicto | borrador (solo especificación; cambia una garantía y espera la decisión del dueño; nada implementado) | mediano | ✅ | — | — | — | 2026-11-06 |
 | 2026-10-14-despliegue-con-aprobacion | Despliegue con aprobación: puerto de despliegue con un adaptador de AWS; el modelo propone, una persona aprueb | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 | 2026-10-14-perfiles-de-agente | Perfiles de agente: herramientas, rutas, contexto y pasos por rol, impuestos por el motor | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 

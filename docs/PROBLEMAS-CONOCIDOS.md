@@ -1,5 +1,7 @@
 # Problemas conocidos
 
+> **Nota (2026-11-06):** cerrados desde la última revisión de este documento: guardián que se esquivaba con `rm -r -f`, `git push +ref` o `sed -i .env`, hook que fallaba abierto, aprobaciones sin identidad (mitigado, ver `SECURITY.md`). Siguen abiertos: Docker real fuera de Windows, proveedores OpenAI y Ollama sin llamadas reales, gasto sin contrastar con una factura. El resto de la lista no se ha revisado.
+
 > Fecha: **2026-10-12**. Describe la rama `feature/motor-agentico` en el commit `82815b4`. La versión 5.0.0 **no está publicada**.
 > Reúne los límites que estaban repartidos por las verificaciones y revisiones del 2026-10-09, los que se comprobaron el 2026-10-10 (marcados «comprobado el 2026-10-10»), lo que dejó la tercera revisión independiente (2026-10-11) y las integraciones externas (sección 9). **Lo corregido desde el 2026-10-10 se quitó de las secciones 1 a 7**; la sección 10 dice qué se quitó y por qué commit.
 > Solo hay límites documentados o comprobados. Si algo no aparece aquí, no quiere decir que funcione: quiere decir que nadie lo ha mirado.
