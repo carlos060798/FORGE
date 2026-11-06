@@ -50,3 +50,9 @@ Un agente detecta lo que no pertenece al marco de trabajo o está duplicado. Sol
 **C. Mantener:** `.sdd/` completo, `docs/` vigente, `docs-site/` (lo publica `docs.yml`), `skills-generadas/` (parte versionada a propósito), código, agentes, comandos, skills y pruebas. No hay documentos de trading ni de finanzas, ni temporales (`.tmp`, `.bak`).
 
 Además, `docs/FORGE-5.0-GUIA.md` y `docs/MIGRACION-5.0.md` están enlazados desde el índice y el README: no se quitan.
+
+## Limpieza aplicada (2026-11-06)
+
+- `forge/doc/` (v2, fuera de git) se copió a `docs/archivo/forge-v2/` (8 archivos, ahora versionados) y se quitó el original.
+- `.gitignore-analisis` eliminado (rastreado, recuperable) y `dist/` vacío quitado.
+- **Sin tocar:** `logs/bitacora-rendimiento.md`, `docs/archivo/` anterior, `docs/FORGE-DOCUMENTACION.html`, `docs/investigacion/` y los 63 worktrees: quedan para decisión del dueño.
