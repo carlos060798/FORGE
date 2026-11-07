@@ -4,7 +4,7 @@
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -27,12 +27,12 @@ describe("F3: endurecimiento", () => {
     assert.equal(argv[argv.indexOf("--ipc") + 1], "none");
   });
 
-  // DEUDA (C-09): las bases se identifican por etiqueta, no por digest. Cuando se fijen (node:22-alpine@sha256:…),
-  // esta prueba debe pasar de aviso a exigencia. No se inventan digests sin red.
-  test("DEUDA: bases sin fijar por digest (aviso, no fallo)", (t) => {
-    const sinDigest = Object.entries(IMAGENES_BASE).filter(([, b]) => !b.includes("@sha256:")).map(([l]) => l);
-    if (sinDigest.length) t.diagnostic(`bases sin digest: ${sinDigest.join(", ")}`);
-    assert.ok(true);
+  // C-08: las bases van fijadas por digest (`etiqueta@sha256:<64 hex>`): una etiqueta movida en el registro no puede
+  // cambiar lo que juzga las pruebas.
+  test("las bases del sandbox están fijadas por digest", () => {
+    for (const [lenguaje, base] of Object.entries(IMAGENES_BASE)) {
+      assert.match(base, /^[a-z0-9./-]+:[\w.-]+@sha256:[0-9a-f]{64}$/, `${lenguaje}: ${base}`);
+    }
   });
 
   test("redactar cubre claves sk-ant", () => {
@@ -61,5 +61,31 @@ describe("F3: endurecimiento", () => {
     const allow = JSON.parse(readFileSync(p, "utf8")).permissions.allow;
     assert.ok(!allow.includes("WebSearch"));
     assert.ok(!allow.some((/** @type {string} */ x) => x.startsWith("Bash(git commit") || x.startsWith("Bash(git add") || x.startsWith("Bash(git rm") || x.startsWith("Bash(rm ")));
+  });
+});
+
+describe("instalación de dependencias JavaScript en la imagen", () => {
+  test("sin lockfile, npm install se reintenta con --legacy-peer-deps solo si falla (bug de arborist)", () => {
+    const d = dockerfile("javascript", IMAGENES_BASE.javascript, ["package.json"]);
+    assert.match(d, /RUN npm install --ignore-scripts --no-audit --no-fund \|\| npm install --ignore-scripts --no-audit --no-fund --legacy-peer-deps/);
+  });
+  test("con lockfile (npm ci) no hay respaldo: no se resuelve nada", () => {
+    const d = dockerfile("javascript", IMAGENES_BASE.javascript, ["package.json", "package-lock.json"]);
+    assert.match(d, /RUN npm ci --ignore-scripts --no-audit --no-fund\n/);
+    assert.doesNotMatch(d, /legacy-peer-deps/);
+  });
+});
+
+describe("cadena de suministro en CI (C-10)", () => {
+  test("toda acción de los workflows va fijada por SHA de commit, no por etiqueta móvil", () => {
+    const dir = join(import.meta.dirname, "..", ".github", "workflows");
+    const sueltas = [];
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".yml"))) {
+      readFileSync(join(dir, f), "utf8").split(/\r?\n/).forEach((l, i) => {
+        const m = /uses:\s*([^\s#]+)/.exec(l);
+        if (m && !m[1].startsWith("./") && !/@[0-9a-f]{40}$/.test(m[1])) sueltas.push(`${f}:${i + 1}: ${m[1]}`);
+      });
+    }
+    assert.deepEqual(sueltas, []);
   });
 });

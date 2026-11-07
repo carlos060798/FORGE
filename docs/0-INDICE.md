@@ -77,6 +77,8 @@ Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contien
 ### Arquitectura y referencia
 - 🏗️ [architecture.md](architecture.md): capas, diagramas, flujos de extremo a extremo
 - ⚙️ [runtime.md](runtime.md): hooks, memoria, registro de modelos
+- 🪝 [hooks.md](hooks.md): los 8 hooks, qué se registra, requisito de Node, `FORGE_EDITAR_GUARDIAN`
+- ⚠️ [limitations.md](limitations.md) y [roadmap.md](roadmap.md): límites y hoja de ruta
 - 📋 [workflows.md](workflows.md): etapas del pipeline y flags
 - 👥 [agents.md](agents.md): los 14 agentes, roles y herramientas
 - 🛠️ [tools.md](tools.md): las 31 skills, por categoría

@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 
 import { argvRun, ETIQUETA, nombreContenedor } from "../core/sandbox/politica.js";
 import { crearEjecutor, DockerCli } from "../core/sandbox/docker-cli.js";
-import { dockerfile, ErrorPreparacion, prepararImagen } from "../core/sandbox/preparar-imagen.js";
+import { dockerfile, ErrorPreparacion, prepararImagen, IMAGENES_BASE } from "../core/sandbox/preparar-imagen.js";
 import { comandoDePruebas, SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { clasificar } from "../core/ciclo/router.js";
 
@@ -201,7 +201,7 @@ describe("prepararImagen — dependencias sin red (ADR-03)", () => {
     const f = ejecutorFalso();
     const cwd = proyecto({ "package.json": '{"name":"x","scripts":{"test":"node --test"}}' });
     const r = await prepararImagen({ cwd, lenguaje: "javascript", cli: new DockerCli(f), dirConstruccion: dirConstruccion() });
-    assert.deepEqual(r, { imagen: "node:22-alpine", construida: false, huella: null });
+    assert.deepEqual(r, { imagen: IMAGENES_BASE.javascript, construida: false, huella: null });
     assert.deepEqual(f.llamadas, []);
   });
 

@@ -17,14 +17,14 @@ import { problemaConPytest } from '../pytest-deteccion.js';
 export const DIR_DEPS    = '/deps';
 export const DIR_TRABAJO = '/deps/work';
 
-// DEUDA (C-09): las bases se identifican por etiqueta y no por digest (`node:22-alpine@sha256:…`).
-// No se inventan digests: hay que obtenerlos con red (`docker buildx imagetools inspect <etiqueta>`)
-// y sustituir aquí las etiquetas. La prueba de tests/endurecimiento-f3.test.js avisa mientras falte.
+// Las bases van fijadas por digest (`etiqueta@sha256:…`, índice multi-arquitectura) para que una etiqueta movida en el registro
+// no cambie lo que juzga las pruebas (informe SEGURIDAD-CIBER C-08). Digests obtenidos el 2026-11-06 con `docker pull` + `docker image inspect`.
+// Fijar congela también los parches de seguridad: para actualizar, repite el pull y sustituye el digest aquí (Dependabot no ve este archivo).
 export const IMAGENES_BASE = {
-  javascript: 'node:22-alpine',
-  typescript: 'node:22-alpine',
-  python:     'python:3.12-slim',
-  go:         'golang:1.23-alpine',
+  javascript: 'node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202',
+  typescript: 'node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202',
+  python:     'python:3.12-slim@sha256:4840d514c583a4d3d8cad3940e68dee6f0f6f3635c12fcd0a3d74c21a5b93a54',
+  go:         'golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f',
 };
 
 const MANIFIESTOS = {
@@ -122,7 +122,11 @@ export function dockerfile(lenguaje, base, presentes, conHashes = false) {
   } else {
     // --ignore-scripts: los scripts de instalación de un paquete son código ajeno con red
     const instalar = presentes.includes('package-lock.json') ? 'npm ci' : 'npm install';
-    lineas.push(`RUN ${instalar} --ignore-scripts --no-audit --no-fund`);
+    const base = `${instalar} --ignore-scripts --no-audit --no-fund`;
+    // Sin lockfile, `npm install` de npm 10 puede morir resolviendo pares con «Cannot read properties of null (reading 'edgesOut')»
+    // (bug de arborist, reproducido con vitest 5.0.3 + vite 8.3.4). Solo si falla se reintenta con --legacy-peer-deps;
+    // con lockfile (`npm ci`) no se resuelve nada y no hace falta.
+    lineas.push(instalar === 'npm install' ? `RUN ${base} || ${base} --legacy-peer-deps` : `RUN ${base}`);
     lineas.push(`ENV PATH=${DIR_DEPS}/node_modules/.bin:$PATH`);
   }
   return lineas.join('\n') + '\n';

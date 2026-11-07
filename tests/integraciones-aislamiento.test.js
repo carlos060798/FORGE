@@ -50,9 +50,9 @@ const ESPECIFICADORES = /(?:\bimport\s*(?:[\w*${}\s,]+\s*from\s*)?|\bexport\s*(?
 
 describe('F1.6 carga perezosa: prueba estática', () => {
   test('ningún archivo del producto, salvo el propio paquete y su CLI, importa core/integraciones/', () => {
-    // cli/index.js y cli/runner.js enrutan `forge integraciones`, `forge doctor` y `forge status`: solo
+    // cli/index.js, cli/runner.js y cli/comandos/doctor.js (que enruta el diagnóstico de integraciones) enrutan `forge integraciones`, `forge doctor` y `forge status`: solo
     // pueden mencionarlo con import() DINÁMICO (se comprueba en la prueba siguiente).
-    const permitidos = new Set([join(RAIZ, 'cli', 'integraciones.js'), join(RAIZ, 'cli', 'index.js'), join(RAIZ, 'cli', 'runner.js')]);
+    const permitidos = new Set([join(RAIZ, 'cli', 'integraciones.js'), join(RAIZ, 'cli', 'index.js'), join(RAIZ, 'cli', 'runner.js'), join(RAIZ, 'cli', 'comandos', 'doctor.js')]);
     const propios = join(RAIZ, 'core', 'integraciones') + sep;
     /** @type {string[]} */
     const infractores = [];

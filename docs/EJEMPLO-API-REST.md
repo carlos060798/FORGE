@@ -2,7 +2,7 @@
 
 Este ejemplo muestra un flujo FORGE para un proyecto mediano con backend real, base de datos y autenticación JWT. Está orientado a desarrolladores que quieren entender qué produce cada agente en detalle.
 
-Para el caso introductorio (app de lista de tareas, perfil guiado), ver [CASO-COMPLETO.md](CASO-COMPLETO.md).
+Para un primer recorrido más corto, ver [getting-started.md](getting-started.md).
 
 ---
 

@@ -18,14 +18,14 @@ Una tarea puede **nacer de una incidencia o ticket** y su resultado puede **volv
 | Auditoría, topes por sesión e interruptor de apagado | Hecha | `core/integraciones/auditoria.js` |
 | Adaptadores de GitHub, GitLab y Jira Cloud (leer, comentar, proponer, comprobar alcance) | Hechos, **contra servidores simulados**; ninguno se ha ejecutado contra una cuenta real | `core/integraciones/proveedores/` |
 | Prueba de contrato común a los tres adaptadores | Hecha | `tests/integraciones-contrato-comun.test.js` |
-| Cola de pendientes, vista previa y aprobación (`aprobacion.js`) | **En construcción** (fase F3) | — |
-| Armar la publicación desde el estado del ciclo | **En construcción** (F3) | — |
-| Comando `forge integraciones` (`leer`, `publicar`, `aprobar`, `estado`, `apagar`) | **En construcción** (F4) | — |
-| Comprobaciones de `forge doctor` para integraciones y estado en `forge status` | **En construcción** (F4) | — |
+| Cola de pendientes, vista previa y aprobación | Implementada en código (`core/integraciones/aprobacion.js`); sin probar contra una plataforma real | `core/integraciones/aprobacion.js` |
+| Armar la publicación desde el estado del ciclo | Implementada en código; sin probar contra una plataforma real | `core/integraciones/publicacion.js` |
+| Comando `forge integraciones` (`leer`, `publicar`, `pendientes`, `vista`, `aprobar`, `rechazar`, `estado`, `doctor`, `apagar`, `encender`) | Existe | `cli/integraciones.js`, registrado en `cli/index.js` |
+| Comprobaciones de integraciones (`forge integraciones doctor`) | Existen (`core/integraciones/doctor.js`); no se ha verificado su integración en `forge doctor` general | `core/integraciones/doctor.js` |
 | Prueba de no filtración del token en todo el recorrido, revisión independiente | **Pendientes** (F5) | — |
 | Cliente MCP de solo lectura detrás del mismo puerto | **No empezado**; solo con decisión del dueño (F6) | — |
 
-Lo marcado «en construcción» está descrito aquí según `plan.md` y `tareas.md` de la spec. **Hoy no existe el comando `forge integraciones`**: los módulos se pueden importar y probar, pero ninguna orden de la línea de comandos los usa todavía.
+Corrección 2026-11: este documento decía que el comando `forge integraciones` no existía; sí existe (`cli/integraciones.js`). Lo que sigue sin hacerse es ejecutarlo contra cuentas reales de GitHub, GitLab o Jira: todo se probó con servidores simulados. Los textos «en construcción» que quedan más abajo reflejan el plan original de la spec y pueden estar desfasados; la fuente de verdad es el código.
 
 ## Qué hace
 
@@ -171,7 +171,7 @@ Autenticación: `Authorization: Basic base64(correo:token)` contra `https://<sit
 ## Flujo: leer → ciclo → publicar → aprobar
 
 ```
-forge integraciones leer github org/repo#123          (en construcción: F4)
+forge integraciones leer github org/repo#123          (el comando existe)
   → valida modo y destino ANTES de cualquier red
   → proveedor.leerElemento (HTTPS, host permitido, tope de tamaño)
   → confianza: dato delimitado, redactado y acotado
@@ -181,11 +181,11 @@ forge integraciones leer github org/repo#123          (en construcción: F4)
 forge run --motor ciclo --tasks .sdd/integraciones/entrada/<id>.tareas.json
   → el ciclo verificado de siempre, sin cambios
 
-forge integraciones publicar <id> --tipo comentario|propuesta   (en construcción: F3 y F4)
+forge integraciones publicar <id> --tipo comentario|propuesta   (el comando existe)
   → arma la publicación desde el ESTADO del ciclo (huellas, resultado, evidencia), redactada y acotada
   → la deja en pendientes con vista previa; NO escribe en la plataforma
 
-forge integraciones aprobar <id>                      (en construcción: F3 y F4)
+forge integraciones aprobar <id>                      (el comando existe)
   → comprueba modo, destino, tope y que la vista previa no haya cambiado (huella)
   → proveedor.comentar / proponerCambio, idempotente por identificador
   → evento integracion:publicado

@@ -149,7 +149,7 @@ Entry point para `forge run` / `forge resume` / `forge status` / `forge validate
 
 ## L5 — Gobernanza
 
-Tres hooks de Claude Code, cada uno con versión `.js` (lógica completa) y `.sh` (lógica mínima Bash para proyectos sin Node):
+Tres hooks de Claude Code tienen versión `.js` y `.sh`; el `.sh` solo localiza Node ≥ 20 y delega en el `.js` (sin Node, el guardián bloquea; ver [hooks.md](hooks.md)). Hay 8 archivos `.js` en total:
 
 ### `pre-tool-guard.js` (PreToolUse)
 

@@ -43,7 +43,7 @@ describe("dividirComando", () => {
 describe("Go: configuración", () => {
   test("está cubierto y usa su imagen base", () => {
     assert.ok(lenguajeCubierto("go"));
-    assert.equal(IMAGENES_BASE.go, "golang:1.23-alpine");
+    assert.match(IMAGENES_BASE.go, /^golang:1\.23-alpine@sha256:[0-9a-f]{64}$/);
     assert.ok(!lenguajeCubierto("rust"));
   });
   test("sin go.mod se avisa antes de gastar; con go.mod no hay problema", () => {

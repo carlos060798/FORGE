@@ -22,9 +22,10 @@ import { ROOT, mdFiles, readFile } from "./helpers.js";
 // ─── 1. Plantilla settings.json donde el CLI la busca ────────────────────────
 
 describe("release-safety — plantilla settings.json del CLI", () => {
-  const cli = readFile(join(ROOT, "cli", "index.js"));
+  // copiarSettings() vive en cli/comandos/instalar.js desde la partición de cli/index.js
+  const cli = readFile(join(ROOT, "cli", "comandos", "instalar.js"));
 
-  test("cli/index.js busca settings.json en una ruta que existe", () => {
+  test("el CLI (cli/comandos/instalar.js) busca settings.json en una ruta que existe", () => {
     // Reconstruye la ruta del join(...) de copiarSettings()
     const m = cli.match(/join\(PLUGIN_DIR,\s*([^)]+),\s*"settings\.json"\)/);
     assert.ok(m, "No se encontró el join() de la plantilla settings.json en el CLI");

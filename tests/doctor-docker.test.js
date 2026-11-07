@@ -13,8 +13,8 @@ describe('forge doctor: Docker siempre comprobado', () => {
     assert.equal(r.ms, 120);
     const texto = r.lineas.map((l) => l.texto).join('\n');
     assert.match(texto, /Docker 27\.1\.0 disponible .*120 ms/);
-    assert.match(texto, /node:22-alpine presente/);
-    assert.match(texto, /python:3\.12-slim no está en el equipo: se descargará/);
+    assert.match(texto, /node:22-alpine@sha256:[0-9a-f]{64} presente/);
+    assert.match(texto, /python:3\.12-slim@sha256:[0-9a-f]{64} no está en el equipo: se descargará/);
     assert.ok(r.lineas.every((l) => !l.problema));
   });
 

@@ -14,6 +14,8 @@ allowed-tools: Read, Bash
 
 # Skill: Deploy a Vercel
 
+> **Dos skills de Vercel, dos mecanismos.** Esta usa el **MCP de Vercel** (requiere MCP instalado y autenticado). Si no tienes el MCP y sí un `VERCEL_TOKEN`, usa [`vercel-deploy`](../vercel-deploy/SKILL.md), que despliega por Bash con comprobaciones previas y reversión. Están separadas a propósito hasta que el dueño decida unificarlas.
+
 ## Propósito
 
 Automatizar el despliegue del proyecto actual a Vercel cuando el pipeline Fragua ha completado la fase de verificación.

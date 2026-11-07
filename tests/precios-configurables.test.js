@@ -144,7 +144,8 @@ describe("CA-002-02: la lista incluida lleva fecha de revisión", () => {
   test("forge status y forge doctor imprimen la línea de revisión", () => {
     const raiz = new URL("..", import.meta.url);
     assert.match(readFileSync(new URL("core/engine-cli.js", raiz), "utf8"), /lineaRevision\(\)/);
-    assert.match(readFileSync(new URL("cli/index.js", raiz), "utf8"), /lineaRevision\(\)/);
+    // el diagnóstico vive en cli/comandos/doctor.js desde la partición de cli/index.js
+    assert.match(readFileSync(new URL("cli/comandos/doctor.js", raiz), "utf8"), /lineaRevision\(\)/);
   });
 });
 

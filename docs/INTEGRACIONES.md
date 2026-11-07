@@ -7,8 +7,8 @@ FORGE es extensible via **Model Context Protocol (MCP)**. Cada integración aña
 | Integración | Estado | Skill asociada |
 |---|---|---|
 | Vercel | ✅ Disponible | `skills/deploy-vercel/` |
-| GitHub | ✅ Disponible | `skills/github/` |
-| Figma | ✅ Disponible | `skills/figma-handoff/` |
+| GitHub | ✅ Disponible | `skills/github-connect/` |
+| Figma | ⚠️ Experimental: no hay skill; `mcp-figma/` está incompleto | — |
 | Compartir progreso | ✅ Disponible | `skills/share-progress/` |
 | Slack | 🗺️ Roadmap | — |
 | Linear | 🗺️ Roadmap | — |

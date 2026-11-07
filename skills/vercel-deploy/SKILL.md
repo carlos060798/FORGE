@@ -7,6 +7,8 @@ allowed-tools: Bash
 
 # Skill: Despliegue Automático en Vercel
 
+> **Dos skills de Vercel, dos mecanismos.** Esta despliega por **Bash** con `VERCEL_TOKEN`, comprobaciones previas, comprobación de salud y reversión. Si ya tienes el **MCP de Vercel** autenticado, usa [`deploy-vercel`](../deploy-vercel/SKILL.md). Están separadas a propósito hasta que el dueño decida unificarlas.
+
 ## Propósito
 
 Cerrar el ciclo idea→producción sin salir del flujo. Diferenciador vs Bolt/v0: verificación independiente PRE-deploy, no post-deploy.

@@ -190,7 +190,7 @@ Para alguien sin conocimiento técnico, eso es todo. No necesitas ser ingeniero 
 | Documento | Para quién | Propósito |
 |-----------|-----------|-----------|
 | [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md) | No-técnicos | Respuestas: "¿y si cambio de idea?", "¿y si falla?", etc. |
-| [FLUJO.md](FLUJO.md) | Programadores | Comandos técnicos, workflows, pipes |
+| [workflows.md](workflows.md) | Programadores | Comandos técnicos y etapas del pipeline |
 | [MEMORIA-Y-OBSERVABILIDAD.md](archivo/MEMORIA-Y-OBSERVABILIDAD.md) | Arquitectos/developers | Sistema de memoria persistente y observabilidad de tokens |
 
 ---
@@ -201,7 +201,7 @@ Ya entiendes cómo funciona la fábrica. Ahora es momento de usarla.
 
 ### Si nunca lo has usado
 
-**Recomendación:** Lee primero [EJEMPLO-E2E-REAL.md](EJEMPLO-E2E-REAL.md) (5 min). Verás exactamente qué escribes y qué responde Claude, sin sorpresas.
+**Recomendación:** Lee primero [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md). Verás exactamente qué escribes y qué responde Claude, sin sorpresas.
 
 Luego: Escribe `/sdd.constitucion` en Claude Code y sigue las preguntas (son amigables).
 
