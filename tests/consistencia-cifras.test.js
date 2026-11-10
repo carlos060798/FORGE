@@ -309,8 +309,29 @@ describe("integración continua — ci.yml", () => {
     }
   });
 
-  test("hay exactamente los jobs test, tipos, evidencia, aislamiento y pruebas-docker", () => {
-    assert.deepEqual(jobs.map((j) => j.id).sort(), ["aislamiento", "evidencia", "pruebas-docker", "test", "tipos"]);
+  test("hay exactamente los jobs test, test-windows, cuarentena, tipos, evidencia, aislamiento y pruebas-docker", () => {
+    assert.deepEqual(jobs.map((j) => j.id).sort(), ["aislamiento", "cuarentena", "evidencia", "pruebas-docker", "test", "test-windows", "tipos"]);
+  });
+
+  test("test-windows: la suite completa en windows-latest con Node 22, sin Docker real y con más tiempo (CA-002-01)", () => {
+    const j = porId("test-windows");
+    assert.match(j.texto, /^ {4}runs-on: windows-latest$/m);
+    assert.match(j.texto, /node-version: 22\b/);
+    assert.match(j.texto, /^ {8}run: npm test$/m, "el job test-windows debe ejecutar `npm test` completo");
+    assert.match(j.texto, /FORGE_TEST_DOCKER: "0"/);
+    assert.doesNotMatch(j.texto, /FORGE_TEST_DOCKER: "1"/);
+    const minutos = Number(/timeout-minutes: (\d+)/.exec(j.texto)?.[1]);
+    assert.ok(minutos >= 40, `timeout-minutes ${minutos}: los runners de Windows son más lentos; mínimo 40`);
+  });
+
+  test("cuarentena: ejecuta test:cuarentena, no bloquea y sube su salida (CA-001-06)", () => {
+    const j = porId("cuarentena");
+    assert.match(j.texto, /^ {4}continue-on-error: true$/m, "el job cuarentena no debe bloquear");
+    assert.match(j.texto, /npm run test:cuarentena/);
+    assert.match(j.texto, /upload-artifact@/);
+    assert.doesNotMatch(j.texto, /FORGE_TEST_DOCKER: "1"/);
+    // Ningún otro job es «no bloqueante» por defecto: continue-on-error solo aquí
+    for (const otro of jobs.filter((x) => x.id !== "cuarentena")) assert.doesNotMatch(otro.texto, /continue-on-error: true/, `${otro.id} no debe llevar continue-on-error`);
   });
 
   test("evidencia: criterios y cadena de evidencia, sin Docker ni modelo", () => {
@@ -351,14 +372,16 @@ describe("integración continua — ci.yml", () => {
     assert.ok(minutos >= 20 && minutos <= 120, `timeout-minutes ${minutos} fuera de lo razonable (20 a 120)`);
   });
 
-  test("los archivos con Docker real están dentro de lo que ejecuta npm test y su lista no está vacía", () => {
+  test("los archivos con Docker real están dentro de lo que ejecuta npm test (el clasificador) y su lista no está vacía (CA-003-02)", async () => {
     const archivos = archivosConDocker();
     assert.ok(archivos.length >= 10, `solo ${archivos.length} archivos mencionan FORGE_TEST_DOCKER`);
-    const script = JSON.parse(leer("package.json")).scripts.test;
+    const scripts = JSON.parse(leer("package.json")).scripts;
+    assert.equal(scripts.test, "node scripts/pruebas.mjs todo", "npm test debe pasar por el clasificador para respetar la cuarentena");
+    assert.equal(scripts["test:cuarentena"], "node scripts/pruebas.mjs cuarentena");
+    const { clasificar } = await import("../scripts/pruebas.mjs");
+    const { todos, cuarentena } = clasificar(ROOT);
     for (const a of archivos) {
-      assert.match(a, /^tests\/(e2e\/)?[^/]+\.test\.js$/, `${a}: npm test (${script}) no lo ejecutaría`);
-      if (a.startsWith("tests/e2e/")) assert.match(script, /tests\/e2e\/\*\.test\.js/);
-      else assert.match(script, /tests\/\*\.test\.js/);
+      assert.ok(todos.includes(a) || cuarentena.includes(a), `${a}: ni npm test ni la cuarentena lo ejecutarían`);
     }
     // El job de aislamiento sigue siendo un subconjunto de lo que ejecuta pruebas-docker
     assert.ok(archivos.includes("tests/sandbox-real.test.js"));
@@ -374,7 +397,7 @@ describe("integración continua — ci.yml", () => {
       assert.ok(ids.includes(m[1]), `RELEASE-CHECKLIST.md cita el job «${m[1]}», que no está en ci.yml (${ids.join(", ")})`);
     }
     // Los nombres visibles de las comprobaciones de B1
-    const nombres = ["Tests (Node 20)", "Tests (Node 22)", "Tipos (Node 22)", "Aislamiento con Docker real", "Pruebas con Docker real"];
+    const nombres = ["Tests (Node 20)", "Tests (Node 22)", "Tests (Windows, Node 22)", "Tipos (Node 22)", "Aislamiento con Docker real", "Pruebas con Docker real"];
     const reales = jobs.map((j) => j.nombre.replace("${{ matrix.node-version }}", "").trim());
     assert.ok(reales.includes("Tests (Node )"), "el nombre del job test debe llevar la versión de la matriz");
     for (const n of nombres) {

@@ -1,0 +1,12 @@
+# Pruebas en cuarentena (spec 2026-11-09-ci-verde-y-cuarentena, ADR-23).
+# `npm test`, `test:rapido` y `test:lento` las EXCLUYEN; `npm run test:cuarentena` (job de CI no bloqueante) las ejecuta.
+#
+# Una línea por archivo, cuatro campos separados por «|»:
+#   ruta/al/archivo.test.js | #<incidencia de GitHub> | AAAA-MM-DD (fecha de entrada o de renovación) | motivo corto
+#
+# Reglas (las comprueba tests/pruebas-clasificacion.test.js):
+#   - entra solo con una incidencia abierta que la nombre;
+#   - caduca a los 30 días: hay que renovar la fecha tras revisar la incidencia, o sacarla;
+#   - como mucho 5 a la vez;
+#   - sale cuando pasa tres veces seguidas en el job `cuarentena` de la CI.
+# Hoy no hay ninguna.

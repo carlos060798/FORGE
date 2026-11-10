@@ -14,7 +14,8 @@ npm test
 ```
 
 - Usa el ejecutor nativo de Node (`node:test`). No hay que compilar nada antes.
-- `npm run test:rapido` salta los archivos lentos (los de `tests/lentos.txt`) y `npm run test:lento` ejecuta solo esos. `npm test` sigue ejecutándolos todos y es lo que corre la CI; usa la rápida mientras trabajas y la completa antes de entregar.
+- `npm run test:rapido` salta los archivos lentos (los de `tests/lentos.txt`) y `npm run test:lento` ejecuta solo esos. `npm test` (`scripts/pruebas.mjs todo`) sigue ejecutándolos todos y es lo que corre la CI; usa la rápida mientras trabajas y la completa antes de entregar.
+- **Cuarentena** (`tests/cuarentena.txt`, ADR-23): una prueba que falla solo bajo carga o por el entorno, y pasa aislada, se puede apartar **solo** con una incidencia abierta que la nombre, la fecha y un motivo (`ruta | #N | AAAA-MM-DD | motivo`). `npm test` la excluye; `npm run test:cuarentena` (job `cuarentena` de la CI, no bloqueante) la sigue ejecutando. Caduca a los 30 días (hay que renovar la fecha tras revisar la incidencia, o sacarla), hay un tope de 5, y sale cuando pasa tres veces seguidas en ese job. No se suben tiempos límite a ciegas ni se reintentan pruebas.
 - Las pruebas que necesitan Docker se saltan solas. Para ejecutarlas, con Docker en marcha: `FORGE_TEST_DOCKER=1 npm test` (o un archivo concreto: `FORGE_TEST_DOCKER=1 node --test tests/sandbox-real.test.js`).
 - Un archivo suelto: `node --test tests/<módulo>.test.js`.
 - Tipos (opcional): `npm run typecheck`, que comprueba `core/**/*.js` sobre JSDoc.

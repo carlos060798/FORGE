@@ -24,7 +24,11 @@ Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no
 
 **Pasadas anteriores con fallos intermitentes.** En `f195354` fallaron tres pruebas con la carga de la suite entera (memoria SQLite, batería hostil de 52 entradas y un límite de tiempo de `adfATexto`); aisladas pasan. En `03d4baa`, con otra suite corriendo en la misma máquina, fallaron pruebas de tiempo límite (`comoDato`, «una cadena enorme», «5000 archivos»). Todas las de tiempo límite pasan aisladas.
 
-**Pendiente:** mirar el resultado del CI de GitHub (jobs `tipos`, `aislamiento`, `pruebas-docker`, `evidencia`) y corregir lo que falle.
+**CI de GitHub, comprobado el 2026-11-09 (API pública, sin acceso a los logs):** el último run de `main` (commit `8cc2e58`, 2026-11-06) está **en rojo**: `Tipos (Node 22)` y `Criterios y evidencia` pasan; `Tests (Node 22)`, `Aislamiento con Docker real` y `Pruebas con Docker real` fallan; `Tests (Node 20)` se cancela. **La CI nunca ha estado verde en Linux.** Leer los logs exige autenticación (`gh auth login`): es la tarea T8 de la spec `2026-11-09-ci-verde-y-cuarentena`.
+
+**Cuarentena (2026-11-09, ADR-23):** una prueba inestable se aparta en `tests/cuarentena.txt` con incidencia, fecha y motivo; `npm test` la excluye y el job `cuarentena` (no bloqueante) la sigue ejecutando; caduca a los 30 días y hay un tope de 5. Hoy no hay ninguna. La CI tiene además el job `test-windows` (suite completa en `windows-latest`, Node 22, sin Docker real); las ~35 pruebas que se saltan en Windows por no poder crear enlaces siguen saltándose ahí.
+
+**Pendiente:** leer los logs del run rojo, clasificar cada fallo (carga, rutas/enlaces, Docker, otro) y corregir lo que sea código; lo inestable, a cuarentena con incidencia.
 
 ## Lo que funciona y está probado
 
