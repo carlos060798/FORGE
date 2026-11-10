@@ -8,10 +8,9 @@ on:
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
+# Mínimo a nivel de workflow; pages/id-token solo en el job que despliega
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Evita despliegues concurrentes
 concurrency:
@@ -21,6 +20,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

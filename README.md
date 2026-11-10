@@ -1,349 +1,105 @@
 <div align="center">
 
-# Fragua
+# Fragua (antes FORGE)
 
-*(antes FORGE: mismo proyecto, mismas órdenes `forge` y `sdd-es`, mismas carpetas `.sdd/`)*
-
-**Desarrollo Guiado por Especificaciones para Claude Code**
-
-*De una idea en lenguaje natural a producción — un comando a la vez.*
+**Desarrollo Guiado por Especificaciones (SDD) para Claude Code**
 
 [![Versión](https://img.shields.io/badge/versión-5.0.0-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](package.json)
-[![Tests](https://img.shields.io/badge/tests-m%C3%A1s%20de%202000-brightgreen)](docs/COBERTURA.md)
 
 </div>
 
----
-
-**FORGE** es un framework de Desarrollo Guiado por Especificaciones (SDD) para Claude Code. Convierte ideas en productos implementados, probados y desplegados — orquestando un equipo de 14 agentes especializados a través de un pipeline estructurado de 39 comandos.
-
-```
-Tú: "Necesito una API REST con autenticación JWT y PostgreSQL"
-
-FORGE:
-  ✦ Descubre requisitos      → ir.json
-  ✦ Diseña el producto       → product-design.json
-  ✦ Genera la especificación → spec.md (con criterios de aceptación)
-  ✦ Aprobación humana        → forge aprobar spec
-  ✦ Planifica                → plan.md + tareas.md
-  ✦ Ejecuta con agentes      → backend, tester, revisor, seguridad
-  ✦ Verifica contra la spec  → verificacion.json
-  ✦ Despliega                → health check pasado ✓
-```
+Fragua lleva una idea escrita en lenguaje natural hasta código probado, pasando por una especificación que **una persona aprueba** antes de que los agentes escriban nada. Orquesta 14 agentes, 39 comandos y 31 skills sobre Claude Code, y guarda todo el estado en `.sdd/` para retomar entre sesiones.
 
 ---
 
-## Estado
+## Estado (léelo primero)
 
-> La versión **5.0.0 no está publicada**: en npm, `forja-mvp` (nombre antiguo) sigue en 4.2.0; el paquete nuevo es `fragua`. Lo que sigue describe la rama `feature/motor-agentico`. **Estado al día, cifras y pendientes: [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md).**
+- **5.0.0 no está publicada en npm.** `forja-mvp` (nombre antiguo) sigue en 4.2.0 y el paquete nuevo es `fragua`. Hoy se instala clonando el repositorio.
+- Cifras de pruebas, qué está probado y qué no, con fecha y commit: **[docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md)**. Una auditoría externa (2026-11) no pudo reproducir el «0 fallos» publicado: 2 pruebas fallaban en el árbol de trabajo. No des por verde la suite sin ejecutarla.
+- Probado con modelo real: Anthropic, tareas pequeñas en JavaScript, Python y Go. **Sin probar:** Docker real en Linux/macOS, OpenAI/Ollama con modelo real, integraciones externas contra cuentas reales.
 
-**Qué es.** Un framework de desarrollo guiado por especificaciones para Claude Code. Desde 5.0.0, las tareas de código pasan por un **ciclo verificado**:
+## Para quién sí y para quién no
 
-1. Un agente escribe las pruebas antes de que exista el código, y tienen que fallar.
-2. Otro agente implementa. No puede tocar las pruebas.
-3. Las pruebas se ejecutan en un contenedor Docker sin red, no en tu equipo.
-4. El resultado lo decide el código de salida de las pruebas, no un modelo.
-5. Hay un tope de gasto por sesión (2 USD por defecto).
-6. Cuando el ciclo no puede terminar solo, se detiene y decides tú.
+- **Sí:** quien programa o supervisa código y quiere un proceso con especificación, pruebas y trazabilidad.
+- **No (todavía):** quien espera «no-code». Necesitas Docker, una clave de API y leer los veredictos del ciclo.
 
-Necesita Docker en marcha y Node ≥20, y cubre proyectos en JavaScript/TypeScript, Python y Go. Sin Docker, `forge run --motor clasico` vuelve al modo de 4.x, que ejecuta en tu equipo sin aislamiento.
+## Requisitos
 
-**Qué es opcional** (no actúa si no lo activas):
-
-| Opción | Qué hace | Estado |
-|---|---|---|
-| `motor.implementador: turnos` | El implementador lee, busca y edita por pasos en vez de devolver archivos enteros | Solo con Anthropic. Probado con un modelo real en una tarea |
-| `motor.mutacion: exigir` | Pausa la tarea si las pruebas detectan pocos cambios deliberados en el código | Sin ejecutar con un modelo real. Por defecto la medición solo informa |
-| `sandbox.runtime` | Elige un mecanismo de aislamiento de Docker más estricto | Probado solo con `runc` |
-| `forge mcp`, `forge api` | Servidor MCP y API HTTP local | Ver sus guías |
-| Integraciones externas (`integraciones:` en `sdd.config.yaml`) | Traer una incidencia o ticket de GitHub, GitLab o Jira Cloud como tarea y devolver el resultado como comentario o solicitud de cambio en borrador, con aprobación humana | **En construcción y apagadas por defecto.** Hechos el núcleo y los tres adaptadores, probados contra servidores simulados; faltan la publicación con aprobación y el comando `forge integraciones`. Nunca se ejecutaron contra una plataforma real. Ver [integraciones-externas.md](docs/integraciones-externas.md) |
-
-**Qué está probado y qué no.** Cifras, evidencia y límites, con fecha y commit, están en [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md). En la última pasada completa (commit `be747d6`, Windows 11, Node 24.20, sin Docker): 3909 pruebas, 3877 pasan, 1 falla y 31 se saltan (las que exigen Docker real). El fallo es una prueba de 5000 archivos que agota su tiempo en un disco lento; pasa aislada. La suite no está verde.
-
-| Probado | Evidencia |
+| Requisito | Por qué |
 |---|---|
-| Suite completa con `npm test` y comprobación de tipos (`npm run typecheck`, 0 errores) | [docs/ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md), [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) (registro de pasadas) |
-| El ciclo con un modelo real: 24 ejecuciones de tareas pequeñas en JavaScript, Python y Go, con Anthropic (2026-10-09 y 2026-10-10) | [evidencia-2026-10-09.md](.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md) |
-| El aislamiento con Docker real en Windows (Docker Desktop) | `verificacion.md` de cada spec en [.sdd/especificaciones/](.sdd/especificaciones/) |
+| Node ≥ 20 | Los hooks y la CLI. **Sin Node, el guardián bloquea toda acción** (falla cerrado), no hay modo de reserva en Bash. Ver [docs/runtime.md](docs/runtime.md) |
+| Docker en marcha | `fragua run` ejecuta el código generado en un contenedor sin red. Sin Docker: `--motor clasico` (modo 4.x, sin aislamiento) |
+| `ANTHROPIC_API_KEY` (u otra) en tu entorno | Las claves nunca se leen del archivo del proyecto |
+| Proyecto en JS/TS, Python o Go | Lenguajes cubiertos por el ciclo verificado |
 
-| No probado o pendiente | Dónde se explica |
-|---|---|
-| Docker real en Linux: los jobs `aislamiento`, `pruebas-docker` y `tipos` de la integración continua nunca han corrido. Nada en macOS | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
-| Contenedores reales medidos en este equipo: no hay Docker aquí | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
-| El gasto calculado frente a lo que factura el proveedor | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
-| Un modelo real con OpenAI u Ollama, y con las funciones nuevas de 5.0 (delimitador de datos ajenos, puertas en el ciclo, perfiles de agente) | [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md#límites-conocidos-sin-cerrar) |
-| Las integraciones externas contra cuentas reales de GitHub, GitLab y Jira: solo servidores simulados | [integraciones-externas.md](docs/integraciones-externas.md) |
-
-Antes de usarlo: [problemas conocidos](docs/PROBLEMAS-CONOCIDOS.md), [migración desde 4.2.0](docs/MIGRACION-5.0.md) y [criterios para una beta](RELEASE-CHECKLIST.md). Las rutas de `.sdd/` y `RELEASE-CHECKLIST.md` están en el repositorio, y los planes antiguos en [docs/archivo/](docs/archivo/); el paquete de npm no incluye nada de eso.
-
----
-
-## ¿Por qué FORGE?
-
-| Sin FORGE | Con FORGE |
-|---|---|
-| Cada sesión de Claude empieza en blanco | Estado persistente entre sesiones vía `.sdd/` |
-| Sin memoria de decisiones anteriores | Memoria de agentes + ADRs + memoria compartida entre agentes |
-| Coordinación manual de tareas | 14 agentes orquestados automáticamente |
-| Sin límites sobre qué toca Claude | Guardia pre-tool enforced a nivel hook (JS + Bash) |
-| El pipeline avanza sin revisión humana | Aprobación explícita requerida antes de planificar |
-| Atado a un solo proveedor de LLM | Motor agnóstico: Anthropic, OpenAI, Ollama, Stub |
-| Sin visibilidad de lo que ocurrió | Dashboard SSE en tiempo real en `localhost:3001` |
-
----
-
-## Inicio rápido
+## Instalar y primera ejecución
 
 ```bash
-# Desde npm (el paquete y el comando se llaman fragua; `forge` sigue funcionando)
-npm install -g fragua
-
-# O clonando el repositorio
 git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
-
-# Verificar instalación
-fragua doctor
-
-# En Claude Code, dentro de tu proyecto:
-/forge
+node cli/index.js doctor          # comprueba Node, hooks, proveedor LLM y SQLite
 ```
 
-> **Instala antes de usar `npx forge …`.** El paquete es `fragua`: sin instalarlo, `npx forge` descargaría otro paquete de npm llamado `forge`. Si no quieres instalarlo, usa `npx -p fragua fragua <comando>`. Es un paquete de línea de comandos y plugin, no una librería: no tiene API para `import`.
+Después, dentro de Claude Code en tu proyecto: `/forge`. Recorrido completo: [docs/getting-started.md](docs/getting-started.md).
 
-→ Ver la [Guía de inicio](docs/getting-started.md) para un recorrido completo.
+> Cuando se publique el paquete: `npm install -g fragua`. No uses `npx forge`: descargaría otro paquete llamado `forge`.
 
-¿Otra herramienta además de Claude Code? `fragua init --integracion <clave>`, `--perfil esencial|completo` y `--carpeta-skills <ruta>` (con `generica`): ver la [guía 5.0](docs/FORGE-5.0-GUIA.md#instalar-en-otra-herramienta---integracion---perfil---carpeta-skills).
+**Nombres:** el producto es *Fragua*; las órdenes `fragua`, `forge` y `sdd-es` son equivalentes; el estado vive en `.sdd/`. Variables `FRAGUA_*` (las `FORGE_*` antiguas se siguen leyendo). Detalle en [MIGRACION-5.0.md](docs/MIGRACION-5.0.md).
 
-### FORGE → Fragua: qué cambia y qué no
+## Qué pasa cuando lo usas
 
-| Antes | Ahora | Notas |
+```
+idea → discovery → ir → design → spec → [aprobación humana] → plan → tasks → code → done
+```
+
+Cada etapa deja un artefacto en `.sdd/` y se puede reanudar (`/sdd.implementar continuar`).
+
+**Aprobación humana.** No se puede pasar de `spec` a `plan` sin `fragua aprobar spec` (guard en [core/state-machine.js](core/state-machine.js)). Matiz honesto: el guard comprueba que alguien ejecutó la aprobación, **no** que la revisó; existe `step --force --motivo` para saltarlo y deja registro. Ver [GARANTIAS-Y-LIMITES.md](docs/GARANTIAS-Y-LIMITES.md).
+
+**Ciclo verificado (por defecto en 5.0.0)** para tareas de código:
+
+1. Un agente escribe pruebas que deben fallar antes de que exista el código.
+2. Otro implementa y no puede tocar las pruebas.
+3. Las pruebas corren en Docker sin red.
+4. Decide el código de salida de las pruebas, no un modelo.
+5. Tope de gasto por sesión (2 USD por defecto) y pausa para que decidas cuando no puede terminar solo.
+
+Guía: [ciclo-verificado.md](docs/ciclo-verificado.md). Qué falla y cómo recuperarse: [QUE-PASA-SI-FALLA.md](docs/QUE-PASA-SI-FALLA.md).
+
+## Qué incluye
+
+| Pieza | Cantidad | Dónde |
 |---|---|---|
-| Producto **FORGE** | **Fragua** | Solo el nombre. |
-| `npm install -g forja-mvp` | `npm install -g fragua` | El paquete antiguo no recibe la 5.x. |
-| `forge …`, `sdd-es …` | `fragua …` | `forge` y `sdd-es` siguen funcionando (con un aviso en terminal). |
-| `FORGE_*` (variables) | `FRAGUA_*` | Las antiguas se siguen leyendo; si defines las dos con valores distintos, error. |
-| Estado en `%LOCALAPPDATA%\forge` / `~/.forge` | `fragua` / `~/.fragua` | Si solo existe la antigua se sigue usando; **nunca** se copia ni mueve una clave o cola. `fragua doctor` avisa si quedan las dos. |
-| Etiquetas de contenedor `forge.*` | `fragua.*` | El barrido de huérfanos reconoce ambas. |
-| Ramas `forge/…`, marcadores `forge:` y `FORGE-ID:` | sin cambio | Lo ya publicado en GitHub, GitLab y Jira no se reescribe. |
+| Agentes | 14 (el preset `lean` activa 6; el ciclo usa 3) | [docs/agents.md](docs/agents.md) |
+| Comandos `/sdd.*` | 39 | [commands/](commands/) |
+| Skills | 31 | [skills/](skills/), [docs/tools.md](docs/tools.md) |
+| Hooks | 8 archivos `.js` (3 con `.sh` que delegan en Node) | [docs/runtime.md](docs/runtime.md) |
+| Proveedores LLM | Anthropic, OpenAI y compatibles, Ollama, Stub (CI) | [docs/configuration.md](docs/configuration.md) |
 
----
+**Opcional (apagado por defecto):** servidor MCP (`fragua mcp`), API HTTP local (`fragua api`), dashboard (`fragua ui`, `localhost:3001`) e **integraciones externas** con GitHub, GitLab y Jira Cloud (`fragua integraciones`, configuradas en `integraciones:` de `sdd.config.yaml`; probadas solo contra servidores simulados). Ver [integraciones-externas.md](docs/integraciones-externas.md).
 
-## Cómo funciona
+Comandos de CLI habituales: `status`, `run`, `resume`, `aprobar`, `doctor`, `logs`, `ui`, `integraciones`. La CLI tiene más subcomandos de los listados aquí; usa `fragua help`.
 
-FORGE implementa un **pipeline de 9 etapas** con transiciones guardadas:
+## Garantías y límites en tres líneas
 
-```
-idea → discovery → ir → design → spec → [aprobación] → plan → tasks → code → done
-```
-
-Cada etapa produce un **artefacto duradero** en `.sdd/`. Las etapas son reanudables: si una sesión termina a mitad de la implementación, `/sdd.implementar continuar` retoma exactamente donde se quedó.
-
-El pipeline tiene **guards de transición**: no se puede avanzar de `spec` a `plan` sin ejecutar `forge aprobar spec`. Esto garantiza que una persona revisó y aprobó la especificación antes de que los agentes empiecen a escribir código.
-
-→ Ver [Arquitectura](docs/architecture.md) para el diagrama completo del sistema.
-
----
-
-## Módulos del runtime
-
-| Módulo | Archivo | Función |
-|---|---|---|
-| State machine | `core/state-machine.js` | Transiciones con guards — ir_generado, spec_aprobado, plan_activo |
-| Orchestrator | `core/orchestrator.js` | Ejecuta tareas con agentes, retry, circuit breaker |
-| Motor LLM | `core/llm-providers/` | Anthropic / OpenAI / Ollama / Stub — auto-detectado |
-| Decision store | `core/decisions/` | SQLite + TF-IDF, búsqueda semántica de ADRs |
-| Event log | `core/event-log.js` | Registro append-only de eventos del pipeline |
-| Agent registry | `core/agent-registry.js` | Resuelve qué agente ejecuta cada tarea |
-| CLI runner | `cli/index.js` | `forge status/run/resume/aprobar/doctor` |
-| Guardia pre-tool | `claude-hooks/pre-tool-guard.js` + `.sh` | Bloquea herramientas prohibidas antes de cada llamada |
-| Memoria de agentes | `claude-hooks/agent-memory.js` + `.sh` | Registra decisiones, ADRs y memoria compartida |
-| AST indexer | `claude-hooks/ast-indexer.js` | Índice de símbolos JS/TS para recuperación eficiente |
-| Dashboard | `ui/server.js` | SSE tiempo real — estado, consumo, eventlog |
-
----
-
-## Agentes
-
-FORGE despacha trabajo a **14 agentes especializados**. Cada agente tiene un rol fijo, un modelo configurado y acceso solo a las herramientas que necesita.
-
-**Niveles:** Estratégico (Opus), Diseño (Opus), Implementación (Sonnet), Soporte (Sonnet)
-
-**Preset lean** (por defecto): activa **6 agentes** — arquitecto, asesor-datos, disenador-api, desarrollador-backend, desarrollador-frontend, tester — todos con modelo sonnet. Los 8 restantes se activan individualmente.
-
-→ [Ver tabla completa en Agentes](docs/agents.md)
-
----
-
-## Motor LLM agnóstico
-
-FORGE funciona con cualquier proveedor compatible. El proveedor se resuelve automáticamente:
-
-```bash
-# Variable de entorno
-FORGE_LLM_PROVIDER=openai forge run
-
-# O en sdd.config.yaml
-llm:
-  provider: ollama
-  base_url: http://localhost:11434
-  model: sonnet   # alias → qwen2.5-coder:7b
-```
-
-> **Seguridad:** las claves (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) van siempre en tu entorno; «api_key» en el archivo del proyecto se ignora. Un `base_url` solo vale si es de tu propia máquina o si tu entorno lo permite con `FORGE_LLM_HOSTS` (o lo fijas con `OPENAI_BASE_URL`/`OLLAMA_BASE_URL`). Así un repositorio ajeno no puede dirigir tu clave a otro servidor.
-
-Proveedores soportados: **Anthropic** (por defecto), **OpenAI** (y compatibles: Azure, GitHub Models), **Ollama** (modelos locales), **Stub** (determinístico, para CI).
-
-`forge doctor` valida la conexión al proveedor activo, mide latencia y verifica el formato de respuesta.
-
----
-
-## Aprobación humana en el pipeline
-
-El pipeline tiene un punto de control obligatorio entre `spec` y `plan`:
-
-```bash
-# Después de que FORGE genera la spec, la revisas y apruebas
-forge aprobar spec
-
-# Solo entonces el pipeline puede avanzar a planificación
-/sdd.planificar
-```
-
-Sin esta aprobación, el guard de la state machine bloquea el avance. Esto no es configurable — es una decisión de diseño deliberada para mantener al humano en el bucle antes de que los agentes empiecen a escribir código.
-
----
-
-## Observabilidad
-
-```bash
-forge ui            # dashboard en localhost:3001 (SSE tiempo real)
-forge status        # presupuesto USD y nivel del circuit breaker
-forge logs          # historial consumo.jsonl
-forge doctor        # verifica API key, hooks, LLM y SQLite
-```
-
-El dashboard recibe actualizaciones por SSE en tiempo real — estado del pipeline, consumo de tokens, event log — sin polling. Los datos vienen de cuatro archivos JSONL en `.sdd/`:
-
-- `consumo.jsonl` — tokens y USD por operación
-- `mutaciones.jsonl` — cada write/edit con qué agente lo hizo
-- `events.jsonl` — transiciones del pipeline y eventos del orchestrator
-- `agent-tool-audit.jsonl` — auditoría de cada herramienta invocada por cada agente
-
----
-
-## Hooks multi-lenguaje
-
-Los hooks funcionan en proyectos de cualquier stack — no solo Node.js:
-
-- **Con Node ≥20:** ejecuta el `.js` original (lógica completa: SQLite, 8 fuentes de memoria, regex)
-- **Sin Node:** ejecuta el `.sh` equivalente (lógica mínima en Bash: bloqueos críticos + Markdown)
-
-Esto permite usar FORGE en proyectos Python, Go, Rust, PHP o cualquier lenguaje sin dependencia de Node en el proyecto destino.
-
----
-
-## Configuración
-
-```yaml
-# .sdd/sdd.config.yaml
-perfil: guiado          # guiado | experto
-
-llm:
-  provider: anthropic   # anthropic | openai | ollama | stub
-  model: sonnet
-
-agentes:
-  arquitecto:
-    activo: true
-    modelo: opus
-
-calidad:
-  cobertura_tests_minima: 80
-
-memoria:
-  backend: sqlite       # sqlite (Node ≥22.5) | markdown
-```
-
-→ Ver [Configuración](docs/configuration.md) para todas las opciones.
-
----
-
-## Extender FORGE
-
-```bash
-/sdd.crear-agente    # nuevo agente con rol y herramientas específicas
-/sdd.crear-mcp       # integración MCP personalizada
-```
-
-O manualmente: añade archivos `.md` a `commands/`, `agents/` o `skills/` y regístralos en `.claude-plugin/plugin.json`.
-
-→ Ver [Extender FORGE](docs/extending-forge.md).
-
----
-
-## Motor agéntico (por defecto desde 5.0.0)
-
-Para tareas de código, FORGE puede corregirlas solo hasta que sus pruebas pasan, **ejecutando el código generado en un contenedor Docker sin red** (nunca en tu equipo), con un tope de gasto y una persona que decide cuando el ciclo no basta:
-
-```bash
-npx forge run                   # el ciclo verificado (necesita Docker)
-npx forge run --motor clasico   # el modo de 4.x: ejecuta en tu equipo, sin aislamiento
-npx forge probar-modelo         # prueba mínima con un modelo real, gasta como máximo 0,50 USD
-npx forge mcp                   # servidor MCP: ejecutar pruebas aisladas, leer y escribir con las mismas reglas
-npx forge api                   # API HTTP local con secreto
-```
-
-Desde 5.0.0 es el modo por defecto; si no puedes usar Docker, `--motor clasico` (o `motor.modo: clasico`) vuelve al comportamiento de 4.x, con su falta de aislamiento. Qué cambia al actualizar: [MIGRACION-5.0.md](docs/MIGRACION-5.0.md). Qué está probado y qué no: sección [Estado](#estado) y [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md). Guías: [ciclo verificado](docs/ciclo-verificado.md), [servidor MCP](docs/servidor-mcp.md) y [API HTTP](docs/api-http.md). Estado: [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md).
-
----
+- Cada garantía publicada enlaza a una prueba automática: [GARANTIAS-Y-LIMITES.md](docs/GARANTIAS-Y-LIMITES.md).
+- Límites conocidos y a quién afectan: [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md), [limitations.md](docs/limitations.md).
+- Seguridad explicada sin jerga: [SEGURIDAD-PARA-NOTECNICOS.md](docs/SEGURIDAD-PARA-NOTECNICOS.md); política de reporte: [SECURITY.md](SECURITY.md).
 
 ## Documentación
 
-### Principal
-
-| Documento | Descripción |
+| Quiero… | Lee |
 |---|---|
-| [Introducción](docs/introduction.md) | Qué es FORGE y por qué existe |
-| [Inicio rápido](docs/getting-started.md) | Primera ejecución, recorrido guiado |
-| [Arquitectura](docs/architecture.md) | Diseño del sistema, capas, diagramas |
-| [Conceptos fundamentales](docs/core-concepts.md) | SDD, IR, pipeline, estado, memoria |
-| [Runtime](docs/runtime.md) | Hooks, guardias, memoria, registro de modelos |
-| [Agentes](docs/agents.md) | Los 14 agentes, roles, modelos, herramientas |
-| [Flujos de trabajo](docs/workflows.md) | Etapas del pipeline, flags, ejemplos |
-| [Configuración](docs/configuration.md) | Referencia de sdd.config.yaml |
-| [Extender FORGE](docs/extending-forge.md) | Agentes, comandos y hooks personalizados |
-| [Referencia de API](docs/api-reference.md) | CLI, ProjectMemory, tipos IR |
-| [Limitaciones](docs/limitations.md) | Restricciones conocidas y compromisos de diseño |
-| [Ejemplos](docs/examples.md) | Recorridos completos de extremo a extremo |
+| Empezar | [getting-started.md](docs/getting-started.md), [QUICK-START.md](QUICK-START.md) |
+| Entender cómo funciona | [core-concepts.md](docs/core-concepts.md), [architecture.md](docs/architecture.md), [FORGE-5.0-GUIA.md](docs/FORGE-5.0-GUIA.md) |
+| Configurar | [configuration.md](docs/configuration.md) |
+| Migrar desde 4.2.0 | [MIGRACION-5.0.md](docs/MIGRACION-5.0.md) |
+| Resolver un error | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Extender (agentes, comandos, hooks) | [extending-forge.md](docs/extending-forge.md) |
+| Integrar (MCP, API, plataformas) | [servidor-mcp.md](docs/servidor-mcp.md), [api-http.md](docs/api-http.md), [INTEGRACIONES.md](docs/INTEGRACIONES.md) |
+| Ver el índice completo | [0-INDICE.md](docs/0-INDICE.md) |
 
-### Guías especializadas
+## Contribuir y licencia
 
-| Documento | Descripción |
-|---|---|
-| [PROBLEMAS-CONOCIDOS.md](docs/PROBLEMAS-CONOCIDOS.md) | Límites conocidos: qué pasa, a quién afecta, cómo evitarlo y dónde está la evidencia |
-| [MIGRACION-5.0.md](docs/MIGRACION-5.0.md) | Qué cambia al actualizar desde 4.2.0 sin tocar la configuración, y cómo desactivarlo |
-| [COBERTURA.md](docs/COBERTURA.md) | Cobertura de pruebas por archivo, con fecha, versión de Node y comando |
-| [ciclo-verificado.md](docs/ciclo-verificado.md) | Guía del ciclo verificado: configuración, aislamiento, presupuesto, pausas |
-| [ESTADO-ACTUAL.md](docs/ESTADO-ACTUAL.md) | Estado al día: cifras, qué está probado, límites y pendientes |
-| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Errores por fase con solución paso a paso |
-| [EJEMPLO-API-REST.md](docs/EJEMPLO-API-REST.md) | Walkthrough API REST + JWT + PostgreSQL |
-| [RELACION-CON-CLAUDE-CODE.md](docs/RELACION-CON-CLAUDE-CODE.md) | Mapping FORGE ↔ primitivas nativas de Claude Code |
-| [COMPATIBILIDAD.md](docs/COMPATIBILIDAD.md) | Contrato de hooks — versiones verificadas |
-| [SEGURIDAD-PARA-NOTECNICOS.md](docs/SEGURIDAD-PARA-NOTECNICOS.md) | Seguridad explicada sin jerga técnica |
-| [QUE-PASA-SI-FALLA.md](docs/QUE-PASA-SI-FALLA.md) | Recuperación cuando algo sale mal |
-| [INTEGRACIONES.md](docs/INTEGRACIONES.md) | MCPs: Vercel, GitHub, Figma |
-| [archivo/](docs/archivo/) | Planes, informes y análisis superados, con el motivo de cada uno |
-
----
-
-## Contribuir
-
-Ver [CONTRIBUTING.md](CONTRIBUTING.md). Reportes de bugs y propuestas de agentes bienvenidos vía GitHub Issues.
-
----
-
-## Licencia
-
-MIT — ver [LICENSE](LICENSE).
+[CONTRIBUTING.md](CONTRIBUTING.md) · Bugs y propuestas de agentes por GitHub Issues · MIT, ver [LICENSE](LICENSE).
