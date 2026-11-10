@@ -8,6 +8,7 @@
  *   - `real`:  cli/index.js, con Docker de verdad (solo con FORGE_TEST_DOCKER=1).
  */
 
+import { ETIQUETA, etiquetaProyecto } from "../../core/sandbox/politica.js";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -256,7 +257,9 @@ export function dockerActivo() {
  * @returns {string[]} nombres
  */
 export function contenedores(e, { todos = true } = {}) {
-  const r = spawnSync("docker", ["ps", ...(todos ? ["-a"] : []), "--filter", "label=forge.sandbox=1", "--filter", `label=forge.proyecto=${e.proyectoId}`, "--format", "{{.Names}}"], { encoding: "utf8", timeout: 180_000 });
+  // Etiquetas actuales (`fragua.*`, core/sandbox/politica.js). Con las antiguas (`forge.*`) el helper no veía ningún
+  // contenedor y las pruebas de corte con Docker real fallaban (visto el 2026-11-10 con Docker 29.7.2 en Windows).
+  const r = spawnSync("docker", ["ps", ...(todos ? ["-a"] : []), "--filter", `label=${ETIQUETA}`, "--filter", `label=${etiquetaProyecto(e.proyectoId)}`, "--format", "{{.Names}}"], { encoding: "utf8", timeout: 180_000 });
   assert.equal(r.status, 0, `docker ps falló: ${r.stderr}`);
   return r.stdout.split(/\s+/).filter(Boolean);
 }

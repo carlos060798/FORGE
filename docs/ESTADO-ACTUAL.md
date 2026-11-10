@@ -28,7 +28,9 @@ Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no
 
 **Cuarentena (2026-11-09, ADR-23):** una prueba inestable se aparta en `tests/cuarentena.txt` con incidencia, fecha y motivo; `npm test` la excluye y el job `cuarentena` (no bloqueante) la sigue ejecutando; caduca a los 30 días y hay un tope de 5. Hoy no hay ninguna. La CI tiene además el job `test-windows` (suite completa en `windows-latest`, Node 22, sin Docker real); las ~35 pruebas que se saltan en Windows por no poder crear enlaces siguen saltándose ahí.
 
-**Pendiente:** leer los logs del run rojo, clasificar cada fallo (carga, rutas/enlaces, Docker, otro) y corregir lo que sea código; lo inestable, a cuarentena con incidencia.
+**Docker real en Windows, 2026-11-10 (Docker Desktop 29.7.2, Node 24, este árbol):** por primera vez se ejecutaron sobre esta versión las pruebas que piden `FORGE_TEST_DOCKER=1`, con el mismo mando que el job `pruebas-docker` (17 archivos, uno cada vez): **597 pruebas, 594 pasan, 0 fallan tras una corrección, 3 saltadas**, 46 minutos, sin contenedores residuales. `tests/sandbox-real.test.js` (aislamiento: sin red, sin privilegios, raíz de solo lectura, tiempo y memoria acotados): 11 de 11. La única causa de fallo fue de las pruebas, no del producto: el helper `contenedores` de `tests/fixtures/ciclo-guionizado.mjs` filtraba por las etiquetas antiguas `forge.*` y no veía los contenedores `fragua.*`, así que las tres pruebas de corte de proceso (`tests/corte-real.test.js`) nunca encontraban el contenedor vivo. Corregido; con Docker real quedan 25 de 25. **Sigue sin medirse en Linux.**
+
+**Pendiente:** leer los logs del run rojo, clasificar cada fallo (carga, rutas/enlaces, Docker, otro) y corregir lo que sea código; lo inestable, a cuarentena con incidencia. Hipótesis tras la pasada con Docker real: el fallo de `Pruebas con Docker real` en la CI puede ser este mismo helper (fallaría igual en Linux); el de `Aislamiento con Docker real` no se explica con esto y hay que leer el log.
 
 ## Lo que funciona y está probado
 
