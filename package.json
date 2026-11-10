@@ -43,6 +43,7 @@
     "configuracion-ejemplo/",
     "docs/",
     "!docs/archivo/",
+    "!docs/informes/",
     "ui/",
     ".claude-plugin/",
     "scripts/",
