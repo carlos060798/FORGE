@@ -36,7 +36,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { appendFileSync, lstatSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { userInfo } from 'node:os';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { createInterface } from 'node:readline';
 import { leerArchivo } from './escritura-segura.js';
 import { claveLocal, directorioDeEstado, existeEstado, firmar, firmaValida } from './estado-usuario.js';
@@ -237,6 +237,36 @@ export function buscarAprobacion(cwd, q, env = process.env) {
   const { registros, errores } = leerRegistro(cwd, env);
   if (errores.length > 0) return null;
   return [...registros].reverse().find((r) => r.id === q.id && r.sha256 === q.sha256 && (q.tipo === undefined || r.tipo === q.tipo)) ?? null;
+}
+
+/**
+ * Archivo de la spec que se aprueba (el borrador indicado o el spec.md de la spec activa) y el id con el que se registra.
+ * @param {string} cwd @param {Record<string, any>} estado
+ * @returns {{ ruta: string, id: string }}
+ */
+export function specDeEstado(cwd, estado) {
+  const ruta = estado.spec_draft_path
+    ? (isAbsolute(String(estado.spec_draft_path)) ? String(estado.spec_draft_path) : join(cwd, String(estado.spec_draft_path)))
+    : join(cwd, '.sdd', 'especificaciones', String(estado.spec_activa), 'spec.md');
+  return { ruta, id: String(estado.spec_activa ?? estado.spec_draft_path) };
+}
+
+/**
+ * Puerta real de la spec: el booleano `spec_aprobado` de `.sdd/estado.json` lo puede escribir cualquiera con acceso al
+ * archivo (informe REVERIFICACION-SEGURIDAD, C-03), así que pasar de `spec` a `plan` exige además el registro firmado
+ * por `forge aprobar spec` con el hash VIGENTE del archivo: si la spec cambió después de aprobarse, hay que aprobarla de nuevo.
+ * @param {string} cwd @param {Record<string, any>} estado @param {Entorno} [env]
+ * @returns {string|null}  el motivo del rechazo, o null si hay aprobación verificable
+ */
+export function verificarAprobacionDeSpec(cwd, estado, env = process.env) {
+  const { ruta, id } = specDeEstado(cwd, estado);
+  let sha = null;
+  try { sha = hashDeArchivo(cwd, ruta); } catch { sha = null; }
+  if (sha === null) return 'No se puede leer la spec para comprobar su aprobación.';
+  if (buscarAprobacion(cwd, { tipo: 'spec', id, sha256: sha }, env) === null) {
+    return 'La spec no tiene una aprobación registrada y vigente en .sdd/aprobaciones.jsonl (nadie la aprobó con `forge aprobar spec` en un terminal, o el archivo cambió después). Ejecuta: forge aprobar spec';
+  }
+  return null;
 }
 
 // ── Aprobación completa (todo menos el efecto sobre estado.json) ────────────────────────────

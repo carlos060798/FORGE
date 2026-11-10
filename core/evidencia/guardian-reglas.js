@@ -127,7 +127,8 @@ export function esRutaCriticaDelGuardian(rutaRelativa) {
   if (segs.includes('.git')) return true;
   if (segs[0] === 'claude-hooks') return true;
   if (segs[0] === '.claude' && segs[1] !== undefined && (segs[1].startsWith('settings') || segs[1] === 'hooks')) return true;
-  if (segs.length === 2 && segs[0] === '.sdd' && segs[1] === 'execution-level.json') return true;
+  // El nivel del CircuitBreaker y el registro firmado de aprobaciones: un agente no tiene motivo para escribirlos
+  if (segs.length === 2 && segs[0] === '.sdd' && (segs[1] === 'execution-level.json' || segs[1] === 'aprobaciones.jsonl')) return true;
   return false;
 }
 

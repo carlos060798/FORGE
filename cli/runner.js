@@ -231,15 +231,15 @@ async function cmdStep(args, cwd) {
     return;
   }
 
-  let opcionesForce = {};
+  const idm = await import('../core/aprobaciones-identidad.js');
+  let opcionesForce = { verificarSpec: (/** @type {Record<string, any>} */ estado) => idm.verificarAprobacionDeSpec(cwd, estado) };
   if (force) {
-    const idm = await import('../core/aprobaciones-identidad.js');
     const motivo = idm.motivoDeArgs(args);
     if (!motivo || motivo.length < idm.MIN_MOTIVO) {
       console.error(`✗ --force exige un motivo de al menos ${idm.MIN_MOTIVO} caracteres: forge step ${paso} --force --motivo "por qué"`);
       process.exit(1);
     }
-    opcionesForce = { motivo, quien: idm.identidadDelAprobador(cwd), firmar: (payload) => idm.firmarEvento(cwd, payload) };
+    opcionesForce = { ...opcionesForce, motivo, quien: idm.identidadDelAprobador(cwd), firmar: (payload) => idm.firmarEvento(cwd, payload) };
   }
   const resultado = fsm.advance(paso, force, opcionesForce);
 

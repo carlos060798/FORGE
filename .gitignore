@@ -31,3 +31,6 @@ FORGE/
 # mayúsculas el patrón anterior la ignoraría y la skill no se versionaría.
 !skills-generadas/forge/
 !skills-generadas/forge/**
+
+# Registros locales de sesiones: no se versionan
+logs/

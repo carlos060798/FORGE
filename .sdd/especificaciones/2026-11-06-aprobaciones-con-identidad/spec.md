@@ -4,7 +4,7 @@ titulo: "Aprobaciones con identidad: terminal real, código de un solo uso y reg
 tamano: mediano  # micro | pequeño | mediano | grande
 estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-11-06
-actualizada: 2026-11-06
+actualizada: 2026-11-09
 autor: humano  # humano | importado
 constitucion_version: 1.1.0
 etiquetas: [seguridad, aprobaciones, evidencia, c-03]
@@ -48,6 +48,11 @@ Con el mismo usuario del sistema operativo **no hay separación criptográfica t
 
 ### Documentación del límite
 - **CA-005-01** La cabecera de `core/aprobaciones-identidad.js` y la de `core/evidencia/cadena.js` declaran el límite de la sección 3.
+
+### Puerta real de la spec (añadido 2026-11-09, hallazgo C-03 de `docs/informes/REVERIFICACION-SEGURIDAD.md`)
+- **CA-006-01** Pasar de `spec` a `plan` con `forge step plan` exige, además de `spec_aprobado: true`, un registro de tipo `spec` en `.sdd/aprobaciones.jsonl` con el identificador de la spec activa y el SHA-256 **vigente** de su archivo. Si falta, o el archivo cambió después de aprobarse, la transición se rechaza con un mensaje que dice cómo aprobar. Solo `--force --motivo` la salta (CA-004).
+- **CA-006-02** `forge aprobar spec` no da por aprobada una spec cuyo `spec_aprobado` esté a `true` sin ese registro verificable: avisa y la aprueba de nuevo (con terminal y código, CA-001).
+- **CA-007-01** `.sdd/aprobaciones.jsonl` es ruta crítica del guardián (`esRutaCriticaDelGuardian`): una escritura, redirección o `Write` sobre él desde un agente se bloquea, sin distinguir mayúsculas.
 
 ## 5. Fuera de alcance
 

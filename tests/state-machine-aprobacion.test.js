@@ -100,9 +100,10 @@ describe("forge aprobar spec — CLI", () => {
     assert.equal(estadoFinal.spec_aprobado, false, "spec_aprobado no debe cambiar sin terminal");
   });
 
-  test("es idempotente — no falla si ya estaba aprobada", () => {
+  test("una spec con spec_aprobado: true pero sin registro firmado no se da por aprobada (hay que aprobarla de nuevo)", () => {
     const dir = mkdtempSync(join(tmpdir(), "forge-cli-aprobar-idem-"));
-    mkdirSync(join(dir, ".sdd"), { recursive: true });
+    mkdirSync(join(dir, ".sdd", "especificaciones", "spec-001"), { recursive: true });
+    writeFileSync(join(dir, ".sdd", "especificaciones", "spec-001", "spec.md"), "# spec\n", "utf8");
     writeFileSync(join(dir, ".sdd", "estado.json"), JSON.stringify({
       schemaVersion: "1.0", pipeline_step: "spec",
       spec_activa: "spec-001", spec_aprobado: true,
@@ -110,9 +111,9 @@ describe("forge aprobar spec — CLI", () => {
     }), "utf8");
 
     const r = spawnSync(process.execPath, [join(ROOT, "cli", "index.js"), "aprobar", "spec"],
-      { cwd: dir, encoding: "utf8" });
-    assert.equal(r.status, 0);
-    assert.ok(r.stdout.includes("ya está aprobada"), "debe indicar que ya estaba aprobada");
+      { cwd: dir, encoding: "utf8", input: "" });
+    assert.notEqual(r.status, 0, "sin terminal real no puede dejar el registro");
+    assert.ok(!r.stdout.includes("ya está aprobada"), "no debe darla por buena sin registro verificable");
   });
 
   test("avisa si no hay spec_activa ni spec_draft_path", () => {

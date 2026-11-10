@@ -761,5 +761,28 @@
       }
     },
     "espera": "bloquea"
+  },
+  {
+    "id": "write-aprobaciones",
+    "descripcion": "C-03: Write sobre el registro firmado de aprobaciones",
+    "evento": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": ".sdd/aprobaciones.jsonl",
+        "content": "{}"
+      }
+    },
+    "espera": "bloquea"
+  },
+  {
+    "id": "redir-aprobaciones",
+    "descripcion": "C-03: redirección al registro de aprobaciones",
+    "evento": {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo {} >> .sdd/aprobaciones.jsonl"
+      }
+    },
+    "espera": "bloquea"
   }
 ]

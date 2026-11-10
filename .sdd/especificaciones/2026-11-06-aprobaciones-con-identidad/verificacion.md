@@ -15,6 +15,11 @@
 | CA-004-01 | Con prueba (CLI y unidad) | `tests/aprobaciones-identidad.test.js` |
 | CA-004-02 | Con prueba (evento presente, firma válida, alterado inválido) | `tests/aprobaciones-identidad.test.js` |
 | CA-005-01 | Hecho, **sin prueba automática** (comentarios de cabecera) | `core/aprobaciones-identidad.js`, `core/evidencia/cadena.js` |
+| CA-006-01 | Con prueba (CLI por spawn: rechazo con booleano a mano; avance con registro del hash vigente; rechazo si la spec cambia después) | `tests/aprobaciones-identidad.test.js` («puerta real de la spec») |
+| CA-006-02 | Con prueba (CLI: no dice «ya está aprobada» sin registro; sin TTY no puede reaprobar) | `tests/aprobaciones-identidad.test.js`, `tests/state-machine-aprobacion.test.js` |
+| CA-007-01 | Con prueba (unidad de `esRutaCriticaDelGuardian`, con mayúsculas; evals del guardián `write-aprobaciones`, `redir-aprobaciones`) | `tests/guardian-reglas.test.js`, `tests/evals/casos-guardian.json` |
+
+> **2026-11-09:** CA-006 y CA-007 se añadieron a la spec después de que el código existiera (orden inverso al de `AGENTS.md`, igual que el resto de esta spec); se anota para no ocultarlo. `cmdAprobar` vive ahora en `cli/comandos/aprobar.js`, no en `cli/index.js` como dice T3.
 
 ## Límites
 

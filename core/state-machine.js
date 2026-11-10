@@ -119,7 +119,7 @@ export class PipelineStateMachine {
   /**
    * @param {PipelineStep} to
    * @param {boolean} [force]  salta los guards; exige `opciones.motivo` y deja un evento firmado
-   * @param {{ motivo?: string, quien?: Record<string, unknown>, firmar?: (payload: Record<string, unknown>) => string }} [opciones]
+   * @param {{ motivo?: string, quien?: Record<string, unknown>, firmar?: (payload: Record<string, unknown>) => string, verificarSpec?: (estado: Record<string, any>) => string|null }} [opciones]
    * @returns {TransitionResult}
    */
   advance(to, force = false, opciones = {}) {
@@ -142,6 +142,11 @@ export class PipelineStateMachine {
       const guardError = transition.guard(estado);
       if (guardError) {
         return { ok: false, from, to, error: `Guard bloqueó la transición: ${guardError}` };
+      }
+      // spec → plan: además del booleano, el registro firmado de la aprobación (lo aporta quien llama, con su cwd)
+      if (from === 'spec' && to === 'plan' && typeof opciones.verificarSpec === 'function') {
+        const motivoSpec = opciones.verificarSpec(estado);
+        if (motivoSpec) return { ok: false, from, to, error: `Guard bloqueó la transición: ${motivoSpec}` };
       }
     }
 

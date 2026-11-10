@@ -60,14 +60,19 @@ export async function cmdAprobar(subArgs) {
     aviso("  Ejecuta primero /sdd.diseñar en Claude Code para generar la spec.");
     return;
   }
+  // Aprobada de verdad = booleano en estado.json Y registro firmado con el hash vigente de la spec.
+  // Un `spec_aprobado: true` sin registro (a mano, de una versión anterior o con la spec cambiada) se vuelve a aprobar.
   if (estado.spec_aprobado) {
-    info("La spec ya está aprobada ✓ — puedes avanzar a la planificación.");
-    return;
+    const pendiente = idm.verificarAprobacionDeSpec(process.cwd(), estado);
+    if (pendiente === null) {
+      info("La spec ya está aprobada ✓ — puedes avanzar a la planificación.");
+      return;
+    }
+    aviso(`estado.json dice que la spec está aprobada, pero no consta de forma verificable: ${pendiente.split(" Ejecuta:")[0]}`);
+    aviso("  Se aprueba de nuevo para dejar el registro.");
   }
   // Qué se aprueba: el archivo de la spec (borrador indicado, o spec.md de la spec activa) y su hash
-  const rutaSpec = estado.spec_draft_path
-    ? (isAbsolute(String(estado.spec_draft_path)) ? String(estado.spec_draft_path) : join(process.cwd(), String(estado.spec_draft_path)))
-    : join(process.cwd(), ".sdd", "especificaciones", String(estado.spec_activa), "spec.md");
+  const rutaSpec = idm.specDeEstado(process.cwd(), estado).ruta;
   let sha = null;
   try { sha = idm.hashDeArchivo(process.cwd(), rutaSpec); } catch (e) { error(`No se lee la spec: ${e.message}`); }
   if (sha === null) error(`No se encuentra el archivo de la spec a aprobar (${relative(process.cwd(), rutaSpec)}): no se aprueba algo que no se puede leer ni fijar con un hash.`);

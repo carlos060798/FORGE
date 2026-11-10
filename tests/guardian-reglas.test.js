@@ -90,8 +90,8 @@ describe("guardián — escritura sobre lo protegido por shell", () => {
 describe("guardián — rutas y secretos", () => {
   test("rutas críticas del guardián", () => {
     for (const r of [".claude/settings.json", ".claude/settings.local.json", ".claude/hooks/x.js", "claude-hooks/pre-tool-guard.js", "claude-hooks/shared/config.js",
-      ".sdd/execution-level.json", ".git/config", "./.CLAUDE/Settings.json", ".claude\\settings.json", "claude-hooks.", ".git/hooks/pre-commit"]) assert.equal(esRutaCriticaDelGuardian(r), true, r);
-    for (const r of ["src/a.js", ".claude/agents/x.md", ".github/workflows/ci.yml", ".sdd/estado.json", "docs/claude-hooks.md"]) assert.equal(esRutaCriticaDelGuardian(r), false, r);
+      ".sdd/execution-level.json", ".sdd/aprobaciones.jsonl", ".SDD/Aprobaciones.JSONL", ".git/config", "./.CLAUDE/Settings.json", ".claude\\settings.json", "claude-hooks.", ".git/hooks/pre-commit"]) assert.equal(esRutaCriticaDelGuardian(r), true, r);
+    for (const r of ["src/a.js", ".claude/agents/x.md", ".github/workflows/ci.yml", ".sdd/estado.json", ".sdd/aprobaciones.md", "docs/claude-hooks.md"]) assert.equal(esRutaCriticaDelGuardian(r), false, r);
   });
   test("esSecreto", () => {
     for (const r of [".env", "a/.env.local", ".ENV", ".env.production", ".env."]) assert.equal(esSecreto(r), true, r);

@@ -291,3 +291,47 @@ describe('step --force: motivo obligatorio y evento firmado', () => {
     assert.notEqual(firmarEvento(cwd, { a: 1 }, env), firmarEvento(cwd, { a: 2 }, env));
   });
 });
+
+describe('puerta real de la spec (REVERIFICACION C-03): spec_aprobado a mano no basta', () => {
+  /** Proyecto en la etapa «spec» con spec_aprobado: true escrito directamente en estado.json. */
+  function enSpec() {
+    const { cwd, env } = proyecto();
+    const dir = join(cwd, '.sdd', 'especificaciones', 'spec-1');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'spec.md'), '# spec uno\n', 'utf8');
+    writeFileSync(join(cwd, '.sdd', 'estado.json'), JSON.stringify({
+      schemaVersion: '1.0', pipeline_step: 'spec', spec_activa: 'spec-1', spec_aprobado: true, ultima_actualizacion: new Date().toISOString(),
+    }), 'utf8');
+    return { cwd, env, rutaSpec: join(dir, 'spec.md') };
+  }
+
+  test('forge step plan se rechaza si el booleano está a true pero no hay registro firmado', () => {
+    const { cwd, env } = enSpec();
+    const r = forge(cwd, env, 'step', 'plan');
+    assert.notEqual(r.codigo, 0, r.salida);
+    assert.match(r.salida, /aprobación registrada y vigente/);
+  });
+
+  test('con el registro firmado del hash vigente, avanza', () => {
+    const { cwd, env, rutaSpec } = enSpec();
+    registrarAprobacion(cwd, { tipo: 'spec', id: 'spec-1', artefacto: '.sdd/especificaciones/spec-1/spec.md', sha256: hashDeArchivo(cwd, rutaSpec), quien: QUIEN }, { env });
+    const r = forge(cwd, env, 'step', 'plan');
+    assert.equal(r.codigo, 0, r.salida);
+  });
+
+  test('si la spec cambia después de aprobarse, vuelve a rechazarse', () => {
+    const { cwd, env, rutaSpec } = enSpec();
+    registrarAprobacion(cwd, { tipo: 'spec', id: 'spec-1', artefacto: '.sdd/especificaciones/spec-1/spec.md', sha256: hashDeArchivo(cwd, rutaSpec), quien: QUIEN }, { env });
+    writeFileSync(rutaSpec, '# spec uno, modificada después de aprobar\n', 'utf8');
+    const r = forge(cwd, env, 'step', 'plan');
+    assert.notEqual(r.codigo, 0, r.salida);
+  });
+
+  test('forge aprobar spec ya no da por buena una spec «aprobada» sin registro: pide aprobarla de nuevo', () => {
+    const { cwd, env } = enSpec();
+    const r = forge(cwd, env, 'aprobar', 'spec');
+    assert.notEqual(r.codigo, 0, 'sin terminal real no puede aprobar');
+    assert.doesNotMatch(r.salida, /ya está aprobada/);
+    assert.match(r.salida, /terminal interactivo real/);
+  });
+});
