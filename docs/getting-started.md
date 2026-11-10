@@ -2,6 +2,8 @@
 
 Esta guía te lleva de cero a un pipeline FORGE funcionando. Tiempo estimado: 10-15 minutos.
 
+> **¿Tienes prisa?** La versión de una página, con el camino de cinco comandos y qué hacer en cada pausa: [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md). Desde el 2026-11-09 `fragua init` sin opciones instala el perfil **esencial** (los seis comandos del camino principal) y el preset **lean**; esta guía describe además el perfil completo.
+
 ---
 
 ## Prerequisitos

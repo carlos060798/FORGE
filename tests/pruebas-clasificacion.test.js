@@ -24,7 +24,7 @@ describe("scripts/pruebas.mjs", () => {
 
   test("descubre los archivos de prueba de las carpetas de la suite", () => {
     assert.ok(todos.length > 100, `solo ${todos.length} archivos`);
-    assert.ok(todos.every((a) => /^(tests\/(e2e\/|evals\/)?|__tests__\/)[^/]+\.test\.js$/.test(a)), "ruta fuera de los patrones de la suite");
+    assert.ok(todos.every((a) => /^tests\/(e2e\/|evals\/)?[^/]+\.test\.js$/.test(a)), "ruta fuera de los patrones de la suite");
     assert.ok(todos.includes("tests/pruebas-clasificacion.test.js"));
   });
 

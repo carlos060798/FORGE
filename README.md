@@ -41,7 +41,9 @@ git clone https://github.com/carlos060798/FORGE && cd FORGE && npm install
 node cli/index.js doctor          # comprueba Node, hooks, proveedor LLM y SQLite
 ```
 
-Después, dentro de Claude Code en tu proyecto: `/forge`. Recorrido completo: [docs/getting-started.md](docs/getting-started.md).
+Después, dentro de Claude Code en tu proyecto: `/forge`. **Guía de una página:** [docs/PRIMEROS-15-MINUTOS.md](docs/PRIMEROS-15-MINUTOS.md). Recorrido completo: [docs/getting-started.md](docs/getting-started.md).
+
+`fragua init` sin opciones instala el perfil **esencial** (solo el camino principal en el menú `/`) y el preset **lean** (los seis agentes esenciales, en sonnet). Todo lo demás es opcional: `--perfil completo`, `--preset startup|enterprise`.
 
 > Cuando se publique el paquete: `npm install -g fragua`. No uses `npx forge`: descargaría otro paquete llamado `forge`.
 
@@ -91,7 +93,7 @@ Comandos de CLI habituales: `status`, `run`, `resume`, `aprobar`, `doctor`, `log
 
 | Quiero… | Lee |
 |---|---|
-| Empezar | [getting-started.md](docs/getting-started.md), [QUICK-START.md](QUICK-START.md) |
+| Empezar | [PRIMEROS-15-MINUTOS.md](docs/PRIMEROS-15-MINUTOS.md), [getting-started.md](docs/getting-started.md), [QUICK-START.md](QUICK-START.md) |
 | Entender cómo funciona | [core-concepts.md](docs/core-concepts.md), [architecture.md](docs/architecture.md), [FORGE-5.0-GUIA.md](docs/FORGE-5.0-GUIA.md) |
 | Configurar | [configuration.md](docs/configuration.md) |
 | Migrar desde 4.2.0 | [MIGRACION-5.0.md](docs/MIGRACION-5.0.md) |

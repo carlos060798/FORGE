@@ -17,6 +17,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 > **Nombre:** el producto pasa a llamarse **Fragua** (decisión del 2026-10-13). El paquete de npm es `fragua` y la orden principal es `fragua`; `forge` y `sdd-es` siguen funcionando, igual que las variables `FORGE_*` junto a `FRAGUA_*`. Nombres de comandos `sdd.*`, carpetas y skills no cambian. Ver `.sdd/especificaciones/2026-10-13-renombrar-a-fragua/`.
 
+### Plan MVP para el desarrollador individual (2026-11-09)
+
+- **Aprobaciones.** Pasar de `spec` a `plan` exige el registro firmado de `fragua aprobar spec` con el hash vigente de la spec, no solo el booleano de `estado.json`; el guardián protege `.sdd/aprobaciones.jsonl` (spec `2026-11-06-aprobaciones-con-identidad`, CA-006 y CA-007).
+- **Pruebas.** `npm test` pasa por `scripts/pruebas.mjs` y respeta `tests/cuarentena.txt`: una prueba inestable se aparta solo con incidencia, fecha y motivo, caduca a los 30 días y hay tope de 5; `npm run test:cuarentena` la sigue ejecutando (ADR-23). `__tests__/` se elimina: sus tres archivos no probaban código del proyecto.
+- **CI.** Jobs nuevos: `test-windows` (suite completa en `windows-latest`, Node 22) y `cuarentena` (no bloqueante). El estado real de la CI de `main` (en rojo, nunca verde en Linux) queda escrito en `docs/ESTADO-ACTUAL.md`.
+- **Instalación (rama `fase-2-puerta-de-entrada`, ADR-24).** `fragua init` sin opciones instala el perfil `esencial` (seis comandos) y la configuración de ejemplo activa exactamente los agentes del preset lean, en sonnet. Antes instalaba los 39 comandos y un conjunto de agentes que contradecía la documentación. Para todo: `--perfil completo`. Las instalaciones existentes no cambian.
+- **`fragua doctor`.** Distingue Docker no instalado de instalado pero no arrancado (en Windows: «abre Docker Desktop») y termina con «Siguiente paso»: el camino de cinco comandos y qué hacer sin Docker.
+- **Catálogo.** `deploy-vercel` es alias de `vercel-deploy`; `sdd.optimizar` y `sdd.optimizar-memoria` son alias de `sdd.comprimir` (como ya lo era `compact`). Nada se borra; las cifras 14/39/31 no cambian.
+- **Documentación.** `docs/PRIMEROS-15-MINUTOS.md` (una página, de la instalación a la primera tarea verificada); `PLAN-DE-CIERRE.md` y `PLAN-FLUJO-AI-NATIVO.md` pasan a `docs/archivo/planes/`.
+
 ### Flujo nativo de IA (2026-10-27)
 
 - **Seguridad.** El guardián (`pre-tool-guard`) bloquea escribir o editar la configuración de tipos, linter, seguridad y cobertura (`tsconfig*`, `biome`, `ruff`, `mypy`, `semgrep`, `codecov`…). Los hooks instalados llevan una copia autónoma de la lista (`shared/protegidos.js`).

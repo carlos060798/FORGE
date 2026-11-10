@@ -17,7 +17,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Las carpetas de la suite (antes, los globs del script `test` de package.json). */
-const CARPETAS = ['tests', 'tests/e2e', 'tests/evals', '__tests__'];
+const CARPETAS = ['tests', 'tests/e2e', 'tests/evals'];
 
 export const MODOS = Object.freeze(['todo', 'rapido', 'lento', 'cuarentena']);
 /** Días que una entrada de cuarentena vale antes de tener que renovarse (CA-001-04). */

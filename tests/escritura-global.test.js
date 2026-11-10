@@ -49,7 +49,8 @@ describe("N-04 — cada destino con su raíz, y sin éxito si faltó algo", () =
     const home = temporal("forge-home-"), cwd = proyecto();
     const r1 = forge(cwd, home, "init", "--global");
     assert.equal(r1.status, 0, r1.salida);
-    assert.ok(readdirSync(join(home, ".claude", "commands")).length > 10);
+    // Sin --perfil, también lo global instala el perfil por defecto (esencial, ADR-24)
+    assert.ok(readdirSync(join(home, ".claude", "commands")).length >= 6, "al menos los seis comandos del perfil esencial");
     assert.ok(existsSync(join(home, ".claude", "agents")) && existsSync(join(home, ".claude", "hooks")));
     assert.ok(!existsSync(join(cwd, ".sdd")), "lo global no crea .sdd en el proyecto");
 

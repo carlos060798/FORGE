@@ -174,6 +174,8 @@ export async function cmdDoctor() {
   console.log("");
 
   let problemas = 0;
+  /** Para la sección «Siguiente paso»: si Docker respondió (CA-002-01) */
+  let dockerOk = false;
 
   // Servidor MCP propio: perfil y límites efectivos (solo del entorno del usuario; carga perezosa, sin integraciones)
   try {
@@ -503,7 +505,9 @@ export async function cmdDoctor() {
   try {
     // Docker es obligatorio para el ciclo: se comprueba siempre, con o sin sandbox.runtime
     const { diagnosticarDocker } = await import("../../core/sandbox/diagnostico.js");
-    for (const l of (await diagnosticarDocker()).lineas) {
+    const diag = await diagnosticarDocker();
+    dockerOk = diag.ok;
+    for (const l of diag.lineas) {
       (l.nivel === "info" ? info : aviso)(l.texto);
       if (l.problema) problemas++;
     }
@@ -558,5 +562,10 @@ export async function cmdDoctor() {
   } else {
     aviso(`${problemas} problema(s) detectado(s). Revisa arriba.`);
   }
+
+  // ── Siguiente paso (spec 2026-11-09-puerta-de-entrada-solo-dev, CA-002-01) ──
+  titulo("Siguiente paso");
+  const { textoSiguientePaso } = await import("../../core/sandbox/diagnostico.js");
+  for (const l of textoSiguientePaso({ dockerOk })) console.log(`  ${l}`);
   console.log("");
 }

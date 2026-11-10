@@ -5,8 +5,9 @@
  * `esencial`: el camino principal (idea, especificación, plan, tareas, implementación, estado), 6 comandos.
  * `completo`: todos los comandos de `commands/`.
  *
- * El valor por defecto SIGUE siendo `completo`: pasar el de las instalaciones nuevas a `esencial` es
- * una decisión del dueño (spec, pregunta abierta 1) y es cambiar la constante de abajo.
+ * El valor por defecto es `esencial` desde el 2026-11-09 (ADR-24, spec 2026-11-09-puerta-de-entrada-solo-dev):
+ * una instalación nueva sin opciones recibe el camino principal; `--perfil completo` instala todo.
+ * Las instalaciones existentes no cambian: `update` nunca borra comandos ya instalados.
  */
 
 /** @type {Readonly<Record<string, { descripcion: string, comandos: readonly string[]|null }>>} */
@@ -18,7 +19,7 @@ export const PERFILES = Object.freeze({
   completo: { descripcion: 'Todos los comandos', comandos: null },
 });
 
-export const PERFIL_POR_DEFECTO = 'completo';
+export const PERFIL_POR_DEFECTO = 'esencial';
 
 export const NOMBRES_PERFIL = Object.freeze(Object.keys(PERFILES));
 

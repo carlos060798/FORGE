@@ -1,6 +1,6 @@
 # FORGE/Fragua frente a un SDLC nativo de IA: qué hay y qué falta
 
-Fecha: 2026-11-06. Revisión de solo lectura. Referencias: [playbook de Anthropic](https://claude.com/es/resources/articles/the-ai-native-sdlc-playbook), `docs/PLAN-FLUJO-AI-NATIVO.md`, `.sdd/especificaciones/2026-10-27-flujo-nativo-de-ia/`, `docs/informes/COMPARATIVA-DE-MERCADO.md`.
+Fecha: 2026-11-06. Revisión de solo lectura. Referencias: [playbook de Anthropic](https://claude.com/es/resources/articles/the-ai-native-sdlc-playbook), `docs/archivo/planes/PLAN-FLUJO-AI-NATIVO.md`, `.sdd/especificaciones/2026-10-27-flujo-nativo-de-ia/`, `docs/informes/COMPARATIVA-DE-MERCADO.md`.
 
 Leyenda: **Real** = código que se ejecuta y tiene pruebas · **Doc** = solo prompt o markdown (comando o agente de Claude Code) · **Falta**.
 

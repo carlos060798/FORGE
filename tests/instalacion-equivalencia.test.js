@@ -2,7 +2,8 @@
 /**
  * Spec 2026-10-13-instalacion-agnostica, F1.2 / CA-002-01: la «foto» del árbol que producen
  * `forge init` y `forge update` SIN opciones. Se tomó ANTES de tocar `cli/index.js` y debe seguir
- * idéntica: sin opción, sin cambio.
+ * idéntica salvo por una decisión explícita: desde ADR-24 (2026-11-09) sin opciones se instalan los comandos
+ * del perfil esencial, y `--perfil completo` los 39.
  *
  * La foto es de rutas (no de contenidos): los contenidos de commands/, agents/, skills/ y
  * claude-hooks/ se comparan con su origen en el plugin, para que añadir un comando no rompa la foto.
@@ -14,6 +15,7 @@ import { mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync, ex
 import { join, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { forge, ROOT } from "./instalacion-ayudas.js";
+import { PERFILES } from "../core/instalacion/perfiles.js";
 
 /** Rutas estables fuera de las cuatro carpetas copiadas del plugin (foto tomada antes del cambio). */
 const FOTO_ESTABLE = [
@@ -46,9 +48,11 @@ function arbol(dir, base = dir) {
   return out.sort();
 }
 
-function esperadoDeClaude() {
+/** @param {boolean} completo  con el perfil completo van los 39 comandos; si no, los del perfil esencial (ADR-24) */
+function esperadoDeClaude(completo) {
   const lista = [];
-  for (const f of readdirSync(join(ROOT, "commands"))) if (f.endsWith(".md")) lista.push(`.claude/commands/${f}`);
+  const esencial = new Set(/** @type {readonly string[]} */ (PERFILES.esencial.comandos).map((c) => `${c}.md`));
+  for (const f of readdirSync(join(ROOT, "commands"))) if (f.endsWith(".md") && (completo || esencial.has(f))) lista.push(`.claude/commands/${f}`);
   for (const f of readdirSync(join(ROOT, "agents"))) if (f.endsWith(".md")) lista.push(`.claude/agents/${f}`);
   for (const e of readdirSync(join(ROOT, "skills"), { withFileTypes: true })) {
     if (e.isFile() && e.name.endsWith(".md")) lista.push(`.claude/skills/${e.name}`);
@@ -62,7 +66,8 @@ function esperadoDeClaude() {
 }
 
 describe("CA-002-01 — forge init/update sin opciones: el árbol no cambia", () => {
-  for (const args of [[], ["--integracion", "claude"], ["--integracion", "claude", "--perfil", "completo"]]) {
+  for (const args of [[], ["--integracion", "claude"], ["--perfil", "esencial"], ["--integracion", "claude", "--perfil", "completo"]]) {
+    const completo = args.includes("completo");
     test(`init + update ${JSON.stringify(args)} producen el árbol de la foto`, () => {
       const home = temporal("forge-eq-home-"), cwd = proyecto();
       const r1 = forge(cwd, home, "init", ...args);
@@ -72,11 +77,12 @@ describe("CA-002-01 — forge init/update sin opciones: el árbol no cambia", ()
 
       const todas = arbol(cwd);
       const claude = todas.filter((r) => /^\.claude\/(commands|agents|skills|hooks)\//.test(r));
-      assert.deepEqual(claude, esperadoDeClaude().sort(), "las cuatro carpetas de .claude coinciden con el plugin");
+      assert.deepEqual(claude, esperadoDeClaude(completo).sort(), "las cuatro carpetas de .claude coinciden con el plugin (comandos según el perfil)");
       const estables = todas.filter((r) => !/^\.claude\/(commands|agents|skills|hooks)\//.test(r) && !r.startsWith(".sdd/docs/") && !r.startsWith(".sdd/plantillas/"));
       assert.deepEqual(estables, FOTO_ESTABLE);
       // contenido: los comandos copiados son los del plugin, byte a byte
       for (const f of readdirSync(join(ROOT, "commands")).filter((x) => x.endsWith(".md"))) {
+        if (!existsSync(join(cwd, ".claude", "commands", f))) continue; // fuera del perfil
         assert.equal(readFileSync(join(cwd, ".claude", "commands", f), "utf8"), readFileSync(join(ROOT, "commands", f), "utf8"));
       }
       // sin opciones no hay carpetas de otras herramientas

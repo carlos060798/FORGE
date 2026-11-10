@@ -25,8 +25,8 @@ function doctor(yaml) {
   }
 }
 
-test('sin configuración guardada: dice claude y completo', () => {
-  assert.match(doctor(null), /Integración: claude · perfil: completo \(sin configuración guardada\)/);
+test('sin configuración guardada: dice claude y esencial (perfil por defecto, ADR-24)', () => {
+  assert.match(doctor(null), /Integración: claude · perfil: esencial \(sin configuración guardada\)/);
 });
 
 test('con integración y perfil guardados: los informa', () => {

@@ -98,7 +98,9 @@ describe("F1.3 — forge init --integracion", () => {
       const r = forge(cwd, home, "init", "--integracion", clave);
       assert.equal(r.status, 0, r.salida);
       assert.ok(existsSync(join(cwd, ...carpeta.split("/"), "forge", "SKILL.md")), "skill forge");
-      assert.ok(readdirSync(join(cwd, ...carpeta.split("/"))).length > 39);
+      // Perfil por defecto esencial (ADR-24): 31 skills propias + 6 generadas (CA-001-03)
+      const skillsPropias = readdirSync(join(ROOT, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() || e.name.endsWith(".md")).length;
+      assert.equal(readdirSync(join(cwd, ...carpeta.split("/"))).length, skillsPropias + /** @type {readonly string[]} */ (PERFILES.esencial.comandos).length);
       assert.ok(!existsSync(join(cwd, ".claude")));
     });
   }
@@ -162,9 +164,12 @@ describe("F1.5 / F3 — integración y perfil en la configuración, respetados e
     assert.ok(!existsSync(join(carpeta, "sdd-qa")), "update no cambió de perfil");
   });
 
-  test("una instalación existente (sin sección) sigue siendo completa tras update", () => {
+  test("una instalación existente completa (sin sección) sigue siendo completa tras update: update no borra (CA-001-01)", () => {
     const cwd = proyecto(), home = temporal("forge-h-");
-    assert.equal(forge(cwd, home, "init").status, 0);
+    assert.equal(forge(cwd, home, "init", "--perfil", "completo").status, 0);
+    // Una instalación anterior a 5.0 no tiene sección instalacion: se simula quitándola
+    const yamlRuta = join(cwd, ".sdd", "sdd.config.yaml");
+    writeFileSync(yamlRuta, readFileSync(yamlRuta, "utf8").replace(/^instalacion:[^\n]*\n(?:[ \t]+[^\n]*\n?)*/m, ""), "utf8");
     const antes = lista(join(cwd, ".claude", "commands"));
     assert.ok(antes.length >= 39);
     assert.doesNotMatch(readFileSync(join(cwd, ".sdd", "sdd.config.yaml"), "utf8"), /^instalacion:/m);
@@ -184,15 +189,25 @@ describe("F3 — perfiles", () => {
     assert.equal(incluyeComando("esencial", "sdd.qa"), false);
     assert.equal(incluyeComando("esencial", "sdd.planificar"), true);
   });
-  test("el valor por defecto sigue siendo completo (decisión del dueño pendiente)", () => {
-    assert.equal(PERFIL_POR_DEFECTO, "completo");
+  test("el valor por defecto es esencial (ADR-24, CA-001-01)", () => {
+    assert.equal(PERFIL_POR_DEFECTO, "esencial");
     assert.equal(resolverPerfil("raro").ok, false);
   });
-  test("claude + esencial instala solo esos comandos; sin --perfil, todos", () => {
+  test("claude + esencial instala solo esos comandos; sin --perfil, los mismos; con completo, todos (CA-001-01)", () => {
+    const ESENCIAL = ["forge.md", "sdd.especificar.md", "sdd.estado.md", "sdd.implementar.md", "sdd.planificar.md", "sdd.tareas.md"];
     const cwd = proyecto(), home = temporal("forge-h-");
     assert.equal(forge(cwd, home, "init", "--perfil", "esencial").status, 0);
-    assert.deepEqual(lista(join(cwd, ".claude", "commands")), ["forge.md", "sdd.especificar.md", "sdd.estado.md", "sdd.implementar.md", "sdd.planificar.md", "sdd.tareas.md"]);
+    assert.deepEqual(lista(join(cwd, ".claude", "commands")), ESENCIAL);
     assert.ok(existsSync(join(cwd, ".claude", "settings.json")));
+    const cwd2 = proyecto(), home2 = temporal("forge-h-");
+    const r = forge(cwd2, home2, "init");
+    assert.equal(r.status, 0, r.salida);
+    assert.deepEqual(lista(join(cwd2, ".claude", "commands")), ESENCIAL, "sin --perfil manda el perfil por defecto");
+    assert.match(r.salida, /fragua doctor/, "el mensaje final nombra fragua doctor (CA-001-04)");
+    assert.match(r.salida, /--perfil completo/, "el mensaje final dice cómo tener todos los comandos");
+    const cwd3 = proyecto(), home3 = temporal("forge-h-");
+    assert.equal(forge(cwd3, home3, "init", "--perfil", "completo").status, 0);
+    assert.ok(lista(join(cwd3, ".claude", "commands")).length >= 39);
   });
   test("perfil desconocido se rechaza sin escribir", () => {
     const cwd = proyecto(), home = temporal("forge-h-");

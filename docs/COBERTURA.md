@@ -22,7 +22,7 @@ node --test --experimental-test-coverage tests/*.test.js
 
 El informe sale al final de la salida, entre `start of coverage report` y `end of coverage report`.
 
-`npm run coverage`, que ya existía, mide lo mismo sobre la suite entera (`tests/`, `tests/e2e/` y `__tests__/`). No se usó para este documento.
+`npm run coverage`, que ya existía, mide lo mismo sobre la suite entera (`tests/`, `tests/e2e/` y `tests/evals/`; `__tests__/` se eliminó el 2026-11-09 porque sus tres archivos no probaban código del proyecto). No se usó para este documento.
 
 ## Resultado de la pasada
 

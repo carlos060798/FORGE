@@ -10,8 +10,9 @@ Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contien
 
 ### 👤 Usuario nuevo (quiero probar FORGE)
 
-1. [Introducción](introduction.md): qué es y por qué existe (5 min)
-2. [Inicio rápido](getting-started.md): instalación paso a paso (10 min)
+1. [Primeros 15 minutos](PRIMEROS-15-MINUTOS.md): la única página que necesitas para la primera tarea verificada
+2. [Introducción](introduction.md): qué es y por qué existe (5 min)
+3. [Inicio rápido](getting-started.md): instalación paso a paso, con más detalle (10 min)
 3. [Ejemplo: API REST](EJEMPLO-API-REST.md): recorrido completo (30-45 min)
 4. [Glosario](GLOSARIO.md): términos (consúltalo cuando haga falta)
 
@@ -104,6 +105,7 @@ Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contien
 - 🧭 [guia-anadir-proveedor.md](guia-anadir-proveedor.md): cómo añadir un proveedor de modelos
 
 ### Guías y ejemplos
+- ⏱️ [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md): una página, de la instalación a la primera tarea verificada
 - 🚀 [getting-started.md](getting-started.md): instalación y primeros pasos
 - 🧰 [FORGE-5.0-GUIA.md](FORGE-5.0-GUIA.md): para qué sirve la 5.0 y qué trae
 - 📝 [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md): recorrido completo

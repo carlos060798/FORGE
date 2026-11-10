@@ -1,6 +1,6 @@
 # Plan de cierre
 
-Estado a 2026-11-05 (rama `mejoras/auditoria`). Qué se cerró, qué se limpia y qué decide el dueño. Complementa [PLAN-FLUJO-AI-NATIVO.md](PLAN-FLUJO-AI-NATIVO.md).
+Estado a 2026-11-05 (rama `mejoras/auditoria`). Qué se cerró, qué se limpia y qué decide el dueño. Complementa [PLAN-FLUJO-AI-NATIVO.md](PLAN-FLUJO-AI-NATIVO.md). **Archivado el 2026-11-09:** superado por el plan MVP (Fases 0 a 4); se conserva como historia.
 
 ## 1. Cerrado
 

@@ -79,9 +79,9 @@ perfil: guiado
 # ============================================================
 
 agentes:
-  # Preset "lean" por defecto — activa solo los agentes esenciales para minimizar costo.
-  # Para activar todos: cambia perfil a "enterprise" o descomenta los agentes necesarios.
-  # Agentes opcionales: critico, seguridad, asesor-datos, disenador-api, investigador, operaciones, product-designer, architecture-designer
+  # Preset "lean" por defecto (ADR-24): exactamente los seis agentes activos de presets/lean.yaml, todos en sonnet.
+  # Para más: `forge init --preset startup|enterprise`, o pon activo: true a los que necesites.
+  # Agentes opcionales (inactivos): revisor, critico, seguridad, documentador, investigador, operaciones, product-designer, architecture-designer
 
   # ── Timeout por agente (opcional) ──────────────────────────────────────────
   # Cada agente puede declarar timeout_ms para sobreescribir el timeout global.
@@ -95,8 +95,8 @@ agentes:
 
   # ---------- Diseño y arquitectura ----------
   arquitecto:
-    activo: true
-    modelo: opus          # HIGH — Recomendado: opus (decisiones difíciles de revertir)
+    activo: true     # Preset lean (ADR-24)
+    modelo: sonnet  # sonnet basta para decisiones de un proyecto personal; sube a opus si lo necesitas
     descripcion: "Toma decisiones de arquitectura del sistema y diseño técnico de alto nivel."
 
   architecture-designer:
@@ -110,24 +110,24 @@ agentes:
     descripcion: "Genera el ProductDesign completo: pantallas P0/P1/P2, user flow, mvp_scope."
 
   disenador-api:
-    activo: false         # Opcional — actívalo cuando el proyecto requiera contratos de API formales
-    modelo: sonnet        # Recomendado: sonnet (contratos estructurados)
+    activo: true     # Preset lean
+    modelo: sonnet  # contratos de API con sonnet
     descripcion: "Diseña contratos de API (OpenAPI, GraphQL, gRPC, eventos)."
 
   asesor-datos:
-    activo: false         # Opcional — actívalo para proyectos con BD compleja o migraciones críticas
-    modelo: opus          # Recomendado: opus (errores en BD son costosos de revertir)
+    activo: true     # Preset lean
+    modelo: sonnet  # sonnet para esquemas y migraciones simples; opus si la BD es crítica
     descripcion: "Diseño de esquemas, queries, índices, migraciones, performance de BD."
 
   # ---------- Implementación ----------
   desarrollador-backend:
-    activo: true
-    modelo: sonnet        # MEDIUM — Recomendado: sonnet (codificación)
+    activo: true     # Preset lean
+    modelo: sonnet  # codificación
     descripcion: "Implementa lógica de servidor: servicios, APIs, manejo de datos."
 
   desarrollador-frontend:
-    activo: true
-    modelo: sonnet        # MEDIUM — Recomendado: sonnet (codificación)
+    activo: true     # Preset lean
+    modelo: sonnet  # codificación
     descripcion: "Implementa UI: componentes, vistas, estado del cliente."
     # Desactívalo si tu proyecto es backend-only:
     # activo: false
@@ -139,13 +139,13 @@ agentes:
 
   # ---------- Calidad ----------
   tester:
-    activo: true
-    modelo: sonnet        # MEDIUM — Recomendado: sonnet (genera tests útiles)
+    activo: true     # Preset lean
+    modelo: sonnet  # genera pruebas útiles
     descripcion: "Genera y ejecuta tests unitarios, integración y E2E."
 
   revisor:
-    activo: true
-    modelo: opus          # HIGH — Recomendado: opus (revisión profunda atrapa más bugs)
+    activo: false    # Opcional — en lean tú eres el revisor; actívalo para revisión formal
+    modelo: opus    # Recomendado: opus
     descripcion: "Revisa código contra spec, calidad y constitución."
 
   critico:
@@ -159,8 +159,8 @@ agentes:
     descripcion: "Audita vulnerabilidades en cambios sensibles."
 
   documentador:
-    activo: true          # LOW — activo para proyectos que requieren docs formales
-    modelo: haiku         # Recomendado: haiku (tarea de formateo, no razonamiento profundo)
+    activo: false    # Opcional — actívalo para proyectos que requieren docs formales
+    modelo: haiku   # Recomendado: haiku
     descripcion: "Genera documentación técnica útil (no obvia)."
 
   investigador:

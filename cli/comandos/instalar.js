@@ -35,9 +35,11 @@ function copiarNucleo(claudeDir, inst = null) {
   // Otra herramienta: skills y AGENTS.md, sin comandos, agentes ni hooks con cabecera de Claude Code
   if (inst && !inst.integracion.nativa) return copiarSkillsDeIntegracion(inst);
   titulo("Copiando comandos...");
-  const soloPerfil = inst && inst.perfil !== "completo" ? inst.perfil : null;
+  // Sin opciones ni configuración guardada manda el perfil por defecto (esencial, ADR-24); `completo` copia todo
+  const perfilEfectivo = inst ? inst.perfil : PERFIL_POR_DEFECTO;
+  const soloPerfil = perfilEfectivo !== "completo" ? perfilEfectivo : null;
   const nCmd = copyMd(join(PLUGIN_DIR, "commands"), join(claudeDir, "commands"), soloPerfil ? (f) => incluyeComando(soloPerfil, f.slice(0, -3)) : null);
-  info(`Comandos instalados (${nCmd} archivos)`);
+  info(`Comandos instalados (${nCmd} archivos, perfil ${perfilEfectivo})`);
 
   titulo("Copiando agentes...");
   const nAg = copyMd(join(PLUGIN_DIR, "agents"), join(claudeDir, "agents"));
@@ -352,21 +354,31 @@ function configurarSdd(claudeDir, overrides = {}) {
 
 // ─── Fin ─────────────────────────────────────────────────────────────────────────
 
-function pasosFinales() {
+/** @param {string} [perfil] perfil de instalación efectivo (CA-001-04) */
+function pasosFinales(perfil = PERFIL_POR_DEFECTO) {
   console.log("");
   console.log("  ╔══════════════════════════════════════════════════════════════╗");
   console.log("  ║                  ✅  FORGE instalado                         ║");
   console.log("  ╠══════════════════════════════════════════════════════════════╣");
   console.log("  ║                                                              ║");
-  console.log("  ║   Abre Claude Code y escribe:                                ║");
+  console.log("  ║   1. Comprueba el entorno:   fragua doctor                   ║");
   console.log("  ║                                                              ║");
+  console.log("  ║   2. Abre Claude Code y escribe:                             ║");
   console.log('  ║      /forge "describe tu idea aquí"                          ║');
   console.log("  ║                                                              ║");
-  console.log("  ║   Ejemplo:                                                   ║");
-  console.log('  ║      /forge "una app para registrar mis gastos diarios"      ║');
+  console.log("  ║   El camino de cinco comandos:                               ║");
+  console.log("  ║      /sdd.especificar → /sdd.planificar → /sdd.tareas        ║");
+  console.log("  ║      → /sdd.implementar → /sdd.estado                        ║");
   console.log("  ║                                                              ║");
   console.log("  ║   ¿Necesitas ayuda? Escribe:  /forge ayuda                   ║");
   console.log("  ╚══════════════════════════════════════════════════════════════╝");
+  console.log("");
+  if (perfil === "completo") {
+    info("Perfil completo: los 39 comandos están en el menú «/».");
+  } else {
+    info(`Perfil ${perfil}: solo el camino principal en el menú «/». Para todos los comandos: forge init --perfil completo`);
+  }
+  info("Guía de 15 minutos: docs/PRIMEROS-15-MINUTOS.md");
   console.log("");
 }
 
@@ -565,7 +577,7 @@ export function cmdInit(global, guided = false, withUi = false, preset = null, t
   } else if (template) {
     pasosFinalesConTemplate(template);
   } else {
-    pasosFinales();
+    pasosFinales(inst ? inst.perfil : PERFIL_POR_DEFECTO);
   }
 }
 

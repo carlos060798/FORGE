@@ -208,7 +208,7 @@ El código también despacha `dispatch`, `adapters` y `decisions`; no están en 
 | Opción | Qué hace |
 |---|---|
 | `--integracion <clave>` | Herramienta de destino: `claude` (por defecto), `generica`, `agents`, `copilot`, `cursor`, `gemini`, `windsurf`, `opencode`, `kiro`. Solo `claude` instala comandos, agentes y hooks nativos; las demás reciben skills en su carpeta |
-| `--perfil <esencial\|completo>` | `esencial`: 6 comandos del camino principal; `completo` (por defecto): todos. Ver `core/instalacion/perfiles.js` |
+| `--perfil <esencial\|completo>` | `esencial` (por defecto desde el 2026-11-09, ADR-24): los seis comandos del camino principal; `completo`: todos. Ver `core/instalacion/perfiles.js` |
 | `--carpeta-skills <ruta>` | Solo con `--integracion generica`: carpeta de skills dentro del proyecto o de tu carpeta personal |
 
 La elección se guarda en la sección `instalacion:` de `.sdd/sdd.config.yaml` y `forge doctor` la informa. Un repositorio no puede apuntar la escritura fuera del proyecto: una carpeta externa solo vale por `--carpeta-skills`. Límite: los perfiles no borran comandos ya instalados ([PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md)). Especificación: `.sdd/especificaciones/2026-10-13-instalacion-agnostica/`.

@@ -238,6 +238,25 @@ describe("índices — enlaces relativos que existen, con sus mayúsculas", () =
   });
 });
 
+// ─── 3b. La configuración de ejemplo activa exactamente el preset lean (ADR-24, CA-001-02) ───
+
+describe("configuracion-ejemplo/sdd.config.yaml — preset lean por defecto de verdad", () => {
+  /** Agentes activos y su modelo en un bloque `agentes:` */
+  function activosDe(/** @type {string} */ yaml) {
+    const seccion = yaml.split(/^agentes:/m)[1]?.split(/^[a-z_]+:/m)[0] ?? "";
+    /** @type {Record<string, string>} */ const out = {};
+    for (const m of seccion.matchAll(/^ {2}([\w-]+):\s*\n\s+activo: (true|false)[^\n]*\n\s+modelo: (\w+)/gm)) if (m[2] === "true") out[m[1]] = m[3];
+    return out;
+  }
+  test("los agentes activos del ejemplo son los de presets/lean.yaml, con el mismo modelo", () => {
+    const ejemplo = activosDe(leer("configuracion-ejemplo/sdd.config.yaml"));
+    const lean = activosDe(leer("presets/lean.yaml"));
+    assert.deepEqual(Object.keys(ejemplo).sort(), Object.keys(lean).sort(), "conjunto de agentes activos");
+    assert.deepEqual(ejemplo, lean, "modelo por agente");
+    assert.equal(Object.keys(lean).length, LEAN.length);
+  });
+});
+
 // ─── 4. Integración continua ──────────────────────────────────────────────────
 
 const WORKFLOW = leer(".github/workflows/ci.yml");
