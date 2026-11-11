@@ -32,7 +32,7 @@ Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no
 
 **Pendiente:** leer los logs del run rojo, clasificar cada fallo (carga, rutas/enlaces, Docker, otro) y corregir lo que sea código; lo inestable, a cuarentena con incidencia. Hipótesis tras la pasada con Docker real: el fallo de `Pruebas con Docker real` en la CI puede ser este mismo helper (fallaría igual en Linux); el de `Aislamiento con Docker real` no se explica con esto y hay que leer el log.
 
-**Rama `fase-2-puerta-de-entrada` (2026-11-09, sin fusionar hasta que la CI esté verde):** perfil de instalación `esencial` por defecto y configuración de ejemplo igual al preset lean (ADR-24); `forge doctor` distingue Docker no instalado de no arrancado y termina con «Siguiente paso»; `deploy-vercel`, `sdd.optimizar` y `sdd.optimizar-memoria` son alias explícitos; `__tests__/` eliminada (no probaba código del proyecto); `docs/PRIMEROS-15-MINUTOS.md` nueva; planes antiguos en `docs/archivo/planes/`. Spec `2026-11-09-puerta-de-entrada-solo-dev`.
+**Fase 2, puerta de entrada (hecha el 2026-11-09 y fusionada en `main` el 2026-11-10):** perfil de instalación `esencial` por defecto y configuración de ejemplo igual al preset lean (ADR-24); `forge doctor` distingue Docker no instalado de no arrancado y termina con «Siguiente paso»; `deploy-vercel`, `sdd.optimizar` y `sdd.optimizar-memoria` son alias explícitos; `__tests__/` eliminada (no probaba código del proyecto); `docs/PRIMEROS-15-MINUTOS.md` nueva; planes antiguos en `docs/archivo/planes/`. Spec `2026-11-09-puerta-de-entrada-solo-dev`.
 
 ## Lo que funciona y está probado
 

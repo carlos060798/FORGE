@@ -152,7 +152,22 @@ En esta sesión, sin esperar a este plan: README público con estado honesto, í
 | 0 | **Hecha el 2026-11-10** (pendiente de publicar con un `git push` a `main`) | Cinco páginas del sitio reescritas en español e inglés (visión general, ciclo verificado nueva, instalación, limitaciones, madurez); aviso con enlace al documento al día en las otras doce; nombre Fragua en la interfaz; `mermaid` eliminado (no se usaba en ninguna página y cargaba 3,3 MB de un CDN sin versión); `noscript`, metadatos sociales y canónico; página huérfana movida a `docs/archivo/`; `tests/sitio-docs.test.js` vigila términos, versión, anclas, enlaces a GitHub y scripts externos. No se ha abierto el sitio en un navegador; el HTML de las 34 páginas está balanceado |
 | 1 | Pendiente | Necesita el ADR de la herramienta y un spike de un día |
 | 2 | Pendiente | |
-| 3 | En curso | Referencia de la CLI hecha con su prueba; configuración, agentes, flujos y arquitectura reescritos; faltan `extending-forge.md`, `api-reference.md`, `examples.md` y `tools.md` y el catálogo de errores |
+| 3 | **Casi hecha, a mano** (2026-11-10) | Auditados contra el código 36 documentos técnicos: referencia de la CLI con su prueba, interfaces, configuración, agentes, flujos, arquitectura, extensión, ejemplos, solución de problemas, seguridad, compatibilidad, MCP, API HTTP, evidencia, puertas, proveedores, integraciones, herramientas, glosario e inventario. Cada uno lleva tipo y fecha de revisión, y lo no comprobado va marcado. Falta lo que el plan pedía **generado**: catálogo de errores como referencia propia, esquemas renderizados y las tablas de agentes y comandos desde sus cabeceras. Hoy se vigilan con pruebas, no se generan |
 | 4 a 7 | Pendiente | |
 
 El inglés del sitio pasó del 38 % al 50 % del español, por las páginas nuevas. Sigue incompleto: las doce páginas con aviso conservan su traducción parcial anterior.
+
+## 9. Defectos de código que salieron al documentar
+
+Dejaron de afirmarse en la documentación, pero **siguen en el código**. Cada uno pide su especificación si se decide corregirlo.
+
+| # | Qué pasa | Dónde |
+|---|---|---|
+| 1 | `calidad.cobertura_tests_minima` se lee pero ningún código la aplica; los presets la fijan en 60, 75 y 85 sin efecto | `claude-hooks/post-write-conventions.js` |
+| 2 | Los hooks de `.sdd/hooks/` los ejecuta el modelo al seguir el comando, no el motor; no cancelan por código de salida y no reciben variables | `commands/*.md` |
+| 3 | `fragua export` estampa «FORGE v4.0.0» fijo en los artefactos | `cli/export.js:21` |
+| 4 | `consumo.jsonl` estima los tokens como bytes entre 3,5 y `fragua logs` lo presenta como consumo de tokens; el gasto real está en `gasto.jsonl` | `claude-hooks/agent-memory.js` |
+| 5 | `ProjectMemory.update()` y `setPipelineStep()` no comprueban aprobaciones | `core/project-memory.js` |
+| 6 | El tipo `ForgeEstado` no declara `spec_aprobado` ni otros campos del archivo real | `core/project-memory.js` |
+| 7 | `fragua doctor` termina con código 0 aunque detecte problemas, así que no sirve como puerta en una integración continua | `cli/comandos/doctor.js`, según `docs/referencia-cli.md`; **no ejecutado en esta revisión** |
+| 8 | Hay un runner de Rust pero ninguna imagen base para Rust | `core/runners/rust-runner.js`, `core/sandbox/preparar-imagen.js` |
