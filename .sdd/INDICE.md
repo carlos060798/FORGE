@@ -5,10 +5,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 32
+- Total: 33
 - Completadas: 0
 - En progreso: 18
-- En borrador: 14
+- En borrador: 15
 
 ## Especificaciones
 
@@ -42,6 +42,7 @@
 | 2026-11-10-enlaces-verificados-en-windows | Pruebas de enlaces que se ejecutan en Windows y omisiones honestas («NO VERIFICADO») | borrador (redactada por un agente; sin aprobar; pruebas ya migradas) | pequeño | ✅ | — | ✅ | ✅ | 2026-11-10 |
 | 2026-11-11-correcciones-de-precision | Correcciones de precisión halladas al documentar: versión que estampa export y tipo del estado | borrador (implementada; la aprueba el dueño; micro) | micro | ✅ | — | ✅ | — | 2026-11-11 |
 | 2026-11-11-sitio-generado-desde-docs | Sitio de documentación generado desde docs/ con enlaces comprobados | borrador (solo especificación; ADR-25 propuesta; cuatro decisiones del dueño; nada implementado) | mediano | ✅ | — | ✅ | — | 2026-11-11 |
+| 2026-11-11-aislamiento-usuario-linux | Aislamiento en Linux: el contenedor corre con el usuario del anfitrión para que lo que crea se pueda borrar | borrador (implementada y verificada en un Docker de Linux limpio; toca ADR-02; la aprueba el dueño) | pequeño | ✅ | — | ✅ | — | 2026-11-11 |
 | 2026-11-10-equipos-y-ciclo-en-ci | Equipos pequeños: aprobaciones atribuibles, estado compartible y ciclo verificado en CI | borrador (solo especificación, Fase 4 del plan MVP; cinco decisiones abiertas del dueño; nada implementado) | grande | ✅ | — | — | — | 2026-11-10 |
 | 2026-11-10-metodologia-agnostica | Metodología agnóstica del anfitrión: comandos y agentes utilizables fuera de Claude Code | en_implementacion (aprobada por delegación del dueño el 2026-11-11, pendiente de ratificación; F1 y F2 implementadas por adaptación al instalar, sin probar en herramientas reales) | grande | ✅ | — | — | — | 2026-11-10 |
 | 2026-11-11-guardian-fuera-de-claude-code | Guardián y memoria fuera de Claude Code: orden `fragua guardian`, traducción del evento por anfitrión y plantillas de hook | borrador (código F3 implementado por instrucción del dueño antes de la spec; redactada a posteriori; **sin aprobar**; CA-001-03 y CA-002-03 corregidos con prueba el 2026-11-11; CA-002-04, CA-003-02 y CA-004-01 pendientes; sin probar en herramienta real) | mediano | ✅ | — | — | — | 2026-11-11 |

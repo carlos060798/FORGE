@@ -22,7 +22,22 @@ export function etiquetaProyecto(proyectoId) {
 export function etiquetaProyectoAntigua(proyectoId) {
   return `forge.proyecto=${String(proyectoId).replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
 }
+/** Usuario sin privilegios por defecto del contenedor (Windows, macOS, o un anfitrión que corre como root). */
 export const USUARIO  = '1000:1000';
+
+/**
+ * Usuario con el que corre el contenedor. En Linux, si el anfitrión no es root, es el MISMO uid y gid del anfitrión:
+ * lo que el código crea dentro de la copia montada queda a nombre de quien la va a borrar. Con un uid fijo distinto
+ * (el runner de GitHub es el 1001) el barrido de la copia fallaba en silencio con «Permission denied» y quedaban
+ * carpetas en `.sdd/motor/<sesión>/staging/` (spec 2026-11-11-aislamiento-usuario-linux). En Windows y macOS Docker
+ * Desktop no traslada los permisos, así que se queda 1000:1000. Nunca root.
+ * @param {{ plataforma?: string, uid?: number, gid?: number }} [o]  inyectable para las pruebas
+ * @returns {string}  `uid:gid`
+ */
+export function usuarioContenedor({ plataforma = process.platform, uid = process.getuid?.(), gid = process.getgid?.() } = {}) {
+  if (plataforma !== 'linux' || !Number.isInteger(uid) || !Number.isInteger(gid) || /** @type {number} */ (uid) <= 0 || /** @type {number} */ (gid) <= 0) return USUARIO;
+  return `${uid}:${gid}`;
+}
 export const DIR_TRABAJO = '/work';
 
 export const LIMITES_POR_DEFECTO = { cpus: 1, memoria: '512m', pids: 256 };
@@ -112,6 +127,7 @@ export function nombreContenedor(runId, n) {
  *   proyectoId?: string,
  *   tmpfsMb?: number,
  *   runtime?: string,
+ *   usuario?: string,   // `uid:gid`; por defecto usuarioContenedor()
  * }} opciones
  * @returns {string[]} argumentos para `docker`
  */
@@ -136,6 +152,11 @@ export function argvRun(opciones) {
   if (!Array.isArray(comando) || comando.length === 0) throw new Error('politica: comando vacío');
   sinGuion('comando', comando[0]);
   const runtime = validarRuntime(opciones.runtime);
+  // Un usuario explícito debe ser `uid:gid` numéricos y nunca root (0): el contenedor no corre con privilegios
+  if (opciones.usuario !== undefined && !/^[1-9][0-9]*:[1-9][0-9]*$/.test(opciones.usuario)) {
+    throw new Error(`politica: usuario inválido (debe ser uid:gid numéricos y distintos de root): "${opciones.usuario}"`);
+  }
+  const usuario = opciones.usuario ?? usuarioContenedor();
 
   return [
     'run', '--rm',
@@ -146,7 +167,7 @@ export function argvRun(opciones) {
     '--network', 'none',
     // Sin IPC compartido: ni memoria compartida ni colas de mensajes con el anfitrión u otros contenedores (C-08)
     '--ipc', 'none',
-    '--user', USUARIO,
+    '--user', usuario,
     '--cap-drop', 'ALL',
     '--security-opt', 'no-new-privileges',
     '--cpus', String(limites.cpus),

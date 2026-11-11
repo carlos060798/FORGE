@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { argvRun, ETIQUETA, nombreContenedor } from "../core/sandbox/politica.js";
+import { argvRun, ETIQUETA, nombreContenedor, usuarioContenedor, USUARIO } from "../core/sandbox/politica.js";
 import { crearEjecutor, DockerCli } from "../core/sandbox/docker-cli.js";
 import { dockerfile, ErrorPreparacion, prepararImagen, IMAGENES_BASE } from "../core/sandbox/preparar-imagen.js";
 import { comandoDePruebas, SandboxRunner } from "../core/sandbox/sandbox-runner.js";
@@ -53,10 +53,34 @@ describe("argvRun — política de aislamiento", () => {
   test("CA-003-01: sin red", () => assert.equal(valorDe(argv, "--network"), "none"));
 
   test("CA-003-03: sin privilegios", () => {
-    assert.equal(valorDe(argv, "--user"), "1000:1000");
+    assert.equal(valorDe(argv, "--user"), usuarioContenedor());
+    assert.ok(!/^0(:|$)|:0$/.test(valorDe(argv, "--user")), "el contenedor nunca corre como root");
     assert.equal(valorDe(argv, "--cap-drop"), "ALL");
     assert.equal(valorDe(argv, "--security-opt"), "no-new-privileges");
     assert.ok(!argv.includes("--privileged"));
+  });
+
+  test("CA-001-01: en Linux, sin ser root, el contenedor usa el uid y el gid del anfitrión", () => {
+    assert.equal(usuarioContenedor({ plataforma: "linux", uid: 1001, gid: 1002 }), "1001:1002");
+    assert.equal(usuarioContenedor({ plataforma: "linux", uid: 1000, gid: 1000 }), "1000:1000");
+    assert.equal(valorDe(argvRun({ ...BASE, usuario: "1234:5678" }), "--user"), "1234:5678");
+  });
+
+  test("CA-001-02: en Windows y macOS, y si el anfitrión es root, es 1000:1000; nunca root", () => {
+    assert.equal(USUARIO, "1000:1000");
+    for (const o of [
+      { plataforma: "win32", uid: undefined, gid: undefined },
+      { plataforma: "darwin", uid: 501, gid: 20 },
+      { plataforma: "linux", uid: 0, gid: 0 },
+      { plataforma: "linux", uid: 0, gid: 1000 },
+      { plataforma: "linux", uid: 1001, gid: 0 },
+    ]) assert.equal(usuarioContenedor(o), "1000:1000", JSON.stringify(o));
+  });
+
+  test("un usuario explícito que sea root o tenga mal formato se rechaza", () => {
+    for (const malo of ["root", "0:0", "0:1000", "1000:0", "1000", "1000:1000;x", "-1:5"]) {
+      assert.throws(() => argvRun({ ...BASE, usuario: malo }), /usuario/i, malo);
+    }
   });
 
   test("CA-003-05: límites de CPU, memoria y procesos, sin intercambio adicional", () => {

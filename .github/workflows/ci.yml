@@ -179,6 +179,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Imágenes base (el ejecutor usa --pull never)
+        # Algunas pruebas llaman al ejecutor directamente: sin la imagen en el motor fallan con «No such image».
+        # En un Docker limpio (el del runner) hay que descargarlas antes; en un equipo con caché no se nota.
+        run: |
+          for img in $(node -e "import('./core/sandbox/preparar-imagen.js').then(m => console.log([...new Set(Object.values(m.IMAGENES_BASE))].join(' ')))"); do
+            docker pull -q "$img"
+          done
+
       - name: Suite de aislamiento
         run: node --test tests/sandbox-real.test.js
         env:
@@ -210,6 +218,14 @@ jobs:
 
       - name: Versión de Docker
         run: docker version
+
+      - name: Imágenes base (el ejecutor usa --pull never)
+        # Algunas pruebas llaman al ejecutor directamente: sin la imagen en el motor fallan con «No such image».
+        # En un Docker limpio (el del runner) hay que descargarlas antes; en un equipo con caché no se nota.
+        run: |
+          for img in $(node -e "import('./core/sandbox/preparar-imagen.js').then(m => console.log([...new Set(Object.values(m.IMAGENES_BASE))].join(' ')))"); do
+            docker pull -q "$img"
+          done
 
       - name: Pruebas que usan Docker real
         run: |

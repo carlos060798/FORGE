@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { DockerCli } from "../core/sandbox/docker-cli.js";
-import { ETIQUETA } from "../core/sandbox/politica.js";
+import { ETIQUETA, usuarioContenedor } from "../core/sandbox/politica.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { clasificar } from "../core/ciclo/router.js";
 import { asegurarImagenesBase } from "./fixtures/docker-imagenes.mjs";
@@ -20,6 +20,8 @@ import { asegurarImagenesBase } from "./fixtures/docker-imagenes.mjs";
 const cli = new DockerCli();
 const activo = process.env.FORGE_TEST_DOCKER === "1" && (await cli.disponible()).ok;
 const OK = { hayPruebas: true, pruebasIntactas: true };
+/** El uid con el que la política dice que corre el contenedor (el del anfitrión en Linux, 1000 en el resto). */
+const UID_ESPERADO = Number(usuarioContenedor().split(":")[0]);
 
 /** Proyecto Node sin dependencias cuyo test es el script dado. */
 function proyecto(script, extra = {}) {
@@ -60,6 +62,20 @@ describe("aislamiento con Docker real", { skip: !activo && "requiere FORGE_TEST_
     assert.equal(clasificar(r, OK), "fail");
   });
 
+  test("CA-002-01: lo que el código crea dentro de la copia lo puede borrar quien lanzó Fragua", async () => {
+    const cwd = proyecto(`
+      import fs from 'node:fs';
+      test('crea', () => {
+        fs.mkdirSync('salida/hondo', { recursive: true });
+        fs.writeFileSync('salida/hondo/a.txt', 'x');
+        fs.writeFileSync('salida/b.txt', 'y');
+      });`);
+    const r = await runner(cwd).test(cwd);
+    assert.equal(r.exitCode, 0, r.stdout + r.stderr);
+    const staging = join(cwd, ".sdd", "motor", "r", "staging");
+    assert.deepEqual(existsSync(staging) ? readdirSync(staging) : [], [], "la copia debería haberse borrado entera");
+  });
+
   test("CA-003-01: el código en ejecución no tiene red", async () => {
     const cwd = proyecto("test('red', async () => { await assert.rejects(fetch('https://example.com')); });");
     const r = await runner(cwd).test(cwd);
@@ -70,7 +86,7 @@ describe("aislamiento con Docker real", { skip: !activo && "requiere FORGE_TEST_
     const cwd = proyecto(`
       import fs from 'node:fs';
       test('aislado', () => {
-        assert.equal(process.getuid(), 1000);
+        assert.equal(process.getuid(), ${UID_ESPERADO});
         assert.throws(() => fs.writeFileSync('/etc/x', 'x'), /EROFS/);
         assert.throws(() => fs.writeFileSync('/deps/x', 'x'));
         fs.writeFileSync('escrito-en-la-copia.txt', 'x');

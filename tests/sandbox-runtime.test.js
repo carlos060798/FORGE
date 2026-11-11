@@ -16,7 +16,7 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { argvRun, validarRuntime } from "../core/sandbox/politica.js";
+import { argvRun, validarRuntime, usuarioContenedor } from "../core/sandbox/politica.js";
 import { DockerCli } from "../core/sandbox/docker-cli.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { POR_DEFECTO, leerConfigCiclo } from "../core/ciclo/config.js";
@@ -94,7 +94,7 @@ describe("CA-004-03 — todas las restricciones se mantienen con cualquier mecan
   test("sin red, sin privilegios, con límites, raíz de solo lectura y sin descargas, también con runtime", () => {
     const argv = argvRun({ ...BASE, runtime: "kata-runtime" });
     assert.equal(valorDe(argv, "--network"), "none");
-    assert.equal(valorDe(argv, "--user"), "1000:1000");
+    assert.equal(valorDe(argv, "--user"), usuarioContenedor());
     assert.equal(valorDe(argv, "--cap-drop"), "ALL");
     assert.equal(valorDe(argv, "--security-opt"), "no-new-privileges");
     assert.equal(valorDe(argv, "--cpus"), "1");
