@@ -470,7 +470,8 @@ describe("documentos — frases que ya no son ciertas", () => {
   test("README.md y package.json declaran la misma versión que el CHANGELOG", () => {
     const v = JSON.parse(leer("package.json")).version;
     assert.match(leer("CHANGELOG.md"), new RegExp(`^## \\[${v.replace(/\./g, "\\.")}\\]`, "m"));
-    assert.ok(leer("README.md").includes(`versión-${v}-`) || leer("README.md").includes(`versi%C3%B3n-${v}-`));
+    const vb = v.replace(/-/g, "--"); // shields.io escribe el guion de la versión preliminar como «--»
+    assert.ok(leer("README.md").includes(`versión-${vb}-`) || leer("README.md").includes(`versi%C3%B3n-${vb}-`));
     assert.ok(existsSync(join(ROOT, ".claude-plugin", "plugin.json")));
   });
 });

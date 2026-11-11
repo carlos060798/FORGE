@@ -4,7 +4,7 @@
 
 **Desarrollo Guiado por Especificaciones (SDD) para Claude Code**
 
-[![Versión](https://img.shields.io/badge/versión-5.0.0-blue)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-5.0.0--beta.1-blue)](CHANGELOG.md)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](package.json)
 

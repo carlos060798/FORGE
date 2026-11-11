@@ -152,5 +152,5 @@ Esperar a que los tests de integración finalicen. Si hay errores, Fragua
 los reportará y los corregirá automáticamente antes de continuar.
 
 ---
-*Generado por Fragua v5.0.0*
+*Generado por Fragua v5.0.0-beta.1*
 ```

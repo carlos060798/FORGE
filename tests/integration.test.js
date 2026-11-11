@@ -30,9 +30,9 @@ function toFileUrl(absPath) {
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
 describe("CLI — forge --version", () => {
-  test("reporta versión 5.0.0", () => {
+  test("reporta versión 5.0.0-beta.1", () => {
     const out = execSync(`node ${join(ROOT, "cli", "index.js")} --version`, { encoding: "utf8" }).trim();
-    assert.equal(out, "5.0.0");
+    assert.equal(out, "5.0.0-beta.1");
   });
 
   test("--help menciona 'forge ui'", () => {
@@ -176,8 +176,8 @@ describe("package.json — manifiesto del paquete", () => {
     assert.equal(pkg.name, PAQUETE);
   });
 
-  test("version es 5.0.0", () => {
-    assert.equal(pkg.version, "5.0.0");
+  test("version es 5.0.0-beta.1", () => {
+    assert.equal(pkg.version, "5.0.0-beta.1");
   });
 
   test("bin incluye 'fragua' (nombre nuevo) y apunta al mismo CLI que 'forge'", () => {

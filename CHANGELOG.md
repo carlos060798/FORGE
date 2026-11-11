@@ -5,7 +5,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
-## [5.0.0] — Sin publicar
+## [5.0.0-beta.1] — Sin publicar
+
+> **Esta es una beta.** Se publica con la etiqueta de npm `beta` (`npm publish --tag beta`) y `latest` no se mueve: quien instale `fragua` sin más no la recibe. El contenido de abajo es el de 5.0.0, que sigue siendo la base de esta beta.
 
 > **Suite en Linux (2026-10-31):** la suite completa se ejecutó en `node:22-alpine` y `node:24-alpine` (con git): 4043 pasan, 0 fallan. En Node 22 se cancelaban 51 pruebas de `proveedores-conformidad` porque el cliente falso de Anthropic esperaba solo un `AbortSignal.timeout`, que no mantiene vivo el proceso; corregido en el doble de prueba, sin cambios en el código de producción. Sin git la imagen Alpine falla 6 pruebas de `verificar --desde`: es un requisito del entorno, no un defecto.
 
