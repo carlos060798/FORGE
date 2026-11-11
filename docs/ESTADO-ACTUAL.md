@@ -1,6 +1,6 @@
 # Estado actual de Fragua (5.0.0, sin publicar)
 
-> **Fecha:** 2026-11-06 · **Rama:** `main` · **Última suite completa:** árbol de trabajo previo al commit `17cbbc4` (4131 de 4162 pasan, 0 fallos, 31 saltadas)
+> **Fecha:** 2026-11-11 · **Rama:** `feature/anfitriones` (sobre `main` en `201f492`) · **Última suite completa:** árbol del commit `5214a4b` (4214 de 4245 pasan, 0 fallos, 31 saltadas; Windows 11, Node 24, 728 s). El commit siguiente (`0e02afd`, guardián falla cerrado y CLI sin `npx forge`) se verificó con las 236 pruebas de los archivos afectados, no con la suite completa.
 > Este documento es el estado de referencia. Las guías (`FORGE-5.0-GUIA.md`, `README.md`) enlazan aquí en vez de repetir cifras. Si una cifra de otro documento no coincide con esta página, manda esta.
 
 ## Qué es, en una frase
@@ -11,7 +11,7 @@ Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo veri
 
 | Medida | Valor | Cómo se midió |
 |---|---|---|
-| Pruebas | 4162 en total: 4131 pasan, 0 fallan, 31 saltadas | `npm test` el 2026-11-06 sobre el árbol previo a `17cbbc4`, Windows 11, Node 24, un solo `npm test` en marcha; 385 s |
+| Pruebas | 4245 en total: 4214 pasan, 0 fallan, 31 saltadas | `npm test` el 2026-11-11 sobre el árbol de `5214a4b`, Windows 11, Node 24; 728 s (con otra carga en el equipo) |
 | Tipos | 0 errores | `npm run typecheck` el 2026-11-06, mismo árbol |
 | Agentes | 14 (en `agents/`) | Conteo de archivos |
 | Skills | 31 (en `skills/`) | Conteo de carpetas |
