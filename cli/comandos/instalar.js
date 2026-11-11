@@ -31,12 +31,34 @@ export function banner() {
  * Copia los artefactos del plugin a CLAUDE_DIR.
  * @param {string} claudeDir destino (.claude del proyecto o global)
  */
-function copiarNucleo(claudeDir, inst = null) {
+/**
+ * Perfil que ya tiene una instalación existente, deducido de los comandos presentes: si hay alguno fuera del perfil
+ * esencial, es una instalación completa. Devuelve null si no hay nada que deducir (carpeta ausente, vacía o solo con
+ * comandos del perfil esencial). Lo usa `update` cuando ni la línea de comandos ni la configuración fijan un perfil,
+ * para no dejar desactualizados comandos que la persona ya tenía (revisión independiente 2026-11-10, hallazgo 1).
+ * @param {string} dirComandos
+ * @returns {"completo"|null}
+ */
+function perfilYaInstalado(dirComandos) {
+  try {
+    const nombres = readdirSync(dirComandos).filter((n) => n.endsWith(".md")).map((n) => n.slice(0, -3));
+    return nombres.some((n) => !incluyeComando("esencial", n)) ? "completo" : null;
+  } catch { return null; }
+}
+
+function copiarNucleo(claudeDir, inst = null, { actualizar = false } = {}) {
   // Otra herramienta: skills y AGENTS.md, sin comandos, agentes ni hooks con cabecera de Claude Code
   if (inst && !inst.integracion.nativa) return copiarSkillsDeIntegracion(inst);
   titulo("Copiando comandos...");
   // Sin opciones ni configuración guardada manda el perfil por defecto (esencial, ADR-24); `completo` copia todo
-  const perfilEfectivo = inst ? inst.perfil : PERFIL_POR_DEFECTO;
+  let perfilEfectivo = inst ? inst.perfil : PERFIL_POR_DEFECTO;
+  if (actualizar && !(inst && inst.perfilFijado)) {
+    const previo = perfilYaInstalado(join(claudeDir, "commands"));
+    if (previo) {
+      perfilEfectivo = previo;
+      info("Esta instalación ya tiene comandos fuera del perfil esencial: se actualizan todos (perfil completo). Para limitarla al esencial: forge update --perfil esencial");
+    }
+  }
   const soloPerfil = perfilEfectivo !== "completo" ? perfilEfectivo : null;
   const nCmd = copyMd(join(PLUGIN_DIR, "commands"), join(claudeDir, "commands"), soloPerfil ? (f) => incluyeComando(soloPerfil, f.slice(0, -3)) : null);
   info(`Comandos instalados (${nCmd} archivos, perfil ${perfilEfectivo})`);
@@ -143,7 +165,8 @@ function resolverInstalacion(global) {
   // fuera de él se protege siempre, aunque la configuración diga que ya hubo una instalación
   const fueraDelProyecto = carpeta !== null && relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..");
   const previa = Boolean(guardada.integracion || guardada.perfil) && !fueraDelProyecto;
-  return { integracion, perfil, carpeta, previa, explicita: oi !== null || op !== null || oc !== null };
+  // `perfilFijado`: la línea de comandos o la configuración guardada dijeron el perfil (si no, es el de por defecto y `update` mira lo ya instalado)
+  return { integracion, perfil, carpeta, previa, explicita: oi !== null || op !== null || oc !== null, perfilFijado: nombrePerfil !== null };
 }
 
 /** Carpeta donde van las skills de una integración que no es Claude Code. */
@@ -817,7 +840,7 @@ export function cmdUpdate(global) {
   }
   if (global) avisarEnlacesGlobales(claudeDir);
 
-  paso("copiar el núcleo", () => copiarNucleo(claudeDir, inst));
+  paso("copiar el núcleo", () => copiarNucleo(claudeDir, inst, { actualizar: true }));
   // Solo si pidieron integración o perfil en esta ejecución: una instalación existente no cambia sola
   if (inst && inst.explicita && !global) paso("guardar integración y perfil", () => guardarInstalacion(inst));
   if (!cerrarSiFalto("forge update")) return;

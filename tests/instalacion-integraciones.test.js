@@ -173,7 +173,14 @@ describe("F1.5 / F3 — integración y perfil en la configuración, respetados e
     const antes = lista(join(cwd, ".claude", "commands"));
     assert.ok(antes.length >= 39);
     assert.doesNotMatch(readFileSync(join(cwd, ".sdd", "sdd.config.yaml"), "utf8"), /^instalacion:/m);
-    assert.equal(forge(cwd, home, "update").status, 0);
+    // Un comando FUERA del perfil esencial, desactualizado: update debe restaurarlo, no dejarlo viejo con un mensaje de éxito
+    const fuera = join(cwd, ".claude", "commands", "sdd.comprimir.md");
+    const original = readFileSync(fuera, "utf8");
+    writeFileSync(fuera, "VIEJO");
+    const r = forge(cwd, home, "update");
+    assert.equal(r.status, 0, r.salida);
+    assert.equal(readFileSync(fuera, "utf8"), original, "update actualizó también los comandos fuera del perfil esencial");
+    assert.match(r.salida, /perfil completo/);
     assert.deepEqual(lista(join(cwd, ".claude", "commands")), antes);
     assert.doesNotMatch(readFileSync(join(cwd, ".sdd", "sdd.config.yaml"), "utf8"), /^instalacion:/m);
   });
@@ -208,6 +215,24 @@ describe("F3 — perfiles", () => {
     const cwd3 = proyecto(), home3 = temporal("forge-h-");
     assert.equal(forge(cwd3, home3, "init", "--perfil", "completo").status, 0);
     assert.ok(lista(join(cwd3, ".claude", "commands")).length >= 39);
+  });
+  test("update --global también respeta una instalación completa existente (sin perfil fijado)", () => {
+    const cwd = proyecto(), home = temporal("forge-h-");
+    assert.equal(forge(cwd, home, "init", "--global", "--perfil", "completo").status, 0);
+    const fuera = join(home, ".claude", "commands", "sdd.comprimir.md");
+    const original = readFileSync(fuera, "utf8");
+    writeFileSync(fuera, "VIEJO");
+    const r = forge(cwd, home, "update", "--global");
+    assert.equal(r.status, 0, r.salida);
+    assert.equal(readFileSync(fuera, "utf8"), original);
+  });
+  test("update sobre una instalación esencial no añade comandos que la persona no tenía", () => {
+    const cwd = proyecto(), home = temporal("forge-h-");
+    assert.equal(forge(cwd, home, "init").status, 0);
+    const antes = lista(join(cwd, ".claude", "commands"));
+    assert.equal(forge(cwd, home, "update").status, 0);
+    assert.deepEqual(lista(join(cwd, ".claude", "commands")), antes);
+    assert.equal(antes.length, 6);
   });
   test("perfil desconocido se rechaza sin escribir", () => {
     const cwd = proyecto(), home = temporal("forge-h-");

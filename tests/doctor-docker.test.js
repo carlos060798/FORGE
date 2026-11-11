@@ -80,6 +80,19 @@ describe('forge doctor: no instalado frente a no arrancado, y el siguiente paso 
     assert.ok(!r.lineas[1].problema, 'la acción no cuenta como segundo problema');
   });
 
+  test('hallazgo 3 de la revisión: sin falsos positivos entre no instalado, no arrancado, sin permisos y otro', async () => {
+    const { clasificarFalloDocker } = await import('../core/sandbox/diagnostico.js');
+    const casos = [
+      ['Docker no está disponible: dial unix /var/run/docker.sock: connect: no such file or directory', 'linux', 'no_arrancado'],
+      ['Docker no está disponible: permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock', 'linux', 'sin_permisos'],
+      ['Docker no está disponible: context "foo" not found', 'linux', 'otro'],
+      ['Docker no está disponible: spawn docker ENOENT', 'linux', 'no_instalado'],
+      ['Docker no está disponible: failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: El sistema no puede encontrar el archivo especificado.', 'win32', 'no_arrancado'],
+    ];
+    for (const [e, plat, causa] of casos) assert.equal(clasificarFalloDocker(e, plat).causa, causa, e);
+    assert.match(clasificarFalloDocker(casos[1][0], 'linux').accion, /usermod -aG docker/);
+  });
+
   test('tiempo agotado: causa «otro» y la acción nombra --motor clasico', async () => {
     const { clasificarFalloDocker } = await import('../core/sandbox/diagnostico.js');
     const r = clasificarFalloDocker('Docker no contestó a tiempo (5000 ms)', 'linux');

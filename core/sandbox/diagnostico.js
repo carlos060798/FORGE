@@ -20,17 +20,27 @@ export const TIMEOUT_DOCTOR_MS = 5_000;
  */
 
 /**
- * Clasifica el texto de error de `DockerCli.disponible()`.
- * - `no_instalado`: el ejecutable `docker` no existe (ENOENT, «not found», «no se reconoce»).
- * - `no_arrancado`: el ejecutable responde pero el demonio no (tubería o socket cerrados, «Is the docker daemon running»).
- * - `otro`: tiempo agotado u otra causa.
+ * Clasifica el texto de error de `DockerCli.disponible()`. El orden importa (revisión independiente 2026-11-10, hallazgo 3):
+ * 1. `sin_permisos`: el demonio existe pero este usuario no puede hablarle («permission denied … docker daemon socket»).
+ * 2. `no_instalado`: SOLO si el ejecutable `docker` no existe (`spawn docker ENOENT`, «command not found», «is not recognized»).
+ *    «no such file or directory» o «not found» a secas NO bastan: `dial unix /var/run/docker.sock: no such file` es un demonio parado.
+ * 3. `no_arrancado`: el ejecutable responde pero el demonio no (tubería o socket cerrados, «Is the docker daemon running»).
+ * 4. `otro`: tiempo agotado u otra causa.
  * @param {string} error
  * @param {string} [plataforma]  `process.platform` por defecto (inyectable en pruebas)
- * @returns {{ causa: 'no_instalado'|'no_arrancado'|'otro', accion: string }}
+ * @returns {{ causa: 'sin_permisos'|'no_instalado'|'no_arrancado'|'otro', accion: string }}
  */
 export function clasificarFalloDocker(error, plataforma = process.platform) {
   const e = error.toLowerCase();
-  if (/enoent|not found|no se reconoce|no such file|command not found|is not recognized/.test(e)) {
+  if (/permission denied|access is denied|acceso denegado/.test(e)) {
+    return {
+      causa: 'sin_permisos',
+      accion: plataforma === 'win32'
+        ? 'Docker está instalado pero tu usuario no tiene permiso para usarlo: añádelo al grupo «docker-users» (como administrador) y vuelve a iniciar sesión'
+        : 'Docker está instalado pero tu usuario no tiene permiso para usarlo: `sudo usermod -aG docker $USER`, vuelve a iniciar sesión y ejecuta forge doctor otra vez',
+    };
+  }
+  if (/spawn docker enoent|command not found|is not recognized|no se reconoce como un comando|docker: not found/.test(e)) {
     return {
       causa: 'no_instalado',
       accion: plataforma === 'win32'
@@ -38,7 +48,7 @@ export function clasificarFalloDocker(error, plataforma = process.platform) {
         : 'Docker no está instalado: instala Docker Engine o Docker Desktop y vuelve a ejecutar forge doctor',
     };
   }
-  if (/daemon|dockerdesktoplinuxengine|docker_engine|\/var\/run\/docker\.sock|pipe|socket|cannot connect|connection refused|error during connect/.test(e)) {
+  if (/daemon|dockerdesktoplinuxengine|docker_engine|docker\.sock|pipe|socket|cannot connect|connection refused|error during connect|failed to connect/.test(e)) {
     return {
       causa: 'no_arrancado',
       accion: plataforma === 'win32'
@@ -52,7 +62,7 @@ export function clasificarFalloDocker(error, plataforma = process.platform) {
 /**
  * @param {{ docker?: Pick<DockerCli, 'disponible'|'existeImagen'>, ahora?: () => number, plataforma?: string }} [opciones]
  *   `docker`: cliente inyectable (pruebas). Por defecto, uno real con espera corta.
- * @returns {Promise<{ ok: boolean, version?: string, ms?: number, causa?: 'no_instalado'|'no_arrancado'|'otro', lineas: LineaDiagnostico[] }>}
+ * @returns {Promise<{ ok: boolean, version?: string, ms?: number, causa?: 'sin_permisos'|'no_instalado'|'no_arrancado'|'otro', lineas: LineaDiagnostico[] }>}
  */
 export async function diagnosticarDocker(opciones = {}) {
   const docker = opciones.docker ?? new DockerCli({ timeoutConsultaMs: TIMEOUT_DOCTOR_MS });
