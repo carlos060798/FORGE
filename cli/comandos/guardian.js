@@ -6,7 +6,8 @@
  * leen el evento JSON (contrato en docs/contrato/evento-herramienta.md) por la entrada estándar y
  * ejecutan EXACTAMENTE los mismos scripts que los hooks de Claude Code, sin duplicar reglas.
  * La identidad del agente sale de FRAGUA_AGENTE / FORGE_AGENTE (respaldo: CLAUDE_AGENT_NAME).
- * Salida: 0 permitir, 2 bloquear, 1 uso incorrecto.
+ * Salida del guardián: 0 permitir, 2 bloquear (también ante JSON inválido, anfitrión desconocido o fallo del propio
+ * guardián: falla cerrado), 1 solo por subcomando desconocido. La memoria no es una barrera: 1 ante uso incorrecto.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -24,7 +25,8 @@ const HOOKS = { guardian: "pre-tool-guard.js", memoria: "agent-memory.js" };
  * @returns {{ codigo: number, stderr: string }}
  */
 export function ejecutarHook(cual, entrada, { cwd = process.cwd(), env = process.env } = {}) {
-  try { JSON.parse(entrada); } catch { return { codigo: 1, stderr: "El evento no es un JSON válido (se espera el contrato de docs/contrato/evento-herramienta.md).\n" }; }
+  // Falla cerrado: un evento que no se puede leer no se deja pasar (CA-001-03). La memoria no es una barrera: 1.
+  try { JSON.parse(entrada); } catch { return { codigo: cual === "guardian" ? 2 : 1, stderr: "FORGE detuvo esta acción: el evento no es un JSON válido (se espera el contrato de docs/contrato/evento-herramienta.md).\n" }; }
   const script = join(PLUGIN_DIR, "claude-hooks", HOOKS[cual]);
   if (!existsSync(script)) return { codigo: 2, stderr: `FORGE detuvo esta acción: falta ${HOOKS[cual]} (instalación incompleta).\n` };
   const agente = agenteActivo(env);
@@ -40,7 +42,8 @@ export function cmdGuardian(args) {
   if (args[0] !== "evaluar") { console.error(USO); return 1; }
   const i = args.indexOf("--anfitrion");
   const anfitrion = i === -1 ? "claude" : (args[i + 1] ?? "");
-  if (anfitrion !== "claude" && !ANFITRIONES_CON_HOOK.includes(anfitrion)) { console.error(`Anfitrión desconocido: "${anfitrion}". ${USO}`); return 1; }
+  // Falla cerrado: un anfitrión que no se reconoce no se evalúa «sin reglas», se bloquea (CA-002-03)
+  if (anfitrion !== "claude" && !ANFITRIONES_CON_HOOK.includes(anfitrion)) { console.error(`FORGE detuvo esta acción: anfitrión desconocido "${anfitrion}". ${USO}`); return 2; }
   return correr("guardian", anfitrion);
 }
 

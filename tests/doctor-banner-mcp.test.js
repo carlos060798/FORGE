@@ -32,7 +32,8 @@ describe('fragua doctor y ayuda con el nombre nuevo', () => {
   test('la ayuda empieza por Fragua y conserva los nombres de los comandos', () => {
     const s = ejecutar(['help']);
     assert.match(s, /Fragua — CLI \(v/);
-    assert.match(s, /npx (forge|fragua) init/);
+    assert.match(s, /\bfragua init/);
+    assert.doesNotMatch(s, /npx forge init|npx sdd-es init/, 'la ayuda no recomienda paquetes ajenos de npm');
   });
 
   test('doctor muestra el perfil MCP efectivo y los límites', () => {

@@ -12,7 +12,7 @@ import { c, info, aviso, titulo, error, escribirSeguro } from "./comun.js";
 function leerConfigYaml() {
   const configPath = join(process.cwd(), ".sdd", "sdd.config.yaml");
   if (!existsSync(configPath)) {
-    error("No se encontró .sdd/sdd.config.yaml — ejecuta 'npx sdd-es init' primero.");
+    error("No se encontró .sdd/sdd.config.yaml — ejecuta 'fragua init' primero.");
   }
   return readFileSync(configPath, "utf8");
 }
@@ -137,7 +137,7 @@ export function cmdConfig(args) {
 
   if (sub === "get") {
     const clave = args[1];
-    if (!clave) { error("Uso: npx sdd-es config get <clave>  (ej: sesion.modo)"); }
+    if (!clave) { error("Uso: fragua config get <clave>  (ej: sesion.modo)"); }
     const yaml = leerConfigYaml();
     const valor = yamlGet(yaml, clave);
     if (valor === null) {
@@ -152,12 +152,12 @@ export function cmdConfig(args) {
     const clave = args[1];
     const valor = args[2];
     if (!clave || valor === undefined) {
-      error("Uso: npx sdd-es config set <clave> <valor>  (ej: sesion.modo rapido)");
+      error("Uso: fragua config set <clave> <valor>  (ej: sesion.modo rapido)");
     }
     const yaml = leerConfigYaml();
     const actual = yamlGet(yaml, clave);
     if (actual === null) {
-      aviso(`Clave "${clave}" no encontrada — verifica el nombre exacto con 'npx sdd-es config show'`);
+      aviso(`Clave "${clave}" no encontrada — verifica el nombre exacto con 'fragua config show'`);
       process.exit(1);
     }
     if (actual === valor) {
@@ -205,15 +205,15 @@ export function cmdConfig(args) {
 
   // subcomando desconocido
   console.log(`
-Uso: npx sdd-es config <subcomando>
+Uso: fragua config <subcomando>
 
   show [sección]         Muestra la config completa o solo una sección
-                         Ej: npx sdd-es config show agentes
+                         Ej: fragua config show agentes
   get <clave>            Obtiene el valor de una clave
-                         Ej: npx sdd-es config get sesion.modo
+                         Ej: fragua config get sesion.modo
   set <clave> <valor>    Cambia el valor de una clave
-                         Ej: npx sdd-es config set sesion.modo rapido
-                         Ej: npx sdd-es config set memoria.umbral_bytes 40000
+                         Ej: fragua config set sesion.modo rapido
+                         Ej: fragua config set memoria.umbral_bytes 40000
   validate               Valida la estructura del archivo
 `);
 }

@@ -14,6 +14,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - **Guardián en otras herramientas.** `fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` traduce el evento de cada herramienta al contrato y aplica el mismo guardián. `forge init --integracion <x> --con-hooks` registra la orden en el hook de esa herramienta (nunca pisa un archivo existente). Nueva clave de integración `codex`. Sin probar en una instalación real; Gemini y Codex fallan abiertos.
 - **Documentación.** `docs/ANFITRIONES.md` (qué recibe cada herramienta; reemplaza a `RELACION-CON-CLAUDE-CODE.md`) y `docs/PLAN-AGNOSTICO.md`.
 
+### Corregido
+
+- **El guardián falla cerrado en todos los casos.** `fragua guardian evaluar` devolvía 1 ante un evento que no es JSON (sin `--anfitrion`) y ante un anfitrión desconocido, y la mayoría de herramientas interpretan 1 como «dejar pasar»; ahora ambos casos devuelven 2 y `traducirEvento` lanza error ante un anfitrión desconocido en vez de evaluarlo sin reglas. Contrato actualizado en `docs/contrato/evento-herramienta.md`. Spec `2026-11-11-guardian-fuera-de-claude-code` (CA-001-03, CA-002-03).
+- **La CLI ya no recomienda `npx forge` ni `npx sdd-es`.** Son paquetes ajenos en npm; 53 menciones en la ayuda, los mensajes de error, los instaladores y `package.json` pasan a `fragua`. La orden `forge` sigue existiendo.
+
 ### Límites
 
 - Ninguna herramienta distinta de Claude Code está probada en real. La memoria por hooks solo existe en Claude Code; el guardián en otras herramientas es opcional (`--con-hooks`).

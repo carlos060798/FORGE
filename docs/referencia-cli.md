@@ -490,7 +490,7 @@ El perfil `completo` expone `ejecutar_pruebas`, `leer_archivo` y `escribir_archi
 
 ### `guardian`
 
-`fragua guardian evaluar` lee un evento de herramienta (JSON, contrato en [contrato/evento-herramienta.md](contrato/evento-herramienta.md)) por la entrada estándar y ejecuta el mismo guardián que el hook de Claude Code. Código de salida `0` permite, `2` bloquea (también si no puede evaluar) y `1` es uso incorrecto. Solo es «impuesto» si la herramienta que lo llama puede bloquear con ese código; si no, es consultivo. La identidad del agente sale de `FRAGUA_AGENTE` o `FORGE_AGENTE`, con `CLAUDE_AGENT_NAME` de respaldo.
+`fragua guardian evaluar` lee un evento de herramienta (JSON, contrato en [contrato/evento-herramienta.md](contrato/evento-herramienta.md)) por la entrada estándar y ejecuta el mismo guardián que el hook de Claude Code. Código de salida `0` permite, `2` bloquea (también si el evento no es JSON o está vacío, si `--anfitrion` no se reconoce o si no puede evaluar: falla cerrado) y `1` solo por subcomando desconocido. Solo es «impuesto» si la herramienta que lo llama puede bloquear con ese código; si no, es consultivo. La identidad del agente sale de `FRAGUA_AGENTE` o `FORGE_AGENTE`, con `CLAUDE_AGENT_NAME` de respaldo.
 
 ### `memoria`
 

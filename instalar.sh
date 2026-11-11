@@ -5,7 +5,7 @@
 # de verdad única de la lógica de instalación. Si no hay Node, avisa.
 #
 # Uso: bash instalar.sh [--global]
-#   El camino canónico recomendado es:  npx sdd-es init [--global]
+#   El camino canónico recomendado es:  fragua init [--global]
 
 set -e
 

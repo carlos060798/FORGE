@@ -7,7 +7,7 @@
 #   .\instalar.ps1            Instala en el proyecto actual
 #   .\instalar.ps1 -Global    Instala para todos tus proyectos ($HOME\.claude)
 #
-# El camino canónico recomendado es:  npx sdd-es init [--global]
+# El camino canónico recomendado es:  fragua init [--global]
 #
 # Si PowerShell bloquea el script por la política de ejecución, corre:
 #   powershell -ExecutionPolicy Bypass -File .\instalar.ps1
@@ -41,6 +41,6 @@ if ($Global) {
     $cliArgs += "--global"
 }
 
-# Delegar al CLI Node (misma lógica que instalar.sh y npx sdd-es)
+# Delegar al CLI Node (misma lógica que instalar.sh y fragua)
 & node (Join-Path $PluginDir "cli\index.js") @cliArgs
 exit $LASTEXITCODE

@@ -252,12 +252,12 @@ export async function cmdDoctor() {
   if (existsSync(localClaude)) {
     info(`.claude/commands/ presente (${readdirSync(localClaude).length} comandos)`);
   } else {
-    aviso(".claude/commands/ no encontrado — ejecuta 'npx sdd-es init'");
+    aviso(".claude/commands/ no encontrado — ejecuta 'fragua init'");
   }
   if (existsSync(localSdd)) {
     info(".sdd/ presente");
   } else {
-    aviso(".sdd/ no encontrado — ejecuta 'npx sdd-es init'");
+    aviso(".sdd/ no encontrado — ejecuta 'fragua init'");
   }
 
   // ── Auditoría CLAUDE.md (límite oficial: 4,000 chars por archivo) ───────────
@@ -284,7 +284,7 @@ export async function cmdDoctor() {
     titulo("Validando sdd.config.yaml...");
     const configPath = join(process.cwd(), ".sdd", "sdd.config.yaml");
     if (!existsSync(configPath)) {
-      aviso("sdd.config.yaml no encontrado en .sdd/ — ejecuta 'npx sdd-es init'");
+      aviso("sdd.config.yaml no encontrado en .sdd/ — ejecuta 'fragua init'");
       problemas++;
     } else {
       const yaml = readFileSync(configPath, "utf8");
@@ -371,7 +371,7 @@ export async function cmdDoctor() {
         if (!existsSync(hookPath)) {
           problemas++;
           aviso(`Hook no encontrado en disco: .claude/hooks/${hookFile}`);
-          info(`  Ejecuta: npx forge init  para reinstalar los hooks`);
+          info(`  Ejecuta: fragua init  para reinstalar los hooks`);
         } else {
           try {
             // Sin shell: una ruta con comillas o metacaracteres no puede inyectar comandos
@@ -402,7 +402,7 @@ export async function cmdDoctor() {
     }
   }
   if (!hooksVerificados && settingsPaths.every((p) => !existsSync(p))) {
-    aviso("settings.json no encontrado — los hooks no están activos. Ejecuta 'npx sdd-es init'");
+    aviso("settings.json no encontrado — los hooks no están activos. Ejecuta 'fragua init'");
     problemas++;
   }
 

@@ -59,17 +59,19 @@ export function rutasDeParche(parche) {
 }
 
 /**
- * Traduce el evento de un anfitrión a eventos del contrato. Una herramienta que no se reconoce pasa tal cual
- * (el guardián no tiene reglas para ella y la deja pasar: es un hueco conocido, ver docs/ANFITRIONES.md).
+ * Traduce el evento de un anfitrión a eventos del contrato. Una *herramienta* que no se reconoce dentro de un
+ * anfitrión conocido pasa tal cual (el guardián no tiene reglas para ella: hueco conocido, ver docs/ANFITRIONES.md).
+ * Un *anfitrión* que no se reconoce lanza error: quien llama debe fallar cerrado (CA-002-03).
  * @param {string} anfitrion  `cursor`, `copilot`, `gemini`, `codex` o `claude` (sin cambios)
  * @param {unknown} evento    JSON ya analizado
  * @returns {{ tool_name: string, tool_input: Record<string, any>, tool_response?: unknown }[]}
  */
 export function traducirEvento(anfitrion, evento) {
   const ev = comoObjeto(evento);
-  if (anfitrion === 'claude' || !ANFITRIONES_CON_HOOK.includes(anfitrion)) {
+  if (anfitrion === 'claude') {
     return [{ tool_name: String(ev.tool_name ?? ''), tool_input: comoObjeto(ev.tool_input), tool_response: ev.tool_response }];
   }
+  if (!ANFITRIONES_CON_HOOK.includes(anfitrion)) throw new Error(`Anfitrión desconocido: "${anfitrion}"`);
 
   if (anfitrion === 'cursor') {
     const nombre = String(ev.hook_event_name ?? '');

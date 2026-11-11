@@ -87,12 +87,16 @@ describe("fragua guardian evaluar --anfitrion", () => {
     assert.equal(evaluar("gemini", { tool_name: "read_file", tool_input: { file_path: ".env" } }).codigo, 2);
     assert.equal(evaluar("copilot", { toolName: "view", toolArgs: { path: ".env" } }).codigo, 2);
   });
-  test("un evento que no es JSON falla cerrado y un anfitrión desconocido es uso incorrecto", () => {
+  test("un evento que no es JSON y un anfitrión desconocido fallan cerrado (2), nunca pasan sin reglas", () => {
     const env = { ...process.env, FORGE_LLM_PROVIDER: "stub" };
     const mal = spawnSync(process.execPath, [CLI, "guardian", "evaluar", "--anfitrion", "cursor"], { env, input: "{no", encoding: "utf8", timeout: 60_000 });
     assert.equal(mal.status, 2);
     const raro = spawnSync(process.execPath, [CLI, "guardian", "evaluar", "--anfitrion", "nada"], { env, input: "{}", encoding: "utf8", timeout: 60_000 });
-    assert.equal(raro.status, 1);
+    assert.equal(raro.status, 2);
+    assert.match(raro.stderr ?? "", /desconocido/);
+  });
+  test("traducirEvento lanza error ante un anfitrión desconocido (quien llama debe fallar cerrado)", () => {
+    assert.throws(() => traducirEvento("nada", { tool_name: "Bash", tool_input: { command: "ls" } }), /desconocido/);
   });
 });
 

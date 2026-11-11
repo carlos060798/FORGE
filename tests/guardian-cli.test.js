@@ -27,10 +27,19 @@ describe("fragua guardian evaluar", () => {
     assert.equal(r.codigo, 2);
     assert.ok(r.err.length > 0);
   });
-  test("un evento que no es JSON es uso incorrecto (1)", () => {
-    assert.equal(correr(["guardian", "evaluar"], "no json").codigo, 1);
+  test("un evento que no es JSON falla cerrado (2), con y sin --anfitrion (CA-001-03)", () => {
+    const sin = correr(["guardian", "evaluar"], "no json");
+    assert.equal(sin.codigo, 2);
+    assert.match(sin.err, /detuvo/);
+    assert.equal(correr(["guardian", "evaluar", "--anfitrion", "codex"], "no json").codigo, 2);
+    assert.equal(correr(["guardian", "evaluar"], "").codigo, 2, "entrada vacía");
   });
-  test("subcomando desconocido: 1", () => {
+  test("un anfitrión desconocido falla cerrado (2), no pasa sin reglas (CA-002-03)", () => {
+    const r = correr(["guardian", "evaluar", "--anfitrion", "inventado"], ev("Bash", { command: "ls" }));
+    assert.equal(r.codigo, 2);
+    assert.match(r.err, /desconocido/);
+  });
+  test("subcomando desconocido: 1 (uso incorrecto, no es una evaluación)", () => {
     assert.equal(correr(["guardian", "x"], "").codigo, 1);
   });
   test("FRAGUA_AGENTE activa las guardas de solo lectura", () => {
@@ -44,6 +53,9 @@ describe("fragua memoria registrar", () => {
   test("acepta un evento PostToolUse y sale 0", () => {
     const e = JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(cwd, "b.txt"), content: "x" }, tool_response: "ok" });
     assert.equal(correr(["memoria", "registrar"], e, { FRAGUA_AGENTE: "tester" }).codigo, 0);
+  });
+  test("la memoria no es una barrera: un evento que no es JSON es uso incorrecto (1), no bloqueo", () => {
+    assert.equal(correr(["memoria", "registrar"], "no json").codigo, 1);
   });
 });
 

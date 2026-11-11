@@ -880,7 +880,7 @@ export function cmdUpdate(global) {
   const esClaude = !inst || inst.integracion.nativa;
   const carpetaNucleo = esClaude ? claudeDir : destinoSkills(inst);
   if (!existsSync(carpetaNucleo)) {
-    error(`No existe ${carpetaNucleo}. Ejecuta 'npx sdd-es init' primero.`);
+    error(`No existe ${carpetaNucleo}. Ejecuta 'fragua init' primero.`);
   }
   if (global) avisarEnlacesGlobales(claudeDir);
 

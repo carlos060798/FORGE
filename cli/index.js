@@ -5,11 +5,11 @@
  * (también disponible como sdd-es para compatibilidad)
  *
  * Uso:
- *   npx forge init             instala en el proyecto actual (.claude/ + .sdd/)
- *   npx forge init --global    instala en $HOME/.claude (todos los proyectos)
- *   npx forge update           re-copia commands/agents/skills/hooks sin tocar .sdd/ ni settings
- *   npx forge doctor           diagnostica la instalación
- *   npx forge --version        muestra la versión
+ *   fragua init             instala en el proyecto actual (.claude/ + .sdd/)
+ *   fragua init --global    instala en $HOME/.claude (todos los proyectos)
+ *   fragua update           re-copia commands/agents/skills/hooks sin tocar .sdd/ ni settings
+ *   fragua doctor           diagnostica la instalación
+ *   fragua --version        muestra la versión
  */
 
 
@@ -43,60 +43,60 @@ ${PRODUCTO} — CLI (v${pluginVersion()})
 El proyecto pasa a llamarse Fragua: el comando «fragua» ya equivale a «forge», que sigue funcionando.
 
 Uso:
-  npx forge init [--global] [--preset lean|startup|enterprise] [--ui]
+  fragua init [--global] [--preset lean|startup|enterprise] [--ui]
                  [--template api-rest|cli-tool|saas-mvp]
                                      Instala FORGE (proyecto actual o global)
-  npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
+  fragua update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
   Opciones de init/update: --integracion <claude|generica|agents|codex|copilot|cursor|gemini|windsurf|opencode|kiro>
                            --perfil <esencial|completo>   --carpeta-skills <ruta> (solo generica)
                            --con-hooks   registra el guardián en los hooks de cursor, copilot, gemini o codex (opcional)
-  npx forge doctor                   Diagnostica la instalación y providers disponibles
-  npx forge ui [--port N] [--no-open]  Abre el dashboard en el navegador
-  npx forge config show [sección]    Muestra sdd.config.yaml o una sección
-  npx forge config get <clave>       Obtiene el valor de una clave
-  npx forge config set <clave> <v>   Cambia un valor en sdd.config.yaml
-  npx forge config validate          Valida la estructura del config
-  npx forge logs [--last N]          Historial de consumo de tokens (default: 20 entradas)
-  npx forge export [--format=speckit|openspec] [--out=dir]
+  fragua doctor                   Diagnostica la instalación y providers disponibles
+  fragua ui [--port N] [--no-open]  Abre el dashboard en el navegador
+  fragua config show [sección]    Muestra sdd.config.yaml o una sección
+  fragua config get <clave>       Obtiene el valor de una clave
+  fragua config set <clave> <v>   Cambia un valor en sdd.config.yaml
+  fragua config validate          Valida la estructura del config
+  fragua logs [--last N]          Historial de consumo de tokens (default: 20 entradas)
+  fragua export [--format=speckit|openspec] [--out=dir]
                                      Exporta .sdd/ a formato portable (Spec Kit / OpenSpec)
-  npx forge import --from=speckit --dir=<dir> [--merge]
-  npx forge import --from=openspec --file=<file.json> [--merge]
+  fragua import --from=speckit --dir=<dir> [--merge]
+  fragua import --from=openspec --file=<file.json> [--merge]
                                      Importa artefactos portables de vuelta a .sdd/
-  npx forge verificar [--cwd <dir>] [--comando "<pruebas>"] [--json]
+  fragua verificar [--cwd <dir>] [--comando "<pruebas>"] [--json]
                                      Veredicto de las pruebas en contenedor aislado, sin modelo
-  npx forge status                   Estado del pipeline + transiciones disponibles
-  npx forge step <paso> [--force --motivo ".."]  Avanzar el pipeline al paso indicado (sin LLM)
-  npx forge state                    Volcar estado.json formateado
-  npx forge validate                 Verificar precondiciones del paso actual
-  npx forge reset --force            Resetear pipeline a 'idea'
-  npx forge adr <raíz> "<glob>" [--update-ledger]
+  fragua status                   Estado del pipeline + transiciones disponibles
+  fragua step <paso> [--force --motivo ".."]  Avanzar el pipeline al paso indicado (sin LLM)
+  fragua state                    Volcar estado.json formateado
+  fragua validate                 Verificar precondiciones del paso actual
+  fragua reset --force            Resetear pipeline a 'idea'
+  fragua adr <raíz> "<glob>" [--update-ledger]
                                      Busca ADRs en el código y, con --update-ledger, los añade al registro
-  npx forge probar-modelo [--tope USD] [--conservar]
+  fragua probar-modelo [--tope USD] [--conservar]
                                      Prueba mínima del ciclo con un modelo real (necesita ANTHROPIC_API_KEY); gasta
                                      como máximo el tope (0,50 USD por defecto) y resume formato, iteraciones y coste
-  npx forge mantenimiento [--escribir] [--json]
+  fragua mantenimiento [--escribir] [--json]
                                      Señales del registro de eventos (fallos repetidos, regresiones); con --escribir
                                      deja un borrador de idea por señal en .sdd/mantenimiento/ideas/. Sale 1 si hay señales
-  npx forge api [--port N] [--cwd <ruta>]
+  fragua api [--port N] [--cwd <ruta>]
                                      API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
                                      estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
-  npx forge mcp [--cwd <ruta>] [--perfil completo|verificacion]
+  fragua mcp [--cwd <ruta>] [--perfil completo|verificacion]
                                      Servidor MCP por stdin/stdout con tres herramientas: ejecutar pruebas
                                      en el entorno aislado, leer y escribir archivos con las reglas del ciclo.
                                      --perfil verificacion expone solo "verificar" (para otra herramienta; ver docs/mcp-verificar.md).
                                      Configúralo en tu cliente: {"mcpServers":{"forge":{"command":"npx","args":["forge","mcp"]}}}
-  npx forge run [--tasks <json>] [--motor clasico|ciclo] [--force]
+  fragua run [--tasks <json>] [--motor clasico|ciclo] [--force]
                                      Ejecuta las tareas. Con --motor ciclo, cada tarea de código
                                      se corrige hasta que sus pruebas pasan, en Docker y sin red
-  npx forge resume [--decision continuar|aceptar|abortar]
+  fragua resume [--decision continuar|aceptar|abortar]
                    [--iteraciones-extra N] [--presupuesto-extra USD]
                                      Retoma lo interrumpido. Si una tarea espera tu decisión,
                                      la muestra sin gastar nada hasta que indiques --decision
                                      Códigos de salida: 0 completado · 1 fallo ·
                                      3 revisión pendiente · 4 Docker no disponible
-  npx forge --version                Muestra la versión
+  fragua --version                Muestra la versión
 
-  (También disponible como: npx sdd-es init, npx sdd-es doctor, etc.)
+  (La orden antigua "forge" sigue funcionando para quien ya la usa. No uses "npx forge" ni "npx sdd-es": son paquetes ajenos.)
 
 Tras instalar, abre Claude Code y escribe:
   /forge "describe tu idea aquí"

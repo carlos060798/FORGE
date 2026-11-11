@@ -19,7 +19,7 @@ export async function cmdUi(args) {
   if (!serverJs) {
     console.log("");
     aviso("El dashboard no está instalado.");
-    console.log("  Instálalo con:  npx forge init --ui");
+    console.log("  Instálalo con:  fragua init --ui");
     console.log("");
     process.exit(1);
   }

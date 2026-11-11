@@ -32,12 +32,12 @@ Los nombres de herramienta son los de Claude Code. Una herramienta con otros nom
 | Código | Significado |
 |---|---|
 | 0 | permitir |
-| 2 | bloquear; el motivo va por la salida de error. También si el guardián no puede ejecutarse (falla cerrado) |
-| 1 | uso incorrecto: subcomando desconocido o evento que no es JSON |
+| 2 | bloquear; el motivo va por la salida de error. También si el evento no es JSON o está vacío, si `--anfitrion` no se reconoce, o si el guardián no puede ejecutarse (falla cerrado en todos los casos) |
+| 1 | uso incorrecto: subcomando desconocido (no es una evaluación). `fragua memoria registrar` no es una barrera y devuelve 1 ante un evento que no es JSON |
 
 ## Otras herramientas (`--anfitrion`)
 
-`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Una herramienta que no se reconoce pasa tal cual y el guardián no tiene reglas para ella. Si el evento no es JSON, falla cerrado (código 2).
+`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Dentro de un anfitrión conocido, una *herramienta* que no se reconoce pasa tal cual y el guardián no tiene reglas para ella (hueco conocido). Un *anfitrión* que no se reconoce no se evalúa «sin reglas»: falla cerrado (código 2). Si el evento no es JSON, falla cerrado (código 2).
 
 ## Alcance honesto
 

@@ -40,7 +40,7 @@ Que las mismas reglas del guardián (`core/evidencia/guardian-reglas.js`, fuente
 **Criterios de aceptación:**
 - [ ] **CA-001-01**: `fragua guardian evaluar` lee un evento JSON por la entrada estándar y termina con 0 (permitir) o 2 (bloquear); cualquier otro fallo del propio guardián termina con 2 (falla cerrado). (P1)
 - [ ] **CA-001-02**: Las reglas evaluadas son exactamente las de `core/evidencia/guardian-reglas.js`; no existe una segunda copia. (P1)
-- [ ] **CA-001-03**: Un evento JSON inválido o vacío termina con 2, con y sin `--anfitrion`. (P1) — **Hoy incumplido**: sin `--anfitrion` devuelve 1 (`cli/comandos/guardian.js`), que la mayoría de herramientas interpreta como «dejar pasar».
+- [x] **CA-001-03**: Un evento JSON inválido o vacío termina con 2, con y sin `--anfitrion`. (P1) — Corregido el 2026-11-11 por instrucción del dueño (antes devolvía 1 sin `--anfitrion`); prueba en `tests/guardian-cli.test.js`.
 - [ ] **CA-001-04**: La identidad del agente llega por `FRAGUA_AGENTE` (o `FORGE_AGENTE`) y se traslada al guardián con el mismo significado que `CLAUDE_AGENT_NAME`. (P2)
 
 ### HU-002: Traducir el evento de cada anfitrión
@@ -51,7 +51,7 @@ Que las mismas reglas del guardián (`core/evidencia/guardian-reglas.js`, fuente
 **Criterios de aceptación:**
 - [ ] **CA-002-01**: Existe un contrato de evento versionado en `docs/contrato/evento-herramienta.md` y una prueba que falla si el traductor produce algo fuera de él. (P1)
 - [ ] **CA-002-02**: Un `apply_patch` de Codex que toca N archivos produce N evaluaciones de escritura, y basta una bloqueada para bloquear. (P1)
-- [ ] **CA-002-03**: Un anfitrión desconocido en `--anfitrion` termina con 2, no pasa sin reglas. (P1) — **Hoy incumplido**: `core/instalacion/hooks-anfitrion.js` deja pasar un anfitrión no reconocido.
+- [x] **CA-002-03**: Un anfitrión desconocido en `--anfitrion` termina con 2, no pasa sin reglas. (P1) — Corregido el 2026-11-11 por instrucción del dueño (antes devolvía 1 y `traducirEvento` lo evaluaba sin reglas); pruebas en `tests/guardian-cli.test.js` y `tests/hooks-anfitrion.test.js`.
 - [ ] **CA-002-04**: Los traductores se prueban con al menos una captura real del evento de cada herramienta (no solo eventos sintéticos sacados de la documentación), con versión y fecha de la herramienta. (P1) — **Pendiente** (F5).
 
 ### HU-003: Registrar el hook al instalar, con honestidad sobre el modo de fallo
