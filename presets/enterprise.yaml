@@ -68,7 +68,7 @@ comportamiento:
   requiere_verificar: true          # /sdd.verificar obligatorio al final
 
 calidad:
-  cobertura_tests_minima: 85
+  cobertura_tests_minima: 85        # declarativa: nada la aplica (ver puertas.cobertura)
   permitir_warnings_lint: false
   permitir_codigo_comentado: false
   longitud_funcion_maxima: 40       # funciones más cortas, más legibles

@@ -60,7 +60,7 @@ comportamiento:
   flujo_minimo: true                # salta /sdd.analizar por defecto
 
 calidad:
-  cobertura_tests_minima: 60        # umbral relajado
+  cobertura_tests_minima: 60        # umbral relajado; declarativa: nada la aplica (ver puertas.cobertura)
   permitir_warnings_lint: true      # no bloquea por warnings
   permitir_codigo_comentado: true
   longitud_funcion_maxima: 80       # más flexible

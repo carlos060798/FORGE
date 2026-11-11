@@ -66,7 +66,7 @@ comportamiento:
   flujo_minimo: false
 
 calidad:
-  cobertura_tests_minima: 75
+  cobertura_tests_minima: 75        # declarativa: nada la aplica (ver puertas.cobertura)
   permitir_warnings_lint: false
   permitir_codigo_comentado: false
   longitud_funcion_maxima: 50

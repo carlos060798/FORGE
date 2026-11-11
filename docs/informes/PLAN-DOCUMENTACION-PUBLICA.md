@@ -169,5 +169,5 @@ Dejaron de afirmarse en la documentación, pero **siguen en el código**. Cada u
 | 4 | `consumo.jsonl` lo escriben dos hooks con campos distintos: uno estima tokens como bytes entre 3,5 y el otro registra tokens y coste solo si el evento trae `usage` (no verificado que Claude Code lo envíe). `fragua logs` lo presenta como «consumo de tokens»; el gasto real del ciclo está en `gasto.jsonl` | `claude-hooks/agent-memory.js`, `claude-hooks/context-manager.js` |
 | 5 | `ProjectMemory.update()` y `setPipelineStep()` no comprueban aprobaciones | `core/project-memory.js` |
 | 6 | ~~El tipo `ForgeEstado` no declara `spec_aprobado` ni otros campos del archivo real~~ **Corregido el 2026-11-11** | `core/project-memory.js` |
-| 7 | `fragua doctor` termina con código 0 aunque detecte problemas, así que no sirve como puerta en una integración continua | `cli/comandos/doctor.js`, según `docs/referencia-cli.md`; **no ejecutado en esta revisión** |
+| 7 | `fragua doctor` termina con código 0 aunque detecte problemas, así que no sirve como puerta en una integración continua | `cli/comandos/doctor.js`, **verificado el 2026-11-11**: sale con 0 con 7 problemas detectados |
 | 8 | Hay un runner de Rust pero ninguna imagen base para Rust | `core/runners/rust-runner.js`, `core/sandbox/preparar-imagen.js` |

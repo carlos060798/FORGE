@@ -225,6 +225,8 @@ control_versiones:
 # CALIDAD — umbrales que el agente revisor aplica
 # ============================================================
 calidad:
+  # DECLARATIVA: se lee, pero ningún código aplica este umbral. Para exigir una cobertura mínima de verdad,
+  # declara una puerta (puertas.cobertura) cuyo comando falle por debajo del umbral.
   cobertura_tests_minima: 80
   permitir_warnings_lint: false
   permitir_codigo_comentado: false
