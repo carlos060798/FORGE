@@ -144,3 +144,15 @@ Total entre 20 y 35 días de trabajo, más el mantenimiento continuo.
 ## 7. Qué ya está hecho
 
 En esta sesión, sin esperar a este plan: README público con estado honesto, índice por tipo de documento, guía de 15 minutos, citas a comandos inexistentes corregidas, y tres agentes auditando los documentos técnicos y los archivos comunitarios.
+
+## 8. Avance
+
+| Fase | Estado | Detalle |
+|---|---|---|
+| 0 | **Hecha el 2026-11-10** (pendiente de publicar con un `git push` a `main`) | Cinco páginas del sitio reescritas en español e inglés (visión general, ciclo verificado nueva, instalación, limitaciones, madurez); aviso con enlace al documento al día en las otras doce; nombre Fragua en la interfaz; `mermaid` eliminado (no se usaba en ninguna página y cargaba 3,3 MB de un CDN sin versión); `noscript`, metadatos sociales y canónico; página huérfana movida a `docs/archivo/`; `tests/sitio-docs.test.js` vigila términos, versión, anclas, enlaces a GitHub y scripts externos. No se ha abierto el sitio en un navegador; el HTML de las 34 páginas está balanceado |
+| 1 | Pendiente | Necesita el ADR de la herramienta y un spike de un día |
+| 2 | Pendiente | |
+| 3 | En curso | Referencia de la CLI hecha con su prueba; configuración, agentes, flujos y arquitectura reescritos; faltan `extending-forge.md`, `api-reference.md`, `examples.md` y `tools.md` y el catálogo de errores |
+| 4 a 7 | Pendiente | |
+
+El inglés del sitio pasó del 38 % al 50 % del español, por las páginas nuevas. Sigue incompleto: las doce páginas con aviso conservan su traducción parcial anterior.

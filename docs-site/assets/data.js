@@ -1,6 +1,8 @@
 /* ============================================================
-   FORGE Docs — datos v5.0.0-beta.1 (bilingüe ES/EN)
-   Actualizado: 2026-06-27 — refleja Etapas 0-5 completadas
+   Fragua Docs — datos v5.0.0-beta.1 (bilingüe ES/EN)
+   Actualizado: 2026-11-10 — fase 0 del plan de documentación pública
+   (docs/informes/PLAN-DOCUMENTACION-PUBLICA.md). Provisional: la
+   fase 1 genera el sitio desde docs/ y elimina este archivo.
    ============================================================ */
 
 const UI = {
@@ -11,13 +13,13 @@ const UI = {
     search_navigate: "navegar",
     search_open: "abrir",
     search_close: "cerrar",
-    footer_text: "FORGE v5.0.0-beta.1 · Spec-Driven · MIT License",
+    footer_text: "Fragua (antes FORGE) v5.0.0-beta.1 · pre-beta · MIT License",
     search_no_results: "Sin resultados",
     groups: {
-      overview:  "◈ El framework",
+      overview: "◈ El framework",
       technical: "⬡ Arquitectura",
-      operate:   "▶ Operación",
-      extend:    "✦ Extensibilidad"
+      operate: "▶ Operación",
+      extend: "✦ Extensibilidad"
     }
   },
   en: {
@@ -27,13 +29,13 @@ const UI = {
     search_navigate: "navigate",
     search_open: "open",
     search_close: "close",
-    footer_text: "FORGE v5.0.0-beta.1 · Spec-Driven · MIT License",
+    footer_text: "Fragua (antes FORGE) v5.0.0-beta.1 · pre-beta · MIT License",
     search_no_results: "No results",
     groups: {
-      overview:  "◈ The framework",
+      overview: "◈ The framework",
       technical: "⬡ Architecture",
-      operate:   "▶ Operation",
-      extend:    "✦ Extensibility"
+      operate: "▶ Operation",
+      extend: "✦ Extensibility"
     }
   }
 };
@@ -41,98 +43,184 @@ const UI = {
 const GROUP_ORDER = ["overview", "technical", "operate", "extend"];
 
 const PAGES = {
-
-/* ─────────────────────────────────────────────────────────────
-   GRUPO 1 — El framework
-───────────────────────────────────────────────────────────── */
-
-"vision-general": {
-  seccion: "overview",
-  es: {
-    titulo: "Visión General",
-    html: `
+  "vision-general": {
+    seccion: "overview",
+    es: {
+      titulo: "Visión General",
+      html: `
       <h1>Visión General</h1>
-      <p class="lead">FORGE es un framework de <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> para Claude Code. Convierte ideas en lenguaje natural en software especificado, planificado e implementado por un equipo de 14 agentes de IA — y produce artefactos portables que cualquier otro agente puede consumir.</p>
+      <p class="lead">Fragua (antes FORGE) es un framework de <strong>Desarrollo Guiado por Especificaciones (SDD)</strong> para Claude Code. Lleva una idea escrita en lenguaje natural hasta código probado, pasando por una especificación que <strong>una persona aprueba</strong> antes de que los agentes escriban nada.</p>
 
-      <div class="callout tip">
-        <p><strong>Instalación rápida (npm):</strong> <code>npm install -g fragua</code> · <code>forge doctor</code></p>
-        <p><strong>Desde el repositorio:</strong> <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; cd FORGE &amp;&amp; npm install</code></p>
+      <div class="callout warn">
+        <p><strong>Pre-beta.</strong> La versión 5.0.0-beta.1 no está publicada en npm y la integración continua en Linux todavía no está en verde. El estado real, con cifras y fechas, está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a>.</p>
       </div>
 
-      <h2>Qué es FORGE (v5.0.0-beta.1)</h2>
-      <p>Tiene dos modos de uso:</p>
+      <h2>Qué lo distingue</h2>
+      <p>El veredicto sobre el código lo da el <strong>código de salida de las pruebas</strong>, ejecutadas en un contenedor Docker sin red, y no la opinión de un modelo. Un agente escribe pruebas que deben fallar, otro implementa sin poder tocarlas, y un tope de gasto detiene el ciclo. Ver <a href="#ciclo-verificado">Ciclo verificado</a>.</p>
+
+      <h2>En números</h2>
       <table>
-        <thead><tr><th>Modo</th><th>Cómo se usa</th><th>Requiere Claude Code</th></tr></thead>
+        <thead><tr><th>Pieza</th><th>Cantidad</th></tr></thead>
         <tbody>
-          <tr><td><strong>Plugin Claude Code</strong></td><td>Slash commands <code>/forge</code>, <code>/sdd.*</code> dentro de Claude Code</td><td>Sí</td></tr>
-          <tr><td><strong>Runner portable</strong></td><td>CLI de terminal: <code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code></td><td>No</td></tr>
+          <tr><td>Agentes</td><td>14 agentes (el preset <code>lean</code> activa 6; el ciclo usa 3)</td></tr>
+          <tr><td>Comandos</td><td>39 comandos <code>/sdd.*</code></td></tr>
+          <tr><td>Skills</td><td>31 skills</td></tr>
+          <tr><td>Dependencias de npm</td><td>3 (<code>@anthropic-ai/sdk</code>, <code>@sqlite.org/sqlite-wasm</code> y <code>acorn</code>)</td></tr>
+          <tr><td>Lenguajes con ciclo verificado</td><td>JavaScript y TypeScript, Python, Go</td></tr>
         </tbody>
       </table>
 
-      <table>
-        <thead><tr><th>Dimensión</th><th>Descripción</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Categoría</strong></td><td>Framework SDD+TDD con runner CLI portable</td></tr>
-          <tr><td><strong>Host principal</strong></td><td>Claude Code CLI (Anthropic)</td></tr>
-          <tr><td><strong>Runner standalone</strong></td><td><code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code> — sin Claude Code</td></tr>
-          <tr><td><strong>Distribución</strong></td><td><code>npm install -g fragua</code> · o git clone desde el repo</td></tr>
-          <tr><td><strong>Dependencias runtime</strong></td><td>3 (<code>@anthropic-ai/sdk</code>, <code>acorn</code> y <code>@sqlite.org/sqlite-wasm</code>)</td></tr>
-          <tr><td><strong>Lenguaje</strong></td><td>Node.js ESM + JS puro con JSDoc (sin compilación)</td></tr>
-          <tr><td><strong>Tests</strong></td><td>Más de 2000, con el runner nativo de Node (recuento fechado en docs/COBERTURA.md)</td></tr>
-        </tbody>
-      </table>
+      <h2>Para quién sí y para quién no</h2>
+      <ul>
+        <li><strong>Sí:</strong> quien programa o supervisa código y quiere un proceso con especificación, pruebas y trazabilidad.</li>
+        <li><strong>No, todavía:</strong> quien espera «no-code». Necesitas Docker, una clave de API y leer los veredictos del ciclo.</li>
+      </ul>
 
-      <h2>Misión</h2>
-      <blockquote>Hacer que cualquier persona técnica pueda construir software propio con el mismo rigor metodológico que un equipo de ingeniería profesional — sin depender de un host específico.</blockquote>
-
-      <h2>Posicionamiento</h2>
-      <pre><code class="text">                  CONTROL DEL OUTPUT
-                  Alto ◄──────────────────────► Bajo
-
-Developer     Cursor/Copilot   [FORGE]    Lovable    Bubble
-tools          (asistencia)  (orquesta) (GUI SaaS) (no-code)
-
-COMPLEJIDAD:    Alta            Media       Baja      Mínima
-AUDIENCIA:      Dev prof.    Técnico-MVP  No técnico  No técnico
-PORTABLE:       —               ✅          —          —</code></pre>
+      <h2>Cómo se usa</h2>
+      <p>Los comandos y los agentes son nativos de Claude Code. Otras herramientas (Cursor, Copilot, Gemini CLI y similares) reciben solo las skills. La CLI <code>fragua</code> (equivalente a <code>forge</code>) instala, diagnostica y verifica. Ver <a href="#instalacion">Instalación</a>.</p>
 
       <div class="callout tip">
-        <p><strong>Próximo paso:</strong> Lee <a href="#capacidades">Capacidades</a> para ver qué puede hacer FORGE en detalle.</p>
+        <p><strong>Siguiente paso:</strong> <a href="#instalacion">Instalación y primer uso</a>, o la guía de una página <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">Primeros 15 minutos</a>.</p>
       </div>
     `
-  },
-  en: {
-    titulo: "Overview",
-    html: `
+    },
+    en: {
+      titulo: "Overview",
+      html: `
       <h1>Overview</h1>
-      <p class="lead">FORGE is a <strong>Spec-Driven Development (SDD) + Test-Driven Development (TDD)</strong> framework for Claude Code. It turns natural-language ideas into specified, planned, and implemented software — and produces portable artifacts any agent can consume.</p>
+      <p class="lead">Fragua (formerly FORGE) is a <strong>Spec-Driven Development (SDD)</strong> framework for Claude Code. It takes an idea written in natural language to tested code, through a specification that <strong>a person approves</strong> before any agent writes code.</p>
 
-      <div class="callout tip">
-        <p><strong>Quick install:</strong> <code>npm install -g fragua</code> · or <code>git clone https://github.com/carlos060798/FORGE &amp;&amp; npm install</code></p>
+      <div class="callout warn">
+        <p><strong>Pre-beta.</strong> Version 5.0.0-beta.1 is not published on npm and continuous integration on Linux is not green yet. The real status, with figures and dates, is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a> (Spanish).</p>
       </div>
 
-      <h2>Two modes of use</h2>
+      <h2>What sets it apart</h2>
+      <p>The verdict on the code is the <strong>exit code of the tests</strong>, run in a Docker container with no network, not a model's opinion. One agent writes tests that must fail, another implements without being able to touch them, and a spending cap stops the cycle. See <a href="#ciclo-verificado">Verified cycle</a>.</p>
+
+      <h2>In numbers</h2>
       <table>
-        <thead><tr><th>Mode</th><th>How to use</th><th>Requires Claude Code</th></tr></thead>
+        <thead><tr><th>Piece</th><th>Count</th></tr></thead>
         <tbody>
-          <tr><td><strong>Claude Code plugin</strong></td><td>Slash commands <code>/forge</code>, <code>/sdd.*</code> inside Claude Code</td><td>Yes</td></tr>
-          <tr><td><strong>Portable runner</strong></td><td>Terminal CLI: <code>forge status</code>, <code>forge run</code>, <code>forge aprobar spec</code></td><td>No</td></tr>
+          <tr><td>Agents</td><td>14 agents (the <code>lean</code> preset activates 6; the cycle uses 3)</td></tr>
+          <tr><td>Commands</td><td>39 <code>/sdd.*</code> commands</td></tr>
+          <tr><td>Skills</td><td>31 skills</td></tr>
+          <tr><td>npm dependencies</td><td>3 (<code>@anthropic-ai/sdk</code>, <code>@sqlite.org/sqlite-wasm</code> and <code>acorn</code>)</td></tr>
+          <tr><td>Languages with the verified cycle</td><td>JavaScript and TypeScript, Python, Go</td></tr>
         </tbody>
       </table>
 
+      <h2>Who it is for</h2>
+      <ul>
+        <li><strong>Yes:</strong> people who write or supervise code and want a process with specification, tests and traceability.</li>
+        <li><strong>Not yet:</strong> anyone expecting «no-code». You need Docker, an API key and to read the cycle's verdicts.</li>
+      </ul>
+
+      <h2>How it is used</h2>
+      <p>Commands and agents are native to Claude Code. Other tools (Cursor, Copilot, Gemini CLI and similar) receive only the skills. The <code>fragua</code> CLI (equivalent to <code>forge</code>) installs, diagnoses and verifies. See <a href="#instalacion">Installation</a>.</p>
+
       <div class="callout tip">
-        <p><strong>Next:</strong> Read <a href="#capacidades">Capabilities</a> for full details.</p>
+        <p><strong>Next:</strong> <a href="#instalacion">Installation and first use</a>, or the one-page guide <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">First 15 minutes</a> (Spanish).</p>
       </div>
     `
-  }
-},
+    }
+  },
+  "ciclo-verificado": {
+    seccion: "overview",
+    es: {
+      titulo: "Ciclo verificado",
+      html: `
+      <h1>Ciclo verificado</h1>
+      <p class="lead">Es el modo por defecto de la 5.0 para tareas de código. Una tarea solo se da por buena si sus pruebas pasan en un contenedor sin red, y lo decide el código de salida, no un modelo.</p>
 
-"capacidades": {
-  seccion: "overview",
-  es: {
-    titulo: "Capacidades",
-    html: `
+      <h2>Los cinco pasos</h2>
+      <ol>
+        <li>Un agente escribe pruebas que <strong>deben fallar</strong> antes de que exista el código. Si no fallan, se pide revisión.</li>
+        <li>Otro agente implementa y <strong>no puede tocar las pruebas</strong>.</li>
+        <li>Las pruebas corren en <strong>Docker, sin red</strong>, con raíz de solo lectura y límites de tiempo y memoria.</li>
+        <li><strong>Decide el código de salida</strong> de las pruebas. Además se mide cuánto detectan las pruebas alterando el código (mutación) y se desconfía de un «pasa» sospechoso.</li>
+        <li><strong>Tope de gasto</strong> por sesión (2 USD por defecto) y pausa para que decida una persona cuando el ciclo no puede terminar solo.</li>
+      </ol>
+
+      <h2>Cuándo se pausa y te pregunta</h2>
+      <table>
+        <thead><tr><th>Motivo</th><th>Qué significa</th></tr></thead>
+        <tbody>
+          <tr><td>Dependencia o configuración</td><td>El modelo quiso añadir un paquete o tocar una configuración protegida. No se aplica solo.</td></tr>
+          <tr><td>Sin progreso o iteraciones agotadas</td><td>Las pruebas siguen fallando igual tras varios intentos.</td></tr>
+          <tr><td>Tope de gasto</td><td>Se alcanzó el límite de la sesión.</td></tr>
+          <tr><td>Entorno</td><td>Docker no responde o falló el contenedor.</td></tr>
+          <tr><td>Pruebas débiles</td><td>Las pruebas pasan pero detectan poco del código.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Qué garantiza y qué no</h2>
+      <ul>
+        <li>El modelo no puede leer rutas vetadas ni escribir fuera del proyecto, ni ejecutar un comando propio: <code>ejecutar_pruebas</code> no admite parámetros.</li>
+        <li>El código generado solo corre en un contenedor sin red.</li>
+        <li><strong>No garantiza</strong> que las pruebas sean buenas: la medición por mutación lo mide, pero un adversario deliberado podría engañarla. Cada garantía enlaza a su prueba en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/GARANTIAS-Y-LIMITES.md">GARANTIAS-Y-LIMITES.md</a>.</li>
+        <li>Con el mismo usuario del sistema, un agente comprometido podría falsificar un registro firmado. Es un límite declarado, no oculto.</li>
+      </ul>
+
+      <div class="callout warn">
+        <p><strong>Estado.</strong> El aislamiento con Docker real está probado en Windows (Docker Desktop). En Linux y macOS no se ha probado y la integración continua de Linux no está en verde. Sin Docker puedes usar <code>--motor clasico</code>, que ejecuta <strong>sin aislamiento</strong> y lo avisa.</p>
+      </div>
+
+      <p>Más: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ciclo-verificado.md">ciclo-verificado.md</a> y <a href="https://github.com/carlos060798/FORGE/blob/main/docs/QUE-PASA-SI-FALLA.md">qué hacer si falla</a>.</p>
+    `
+    },
+    en: {
+      titulo: "Verified cycle",
+      html: `
+      <h1>Verified cycle</h1>
+      <p class="lead">It is the default mode in 5.0 for code tasks. A task is only accepted if its tests pass in a container with no network, and the exit code decides, not a model.</p>
+
+      <h2>The five steps</h2>
+      <ol>
+        <li>One agent writes tests that <strong>must fail</strong> before the code exists. If they do not fail, a review is requested.</li>
+        <li>Another agent implements and <strong>cannot touch the tests</strong>.</li>
+        <li>The tests run in <strong>Docker, with no network</strong>, read-only root and time and memory limits.</li>
+        <li>The tests' <strong>exit code decides</strong>. The tests are also measured by altering the code (mutation), and a suspicious «pass» is distrusted.</li>
+        <li>A <strong>spending cap</strong> per session (2 USD by default), and a pause for a person to decide when the cycle cannot finish alone.</li>
+      </ol>
+
+      <h2>When it pauses and asks you</h2>
+      <table>
+        <thead><tr><th>Reason</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Dependency or configuration</td><td>The model wanted to add a package or touch a protected configuration. It is not applied on its own.</td></tr>
+          <tr><td>No progress or iterations exhausted</td><td>The tests keep failing the same way after several attempts.</td></tr>
+          <tr><td>Spending cap</td><td>The session limit was reached.</td></tr>
+          <tr><td>Environment</td><td>Docker does not respond or the container failed.</td></tr>
+          <tr><td>Weak tests</td><td>The tests pass but detect little of the code.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>What it guarantees and what it does not</h2>
+      <ul>
+        <li>The model cannot read forbidden paths, write outside the project or run its own command: <code>ejecutar_pruebas</code> takes no parameters.</li>
+        <li>Generated code only runs in a container with no network.</li>
+        <li>It does <strong>not</strong> guarantee the tests are good: mutation measures that, but a deliberate adversary could fool it. Each guarantee links to its test in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/GARANTIAS-Y-LIMITES.md">GARANTIAS-Y-LIMITES.md</a> (Spanish).</li>
+        <li>With the same operating-system user, a compromised agent could forge a signed record. It is a declared limit, not a hidden one.</li>
+      </ul>
+
+      <div class="callout warn">
+        <p><strong>Status.</strong> Isolation with real Docker is tested on Windows (Docker Desktop). It is not tested on Linux or macOS, and the Linux continuous integration is not green. Without Docker you can use <code>--motor clasico</code>, which runs <strong>without isolation</strong> and says so.</p>
+      </div>
+
+      <p>More: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ciclo-verificado.md">ciclo-verificado.md</a> and <a href="https://github.com/carlos060798/FORGE/blob/main/docs/QUE-PASA-SI-FALLA.md">what to do if it fails</a> (Spanish).</p>
+    `
+    }
+  },
+  capacidades: {
+    seccion: "overview",
+    es: {
+      titulo: "Capacidades",
+      html: `
       <h1>Capacidades</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/README.md">README (Spanish)</a>.</p>
+      </div>
+
       <p class="lead">Lo que FORGE puede hacer hoy, con qué madurez y qué componentes están involucrados.</p>
 
       <h2>Pipeline SDD+TDD completo</h2>
@@ -197,11 +285,15 @@ forge decisions search "autenticación"   # Búsqueda semántica TF-IDF</code></
         <li><strong>Circuit breaker</strong> — 3 niveles: sandbox / local / confirmado</li>
       </ul>
     `
-  },
-  en: {
-    titulo: "Capabilities",
-    html: `
+    },
+    en: {
+      titulo: "Capabilities",
+      html: `
       <h1>Capabilities</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/README.md">README (Spanish)</a> (Spanish).</p>
+      </div>
+
       <p class="lead">What FORGE can do today, at what maturity, and which components are involved.</p>
 
       <h2>Portable runner (no LLM required)</h2>
@@ -227,173 +319,170 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
         <li><strong>Complete observability</strong> — <code>consumo.jsonl</code> + <code>budget-state.json</code></li>
       </ul>
     `
-  }
-},
-
-"limitaciones": {
-  seccion: "overview",
-  es: {
-    titulo: "Limitaciones",
-    html: `
+    }
+  },
+  limitaciones: {
+    seccion: "overview",
+    es: {
+      titulo: "Limitaciones",
+      html: `
       <h1>Limitaciones</h1>
-      <p class="lead">Lo que FORGE <strong>no puede hacer</strong> hoy, restricciones técnicas conocidas, y dependencias que debes tener en cuenta.</p>
+      <p class="lead">Lo que está probado, lo que no, y los límites que conviene conocer antes de usarlo. La fuente al día es <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a>.</p>
 
-      <div class="callout warning">
-        <p><strong>Lee esto primero.</strong> Conocer los límites evita sorpresas desagradables durante el pipeline.</p>
+      <div class="callout warn">
+        <p><strong>Lee esto primero.</strong> Fragua está en pre-beta, lo mantiene una persona y varias partes no se han probado fuera de Windows.</p>
       </div>
 
-      <h2>Restricciones funcionales</h2>
-
+      <h2>Sin probar</h2>
       <table>
-        <thead><tr><th>Limitación</th><th>Detalle</th><th>Alternativa disponible</th></tr></thead>
+        <thead><tr><th>Qué</th><th>Estado</th></tr></thead>
         <tbody>
-          <tr><td><strong>Sin routing real de modelos</strong></td><td><code>model-registry.js</code> registra qué modelo usaría, pero no lo cambia en tiempo de ejecución. El modelo efectivo está en el frontmatter del agente.</td><td>Cambiar frontmatter del agente manualmente</td></tr>
-          <tr><td><strong>Sin apps móviles nativas</strong></td><td>No genera proyectos Swift, Kotlin ni Jetpack Compose.</td><td>—</td></tr>
-          <tr><td><strong>Sin colaboración multi-usuario</strong></td><td><code>estado.json</code> es un archivo único sin locking. Dos sesiones simultáneas pueden producir conflictos.</td><td>Git branching por usuario</td></tr>
-          <tr><td><strong>Sin fallback entre providers</strong></td><td>Si la API de Anthropic falla, la sesión se interrumpe. No hay fallback automático a OpenAI o Google.</td><td>Adaptador Spec Kit exporta para continuar con otro agente</td></tr>
-          <tr><td><strong>Indexación AST limitada</strong></td><td><code>ast-indexer.js</code> usa <code>acorn</code> con limpieza de tipos básica. Proyectos TypeScript avanzados o JSX pueden tener errores silenciosos en el índice.</td><td>El índice AST es opcional — el pipeline funciona sin él</td></tr>
-          <tr><td><strong>LLM para fases de generación</strong></td><td>El runner CLI puede avanzar pasos y validar transiciones sin LLM, pero la generación de contenido (IR, spec, código) requiere un agente LLM.</td><td>Usar adaptador Spec Kit para pasar artefactos a otro agente externo</td></tr>
+          <tr><td>Aislamiento con Docker real en Linux y macOS</td><td>Probado solo en Windows (Docker Desktop). La integración continua de Linux no está en verde.</td></tr>
+          <tr><td>OpenAI y Ollama con modelo real</td><td>Probados con dobles de prueba; sin ejecución real.</td></tr>
+          <tr><td>Integraciones con GitHub, GitLab y Jira</td><td>Probadas solo contra servidores simulados.</td></tr>
+          <tr><td>Gasto calculado frente a una factura</td><td>No comparado todavía.</td></tr>
+          <tr><td>Modelo real con tareas grandes</td><td>Probado con Anthropic en tareas pequeñas de JavaScript, Python y Go.</td></tr>
         </tbody>
       </table>
 
-      <h2>Dependencias requeridas</h2>
+      <h2>Límites de diseño</h2>
       <table>
-        <thead><tr><th>Dependencia</th><th>Versión mínima</th><th>Uso</th><th>Obligatoria</th></tr></thead>
+        <thead><tr><th>Límite</th><th>Detalle</th></tr></thead>
         <tbody>
-          <tr><td>Node.js</td><td>≥18 (≥22.5 para SQLite nativo)</td><td>CLI, hooks, runner, dashboard</td><td>Sí</td></tr>
-          <tr><td>Claude Code CLI</td><td>Última</td><td>Modo plugin — slash commands y agentes</td><td>Solo en modo plugin</td></tr>
-          <tr><td>Cuenta Anthropic</td><td>Con créditos API</td><td>Generación de contenido con agentes LLM</td><td>Solo para generación</td></tr>
+          <tr><td>La aprobación no prueba revisión</td><td><code>fragua aprobar spec</code> prueba que alguien ejecutó la aprobación en una terminal real, no que la leyó. Con el mismo usuario del sistema, un agente comprometido podría falsificar el registro firmado.</td></tr>
+          <tr><td>El guardián es una red de seguridad</td><td>Analiza texto: alias, funciones de shell o scripts ejecutados después no se resuelven. No es un límite. La defensa principal son los permisos de Claude Code.</td></tr>
+          <tr><td>Sin colaboración multiusuario</td><td>El estado vive en <code>.sdd/</code> y no hay bloqueo entre personas. Está en el plan, no implementado.</td></tr>
+          <tr><td>Cobertura de lenguajes</td><td>El ciclo verificado cubre JavaScript y TypeScript, Python y Go.</td></tr>
+          <tr><td>Sin Docker</td><td><code>--motor clasico</code> ejecuta el código generado en tu equipo, sin aislamiento, y lo avisa.</td></tr>
+          <tr><td>Mantenimiento</td><td>Una persona, sin plazos de respuesta garantizados.</td></tr>
         </tbody>
       </table>
 
-      <h2>Límites de escala</h2>
+      <h2>Requisitos duros</h2>
       <ul>
-        <li>Proyectos con &gt;500 archivos pueden degradar la velocidad de recuperación de memoria en el backend Markdown (O(n) vs O(log n) de SQLite)</li>
-        <li><code>consumo.jsonl</code> rota automáticamente al superar 10 MB</li>
-        <li><code>decisions.db</code> (SQLite) soporta millones de entradas con índices — sin límite práctico</li>
-        <li>Costo real de API: ~$10–25 por proyecto mediano con todos los agentes activos</li>
+        <li>Node.js ≥ 20. Sin Node, el guardián bloquea toda acción (falla cerrado).</li>
+        <li>Docker en marcha para el ciclo verificado.</li>
+        <li>Una clave de API en tu entorno y un tope de gasto en el proveedor.</li>
       </ul>
 
-      <div class="callout tip">
-        <p><strong>Para proyectos grandes:</strong> Usa Node ≥22.5 para activar SQLite automáticamente. El modo <code>sesion: rapido</code> en <code>sdd.config.yaml</code> omite agentes de revisión y ahorra ~30% de tokens.</p>
-      </div>
+      <p>Detalle completo: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PROBLEMAS-CONOCIDOS.md">PROBLEMAS-CONOCIDOS.md</a> y <a href="https://github.com/carlos060798/FORGE/blob/main/docs/limitations.md">limitations.md</a>.</p>
     `
-  },
-  en: {
-    titulo: "Limitations",
-    html: `
+    },
+    en: {
+      titulo: "Limitations",
+      html: `
       <h1>Limitations</h1>
-      <p class="lead">What FORGE <strong>cannot do</strong> today, known technical restrictions, and dependencies to be aware of.</p>
+      <p class="lead">What is tested, what is not, and the limits worth knowing before you use it. The up-to-date source is <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a> (Spanish).</p>
 
-      <div class="callout warning">
-        <p><strong>Read this first.</strong> Knowing the limits prevents unpleasant surprises during the pipeline.</p>
+      <div class="callout warn">
+        <p><strong>Read this first.</strong> Fragua is pre-beta, maintained by one person, and several parts have not been tested outside Windows.</p>
       </div>
 
-      <h2>Functional restrictions</h2>
+      <h2>Not tested</h2>
       <table>
-        <thead><tr><th>Limitation</th><th>Detail</th><th>Available alternative</th></tr></thead>
+        <thead><tr><th>What</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td><strong>No real model routing</strong></td><td><code>model-registry.js</code> records which model would be used, but does not change it at runtime.</td><td>Edit agent frontmatter manually</td></tr>
-          <tr><td><strong>No native mobile apps</strong></td><td>Does not generate Swift, Kotlin or Jetpack Compose projects.</td><td>—</td></tr>
-          <tr><td><strong>No multi-user collaboration</strong></td><td><code>estado.json</code> has no locking — two concurrent sessions may conflict.</td><td>Git branching per user</td></tr>
-          <tr><td><strong>LLM required for content generation</strong></td><td>The CLI runner manages pipeline state without an LLM, but generating IR, spec, and code requires an LLM agent.</td><td>Spec Kit adapter exports artifacts for external agents</td></tr>
-          <tr><td><strong>AST indexing limited</strong></td><td><code>ast-indexer.js</code> uses <code>acorn</code> with basic type stripping. Advanced TypeScript or JSX may produce silent errors.</td><td>AST index is optional — pipeline works without it</td></tr>
+          <tr><td>Isolation with real Docker on Linux and macOS</td><td>Tested on Windows only (Docker Desktop). Linux continuous integration is not green.</td></tr>
+          <tr><td>OpenAI and Ollama with a real model</td><td>Tested with test doubles; no real run.</td></tr>
+          <tr><td>GitHub, GitLab and Jira integrations</td><td>Tested only against simulated servers.</td></tr>
+          <tr><td>Computed spending against an invoice</td><td>Not compared yet.</td></tr>
+          <tr><td>Real model on large tasks</td><td>Tested with Anthropic on small JavaScript, Python and Go tasks.</td></tr>
         </tbody>
       </table>
 
-      <h2>Required dependencies</h2>
+      <h2>Design limits</h2>
       <table>
-        <thead><tr><th>Dependency</th><th>Min version</th><th>Use</th><th>Required</th></tr></thead>
+        <thead><tr><th>Limit</th><th>Detail</th></tr></thead>
         <tbody>
-          <tr><td>Node.js</td><td>≥18 (≥22.5 for native SQLite)</td><td>CLI, hooks, runner, dashboard</td><td>Yes</td></tr>
-          <tr><td>Claude Code CLI</td><td>Latest</td><td>Plugin mode — slash commands and agents</td><td>Plugin mode only</td></tr>
-          <tr><td>Anthropic account</td><td>With API credits</td><td>LLM agent content generation</td><td>Generation only</td></tr>
+          <tr><td>Approval does not prove review</td><td><code>fragua aprobar spec</code> proves someone ran the approval in a real terminal, not that they read it. With the same operating-system user, a compromised agent could forge the signed record.</td></tr>
+          <tr><td>The guard is a safety net</td><td>It analyses text: aliases, shell functions or scripts run later are not resolved. It is not a boundary. The main defence is Claude Code's permissions.</td></tr>
+          <tr><td>No multi-user collaboration</td><td>State lives in <code>.sdd/</code> and there is no locking between people. It is planned, not implemented.</td></tr>
+          <tr><td>Language coverage</td><td>The verified cycle covers JavaScript and TypeScript, Python and Go.</td></tr>
+          <tr><td>Without Docker</td><td><code>--motor clasico</code> runs generated code on your machine, without isolation, and says so.</td></tr>
+          <tr><td>Maintenance</td><td>One person, with no guaranteed response times.</td></tr>
         </tbody>
       </table>
+
+      <h2>Hard requirements</h2>
+      <ul>
+        <li>Node.js ≥ 20. Without Node, the guard blocks every action (fails closed).</li>
+        <li>Docker running for the verified cycle.</li>
+        <li>An API key in your environment and a spending cap at the provider.</li>
+      </ul>
+
+      <p>Full detail: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PROBLEMAS-CONOCIDOS.md">PROBLEMAS-CONOCIDOS.md</a> and <a href="https://github.com/carlos060798/FORGE/blob/main/docs/limitations.md">limitations.md</a> (Spanish).</p>
     `
-  }
-},
-
-"madurez": {
-  seccion: "overview",
-  es: {
-    titulo: "Análisis de Madurez",
-    html: `
-      <h1>Análisis de Madurez</h1>
-      <p class="lead">Estado real de cada área de FORGE v5.0.0-beta.1. Basado en análisis estático del repositorio y la suite de tests (más de 2000; recuento fechado en docs/COBERTURA.md).</p>
-
-      <table>
-        <thead><tr><th>Área</th><th>Estado</th><th>Justificación</th></tr></thead>
-        <tbody>
-          <tr><td>Pipeline SDD (39 comandos)</td><td>✅ Producción</td><td>Implementación completa, handoffs probados, gates funcionales</td></tr>
-          <tr><td>14 agentes especializados</td><td>✅ Producción</td><td>Frontmatter estable, memoria operativa, restricciones enforced en hook</td></tr>
-          <tr><td>Guardrails (pre-tool-guard)</td><td>✅ Producción</td><td>9 categorías de bloqueo, ADR violations, detección de secrets, 10 tests pasando</td></tr>
-          <tr><td>Enforcement de agentes read-only</td><td>✅ Producción</td><td>7 agentes bloqueados a nivel hook — 10/10 tests de enforcement pasando</td></tr>
-          <tr><td>Memoria persistente (Markdown)</td><td>✅ Producción</td><td>Auto-compresión, índice invertido JSONL, recuperación selectiva</td></tr>
-          <tr><td>Memoria persistente (SQLite)</td><td>✅ Producción</td><td>Auto-activado en Node ≥22.5, fallback automático a Markdown</td></tr>
-          <tr><td>Store de decisiones SQLite</td><td>✅ Producción</td><td>TF-IDF para búsqueda semántica, superseder(), consolidar(), 8/8 tests</td></tr>
-          <tr><td>Memoria episódica (TF-IDF)</td><td>✅ Producción</td><td>Similitud coseno reemplaza grep exacto, 10/10 tests pasando</td></tr>
-          <tr><td>Observabilidad (consumo.jsonl)</td><td>✅ Producción</td><td>Rotación automática, campos estables, telemetría completa</td></tr>
-          <tr><td>Context manager (presupuesto)</td><td>✅ Producción</td><td>Presupuesto USD enforced por sesión, alertas configurables, bloqueo en exit 2</td></tr>
-          <tr><td>CLI runner portable (state machine)</td><td>✅ Producción</td><td>forge status/step/validate/reset sin LLM, guards verificados, tests pasando</td></tr>
-          <tr><td>Esquemas JSON de artefactos</td><td>✅ Producción</td><td>ir.json, estado.json, ADRs.jsonl con validación lightweight</td></tr>
-          <tr><td>Export/import de artefactos</td><td>✅ Producción</td><td>Spec Kit + OpenSpec, round-trip verificado, --merge no destructivo</td></tr>
-          <tr><td>Adaptador Claude Code</td><td>✅ Producción</td><td>Detecta host, construye contexto de handoff, integrado en forge dispatch</td></tr>
-          <tr><td>Adaptador Spec Kit portable</td><td>✅ Producción</td><td>Genera TASK.md + spec.md + pipeline-state.json consumibles sin FORGE</td></tr>
-          <tr><td>Circuit breaker (3 niveles)</td><td>✅ Producción</td><td>sandbox / local / confirmado — protección en cascada</td></tr>
-          <tr><td>CLI (forge init/doctor/status/logs)</td><td>✅ Producción</td><td>Zero-deps, multiplataforma, diagnósticos con verificación de API key y hooks</td></tr>
-          <tr><td>Dashboard UI</td><td>🔵 Beta</td><td>Funcional pero sin autenticación ni WebSockets (polling cada 5s)</td></tr>
-          <tr><td>Templates de inicio rápido</td><td>🔵 Beta</td><td>3 templates (api-rest, cli-tool, saas-mvp), flujo verificado</td></tr>
-          <tr><td>Integración CLAUDE.md</td><td>🔵 Beta</td><td>Idempotente, versionada, edge cases no exhaustivamente probados</td></tr>
-          <tr><td>AST indexer</td><td>🔵 Beta</td><td>JS/TS básico con acorn — TypeScript avanzado puede fallar silenciosamente</td></tr>
-          <tr><td>Integraciones MCP (Vercel/GitHub)</td><td>🔵 Beta</td><td>Flujo básico probado, pendiente E2E automatizado</td></tr>
-          <tr><td>Registro multi-LLM</td><td>🧪 Experimental</td><td>Observabilidad solo. Routing real pendiente de la API de Claude Code</td></tr>
-        </tbody>
-      </table>
-
-      <div class="callout tip">
-        <p><strong>Para producción:</strong> Usa las áreas marcadas ✅. Las 🔵 son estables pero pueden cambiar su API. Las 🧪 son para exploración.</p>
-      </div>
-    `
+    }
   },
-  en: {
-    titulo: "Maturity Analysis",
-    html: `
-      <h1>Maturity Analysis</h1>
-      <p class="lead">Real status of each FORGE v5.0.0-beta.1 area. Based on static repository analysis and test suite (over 2000 tests; dated count in docs/COBERTURA.md).</p>
+  madurez: {
+    seccion: "overview",
+    es: {
+      titulo: "Análisis de Madurez",
+      html: `
+      <h1>Análisis de Madurez</h1>
+      <p class="lead">Estado real de cada área de Fragua 5.0.0-beta.1, a 2026-11-10. Qué está respaldado por pruebas automáticas, qué se probó con Docker o un modelo real y qué no. Cifras y commits en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a>.</p>
+
+      <div class="callout warn">
+        <p>Una suite verde no es lo mismo que una prueba en producción: <strong>no hay usuarios externos medidos todavía</strong> y el paquete no está publicado.</p>
+      </div>
 
       <table>
-        <thead><tr><th>Area</th><th>Status</th><th>Justification</th></tr></thead>
+        <thead><tr><th>Área</th><th>Respaldo</th><th>Qué falta</th></tr></thead>
         <tbody>
-          <tr><td>SDD Pipeline (39 commands)</td><td>✅ Production</td><td>Complete implementation, tested handoffs, functional gates</td></tr>
-          <tr><td>14 specialized agents</td><td>✅ Production</td><td>Stable frontmatter, operative memory, restrictions enforced at hook level</td></tr>
-          <tr><td>Guardrails (pre-tool-guard)</td><td>✅ Production</td><td>9 block categories, ADR violations, secret detection, 10 tests passing</td></tr>
-          <tr><td>Read-only agent enforcement</td><td>✅ Production</td><td>7 agents blocked at hook level — 10/10 enforcement tests passing</td></tr>
-          <tr><td>Persistent memory (SQLite)</td><td>✅ Production</td><td>Auto-selected on Node ≥22.5, auto-fallback to Markdown</td></tr>
-          <tr><td>Decision store SQLite</td><td>✅ Production</td><td>TF-IDF semantic search, superseder(), consolidate(), 8/8 tests</td></tr>
-          <tr><td>Portable CLI runner</td><td>✅ Production</td><td>forge status/step/validate/reset without LLM, verified guards</td></tr>
-          <tr><td>Artifact export/import</td><td>✅ Production</td><td>Spec Kit + OpenSpec, round-trip verified, --merge non-destructive</td></tr>
-          <tr><td>Host adapters</td><td>✅ Production</td><td>Claude Code + Spec Kit portable (Cursor/Copilot/Gemini compatible)</td></tr>
-          <tr><td>Context manager (budget)</td><td>✅ Production</td><td>USD budget enforced per session, configurable alerts</td></tr>
-          <tr><td>Dashboard UI</td><td>🔵 Beta</td><td>Functional but no auth or WebSockets (polling)</td></tr>
-          <tr><td>Quick-start templates</td><td>🔵 Beta</td><td>3 templates available, flow verified</td></tr>
-          <tr><td>Multi-LLM registry</td><td>🧪 Experimental</td><td>Observability only. Real routing pending Claude Code API</td></tr>
+          <tr><td>Ciclo verificado (pruebas, implementación, mutación)</td><td>Pruebas automáticas; Docker real en Windows; modelo real en tareas pequeñas</td><td>Linux y macOS; tareas grandes; otros proveedores</td></tr>
+          <tr><td>Aislamiento del código generado</td><td>11 pruebas con Docker real en Windows: sin red, sin privilegios, raíz de solo lectura, tiempo y memoria acotados</td><td>Repetirlo en Linux</td></tr>
+          <tr><td>Aprobación humana con registro firmado</td><td>Pruebas automáticas</td><td>Una terminal real en cada plataforma; separación del usuario del sistema</td></tr>
+          <tr><td>Guardián de hooks</td><td>Pruebas y batería de evasiones</td><td>Es una red de seguridad, no un límite</td></tr>
+          <tr><td>Cadena de evidencia y puertas de calidad</td><td>Pruebas automáticas; Docker falso para las puertas</td><td>Puertas con Docker real y modelo real</td></tr>
+          <tr><td>Servidor MCP (perfil de verificación)</td><td>Pruebas automáticas</td><td>Un cliente real de otra herramienta</td></tr>
+          <tr><td>API HTTP local y panel</td><td>Pruebas automáticas; desactivados por defecto</td><td>Uso externo</td></tr>
+          <tr><td>Proveedores OpenAI y Ollama</td><td>Conformidad con dobles de prueba</td><td>Una ejecución con modelo real</td></tr>
+          <tr><td>Integraciones GitHub, GitLab y Jira</td><td>Servidores simulados</td><td>Cuentas reales</td></tr>
+          <tr><td>Instalación en otras herramientas</td><td>Pruebas automáticas; solo skills</td><td>Comandos, agentes y hooks son de Claude Code</td></tr>
+          <tr><td>Distribución</td><td>Paquete preparado y revisado</td><td>No publicado; integración continua de Linux sin verde</td></tr>
         </tbody>
       </table>
     `
-  }
-},
+    },
+    en: {
+      titulo: "Maturity Analysis",
+      html: `
+      <h1>Maturity Analysis</h1>
+      <p class="lead">Real status of each area of Fragua 5.0.0-beta.1, as of 2026-11-10. What is backed by automated tests, what was tried with real Docker or a real model, and what was not. Figures and commits in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/ESTADO-ACTUAL.md">ESTADO-ACTUAL.md</a> (Spanish).</p>
 
-/* ─────────────────────────────────────────────────────────────
-   GRUPO 2 — Arquitectura
-───────────────────────────────────────────────────────────── */
+      <div class="callout warn">
+        <p>A green suite is not the same as proof in production: <strong>no external users have been measured yet</strong> and the package is not published.</p>
+      </div>
 
-"arquitectura": {
-  seccion: "technical",
-  es: {
-    titulo: "Arquitectura del Sistema",
-    html: `
+      <table>
+        <thead><tr><th>Area</th><th>Backing</th><th>What is missing</th></tr></thead>
+        <tbody>
+          <tr><td>Verified cycle (tests, implementation, mutation)</td><td>Automated tests; real Docker on Windows; real model on small tasks</td><td>Linux and macOS; large tasks; other providers</td></tr>
+          <tr><td>Isolation of generated code</td><td>11 tests with real Docker on Windows: no network, no privileges, read-only root, bounded time and memory</td><td>Repeat on Linux</td></tr>
+          <tr><td>Human approval with signed record</td><td>Automated tests</td><td>A real terminal on each platform; separation from the system user</td></tr>
+          <tr><td>Hook guard</td><td>Tests and an evasion battery</td><td>It is a safety net, not a boundary</td></tr>
+          <tr><td>Evidence chain and quality gates</td><td>Automated tests; fake Docker for gates</td><td>Gates with real Docker and a real model</td></tr>
+          <tr><td>MCP server (verification profile)</td><td>Automated tests</td><td>A real client from another tool</td></tr>
+          <tr><td>Local HTTP API and dashboard</td><td>Automated tests; off by default</td><td>External use</td></tr>
+          <tr><td>OpenAI and Ollama providers</td><td>Conformance with test doubles</td><td>A run with a real model</td></tr>
+          <tr><td>GitHub, GitLab and Jira integrations</td><td>Simulated servers</td><td>Real accounts</td></tr>
+          <tr><td>Installation in other tools</td><td>Automated tests; skills only</td><td>Commands, agents and hooks belong to Claude Code</td></tr>
+          <tr><td>Distribution</td><td>Package prepared and reviewed</td><td>Not published; Linux continuous integration not green</td></tr>
+        </tbody>
+      </table>
+    `
+    }
+  },
+  arquitectura: {
+    seccion: "technical",
+    es: {
+      titulo: "Arquitectura del Sistema",
+      html: `
       <h1>Arquitectura del Sistema</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/architecture.md">architecture.md</a>.</p>
+      </div>
+
       <p class="lead">Referencia técnica de la arquitectura de 3 capas de FORGE v5.0.0-beta.1. Basada en análisis estático del repositorio.</p>
 
       <h2>Arquitectura de 3 capas</h2>
@@ -520,11 +609,15 @@ utils/
         </tbody>
       </table>
     `
-  },
-  en: {
-    titulo: "System Architecture",
-    html: `
+    },
+    en: {
+      titulo: "System Architecture",
+      html: `
       <h1>System Architecture</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/architecture.md">architecture.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">Technical reference for FORGE v5.0.0-beta.1's 3-layer architecture.</p>
 
       <h2>3-layer architecture</h2>
@@ -555,15 +648,18 @@ utils/
         </tbody>
       </table>
     `
-  }
-},
-
-"componentes": {
-  seccion: "technical",
-  es: {
-    titulo: "Componentes del Sistema",
-    html: `
+    }
+  },
+  componentes: {
+    seccion: "technical",
+    es: {
+      titulo: "Componentes del Sistema",
+      html: `
       <h1>Componentes del Sistema</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/mapa-de-modulos.md">mapa-de-modulos.md</a>.</p>
+      </div>
+
       <p class="lead">Descripción detallada de cada módulo: propósito, entradas, salidas, y dependencias.</p>
 
       <h2>State machine — <code>core/state-machine.js</code> (JS puro, sin compilación)</h2>
@@ -681,11 +777,15 @@ forge ui [--port N]           # Dashboard en localhost:3001
 forge config show|get|set     # Configuración
 forge --version               # Versión instalada</code></pre>
     `
-  },
-  en: {
-    titulo: "System Components",
-    html: `
+    },
+    en: {
+      titulo: "System Components",
+      html: `
       <h1>System Components</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/mapa-de-modulos.md">mapa-de-modulos.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">Detailed description of each module: purpose, inputs, outputs, and dependencies.</p>
 
       <h2>State machine — <code>core/state-machine.js</code></h2>
@@ -725,15 +825,18 @@ forge decisions list|search|add|migrate
 forge logs [--last N]
 forge doctor</code></pre>
     `
-  }
-},
-
-"contratos": {
-  seccion: "technical",
-  es: {
-    titulo: "Contratos de Artefactos",
-    html: `
+    }
+  },
+  contratos: {
+    seccion: "technical",
+    es: {
+      titulo: "Contratos de Artefactos",
+      html: `
       <h1>Contratos de Artefactos</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/tree/main/docs/contrato/">docs/contrato/</a>.</p>
+      </div>
+
       <p class="lead">Esquemas JSON que cada fase del pipeline produce y consume. Son los contratos estables entre componentes — validados por <code>core/schemas/</code>.</p>
 
       <h2><code>ir.json</code> — Intermediate Representation</h2>
@@ -829,11 +932,15 @@ speckit-handoff/           ← Generado por forge dispatch
 { ok: boolean, resultado?: string, artefactos?: string[], estado?: object,
   error?: string, adapter: string }</code></pre>
     `
-  },
-  en: {
-    titulo: "Artifact Contracts",
-    html: `
+    },
+    en: {
+      titulo: "Artifact Contracts",
+      html: `
       <h1>Artifact Contracts</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/tree/main/docs/contrato/">docs/contrato/</a> (Spanish).</p>
+      </div>
+
       <p class="lead">JSON schemas each pipeline phase produces and consumes — validated by <code>core/schemas/</code>.</p>
 
       <h2><code>ir.json</code></h2>
@@ -862,139 +969,121 @@ speckit-handoff/           ← Generado por forge dispatch
       <pre><code class="js">// Input: { agente, tarea, tier?, cwd? }
 // Output: { ok, resultado?, artefactos?, estado?, error?, adapter }</code></pre>
     `
-  }
-},
-
-/* ─────────────────────────────────────────────────────────────
-   GRUPO 3 — Operación
-───────────────────────────────────────────────────────────── */
-
-"instalacion": {
-  seccion: "operate",
-  es: {
-    titulo: "Instalación y Primer Uso",
-    html: `
+    }
+  },
+  instalacion: {
+    seccion: "operate",
+    es: {
+      titulo: "Instalación y Primer Uso",
+      html: `
       <h1>Instalación y Primer Uso</h1>
 
-      <div class="callout tip">
-        <p><strong>Requisitos previos:</strong> Node.js ≥20 (≥22.5 recomendado para SQLite). Claude Code solo es necesario para el modo plugin.</p>
+      <div class="callout warn">
+        <p><strong>El paquete aún no está publicado en npm.</strong> Hoy se instala desde el repositorio. Cuando se publique será <code>npm install -g fragua</code> con la etiqueta <code>beta</code>.</p>
       </div>
 
-      <h2>Instalación</h2>
+      <h2>Requisitos</h2>
+      <table>
+        <thead><tr><th>Requisito</th><th>Por qué</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js ≥ 20</td><td>La CLI y los hooks. Sin Node, el guardián bloquea toda acción.</td></tr>
+          <tr><td>Docker en marcha</td><td>El ciclo verificado ejecuta el código generado en un contenedor sin red.</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code> en tu entorno</td><td>Las claves nunca se leen del archivo del proyecto.</td></tr>
+          <tr><td>Claude Code</td><td>Los comandos y agentes son nativos de Claude Code.</td></tr>
+        </tbody>
+      </table>
 
-      <h3>Opción A — npm (recomendada)</h3>
-      <pre><code class="bash">npm install -g fragua
-forge doctor   # verifica instalación</code></pre>
-
-      <h3>Opción B — desde el repositorio</h3>
+      <h2>Instalar</h2>
       <pre><code class="bash">git clone https://github.com/carlos060798/FORGE
 cd FORGE
 npm install
-npm install -g .   # instala el comando forge globalmente
-forge doctor</code></pre>
+npm install -g .
+cd &lt;tu-proyecto&gt;
+fragua init       # perfil esencial y preset lean por defecto
+fragua doctor     # comprueba Node, Docker, clave, hooks y proveedor</code></pre>
 
-      <h2>Con template (recomendado para empezar rápido)</h2>
-      <pre><code class="bash"># API REST con autenticación JWT
-forge init --template api-rest
+      <p><code>fragua init</code> sin opciones instala el perfil <strong>esencial</strong> (seis comandos en el menú <code>/</code>) y el preset <strong>lean</strong> (seis agentes, todos en sonnet). Para todos los comandos: <code>--perfil completo</code>. Otros presets: <code>--preset startup</code> o <code>--preset enterprise</code>. Las órdenes <code>fragua</code>, <code>forge</code> y <code>sdd-es</code> son equivalentes.</p>
 
-# CLI con subcomandos y output coloreado
-forge init --template cli-tool
+      <h2>Primera tarea</h2>
+      <p>Dentro de Claude Code, en tu proyecto, en este orden:</p>
+      <pre><code class="text">/sdd.especificar "una idea en una frase"   →  fragua aprobar spec   (en una terminal)
+/sdd.planificar
+/sdd.tareas
+/sdd.implementar                            →  ciclo verificado en un contenedor
+/sdd.estado</code></pre>
+      <p><code>fragua aprobar spec</code> exige una terminal real y teclear un código: sin esa aprobación no se puede pasar de la especificación al plan.</p>
 
-# SaaS MVP con auth y dashboard
-forge init --template saas-mvp</code></pre>
-
-      <h2>Con preset de configuración</h2>
-      <pre><code class="bash">forge init --preset lean        # 6 agentes activos (arquitecto, asesor-datos, disenador-api, backend, frontend, tester)
-forge init --preset startup     # MVPs ágiles (Sonnet default, Opus para arquitecto y crítico)
-forge init --preset enterprise  # Corporativo (todos los agentes, ADR obligatorio)</code></pre>
-
-      <h2>Qué instala <code>forge init</code></h2>
-      <pre><code class="text">.claude/
-  ├── commands/       (39 archivos .md — slash commands)
-  ├── agents/         (14 archivos .md — definición de agentes)
-  ├── skills/         (31 directorios — capacidades adicionales)
-  └── hooks/          (enlace a claude-hooks/)
-
-.sdd/
-  ├── estado.json     (pipeline_step: "idea")
-  ├── sdd.config.yaml
-  ├── memoria/
-  ├── arquitectura/   (ADRs.jsonl + decisions.db)
-  └── observabilidad/ (budget-state.json)
-
-CLAUDE.md             (sección ## FORGE añadida/actualizada)</code></pre>
-
-      <h2>Primer uso — modo plugin (Claude Code)</h2>
-      <p>Después de <code>forge init</code>, abre Claude Code en el directorio:</p>
-      <pre><code class="text">/forge "describe tu idea aquí"
-
-# Ejemplos:
-/forge "una API para que mi equipo registre sus horas de trabajo"
-/forge "una CLI que convierta archivos CSV a JSON con validación de esquema"
-/forge "un dashboard web donde mis clientes vean el estado de sus pedidos"</code></pre>
-
-      <h2>Primer uso — runner portable (sin Claude Code)</h2>
-      <pre><code class="bash"># Ver el estado actual del pipeline
-forge status
-
-# Avanzar manualmente un paso
-forge step discovery
-
-# Verificar precondiciones del paso actual
-forge validate
-
-# Exportar artefactos para otro agente
-forge export --format=speckit
-
-# Despachar tarea al adaptador portable
-forge dispatch --agente=arquitecto --tarea="Diseña la arquitectura" --adapter=speckit</code></pre>
-    `
-  },
-  en: {
-    titulo: "Installation and First Use",
-    html: `
-      <h1>Installation and First Use</h1>
+      <h2>Plantillas de proyecto</h2>
+      <pre><code class="bash">fragua init --template api-rest    # API REST
+fragua init --template cli-tool    # CLI con subcomandos
+fragua init --template saas-mvp    # SaaS mínimo</code></pre>
 
       <div class="callout tip">
-        <p><strong>Prerequisites:</strong> Node.js ≥20 (≥22.5 recommended for SQLite). Claude Code only required for plugin mode.</p>
+        <p>Guía de una página con qué hacer en cada pausa: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">Primeros 15 minutos</a>. Todos los subcomandos: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/referencia-cli.md">referencia de la CLI</a>.</p>
+      </div>
+    `
+    },
+    en: {
+      titulo: "Installation and First Use",
+      html: `
+      <h1>Installation and First Use</h1>
+
+      <div class="callout warn">
+        <p><strong>The package is not published on npm yet.</strong> Today it is installed from the repository. Once published it will be <code>npm install -g fragua</code> with the <code>beta</code> tag.</p>
       </div>
 
-      <h2>Installation</h2>
+      <h2>Requirements</h2>
+      <table>
+        <thead><tr><th>Requirement</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js ≥ 20</td><td>The CLI and hooks. Without Node, the guard blocks every action.</td></tr>
+          <tr><td>Docker running</td><td>The verified cycle runs generated code in a container with no network.</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code> in your environment</td><td>Keys are never read from the project file.</td></tr>
+          <tr><td>Claude Code</td><td>Commands and agents are native to Claude Code.</td></tr>
+        </tbody>
+      </table>
 
-      <h3>Option A — npm (recommended)</h3>
-      <pre><code class="bash">npm install -g fragua
-forge doctor</code></pre>
-
-      <h3>Option B — from repository</h3>
+      <h2>Install</h2>
       <pre><code class="bash">git clone https://github.com/carlos060798/FORGE
 cd FORGE
-npm install && npm install -g .
-forge doctor</code></pre>
+npm install
+npm install -g .
+cd &lt;your-project&gt;
+fragua init       # essential profile and lean preset by default
+fragua doctor     # checks Node, Docker, key, hooks and provider</code></pre>
 
-      <h2>With template</h2>
-      <pre><code class="bash">forge init --template api-rest
-forge init --template cli-tool
-forge init --template saas-mvp</code></pre>
+      <p><code>fragua init</code> with no options installs the <strong>essential</strong> profile (six commands in the <code>/</code> menu) and the <strong>lean</strong> preset (six agents, all on sonnet). For every command: <code>--perfil completo</code>. Other presets: <code>--preset startup</code> or <code>--preset enterprise</code>. The <code>fragua</code>, <code>forge</code> and <code>sdd-es</code> commands are equivalent.</p>
 
-      <h2>Plugin mode (Claude Code)</h2>
-      <pre><code class="text">/forge "describe your idea here"</code></pre>
+      <h2>First task</h2>
+      <p>Inside Claude Code, in your project, in this order:</p>
+      <pre><code class="text">/sdd.especificar "an idea in one sentence"   →  fragua aprobar spec   (in a terminal)
+/sdd.planificar
+/sdd.tareas
+/sdd.implementar                              →  verified cycle in a container
+/sdd.estado</code></pre>
+      <p><code>fragua aprobar spec</code> needs a real terminal and typing a code: without that approval you cannot move from specification to plan.</p>
 
-      <h2>Portable runner mode (no Claude Code)</h2>
-      <pre><code class="bash">forge status          # View pipeline state
-forge step discovery  # Advance a step
-forge validate        # Check preconditions
-forge export --format=speckit         # Export portable artifacts
-forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
+      <h2>Project templates</h2>
+      <pre><code class="bash">fragua init --template api-rest    # REST API
+fragua init --template cli-tool    # CLI with subcommands
+fragua init --template saas-mvp    # minimal SaaS</code></pre>
+
+      <div class="callout tip">
+        <p>One-page guide with what to do at each pause: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">First 15 minutes</a> (Spanish). All subcommands: <a href="https://github.com/carlos060798/FORGE/blob/main/docs/referencia-cli.md">CLI reference</a> (Spanish).</p>
+      </div>
     `
-  }
-},
-
-"configuracion": {
-  seccion: "operate",
-  es: {
-    titulo: "Configuración",
-    html: `
+    }
+  },
+  configuracion: {
+    seccion: "operate",
+    es: {
+      titulo: "Configuración",
+      html: `
       <h1>Configuración</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/configuration.md">configuration.md</a>.</p>
+      </div>
+
       <p class="lead">Todas las opciones de configuración de FORGE, sus valores por defecto y recomendaciones.</p>
 
       <h2><code>sdd.config.yaml</code> — Opciones principales</h2>
@@ -1051,11 +1140,15 @@ forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
   "ignore_patterns": ["dist/**", "coverage/**"]
 }</code></pre>
     `
-  },
-  en: {
-    titulo: "Configuration",
-    html: `
+    },
+    en: {
+      titulo: "Configuration",
+      html: `
       <h1>Configuration</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/configuration.md">configuration.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">All FORGE configuration options, defaults and recommendations.</p>
 
       <h2>Environment variables</h2>
@@ -1082,15 +1175,18 @@ forge dispatch --agente=main --tarea="Design API" --adapter=speckit</code></pre>
         </tbody>
       </table>
     `
-  }
-},
-
-"planes-uso": {
-  seccion: "operate",
-  es: {
-    titulo: "Planes de Uso",
-    html: `
+    }
+  },
+  "planes-uso": {
+    seccion: "operate",
+    es: {
+      titulo: "Planes de Uso",
+      html: `
       <h1>Planes de Uso</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/getting-started.md">getting-started.md</a>.</p>
+      </div>
+
       <p class="lead">Guía de decisión: qué preset, template, proveedor LLM y modo de sesión usar según tu proyecto. Una tabla por decisión, con criterios concretos.</p>
 
       <h2>¿Qué preset usar?</h2>
@@ -1218,11 +1314,15 @@ FORGE_LLM_PROVIDER=openai forge run
         </tbody>
       </table>
     `
-  },
-  en: {
-    titulo: "Usage Plans",
-    html: `
+    },
+    en: {
+      titulo: "Usage Plans",
+      html: `
       <h1>Usage Plans</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/getting-started.md">getting-started.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">Decision guide: which preset, template, LLM provider and session mode to use for your project.</p>
 
       <h2>Which preset?</h2>
@@ -1268,15 +1368,18 @@ FORGE_LLM_PROVIDER=openai forge run
         </tbody>
       </table>
     `
-  }
-},
-
-"flujos-operativos": {
-  seccion: "operate",
-  es: {
-    titulo: "Flujos Operativos",
-    html: `
+    }
+  },
+  "flujos-operativos": {
+    seccion: "operate",
+    es: {
+      titulo: "Flujos Operativos",
+      html: `
       <h1>Flujos Operativos</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/workflows.md">workflows.md</a>.</p>
+      </div>
+
       <p class="lead">Cómo funciona FORGE en la práctica: pipeline en Claude Code, uso del runner portable, y recuperación de errores.</p>
 
       <h2>Flujo en Claude Code (modo plugin)</h2>
@@ -1368,11 +1471,15 @@ forge state          # Vuelca estado.json completo
 forge logs           # Últimas entradas de consumo.jsonl
 forge logs --last 20 # Últimas 20 entradas</code></pre>
     `
-  },
-  en: {
-    titulo: "Operational Flows",
-    html: `
+    },
+    en: {
+      titulo: "Operational Flows",
+      html: `
       <h1>Operational Flows</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/workflows.md">workflows.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">How FORGE works in practice: plugin pipeline, portable runner usage, and error recovery.</p>
 
       <h2>Portable runner flow (no Claude Code)</h2>
@@ -1396,15 +1503,18 @@ forge validate                       # Check preconditions before advancing</cod
         </tbody>
       </table>
     `
-  }
-},
-
-"ejemplos": {
-  seccion: "operate",
-  es: {
-    titulo: "Ejemplos de Uso",
-    html: `
+    }
+  },
+  ejemplos: {
+    seccion: "operate",
+    es: {
+      titulo: "Ejemplos de Uso",
+      html: `
       <h1>Ejemplos de Uso</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/EJEMPLO-API-REST.md">EJEMPLO-API-REST.md</a>.</p>
+      </div>
+
       <p class="lead">Casos concretos con comandos reales y artefactos esperados. Cada ejemplo muestra un camino distinto a través de FORGE.</p>
 
       <h2>Ejemplo 1 — API REST con JWT (modo plugin, Claude Code)</h2>
@@ -1475,10 +1585,7 @@ forge status
 forge step discovery   # avanza con guards de la state machine
 
 # 2. Despachar tarea al adaptador Spec Kit (portable)
-forge dispatch \
-  --agente=investigador \
-  --tarea="Analiza el proyecto existente y extrae el contexto técnico" \
-  --adapter=speckit
+forge dispatch   --agente=investigador   --tarea="Analiza el proyecto existente y extrae el contexto técnico"   --adapter=speckit
 
 # FORGE genera speckit-handoff/ con:
 ls speckit-handoff/
@@ -1525,11 +1632,15 @@ forge aprobar spec
         <p><strong>Consejo:</strong> En proyectos existentes, <code>forge import --from=speckit --merge</code> es no-destructivo: solo rellena los huecos del estado que faltan, nunca sobreescribe artefactos ya existentes.</p>
       </div>
     `
-  },
-  en: {
-    titulo: "Usage Examples",
-    html: `
+    },
+    en: {
+      titulo: "Usage Examples",
+      html: `
       <h1>Usage Examples</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/EJEMPLO-API-REST.md">EJEMPLO-API-REST.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">Concrete cases with real commands and expected artifacts. Each example shows a different path through FORGE.</p>
 
       <h2>Example 1 — REST API with JWT (plugin mode)</h2>
@@ -1572,15 +1683,18 @@ forge init   # non-destructive, adds .sdd/ alongside existing code
 forge decisions list   # review existing decisions before planning
 forge aprobar spec     # proceed to plan</code></pre>
     `
-  }
-},
-
-"api-comandos": {
-  seccion: "operate",
-  es: {
-    titulo: "Referencia de Comandos",
-    html: `
+    }
+  },
+  "api-comandos": {
+    seccion: "operate",
+    es: {
+      titulo: "Referencia de Comandos",
+      html: `
       <h1>Referencia de Comandos</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/referencia-cli.md">referencia-cli.md</a>.</p>
+      </div>
+
       <p class="lead">Todos los slash commands disponibles en Claude Code y comandos completos del CLI.</p>
 
       <h2>Slash commands (Claude Code)</h2>
@@ -1660,11 +1774,15 @@ forge config get &lt;key&gt;               # Lee valor específico
 forge config set &lt;key&gt; &lt;val&gt;         # Modifica valor
 forge config validate                 # Valida estructura del config</code></pre>
     `
-  },
-  en: {
-    titulo: "Command Reference",
-    html: `
+    },
+    en: {
+      titulo: "Command Reference",
+      html: `
       <h1>Command Reference</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/referencia-cli.md">referencia-cli.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">All slash commands and full CLI reference.</p>
 
       <h2>Full CLI reference</h2>
@@ -1697,19 +1815,18 @@ forge decisions list|search "&lt;query&gt;"|add "&lt;text&gt;"|migrate|consolida
 forge logs [--last N]
 forge ui [--port N]</code></pre>
     `
-  }
-},
-
-/* ─────────────────────────────────────────────────────────────
-   GRUPO 4 — Extensibilidad
-───────────────────────────────────────────────────────────── */
-
-"extensibilidad": {
-  seccion: "extend",
-  es: {
-    titulo: "Cómo Extender FORGE",
-    html: `
+    }
+  },
+  extensibilidad: {
+    seccion: "extend",
+    es: {
+      titulo: "Cómo Extender FORGE",
+      html: `
       <h1>Cómo Extender FORGE</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/extending-forge.md">extending-forge.md</a>.</p>
+      </div>
+
       <p class="lead">FORGE está diseñado para ser extensible: puedes añadir agentes, skills, comandos, adaptadores de host e integraciones MCP sin tocar el núcleo.</p>
 
       <div class="callout tip">
@@ -1812,11 +1929,15 @@ allowed-tools: [Read, Write, Bash]
 }</code></pre>
       <p>Luego crear el skill que usa las herramientas del MCP y documentar en <code>docs/INTEGRACIONES.md</code>.</p>
     `
-  },
-  en: {
-    titulo: "How to Extend FORGE",
-    html: `
+    },
+    en: {
+      titulo: "How to Extend FORGE",
+      html: `
       <h1>How to Extend FORGE</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/extending-forge.md">extending-forge.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">You can add agents, skills, commands, host adapters and MCP integrations without touching the core.</p>
 
       <div class="callout tip">
@@ -1845,15 +1966,18 @@ tools: ["Read", "Glob", "Grep"]
 ---</code></pre>
       <p>Register in <code>.claude-plugin/plugin.json</code> under <code>"agents"</code>. If read-only, add name to <code>READ_ONLY_AGENTS</code> in <code>pre-tool-guard.js</code>.</p>
     `
-  }
-},
-
-"integraciones": {
-  seccion: "extend",
-  es: {
-    titulo: "Integraciones MCP",
-    html: `
+    }
+  },
+  integraciones: {
+    seccion: "extend",
+    es: {
+      titulo: "Integraciones MCP",
+      html: `
       <h1>Integraciones MCP</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/INTEGRACIONES.md">INTEGRACIONES.md</a>.</p>
+      </div>
+
       <p class="lead">MCPs externos que FORGE puede usar para extender sus capacidades. Las integraciones MCP solo aplican al modo plugin (Claude Code).</p>
 
       <table>
@@ -1890,11 +2014,15 @@ tools: ["Read", "Glob", "Grep"]
 #   GitHub MCP:        ✅ detectado
 #   Figma MCP:         ⚠️  no instalado (opcional)</code></pre>
     `
-  },
-  en: {
-    titulo: "MCP Integrations",
-    html: `
+    },
+    en: {
+      titulo: "MCP Integrations",
+      html: `
       <h1>MCP Integrations</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/INTEGRACIONES.md">INTEGRACIONES.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">External MCPs that extend FORGE capabilities. MCP integrations only apply to plugin mode (Claude Code).</p>
 
       <div class="callout warning">
@@ -1911,15 +2039,18 @@ tools: ["Read", "Glob", "Grep"]
         </tbody>
       </table>
     `
-  }
-},
-
-"recomendaciones": {
-  seccion: "extend",
-  es: {
-    titulo: "Recomendaciones",
-    html: `
+    }
+  },
+  recomendaciones: {
+    seccion: "extend",
+    es: {
+      titulo: "Recomendaciones",
+      html: `
       <h1>Recomendaciones</h1>
+      <div class="callout warn">
+        <p><strong>Página pendiente de actualizar.</strong> Se escribió antes del ciclo verificado y puede describir comportamiento anterior. La versión al día está en <a href="https://github.com/carlos060798/FORGE/blob/main/docs/0-INDICE.md">0-INDICE.md</a>.</p>
+      </div>
+
       <p class="lead">Qué cambios tendrían mayor impacto en FORGE v5.0.0-beta.1, ordenados por prioridad.</p>
 
       <h2>Completado en v5.0.0-beta.1</h2>
@@ -1971,11 +2102,15 @@ tools: ["Read", "Glob", "Grep"]
       <pre><code class="bash">git checkout -b feature/mi-contribucion
 npm test           # 0 fallos antes de PR</code></pre>
     `
-  },
-  en: {
-    titulo: "Recommendations",
-    html: `
+    },
+    en: {
+      titulo: "Recommendations",
+      html: `
       <h1>Recommendations</h1>
+      <div class="callout warn">
+        <p><strong>Page pending an update.</strong> It was written before the verified cycle and may describe earlier behaviour. The up-to-date version is in <a href="https://github.com/carlos060798/FORGE/blob/main/docs/0-INDICE.md">0-INDICE.md</a> (Spanish).</p>
+      </div>
+
       <p class="lead">What changes would have the greatest impact on FORGE v5.0.0-beta.1, ordered by priority.</p>
 
       <h2>Completed in v5.0.0-beta.1</h2>
@@ -2015,7 +2150,6 @@ npm test           # 0 fallos antes de PR</code></pre>
         <li><strong>Headless HTTP driver v2</strong> — Full runner without Claude Code, API key only</li>
       </ul>
     `
+    }
   }
-}
-
-}; // fin PAGES
+};
