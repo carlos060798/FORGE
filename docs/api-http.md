@@ -1,5 +1,8 @@
 # API HTTP local — `forge api`
 
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 Una API para que un programa de tu equipo lance el ciclo verificado, consulte su estado y decida las revisiones, sin abrir una terminal. Spec `2026-10-03-api-http`, decisión en `ADR-13`.
 
 ## Arrancar
@@ -33,11 +36,15 @@ El secreto es aleatorio, se genera en cada arranque y no se guarda en disco. Par
 | Método y ruta | Cuerpo | Respuesta |
 |---|---|---|
 | `GET /v1/estado` | — | `{etapa, sesion, tareas[], gasto, ejecucion}`. Cada tarea lleva su situación y, si espera una decisión, `motivoRevision` y detalle |
-| `POST /v1/ejecuciones` | `{"tareas":[{id, agente, prompt, dependencias?, archivos?}]}` (opcional: sin él se usan las tareas del proyecto) | `202 {id, …}` |
+| `POST /v1/ejecuciones` | `{"tareas":[{id, agente, prompt, dependencias?, archivos?, no_cambiar?, cubre_cas?}]}` (opcional: sin él se usan las tareas del proyecto) | `202 {id, …}` |
 | `GET /v1/ejecuciones/<id>` | — | `{estado: "en_curso"\|"terminada", codigoSalida, salida}`; la salida es el final de lo que escribió la terminal, sin secretos |
 | `POST /v1/decisiones` | `{"decision":"continuar"\|"aceptar"\|"abortar", "tarea"?, "iteracionesExtra"?, "presupuestoExtra"?}` | `202 {id, …}` |
 
-**Techo del presupuesto extra.** `presupuestoExtra` amplía el gasto de una tarea (queda firmado en el libro de gasto). Para que quien tenga el secreto no pueda gastar sin límite, la API aplica dos techos que fija el USUARIO en el entorno con el que arranca la API (no la petición ni el proyecto): `FRAGUA_API_PRESUPUESTO_EXTRA_MAX` por llamada (por defecto 5 USD) y `FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL` acumulado en la sesión de la API (por defecto 20 USD; se reinicia al reiniciar la API). Superarlos devuelve 400 con el nombre de la variable; un valor no numérico vuelve al defecto. Solo cuentan las decisiones que llegaron a lanzarse.
+**Validación de tareas** (`validarTareas`, `core/api/servidor.js:90-117`): 1 a 200 tareas; `id` de letras, números, punto y guion (1-64) sin repetir; `agente` `[\w-]` (1-64); `prompt` de 1 a 20000 caracteres; `dependencias` y `archivos` hasta 100 textos de 512 caracteres, y `archivos` sin rutas absolutas ni `..`; `no_cambiar` de 1 a 20 rutas relativas; `cubre_cas` hasta 100 ids `CA-xxx-yy`. Cualquier otro campo (`criterioCmd`, `parte_de_codigo_existente`, `modelo`…) se rechaza con 400: una petición HTTP no los fija. Esquema de tarea: [`contrato/tarea-entrada.schema.json`](contrato/tarea-entrada.schema.json). `POST /v1/ejecuciones` solo admite el campo `tareas`.
+
+En `POST /v1/decisiones`, `tarea` es un identificador válido; `iteracionesExtra` es un entero y `presupuestoExtra` un número, ambos entre 0 y 1000 (antes de aplicar los techos siguientes).
+
+**Techo del presupuesto extra.** `presupuestoExtra` amplía el gasto de una tarea (queda firmado en el libro de gasto). Para que quien tenga el secreto no pueda gastar sin límite, la API aplica dos techos que fija el USUARIO en el entorno con el que arranca la API (no la petición ni el proyecto): `FRAGUA_API_PRESUPUESTO_EXTRA_MAX` por llamada (por defecto 5 USD) y `FRAGUA_API_PRESUPUESTO_EXTRA_TOTAL` acumulado en la sesión de la API (por defecto 20 USD; se reinicia al reiniciar la API). Superarlos devuelve 400 con el nombre de la variable; un valor vacío, no numérico o negativo vuelve al defecto. Solo cuentan las decisiones que llegaron a lanzarse.
 
 Errores: 400 validación, 401 sin secreto o incorrecto, 403 origen o host, 404, 405, 409 ya hay una ejecución (el mensaje dice cuál), 413 cuerpo grande, 415 tipo de contenido.
 
@@ -61,3 +68,5 @@ curl -s -H "Authorization: Bearer $T" http://127.0.0.1:3002/v1/ejecuciones/<id>
 - **El panel de solo lectura (`ui/server.js`) no cambia** y sigue respondiendo a cualquier origen; no lo uses para operar.
 - Probado con Node y con el ciclo real en Docker (Windows). No probado con clientes externos ni en Linux.
 - Hereda todos los límites del ciclo (ver `docs/ciclo-verificado.md`).
+- **El modo y el modelo no se eligen por la API**: siempre `run --motor ciclo` o `resume --motor ciclo`.
+- **No hay ruta para cancelar una ejecución**: solo termina por sí sola, a las 2 horas o al cerrar la API.

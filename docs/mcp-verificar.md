@@ -1,5 +1,8 @@
 # Usar Fragua como pieza de otra herramienta: `verificar` por MCP
 
+> Tipo: Guía
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 > Fase 1 de `.sdd/especificaciones/2026-10-14-ciclo-por-mcp/`. Solo verificación: sin modelo, sin gasto.
 
 ## Qué es

@@ -1,38 +1,48 @@
-# Glosario de FORGE
+# Glosario de Fragua
 
-Definiciones canónicas de conceptos clave en FORGE. Cada término aquí es la **fuente única de verdad** y debe usarse consistentemente en toda la documentación.
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
----
-
-## Agente
-
-Un **agente** es un rol especializado encarnado por un modelo de lenguaje. Cada agente tiene:
-
-- **Nombre único** (ej: `arquitecto`, `tester`, `investigador`)
-- **Instrucciones de sistema** (archivo `.md` en `.claude/agents/`)
-- **Modelo asignado** (Claude Opus, Sonnet, Haiku, u otro)
-- **Herramientas restringidas** (acceso solo a las herramientas necesarias para su rol)
-- **Etapas en las que participa** (ej: `/sdd.planificar`, `/sdd.implementar`)
-
-FORGE tiene **14 agentes totales**:
-- 4 estratégicos (Opus): arquitecto, critico, revisor, seguridad
-- 2 de diseño (Opus): product-designer, asesor-datos
-- 4 de implementación (Sonnet): desarrollador-backend, desarrollador-frontend, tester, operaciones
-- 4 de soporte (Sonnet): disenador-api, architecture-designer, investigador, documentador
-
-**Ver:** [docs/agents.md](agents.md)
+Definiciones de los términos que usa la documentación, comprobadas contra el código. Cuando una definición remite a un documento, ese documento manda en los detalles. Estado del proyecto y cifras: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 ---
 
-## Comando
+## Parte 1. Estructura del producto
 
-Un **comando** es una etapa del pipeline invocable por el usuario desde Claude Code.
+### Anfitrión
 
-- **Ubicación:** archivo `.md` en `.claude/commands/`
-- **Invocación:** `/sdd.comando-name [argumentos]`
-- **Ejemplo:** `/sdd.descubrir crear API REST con autenticación JWT`
-- **Estructura:** Markdown con instrucciones de rol y referencias a skills
-- **Total en FORGE:** 39 comandos
+La **herramienta de código** en la que se usa Fragua (Claude Code, Codex, Cursor, Copilot, Gemini CLI…). Claude Code es el nativo: recibe comandos, subagentes y hooks. En las demás, Fragua instala solo skills (las propias y las generadas de los comandos) y `AGENTS.md`; no instala comandos, agentes ni hooks. Ver [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md).
+
+### Integración
+
+La clave de `forge init --integracion <clave>` que fija el anfitrión de destino y, con él, la carpeta de skills y la forma de invocarlas. Se define en `core/instalacion/herramientas-destino.js`. Sin la opción, la integración es `claude`.
+
+### Agente
+
+Un **agente** es un rol especializado que ejecuta un modelo de lenguaje. Es un archivo `.md` en `agents/` (instalado en `.claude/agents/`) con nombre, instrucciones de sistema, modelo (`opus`, `sonnet` o `haiku`) y lista de herramientas.
+
+FORGE tiene **14 agentes totales**, agrupados por función (modelo de la cabecera: 6 con `opus`, 8 con `sonnet`):
+- 4 estratégicos (opus): arquitecto, critico, revisor, seguridad
+- 2 de diseño (opus): product-designer, asesor-datos
+- 4 de implementación (sonnet): desarrollador-backend, desarrollador-frontend, tester, operaciones
+- 4 de soporte (sonnet): disenador-api, architecture-designer, investigador, documentador
+
+Seis tienen solo lectura de archivos (`Read`, `Grep`, `Glob`) y `Bash`, sin `Write`. El ciclo verificado reutiliza tres: `arquitecto` (planifica), `tester` (pruebas) y el agente que declare cada tarea (implementa). Ver [agents.md](agents.md) y [INVENTARIO-AGENTES-Y-SKILLS.md](INVENTARIO-AGENTES-Y-SKILLS.md).
+
+### Rol
+
+Tiene dos usos; la documentación indica cuál:
+
+1. **Función genérica** de un agente («el rol del arquitecto»). Se prefiere decir «agente».
+2. **Rol del nodo del ciclo** (`planner`, `qa`, `coder`): a cada rol se le asigna un perfil de capacidades en `core/ciclo/perfiles.js`; el perfil es del rol, no del agente que lo ejerza.
+
+### Modelo
+
+Un modelo de lenguaje concreto de un proveedor. Un agente es un rol; el modelo es el LLM que lo ejecuta. El motor soporta varios proveedores (Anthropic, OpenAI y Ollama en `core/llm-providers/`); ver [configuration.md](configuration.md).
+
+### Comando
+
+Una **etapa del pipeline invocable por el usuario**: archivo `.md` en `commands/` (instalado en `.claude/commands/`), que se invoca como `/sdd.nombre [argumentos]`. Hay **39 comandos**. En anfitriones que no son Claude Code se instalan como skills `sdd-*`.
 
 Los 8 comandos principales que avanzan el pipeline linealmente:
 1. `/sdd.descubrir`
@@ -44,307 +54,114 @@ Los 8 comandos principales que avanzan el pipeline linealmente:
 7. `/sdd.implementar`
 8. `/sdd.desplegar`
 
-**Ver:** [docs/workflows.md](workflows.md)
+Ver [workflows.md](workflows.md).
+
+### Skill
+
+Una **skill** es un archivo `SKILL.md` en `skills/<nombre>/` (instalado en `.claude/skills/` o en la carpeta del anfitrión) con instrucciones que el modelo sigue. No es código que Fragua ejecute. Los comandos, los agentes o el propio modelo (por la descripción de la cabecera) la invocan. Hay **31 skills**. Ver [tools.md](tools.md).
+
+### Hook
+
+Un script de `claude-hooks/` que **Claude Code** (no el modelo) ejecuta en un evento. Los que registra el plugin: `pre-tool-guard.js` (`PreToolUse`; exit 2 bloquea la acción), `agent-memory.js` y `post-write-conventions.js` (`PostToolUse`, sobre `Write|Edit`), y `context-manager.js` (`PostToolUse`); `ast-indexer.js` solo está en el `settings.json` de este repositorio. En `PostToolUse` el archivo ya está escrito: el exit 2 devuelve un mensaje al agente, no revierte. Los hooks no existen en otros anfitriones, y el motor (`forge run`, `resume`, `verificar`) no depende de ellos. Tabla completa en [hooks.md](hooks.md).
+
+### Perfil de instalación
+
+Qué comandos recibe una instalación: `esencial` (6: `forge`, `sdd.especificar`, `sdd.planificar`, `sdd.tareas`, `sdd.implementar`, `sdd.estado`) o `completo` (todos). Se elige con `--perfil`. En el código de este árbol el valor por defecto es `esencial` (ADR-24); [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md) sitúa ese cambio en la rama `fase-2-puerta-de-entrada`, sin fusionar hasta que la CI esté verde. `update` no borra comandos ya instalados. Ver `core/instalacion/perfiles.js`. No confundir con el **perfil de interacción** (`guiado` o `experto`) ni con el **perfil de capacidades** de un rol del ciclo.
+
+### Preset
+
+Un archivo de `presets/` (`lean`, `startup`, `enterprise`) que `forge init --preset <nombre>` aplica a `.sdd/sdd.config.yaml`: valores de configuración para un tipo de proyecto. Conserva los bloques propios del proyecto. Un nombre desconocido avisa y no aplica nada. Ver [referencia-cli.md](referencia-cli.md) y [configuration.md](configuration.md).
 
 ---
 
-## Etapa
+## Parte 2. Metodología y pipeline
 
-Una **"etapa"** del pipeline puede referirse a **tres niveles de granularidad distintos** según contexto:
+### SDD (Spec-Driven Development)
 
-### Nivel 1: Etapa conceptual (5 totales)
-Las 5 fases conceptuales del ciclo de desarrollo:
-1. Especificación
-2. Diseño
-3. Implementación
-4. Verificación
-5. Despliegue
+La metodología: no se escribe código sin una especificación escrita y aprobada por una persona. Ciclo: entender, especificar, planificar, implementar, verificar. Una especificación contiene criterios de aceptación, escenarios, restricciones y qué significa «hecho». Ver [core-concepts.md](core-concepts.md).
 
-### Nivel 2: Etapa ejecutable (8 totales)
-Los 8 comandos principales que invoca el usuario (`/sdd.especificar`, `/sdd.implementar`, etc.)
+### Pipeline
 
-### Nivel 3: Estado (11 totales)
-Los valores posibles de `estado.json → pipeline_step` que registran el progreso exacto:
-```
-idea → discovery → ir → diseño → spec → aclaracion → plan → tareas → codigo → verificacion → despliegue
-```
+La secuencia de etapas de la idea al despliegue: 8 comandos principales en orden, uno condicional (`/sdd.aclarar`) y comandos auxiliares. Produce artefactos en `.sdd/` que persisten entre sesiones. Ver [workflows.md](workflows.md).
 
-**Cuando documentación dice "etapa" sin calificar**, se refiere generalmente a **Nivel 2** (Etapa ejecutable).
+### Etapa
 
-**Ver:** [docs/core-concepts.md#aclaración-etapas-comandos-y-estados-del-pipeline](core-concepts.md)
+Según el contexto, tres niveles:
 
----
-
-## Hook
-
-Un **hook** es un script JavaScript ejecutado automáticamente por Claude Code cuando ocurre un evento específico.
-
-FORGE implementa **3 hooks** en `.claude/hooks/`:
-
-1. **pre-tool-guard.js** (evento: PreToolUse)
-   - Se ejecuta ANTES de cada llamada a Bash, Write, Edit, MultiEdit
-   - Acción: Bloquea comandos destructivos o detecta secrets
-   - Código de salida: 0 (permitir) o 2 (bloquear)
-
-2. **agent-memory.js** (evento: PostToolUse)
-   - Se ejecuta DESPUÉS de cada Write o Edit
-   - Acción: Registra cambios en memoria persistente
-   - Código de salida: 0 (continuar)
-
-3. **post-write-conventions.js** (evento: PostToolUse)
-   - Se ejecuta DESPUÉS de cada Write o Edit
-   - Acción: Valida archivo contra convenciones del proyecto
-   - Código de salida: 0 (válido) o 2 (revertir cambio)
-
-**Característica crítica:** Los hooks se ejecutan a nivel de sistema operativo — el modelo NO puede eludirlos ni ignorarlos durante la conversación.
-
-**Ver:** [docs/runtime.md](runtime.md)
-
----
-
-## Modelo
-
-Un **modelo** es un modelo de lenguaje específico de un proveedor.
-
-Ejemplos:
-- Anthropic: Claude Opus, Claude Sonnet, Claude Haiku
-- OpenAI: GPT-4o, GPT-4o-mini
-- Google: Gemini 2.0 Flash
-
-**Relación con Agente:** Un agente es un ROLE. Un modelo es el LLM que ejecuta ese role.
-
-- Cada agente está asignado a un modelo específico
-- Algunos agentes están "fijos" en un proveedor (ej: agentes críticos siempre Anthropic)
-- Otros agentes pueden usar múltiples proveedores según configuración
-
-**Ver:** [docs/agents.md](agents.md), [docs/configuration.md](configuration.md)
-
----
-
-## Pipeline
-
-El **pipeline** es la secuencia completa de etapas para convertir una idea en un producto en producción.
-
-Consta de:
-- **8 comandos principales** que avanzan el pipeline de forma lineal
-- **1 comando condicional** (`/sdd.aclarar`) que puede ramificarse
-- **Múltiples comandos auxiliares** para operaciones especiales (release, despliegue, etc.)
-
-Características:
-- Es **reanudable**: si una sesión termina en cualquier punto, la siguiente puede reanudar desde el checkpoint más reciente
-- Produce **artefactos duraderos** en `.sdd/` que persisten entre sesiones
-- Implementa **SDD** (Spec-Driven Development)
-
-**Cuando dicen "el pipeline"**, generalmente se refieren al Nivel 2 de etapas (8 comandos principales).
-
-**Ver:** [docs/workflows.md](workflows.md), [docs/core-concepts.md#el-pipeline-de-etapas](core-concepts.md)
-
----
-
-## SDD (Spec-Driven Development)
-
-**SDD** es la **metodología** que FORGE implementa. Establece el principio fundamental:
-
-> **Ningún código se escribe sin que exista primero una especificación escrita y aprobada por un humano.**
-
-### Ciclo SDD
+1. **Etapa conceptual** (5): especificación, diseño, implementación, verificación, despliegue.
+2. **Etapa ejecutable** (8): los comandos principales de arriba. «Etapa» sin calificar se refiere a este nivel.
+3. **Estado** (9): los valores de `estado.json → pipeline_step`, definidos en `core/state-machine.js` y en `docs/contrato/estado-pipeline.schema.json`:
 
 ```
-entender → especificar → planificar → implementar → verificar
+idea → discovery → ir → design → spec → plan → tasks → code → done
 ```
 
-### Qué contiene una especificación en FORGE
-
-- **Criterios de aceptación** — condiciones precisas que el sistema debe satisfacer
-- **Escenarios de usuario** — flujos concretos descritos desde la perspectiva del usuario
-- **Restricciones técnicas** — límites de rendimiento, seguridad, compatibilidad
-- **Definición de "hecho"** — qué debe ser verdad para que la feature se considere completada
-
-### Por qué es importante
-
-Un agente que implementa contra una especificación precisa produce código verificable. Un agente que implementa contra instrucciones vagas produce código que parece correcto pero cuyo comportamiento es impredecible.
-
-**Ver:** [docs/core-concepts.md#desarrollo-guiado-por-especificaciones](core-concepts.md)
-
----
-
-## Skill
-
-Una **skill** es una capacidad reutilizable encapsulada en un prompt estructurado.
-
-Características:
-- **Ubicación:** archivo `SKILL.md` en ``.claude/skills/nombre-skill/`
-- **Invocación:** Los comandos invocan skills — los usuarios no las invocan directamente
-- **Reutilización:** Una skill puede usarse en múltiples comandos; un comando puede usar múltiples skills
-
-**No son:**
-- Scripts ejecutables
-- Funciones programadas
-- Procesos independientes
-
-**Son:**
-- Instrucciones de rol especializadas
-- Prompts estructurados que un agente ejecuta
-- Parte de un comando mayor
-
-FORGE incluye **31 skills** (una carpeta con `SKILL.md` por cada una en `skills/`). El mapa de tools.md agrupa 29 de ellas en estas categorías:
-- Pipeline y orquestación
-- Descubrimiento e interpretación
-- Diseño
-- Calidad y validación
-- Memoria e indexación
-- Observabilidad
-- Compresión
-- Despliegue e integración
-
-**Ver:** [docs/tools.md](tools.md)
-
----
-
-## Rol
-
-**Rol** es un sinónimo de **Agente** en contextos generales. Se usa para hablar de la FUNCIÓN que desempeña.
-
-Ejemplos:
-- "El rol del arquitecto es..."
-- "El agente arquitecto es..."
-- Ambas frases significan lo mismo
-
-Distinción técnica:
-- **Agente** = archivo `.md` definiendo el rol + prompts + herramientas
-- **Rol** = descripción de función genérica
-
-En documentación de FORGE, preferimos **"agente"** (término técnico) sobre **"rol"** (término genérico).
-
-**Ver:** [docs/agents.md](agents.md)
-
----
-
-## Terminología relacionada
-
-### Agente vs Modelo vs Rol
-
-**Ejemplo:** "El agente arquitecto ejecuta Claude Opus en el rol de diseñador de arquitectura"
-
-- **Agente** = arquitecto (nombre del role definido)
-- **Modelo** = Claude Opus (LLM que lo ejecuta)
-- **Rol** = diseñador de arquitectura (función que desempeña)
-
-### Comando vs Etapa
-
-**Ejemplo:** "La etapa de especificación se invoca con el comando `/sdd.especificar`"
-
-- **Etapa** = especificación (concepto)
-- **Comando** = `/sdd.especificar` (forma de invocarlo)
-
-### Pipeline vs Estado vs Máquina de estados
-
-**Ejemplo:** "El pipeline está en estado `codigo` en la máquina de estados del proyecto"
-
-- **Pipeline** = el sistema completo
-- **Estado** = el valor actual de `estado.json → pipeline_step`
-- **Máquina de estados** = el grafo de transiciones posibles entre estados
-
----
-
-## Otros términos importantes
-
-### IR (Interpreted Requirement)
-
-El **IR** es la primera transformación estructurada de una idea en lenguaje natural.
-
-- **Producido por:** `/sdd.interpretar`
-- **Almacenado en:** `.sdd/ir.json`
-- **Contenido:** Requisitos, features, constraints, assumptions, ambigüedades, confidence score
-- **Score de confianza:** 0.0–1.0 indicando preparación para proceder
-
-**Ver:** [docs/core-concepts.md#el-requisito-interpretado-ir](core-concepts.md)
-
----
+Ver [core-concepts.md](core-concepts.md#etapas-comandos-y-estados).
 
 ### Constitución
 
-La **Constitución** del proyecto es el documento de principios.
+El documento de principios del proyecto, en `.sdd/memoria/constitucion.md` (lo crea `/sdd.constitucion`): stack, principios, restricciones de seguridad, convenciones. Lo hace cumplir de forma automática solo el hook `post-write-conventions.js`, que extrae un límite de longitud de función, una cobertura mínima y patrones prohibidos; el resto depende de que el modelo la lea (skill `constitucion-constraint`). Ver [core-concepts.md](core-concepts.md).
 
-- **Ubicación:** `.sdd/memoria/constitucion.md`
-- **Creada con:** `/sdd.constitucion`
-- **Contenido:** Stack tecnológico, principios arquitectónicos, restricciones de seguridad, convenciones de código, criterios de calidad
-- **Alcance:** Es una restricción DURA, no una sugerencia
+### IR (Interpreted Requirement)
 
-**Ver:** [docs/core-concepts.md#la-constitución-del-proyecto](core-concepts.md)
-
----
+La primera transformación estructurada de la idea: `.sdd/ir.json`, producido por `/sdd.interpretar`. Incluye requisitos, restricciones, ambigüedades y una `confidence` de 0 a 1 que es orientativa: no es una guarda del motor.
 
 ### ADR (Architecture Decision Record)
 
-Un **ADR** es un registro de una decisión arquitectónica significativa.
-
-- **Formato:** Markdown en `.sdd/arquitectura/`
-- **Contenido:** Contexto, opciones consideradas, decisión, consecuencias
-- **Generados por:** Agentes estratégicos durante planificación y diseño
-- **Propósito:** Auditoría de por qué se tomó cada decisión técnica
-
-**Ver:** [docs/architecture.md](architecture.md)
+Registro de una decisión de arquitectura: contexto, opciones, decisión, consecuencias. Los del proyecto van en `.sdd/arquitectura/`; el hook `agent-memory.js` también indexa en `ADRs.jsonl` los comentarios `# ADR: {...}` del código.
 
 ---
+
+## Parte 3. Ciclo verificado y garantías de 5.0
+
+### Ciclo verificado
+
+El motor de `forge run` (`core/ciclo/`): un planificador divide la tarea, un agente de pruebas escribe las pruebas, el implementador escribe el código, las pruebas se ejecutan en un contenedor sin red, se miden con mutación y una persona aprueba. **El veredicto lo decide el código de salida de las pruebas, no el modelo.** Ver [ciclo-verificado.md](ciclo-verificado.md) y [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md).
+
+### Aislamiento
+
+El código del proyecto y las pruebas se ejecutan en un contenedor Docker sin red, sin privilegios, sin capacidades añadidas y con límites de recursos (`core/sandbox/politica.js`). El ciclo usa Docker para ejecutar las pruebas; el comportamiento con Docker real en Windows se midió una vez (ver ESTADO-ACTUAL.md). Los contenedores llevan la etiqueta `fragua.sandbox=1` para barrer huérfanos.
+
+### Mutación
+
+La **medición de pruebas por mutación propia** (ADR-20, `core/ciclo/mutacion.js`): tras un pase, se introducen cambios pequeños y deliberados en una copia del código del implementador y se ejecutan las pruebas contra cada uno; unas pruebas que solo ejecutan el código pasan igualmente y se detectan así. No llama a ningún modelo. No confundir con el **registro de mutaciones** del hook `agent-memory.js` (`.sdd/observabilidad/mutaciones.jsonl`: qué agente modificó qué archivo), que lee la skill `mutation-detector`.
+
+### Puerta de calidad
+
+Una comprobación adicional que el proyecto declara en la sección `puertas:` de `.sdd/sdd.config.yaml` (tipos, linter, seguridad, cobertura). Corre en el mismo contenedor sin red que las pruebas y decide solo por el código de salida de su comando; lo que no pasa (incluidos tiempo agotado y herramienta ausente) no es éxito. Ver [puertas-de-calidad.md](puertas-de-calidad.md). No confundir con `core/quality-gate.js`, el gate más simple del modo clásico.
+
+### Cadena de evidencia
+
+Cada informe que guarda `forge verificar --registrar` en `.sdd/verificaciones/<id>.json` lleva un bloque `evidencia` que lo enlaza con el anterior y, si hay clave local, lo firma, de modo que alterar, borrar o reordenar informes se detecta. Ver [cadena-de-evidencia.md](cadena-de-evidencia.md).
+
+### Aprobación con identidad
+
+Una aprobación humana exige un terminal interactivo y un código de un solo uso que la persona teclea; queda en `.sdd/aprobaciones.jsonl` (solo adición) con quién (correo o nombre de git, o usuario del sistema), cuándo, qué y el SHA-256 del artefacto aprobado, y cada línea lleva un HMAC encadenado con el de la anterior (`core/aprobaciones-identidad.js`). La identidad es la que declara el equipo local, no una autenticación fuerte.
+
+### Punto de guardado
+
+El estado del ciclo tras cada paso: un JSON por transición en `.sdd/motor/<sesión>/checkpoints/`, escrito con archivo temporal y renombrado, con su huella y su sello (`core/ciclo/checkpoint-archivos.js`). `forge resume` continúa desde el último válido; uno dañado se descarta y se usa el anterior. No confundir con `core/checkpoint.js`, que solo guarda la última tarea completada en `.estado-tareas.json`.
+
+### Sello
+
+Un HMAC-SHA256 del estado del ciclo con una clave del **usuario**, fuera del proyecto (`core/ciclo/sello.js`). Sin sello válido, el estado se ignora y la tarea empieza de cero. Evita que un repositorio ajeno traiga un punto de guardado fabricado. Límite: un estado sellado en otro equipo, o tras perder la clave, no se puede reanudar.
+
+### Dato no confiable
+
+Todo texto que sale del árbol del proyecto y llega al modelo (archivos, nombres, salida de pruebas) lo controla quien lo escribió. Se entrega entre marcadores, con un identificador derivado del hash del contenido, como dato sin autoridad (`core/ciclo/dato-no-confiable.js`). Es una medida complementaria: la garantía de seguridad es la contención (rutas, herramientas, aislamiento), no que el modelo obedezca los marcadores.
+
+### Cuarentena de pruebas
+
+Mecanismo para apartar una prueba inestable (ADR-23): se registra en `tests/cuarentena.txt` con incidencia, fecha y motivo; `npm test` la excluye y un job de CI no bloqueante la sigue ejecutando; caduca a los 30 días y hay un tope de 5. Estado actual: ver [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 ### Modo de bloque y modo por turnos
 
-Las dos formas de trabajar del implementador en el ciclo verificado (`motor.implementador`).
+Las dos formas de trabajar del implementador (`motor.implementador`).
 
 - **Modo de bloque** (por defecto): una respuesta con todos los archivos completos.
 - **Modo por turnos** (opcional, ADR-21): varias respuestas con acciones entre medias.
-- **Turno**: una respuesta del modelo dentro de un intento de implementación, que pide una o más acciones o declara que ha terminado. No es una iteración.
-- **Acción** (o herramienta): una de las cinco operaciones permitidas: `leer_archivo`, `listar`, `buscar`, `editar`, `ejecutar_pruebas`.
+- **Turno**: una respuesta del modelo dentro de un intento, que pide acciones o declara que terminó.
+- **Acción**: una de cinco operaciones: `leer_archivo`, `listar`, `buscar`, `editar`, `ejecutar_pruebas`.
 - **Iteración**: una ejecución final de pruebas del ciclo. Es lo único que decide el éxito, en los dos modos.
 
-**Ver:** [docs/ciclo-verificado.md](ciclo-verificado.md)
-
----
-
-## Resumen de términos por categoría
-
-### Metodología
-- **SDD** — Spec-Driven Development
-
-### Arquitectura
-- **Agente** — Rol especializado (LLM + prompts + herramientas)
-- **Modelo** — LLM específico (Opus, Sonnet, etc.)
-- **Rol** — Función que desempeña (genérico)
-- **Pipeline** — Secuencia de etapas
-- **Etapa** — Fase del desarrollo
-- **Comando** — Invocación de etapa
-- **Skill** — Capacidad reutilizable
-- **Hook** — Script que se ejecuta automáticamente
-
-### Artefactos
-- **IR** — Requisito Interpretado
-- **Constitución** — Documento de principios del proyecto
-- **ADR** — Registro de Decisiones Arquitectónicas
-- **Especificación** — Criterios de aceptación
-- **Plan** — Plan técnico
-- **Tareas** — Desglose en tareas atómicas
-
----
-
-## Cómo usar este glosario
-
-**Si encuentras un término ambiguo en la documentación:**
-1. Búscalo aquí
-2. Lee la definición canónica
-3. Sigue la referencia "Ver:" al documento principal
-
-**Si estás escribiendo documentación:**
-1. Usa los términos exactos definidos aquí
-2. Si es primera mención en un documento, puedes hacer referencia a este glosario
-3. Evita definiciones alternativas o sinónimos
-
-**Si encuentras inconsistencia:**
-- Reporta qué documento usa el término de forma distinta
-- Este glosario es la fuente de verdad — los documentos deben alinearse con él
-
----
-
-**Versión:** 1.0  
-**Creado:** 2026-06-22  
-**Mantenedor:** Principal Documentation Architect
+Ver [ciclo-verificado.md](ciclo-verificado.md).

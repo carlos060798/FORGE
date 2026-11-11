@@ -1,5 +1,8 @@
 # Ciclo verificado
 
+> Tipo: Guía
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 > Desde la versión 5.0.0 es el modo por defecto de `forge run`. En 4.3.0 (no publicada) era opt-in.
 > Especificación: `.sdd/especificaciones/2026-10-03-ciclo-verificado/`. Decisiones: `.sdd/arquitectura/ADR-01` a `ADR-18`. Rojo obligatorio y medición de las pruebas: spec `2026-10-09-pruebas-confiables` y `ADR-20`.
 > Ver también: [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) (todos los límites en un solo sitio, con las frases de esta guía que han quedado desfasadas), [MIGRACION-5.0.md](MIGRACION-5.0.md) (qué cambia al actualizar desde 4.2.0) y [COBERTURA.md](COBERTURA.md).
@@ -28,7 +31,9 @@ O de forma permanente en `.sdd/sdd.config.yaml`:
 motor:
   modo: ciclo              # ciclo (por defecto) | clasico
   grafo: auto              # auto | propio (langgraph se acepta, con un aviso: se retiró en 5.0.0)
-  recuperador: archivos    # fuente de contexto de los agentes
+  recuperador: archivos    # fuente de contexto de los agentes: archivos | semantico (ver memoria-semantica.md)
+  embeddings: hash         # con semantico: hash | ollama
+  embeddings_modelo: nomic-embed-text
   nivel_maximo: opus       # nivel de modelo más alto que puede usar un agente: opus (sin límite) | sonnet | haiku
   max_iteraciones: 5
   sin_progreso: 3          # fallos seguidos con la misma salida antes de preguntarte; 0 lo desactiva
@@ -48,12 +53,14 @@ sandbox:
   memoria: 512m
   pids: 256
   timeout_s: 120
+  salida_max_bytes: 1048576
   # runtime: runsc         # mecanismo de aislamiento de Docker; sin indicar, el de Docker por defecto
 
 presupuesto:
   tope_usd: 2.00
   umbral_degradacion_usd: 1.50
   degradar_a: escalon
+  sin_precio: avisar       # avisar | rechazar: qué hacer con un modelo sin precio conocido
 ```
 
 ### Modelos y precios (ADR-19)
@@ -343,6 +350,8 @@ Para probar el implementador por turnos, la misma orden con `FORGE_IMPLEMENTADOR
 | 4 | Docker no está disponible, no tiene el mecanismo de aislamiento pedido en `sandbox.runtime`, o el proyecto pide uno que no autorizaste con `FORGE_RUNTIMES_PERMITIDOS` |
 
 ## Límites conocidos
+
+- **Códigos de salida 3 y 4: no verificado en esta revisión** dónde se asignan en `cli/` (la tabla procede de la documentación previa y de `api-http.md`); los valores por defecto de la configuración sí se contrastaron con `core/ciclo/config.js:30-66`.
 
 - **Probado con un modelo real en 24 ejecuciones de tareas pequeñas** (2026-10-09 y 2026-10-10, JavaScript, Python y Go; proyectos vacíos y uno con código existente; corte y reanudación; pausa por presupuesto y por falta de progreso). Las respuestas se interpretaron siempre al primer intento y el bucle de corrección convergió cuando las pruebas eran correctas. Esas ejecuciones y una revisión independiente destaparon defectos ya corregidos, y dejan cosas sin probar: proyectos grandes, Linux, y la comparación del gasto calculado con el facturado. Detalle en `.sdd/especificaciones/2026-10-09-validacion-modelo-real/evidencia-2026-10-09.md`.
 - **Una llamada al modelo cancelada por tiempo puede haberse cobrado.** Si el proveedor no responde en el tiempo máximo **por intento** (`llm.timeout_s`, 120 s por defecto; crece con el tamaño de la petición), el ciclo cancela esa espera y la reintenta **una sola vez** con una señal nueva; si el segundo intento también se agota, pide revisión. El proveedor puede haber procesado cada intento: el ciclo anota una estimación del costo de entrada **de cada intento cancelado** (marcada `estimado` en `gasto.jsonl`, evento `ciclo:llamada_abortada`); **el costo de salida de esas llamadas no se conoce y no se cuenta**, así que el gasto real puede superar al calculado. Si ves este aviso varias veces, compara con tu factura.

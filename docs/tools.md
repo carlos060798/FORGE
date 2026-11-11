@@ -1,477 +1,69 @@
-# Herramientas (Skills)
-
-FORGE incluye 31 skills (las carpetas de `skills/` con su `SKILL.md`; esta página describe 29: faltan `decompose-to-ui-kit` y `resource-selector`, que solo están documentadas en su propio `SKILL.md`): capacidades reutilizables que los comandos invocan para realizar tareas específicas. Cada skill vive en su propia carpeta dentro de `.claude/skills/` y se define en un archivo `SKILL.md`.
-
----
-
-## Qué es una skill
-
-Una skill es una capacidad reutilizable encapsulada en un prompt estructurado. Difiere de un comando en que:
-
-- **Los comandos** representan etapas del pipeline — tienen inicio, proceso y salida clara
-- **Las skills** son utilidades que un comando puede invocar para hacer parte de su trabajo
-
-Una skill puede ser invocada por múltiples comandos. Por ejemplo, `deteccion-stack` es usada tanto por `/sdd.descubrir` como por `/sdd.analizar`.
-
----
-
-## Mapa de skills por categoría
-
-```mermaid
-graph TD
-    subgraph "Pipeline y orquestación"
-        ES["enrutador-agentes"]
-        GE["gestion-estado"]
-        OPP["orquestacion-ptc"]
-        ER["effort-router"]
-        TB["token-budget"]
-    end
-
-    subgraph "Descubrimiento e interpretación"
-        DI["descubrir-idea"]
-        II["interpretar-idea"]
-        DS["deteccion-stack"]
-        MP["mejorar-prompt"]
-    end
-
-    subgraph "Diseño"
-        ED["elegir-direccion"]
-        WM["wireframe-mvp"]
-        CD["critica-diseno"]
-    end
-
-    subgraph "Calidad y validación"
-        VS["validacion-spec"]
-        CC["constitucion-constraint"]
-        VI["verificador-implementacion"]
-        MD["mutation-detector"]
-    end
-
-    subgraph "Memoria e indexación"
-        MC["memory-compactor"]
-        AI["adr-indexer"]
-        IDX["indexador"]
-        IDP["indexar-proyecto"]
-        CA["cache-audit"]
-    end
-
-    subgraph "Observabilidad"
-        OC["observabilidad-consumo"]
-        SP["share-progress"]
-        EXP["explicame"]
-    end
-
-    subgraph "Compresión"
-        CT["compresion-tokens"]
-        MG["modo-guiado"]
-    end
-
-    subgraph "Despliegue e integración"
-        DV["deploy-vercel"]
-        VD["vercel-deploy"]
-        GC["github-connect"]
-    end
-```
-
----
-
-## Referencia completa de skills
-
----
-
-### adr-indexer
-
-**Propósito:** Indexar decisiones arquitectónicas extraídas de comentarios en código y mantener el índice de ADRs del proyecto.
-
-**Cuándo se invoca:** Automáticamente por `agent-memory.js` cuando detecta comentarios `// ADR:` en archivos escritos.
-
-**Salida:** Actualización de `.sdd/arquitectura/ADR-*.md` y del índice en `.sdd/INDICE.md`.
-
----
-
-### cache-audit
-
-**Propósito:** Auditar los archivos de memoria de agentes para detectar oportunidades de aplicar `cache_control` y reducir el costo de tokens en llamadas repetitivas.
-
-**Cuándo se invoca:** Manualmente, cuando se quiere optimizar el uso de caché de prompt.
-
-**Nota:** No está conectado automáticamente al pipeline — requiere invocación explícita.
-
----
-
-### compresion-tokens
-
-**Propósito:** Aplicar reglas de compresión tipo "caveman" al texto de comandos y respuestas, reduciendo el uso de tokens sin pérdida de significado.
-
-**Reglas típicas:**
-- Eliminar artículos redundantes
-- Abreviar términos técnicos comunes
-- Compactar listas con separadores en lugar de frases completas
-
-**Cuándo se invoca:** En modo `rapido` o `prototipo`, y cuando `compresion.enabled: true` en `sdd.config.yaml`.
-
----
-
-### constitucion-constraint
-
-**Propósito:** Verificar que una decisión, diseño o fragmento de código no viola ningún principio de la constitución del proyecto.
-
-**Entradas:** Texto o código a evaluar, referencia a `constitucion.md`.
-
-**Salida:** `PASA` o `FALLA` con la lista de principios violados.
-
-**Cuándo se invoca:** Por `revisor`, `seguridad` y `post-write-conventions.js`.
-
----
-
-### critica-diseno
-
-**Propósito:** Evaluar un wireframe o diseño de pantalla en cinco dimensiones: claridad, usabilidad, consistencia visual, accesibilidad y alineación con el ProductDesign.
-
-**Entradas:** Wireframe HTML o descripción de diseño.
-
-**Salida:** Puntuación 1–5 por dimensión con comentarios específicos.
-
-**Cuándo se invoca:** Por el agente `product-designer` después de generar un wireframe.
-
----
-
-### deploy-vercel / vercel-deploy
-
-**Propósito:** Desplegar el proyecto a Vercel usando el MCP de Vercel, con pre-checks de calidad y verificación post-despliegue.
-
-**Pre-checks:**
-- Tests pasando
-- Variables de entorno configuradas
-- Build exitoso localmente
-
-**Post-deploy:**
-- Health check del endpoint principal
-- Verificación de que el despliegue está activo
-
-**Cuándo se invoca:** Por el comando `/sdd.desplegar` cuando el destino es Vercel.
-
-**Nota:** Existen dos skills (`deploy-vercel` y `vercel-deploy`) con estructura similar. Ambas apuntan al MCP de Vercel — es una redundancia conocida en la versión actual.
-
----
-
-### descubrir-idea
-
-**Propósito:** Ejecutar el formulario de discovery de cinco preguntas para extraer la intención real del usuario a partir de una descripción vaga.
-
-**Las cinco preguntas:**
-1. ¿Para quién es esto? (usuarios objetivo)
-2. ¿Qué problema resuelve? (problema central)
-3. ¿Cómo lo resuelven hoy? (solución actual)
-4. ¿Qué hace que tu solución sea diferente? (propuesta de valor)
-5. ¿Qué debería poder hacer alguien en su primera sesión? (MVP mínimo)
-
-**Salida:** Respuestas estructuradas que alimentan a `interpretar-idea`.
-
----
-
-### deteccion-stack
-
-**Propósito:** Detectar automáticamente el stack tecnológico actual de un proyecto leyendo sus archivos de configuración.
-
-**Archivos inspeccionados:**
-- `package.json` → lenguaje, framework, dependencias
-- `requirements.txt` / `pyproject.toml` → Python stack
-- `go.mod` → Go modules
-- `Dockerfile` → runtime de contenedor
-- `*.config.{js,ts}` → herramientas de build
-
-**Salida:** Objeto estructurado con `lenguaje`, `framework`, `base_de_datos`, `tests`, `despliegue`.
-
----
-
-### effort-router
-
-**Propósito:** Recomendar el nivel de esfuerzo (`low`, `medium`, `high`) y el modelo apropiado para cada fase del pipeline y cada agente.
-
-**Tabla de referencia:**
-
-| Fase | Nivel recomendado | Justificación |
-|------|------------------|--------------|
-| Descubrimiento | medium | Requiere comprensión contextual |
-| Especificación | high | Decisiones de largo plazo |
-| Planificación | high | Arquitectura crítica |
-| Implementación (estratégico) | high | Opus para decisiones |
-| Implementación (código) | medium | Sonnet para ejecución |
-| Tests | medium | Sonnet es suficiente |
-| Verificación | high | Opus para revisión final |
-
----
-
-### elegir-direccion
-
-**Propósito:** Presentar al usuario las cinco direcciones visuales disponibles y guiarlo para elegir una.
-
-**Las cinco direcciones:**
-
-| Dirección | Descripción |
-|-----------|-------------|
-| `minimal` | Espacio en blanco generoso, tipografía limpia, paleta reducida |
-| `bold` | Tipografía grande, contrastes fuertes, energía visual |
-| `warm` | Colores tierra, textura, sensación humana |
-| `editorial` | Inspirado en revistas, jerarquía tipográfica fuerte |
-| `brutalist` | Bordes visibles, rejilla expuesta, sin ornamentos |
-
----
-
-### enrutador-agentes
-
-**Propósito:** Decidir qué agente o agentes activar dado el tipo de tarea descrita.
-
-**Entradas:** Descripción de la tarea, contexto del pipeline, lista de agentes activos.
-
-**Lógica:** Mapeo semántico entre tipo de tarea y rol de agente. Si múltiples agentes son candidatos, decide si despachar secuencialmente o en paralelo.
-
----
-
-### explicame
-
-**Propósito:** Traducir el estado técnico actual del proyecto a lenguaje llano, sin jerga.
-
-**Salida típica:**
-```
-El proyecto está en la fase de implementación.
-Se completaron 8 de 12 tareas.
-El agente "desarrollador-backend" está trabajando en la autenticación.
-Queda aproximadamente 1 hora de trabajo.
-```
-
-**Cuándo se invoca:** Por `/sdd.estado` en modo `guiado`.
-
----
-
-### gestion-estado
-
-**Propósito:** Leer y actualizar `estado.json` y `.estado-tareas.json` de forma segura entre sesiones.
-
-**Operaciones:**
-- Leer el estado actual
-- Actualizar `pipeline_step`
-- Marcar tarea como completada/fallida
-- Inicializar estado para una nueva spec
-
----
-
-### github-connect
-
-**Propósito:** Conectar el proyecto a GitHub: crear el repositorio remoto, configurar el remote y hacer el push inicial.
-
-**Requisitos:** Variable de entorno `GITHUB_TOKEN` con permisos `repo`.
-
-**Pasos:**
-1. Crear repositorio via GitHub API
-2. `git remote add origin {url}`
-3. `git push -u origin main`
-
----
-
-### indexador / indexar-proyecto
-
-**Propósito:** Generar mapas estáticos del proyecto: estructura de directorios, símbolos exportados, dependencias entre módulos.
-
-**`indexador`** — índice general (estructura + metadatos)
-**`indexar-proyecto`** — índice AST de archivos JS/TS via `acorn`
-
-**Salida:** `.sdd/INDICE.md` + datos para `ast-query.js`.
-
----
-
-### interpretar-idea
-
-**Propósito:** Transformar la salida del discovery en un IR estructurado (`ir.json`) con puntuación de confianza.
-
-**Proceso:**
-1. Parsear las respuestas del discovery
-2. Inferir features core vs. nice-to-have
-3. Calcular `confidence` (0.0–1.0)
-4. Identificar ambigüedades que requieren aclaración
-5. Escribir `ir.json`
-
-→ Ver [Conceptos fundamentales — El IR](core-concepts.md#el-requisito-interpretado-ir) para el formato completo.
-
----
-
-### mejorar-prompt
-
-**Propósito:** Transformar una descripción vaga del usuario en una versión más clara, específica y accionable antes de pasarla al pipeline.
-
-**Ejemplo:**
-```
-Entrada:  "hacer una app de recetas"
-Salida:   "Aplicación web para gestionar recetas personales con búsqueda
-           por ingredientes, lista de compras automática y modo offline.
-           Usuarios objetivo: cocineros amateur, uso personal."
-```
-
----
-
-### memory-compactor
-
-**Propósito:** Compactar archivos de memoria de agentes cuando superan el umbral de bytes configurado, preservando las entradas recientes y condensando las antiguas.
-
-**Estrategia:**
-- Mantiene las últimas N entradas intactas (recientes)
-- Condensa entradas antiguas en un resumen por período
-- Preserva todos los ADRs, nunca se comprimen
-
-**Cuándo se activa:** Automáticamente desde `agent-memory.js` cuando `tamaño_archivo > memoria.umbral_bytes`.
-
----
-
-### modo-guiado
-
-**Propósito:** Adaptar la comunicación del pipeline al modo guiado: lenguaje llano, sin jerga, confirmaciones simples.
-
-**Tabla de traducciones:**
-
-| Término técnico | Traducción en modo guiado |
-|----------------|--------------------------|
-| `IR` | "resumen estructurado de tu idea" |
-| `spec` | "documento de requisitos" |
-| `ADR` | "registro de una decisión importante" |
-| `pipeline_step: tasks` | "estamos desglosando el trabajo en pasos pequeños" |
-| exit code 2 | "FORGE detuvo esta acción porque podría causar problemas" |
-
----
-
-### mutation-detector
-
-**Propósito:** Detectar cambios en archivos entre sesiones para hacer tracking de calidad y detectar regresiones.
-
-**Cuándo se invoca:** Por `agent-memory.js` al registrar una escritura. Compara el hash del archivo nuevo con el del archivo anterior.
-
-**Salida:** Entrada en `mutaciones.jsonl` con archivo, agente, timestamp y tipo de cambio (creación/modificación).
-
----
-
-### observabilidad-consumo
-
-**Propósito:** Generar un reporte legible de la actividad de agentes: invocaciones, archivos modificados, agentes más activos, picos de actividad.
-
-**Cuándo se invoca:** Por el dashboard y por `/sdd.retro`.
-
-**Salida típica:**
-```
-Resumen de actividad (última sesión):
-  - 47 escrituras de archivo
-  - Agente más activo: desarrollador-backend (23 escrituras)
-  - Archivos más modificados: src/auth/ (12 cambios)
-  - Duración estimada: 38 minutos
-```
-
----
-
-### orquestacion-ptc
-
-**Propósito:** Despachar múltiples agentes en paralelo usando Programmatic Tool Calling (herramienta `Task`) y agregar sus resultados.
-
-**Cuándo activa:** Cuando el comando decide que múltiples tareas son independientes entre sí y pueden ejecutarse simultáneamente.
-
-**Protocolo de agrupación:**
-1. Identifica tareas independientes
-2. Despacha en paralelo via `Task`
-3. Cada agente responde con `PASA/FALLA + diff mínimo`
-4. El orquestador agrega los resultados
-5. Reporta el resultado consolidado
-
-**Beneficio:** Reducción de ~85% en tokens de orquestación.
-
----
-
-### share-progress
-
-**Propósito:** Generar un resumen compartible del estado del proyecto en Markdown, listo para copiar en un mensaje o reporte.
-
-**Incluye:**
-- Etapa actual del pipeline
-- Porcentaje de completado
-- Últimas 5 acciones realizadas
-- Próximos pasos
-
----
-
-### token-budget
-
-**Propósito:** Estimar el presupuesto de tokens restante para completar las etapas pendientes del pipeline.
-
-**Entradas:** Etapa actual, tareas pendientes, modelos asignados a cada tarea.
-
-**Salida:** Estimación de tokens y costo aproximado para completar el pipeline.
-
----
-
-### validacion-spec
-
-**Propósito:** Validar que una especificación cumple los mínimos de calidad antes de proceder a la planificación.
-
-**Criterios de validación:**
-- Al menos 3 criterios de aceptación
-- Ningún criterio contiene `[NECESITA_ACLARACION]` sin resolver
-- Existe un alcance de MVP definido
-- El modelo de datos está esbozado (si aplica)
-- No hay contradicciones internas
-
-**Salida:** `VÁLIDA` o lista de problemas que deben corregirse.
-
----
-
-### verificador-implementacion
-
-**Propósito:** Verificar el código implementado contra los criterios de aceptación de la spec activa.
-
-**Proceso:**
-1. Lee la spec activa y extrae criterios de aceptación
-2. Para cada criterio, busca evidencia de implementación en el código
-3. Clasifica cada criterio: `CUMPLIDO` / `PARCIAL` / `NO_CUMPLIDO`
-4. Genera el reporte `verificacion.json`
-
----
-
-### wireframe-mvp
-
-**Propósito:** Generar un wireframe HTML de la pantalla P0 (la más importante del MVP) basado en el ProductDesign.
-
-**Salida:** Archivo HTML con la estructura básica de la pantalla, sin estilos de producción pero con elementos y flujo correcto.
-
-**Cuándo se invoca:** Por `product-designer` durante `/sdd.diseñar`.
-
----
-
-## Crear una skill personalizada
-
-Para añadir una skill que FORGE no incluye, crea el directorio y archivo:
-
-```
-.claude/skills/
-└── mi-skill/
-    └── SKILL.md
-```
-
-Estructura mínima de `SKILL.md`:
-
-```markdown
-# mi-skill
-
-## Propósito
-Descripción en una oración de qué hace esta skill.
-
-## Cuándo invocar
-Condiciones bajo las que un comando o agente debe invocar esta skill.
-
-## Entradas
-- `entrada_1`: descripción
-- `entrada_2`: descripción
-
-## Proceso
-Instrucciones detalladas de lo que debe hacer la skill.
-
-## Salida
-Descripción del artefacto o resultado producido.
-```
-
-→ Ver [Extender FORGE](extending-forge.md) para el formato completo y ejemplos.
+# Herramientas (skills)
+
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
+Fragua incluye 31 skills: las carpetas de `skills/`, cada una con un `SKILL.md`. Esta página lista las 31, qué hace cada una según su `SKILL.md`, qué le entra, qué deja escrito y quién la usa. Estado del proyecto y cifras de referencia: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md). Inventario generado de cabeceras: [INVENTARIO-AGENTES-Y-SKILLS.md](INVENTARIO-AGENTES-Y-SKILLS.md).
+
+## Qué es una skill y qué no es
+
+Una skill es un archivo Markdown con instrucciones (a veces con bloques de shell o de Node que el modelo ejecuta con sus herramientas). **No es código que Fragua ejecute**: la carga y la sigue el modelo del anfitrión. Por eso su cumplimiento depende del modelo y no está garantizado por pruebas, salvo donde se indica. Los comandos (`commands/`) son las etapas del pipeline; una skill es un procedimiento que un comando, un agente o un hook nombra. Algunas skills no las nombra nadie (columna «Usada por»): solo actúan si el usuario o el modelo las invoca.
+
+El motor del ciclo verificado (`forge run`, `resume`, `verificar`) no carga skills; ver [ciclo-verificado.md](ciclo-verificado.md).
+
+## Dependencia del anfitrión
+
+Cada `SKILL.md` se copia a `.claude/skills/` en Claude Code, y, con `fragua init --integracion <clave>`, tal cual a la carpeta de skills de otras herramientas: ver [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md). Que un modelo de otra herramienta las siga con la misma fidelidad **no está verificado**. Clasificación, según lo que cada `SKILL.md` exige:
+
+- **A, portable**: solo pide leer/escribir archivos y ejecutar comandos de shell. Funciona en cualquier anfitrión con esas capacidades.
+- **CC, depende de Claude Code**: necesita la herramienta `Task` (subagentes) o un hook de `claude-hooks/` que alimenta sus datos. En otro anfitrión no hay hooks (ver [hooks.md](hooks.md)), así que los archivos que leen no se generan.
+
+`TodoWrite` no lo declara ninguna skill; lo usa el comando `/sdd.implementar` (`allowed-tools: Read, Write, Edit, Bash, Task, TodoWrite`).
+
+## Tabla de las 31 skills
+
+| Skill | Qué hace | Entra → sale | Usada por | Dep. |
+|---|---|---|---|---|
+| `adr-indexer` | Indexa decisiones escritas en el código como `# ADR: {json}` | comentarios ADR → `.sdd/arquitectura/ADRs.jsonl` | el hook `agent-memory.js` escribe ese archivo; la skill sirve para consultarlo | CC (hook) |
+| `cache-audit` | Revisa `.claude/agents/*.md` buscando bloques estables para `cache_control` y tres patrones que invalidan la caché (marcas de tiempo, UUID, JSONL embebido) | archivos de agentes → lista de recomendaciones | nadie; invocación manual | A |
+| `compresion-tokens` | **Deprecada.** Solo redirige al gestor de contexto (`claude-hooks/context-manager.js`) | — | nadie | A |
+| `constitucion-constraint` | Extrae de la constitución solo las reglas aplicables y comprueba un plan o código contra ellas | artefacto + `.sdd/memoria/constitucion.md` → veredicto de cumplimiento | `/sdd.planificar`, `/sdd.desplegar`, agente `arquitecto` | A |
+| `critica-diseno` | Puntúa el wireframe en 5 dimensiones (1-5); si la nota es menor de 4 y van menos de 3 iteraciones, lo reescribe | wireframe HTML → wireframe refinado + `critica-wireframe.md` en `.sdd/diseño/` | `/sdd.diseñar`, `/sdd.exportar` | A |
+| `decompose-to-ui-kit` | Descompone una imagen o descripción de UI en componentes del sistema de diseño | imagen o texto → `.sdd/design/components-kit.md` y `tokens.css` | agente `product-designer` | A |
+| `deploy-vercel` | Alias de `vercel-deploy`: apunta a su procedimiento | — | `/forge` (rutas `/forge.desplegar vercel` y `/forge deploy`) | A |
+| `descubrir-idea` | Hace 5 preguntas sobre la idea antes de interpretarla | respuestas del usuario → `.sdd/descubrimiento.md` | `/sdd.interpretar`, `/sdd.exportar` | A |
+| `deteccion-stack` | Detecta lenguaje, framework, base de datos, pruebas y build leyendo archivos de configuración | árbol del proyecto → stack detectado | `/sdd.constitucion`, `/sdd.crear-app`, `/sdd.desplegar` | A |
+| `effort-router` | Recomienda esfuerzo (low/medium/high/max) y modelo (Haiku/Sonnet/Opus) por fase y agente | nombre de la fase → recomendación | nadie directamente (la citan `token-budget` y `resource-selector`) | A |
+| `elegir-direccion` | Propone 3 de 5 direcciones visuales según el producto y la audiencia; el usuario elige una | `.sdd/ir.json` → `design_direction` y `design_system_path` en `.sdd/estado.json` | `/sdd.diseñar`, `/sdd.exportar` | A |
+| `enrutador-agentes` | Decide qué agente activa cada tarea según tipo, fase y configuración | tarea + config → agente elegido | `/sdd.implementar`, `/sdd.crear-agente` | A |
+| `explicame` | Lee el estado del proyecto y lo cuenta sin jerga: qué se hizo, por qué, qué sigue | `.sdd/` → explicación en el chat | `/forge`; el instalador la menciona (`cli/comandos/instalar.js`) | A |
+| `gestion-estado` | Describe cómo leer y escribir `.sdd/estado.json` y `.estado-tareas.json` para reanudar entre sesiones | estado → estado actualizado | ningún comando la nombra | A |
+| `github-connect` | Crea el repositorio en GitHub, configura el remoto y hace el primer push | proyecto local → repositorio remoto | `/sdd.constitucion` | A (requiere `git`/`gh` y credenciales) |
+| `indexador` | Detecta lenguajes y genera mapas estáticos (estructura, símbolos, dependencias) con expresiones regulares | proyecto → mapas en `.sdd/mapa/` | `/sdd.mapear` (lo declara en su cabecera) | A |
+| `indexar-proyecto` | Genera un índice de símbolos de archivos JS/TS | proyecto → `.sdd/arquitectura/ast-index.jsonl` | `/sdd.estado` | A |
+| `interpretar-idea` | Convierte la idea en un IR (JSON) en dos fases: razonamiento libre y extracción | idea + `descubrimiento.md` → `.sdd/ir.json` (tras confirmar) y `ir-analysis.md` | `/sdd.interpretar`, `/sdd.exportar` | A |
+| `mejorar-prompt` | Reescribe un prompt vago con estructura (contexto, tarea, restricciones, formato, verificación) y avisa si se sale de la spec activa | prompt → prompt mejorado | nadie; invocación manual | A |
+| `memory-compactor` | Deduplica y resume `.sdd/memoria/agente-*.md` cuando pasan de 50 KB | memoria de agente → memoria reducida | el `SKILL.md` dice que lo dispara `agent-memory.js`; **no verificado**: ese hook no contiene lógica de compactación | A |
+| `modo-guiado` | Fija cómo hablar con quien no programa: sin jerga, qué confirmar, decisiones técnicas tomadas por el modelo | `perfil: guiado` en `estado.json` o `sdd.config.yaml` → cambia el estilo, no los controles | `/forge`, `/sdd`, `/sdd.aclarar`, `/sdd.constitucion`, `/sdd.desplegar` | A |
+| `mutation-detector` | Agrupa por archivo los cambios registrados (cuántas veces y quién lo modificó) para señalar inestabilidad | `.sdd/observabilidad/mutaciones.jsonl` → informe | nadie; el archivo lo escribe el hook `agent-memory.js` | CC (hook) |
+| `observabilidad-consumo` | Resume `.sdd/observabilidad/consumo.jsonl`: invocaciones por agente, archivos tocados, picos | ledger → informe | `/sdd.estado` | CC (hook) |
+| `orquestacion-ptc` | Patrón de llamada programática: despachar subagentes independientes en paralelo y agregar solo resultados mínimos | lista de tareas → resultados resumidos | `/sdd.implementar`, `/sdd.analizar` | **CC** (`allowed-tools: Read, Task`) |
+| `resource-selector` | Elige qué agentes y skills cargar según complejidad, tipo de producto y etapa | `ir.json`, `estado.json`, `sdd.config.yaml` → lista mínima | `/sdd.planificar`, `/sdd.implementar` | A |
+| `share-progress` | Genera un resumen en Markdown del estado del pipeline (fases, tareas, agentes) | `.sdd/` → texto para compartir | `/forge` (rutas `/forge.compartir`, `/forge share`) | A |
+| `token-budget` | Estima el presupuesto de tokens por fase pendiente y recomienda paralelo o serie | estado + ledger → estimación | nadie directamente | A (usa el ledger si existe) |
+| `validacion-spec` | Comprueba un mínimo de calidad de la spec activa antes de pasar de fase | `spec.md` → aprobada o motivos | nadie por nombre | A |
+| `vercel-deploy` | Despliega a Vercel: comprobaciones previas, build, comprobación de salud, vuelta atrás si falla | proyecto → despliegue | `/sdd.implementar`; `deploy-vercel` apunta aquí | A (requiere CLI de Vercel y cuenta) |
+| `verificador-implementacion` | Contrasta el código con los criterios de aceptación de la spec leyendo código y pruebas | `spec.md` + código → `verificacion.md` | nadie por nombre | A |
+| `wireframe-mvp` | Genera el wireframe HTML de la pantalla P0 con el `DESIGN.md` activo | `product-design.json` + `DESIGN.md` → `.sdd/diseño/wireframe-pantalla-principal.html` | `/sdd.diseñar`, `/sdd.exportar`, agente `product-designer` | A |
+
+## Advertencias que se desprenden de la tabla
+
+- **`mutation-detector` no es la medición de pruebas por mutación.** Esta skill lee un registro de cambios de archivos (`mutaciones.jsonl`). La medición que altera el código y ejecuta las pruebas es `core/ciclo/mutacion.js` y no usa skills. Ver [GLOSARIO.md](GLOSARIO.md).
+- **`verificador-implementacion` no es `forge verificar`.** La skill es una instrucción para el modelo; `forge verificar` es código determinista que decide por el código de salida de las pruebas ([ciclo-verificado.md](ciclo-verificado.md)).
+- Las skills de despliegue y de GitHub actúan sobre servicios externos con las credenciales del usuario; no se han probado contra esos servicios en este repositorio (**no verificado**).
+- El modelo declarado en la cabecera (`model:`) existe solo en 14 de las 31 skills.
+- «Usada por» sale de buscar el nombre de la skill en `commands/`, `agents/`, `claude-hooks/`, `core/` y `cli/`. Una skill sin usuario puede cargarse igualmente por su descripción cuando el modelo la considera pertinente.
+
+## Añadir una skill
+
+Una carpeta `skills/<nombre>/SKILL.md` con cabecera (`name`, `description`, opcionalmente `model` y `allowed-tools`). Formato y límites: [extending-forge.md](extending-forge.md).

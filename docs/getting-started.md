@@ -1,205 +1,91 @@
 # Inicio rápido
 
-Esta guía te lleva de cero a un pipeline FORGE funcionando. Tiempo estimado: 10-15 minutos.
+> Tipo: Tutorial
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
-> **¿Tienes prisa?** La versión de una página, con el camino de cinco comandos y qué hacer en cada pausa: [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md). Desde el 2026-11-09 `fragua init` sin opciones instala el perfil **esencial** (los seis comandos del camino principal) y el preset **lean**; esta guía describe además el perfil completo.
+Esta guía instala Fragua y explica qué hacen `fragua init` y `fragua doctor`. El recorrido de cinco comandos con sus pausas está en [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) y no se repite aquí. Referencia de cada opción: [referencia-cli.md](referencia-cli.md).
 
----
+## Requisitos
 
-## Prerequisitos
-
-| Requisito | Mínimo | Recomendado |
+| Requisito | Para qué | Comprobación |
 |---|---|---|
-| Node.js | ≥20.0.0 | ≥22.5.0 (SQLite nativo) |
-| Docker | en marcha (para `forge run` con el ciclo verificado; sin él sale con código 4) | Docker Desktop |
-| Claude Code | cualquier versión | última |
-| Git | cualquier versión | — |
-| ANTHROPIC_API_KEY | obligatoria | — |
+| Node.js ≥ 20 | Todo (`engines` de `package.json`) | `node --version` |
+| Claude Code | Los comandos `/sdd.*` | `claude --version` |
+| Docker en marcha | El ciclo verificado (`fragua run`, `/sdd.implementar`); sin él sale con código 4 | `docker version` |
+| `ANTHROPIC_API_KEY` en el entorno | Llamadas al modelo del ciclo | `fragua doctor` |
+| Proyecto en JavaScript/TypeScript, Python o Go | Lenguajes que el ciclo sabe probar | [MIGRACION-5.0.md](MIGRACION-5.0.md) 2.2 |
 
-Si usas Node ≥22.5, FORGE usa `node:sqlite` nativo para la memoria y el decision store. Con versiones anteriores, cae a Markdown — todo funciona pero sin búsqueda semántica.
+Con Node ≥ 22.5 se usa `node:sqlite` para el almacén de decisiones; con menos, `doctor` lo avisa y se usa Markdown (`cli/comandos/doctor.js`).
 
----
+## 1. Instalar
 
-## Paso 1 — Instalar FORGE
-
-**Opción A — npm:** la 5.0.0 **no está publicada en npm** (allí solo hay versiones anteriores, p. ej. 4.2.0). Con `npm install -g forja-mvp` (nombre antiguo del paquete; el nuevo es `fragua`) obtendrás una versión anterior y `forge --version` no imprimirá 5.0.0. Para la 5.0.0 usa `npm install -g ./dist/fragua-5.0.0.tgz` (generado con `npm pack`) o la opción B.
-
-```bash
-npm install -g fragua
-forge --version   # debe imprimir 5.0.0
-```
-
-**Opción B — desde el repositorio:**
+La 5.0.0-beta.1 no está publicada en npm. Hasta que lo esté, se instala desde el repositorio:
 
 ```bash
 git clone https://github.com/carlos060798/FORGE
 cd FORGE
 npm install
 npm install -g .
-forge --version   # debe imprimir 5.0.0
+fragua --version   # 5.0.0-beta.1
 ```
 
----
+`fragua`, `forge` y `sdd-es` son el mismo ejecutable (`bin` de `package.json`). Sin instalar globalmente: `node /ruta/a/FORGE/cli/index.js <orden>`.
 
-## Paso 2 — Verificar instalación
-
-```bash
-forge doctor
-```
-
-`forge doctor` verifica:
-- `ANTHROPIC_API_KEY` configurada en el entorno
-- Hooks en disco (`pre-tool-guard.js`, `agent-memory.js`, `post-write-conventions.js`)
-- Conexión real al LLM usando `claude-haiku-4-5-20251001` (el más rápido y económico para el ping)
-- Latencia de respuesta y validación del formato JSON
-- SQLite disponible (Node ≥22.5)
-
-Si aparece algún error rojo, resuélvelo antes de continuar. Los errores amarillos son advertencias — el pipeline funciona pero con capacidad reducida.
-
----
-
-## Paso 3 — Inicializar en tu proyecto
+## 2. Instalar en tu proyecto
 
 ```bash
 cd /ruta/a/mi-proyecto
-forge init
+fragua init
 ```
 
-Esto crea el directorio `.sdd/` con el estado inicial del pipeline, la configuración y el espacio para los artefactos.
+Sin opciones, `fragua init` instala el perfil **esencial** (seis comandos en el menú `/`: `forge`, `sdd.especificar`, `sdd.planificar`, `sdd.tareas`, `sdd.implementar`, `sdd.estado`) y una configuración igual al preset **lean** (6 agentes activos). Fuente: `core/instalacion/perfiles.js`, ADR-24; ver [configuration.md](configuration.md#perfil-de-instalación-y-preset-lean-por-defecto).
 
-¿Usas otra herramienta que Claude Code (Cursor, Copilot, Gemini CLI…)? `forge init --integracion <clave> [--perfil esencial]` instala solo las skills en la carpeta de esa herramienta. Claves y detalles en la [guía 5.0](FORGE-5.0-GUIA.md#instalar-en-otra-herramienta---integracion---perfil---carpeta-skills).
+| Opción | Efecto |
+|---|---|
+| `--perfil completo` | Instala los 39 comandos |
+| `--preset startup` o `--preset enterprise` | Otro preset en vez de lean |
+| `--template api-rest\|cli-tool\|saas-mvp` | Parte de una plantilla de IR, spec y configuración |
+| `--integracion <clave>` | Instala las skills para otra herramienta (cursor, copilot, gemini…). Sin probar en ninguna herramienta real: [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md) |
+| `--global` | Instala en `~/.claude` |
+| `--ui` | Copia el dashboard a `.forge-ui/` |
 
-Para inicializar con un template de proyecto predefinido:
+`fragua update` vuelve a copiar el núcleo sin tocar `.sdd/` ni tus ajustes.
+
+## 3. Comprobar el entorno
 
 ```bash
-forge init --template api-rest    # API REST con autenticación
-forge init --template saas-mvp    # SaaS multi-tenant con Stripe
-forge init --template cli-tool    # Herramienta de línea de comandos
+fragua doctor
 ```
 
-Los templates pre-rellenan el IR inicial y la configuración del stack tecnológico recomendado.
+Revisa Node, la instalación del proyecto, `sdd.config.yaml`, los hooks, la clave, Docker (distingue «no instalado» de «no arrancado») y, si hay clave, hace una llamada mínima al modelo. Termina con una sección «Siguiente paso». Informa de problemas en pantalla pero **sale con código 0** aunque los haya (`docs/referencia-cli.md`, `doctor`): léelo, no lo uses como puerta en un script.
 
----
+## 4. Primer uso
 
-## Paso 4 — Primer pipeline
-
-Abre Claude Code en tu proyecto:
+Abre Claude Code en el proyecto y sigue [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md). La aprobación de la spec es obligatoria y se hace en una terminal real:
 
 ```bash
-cd mi-proyecto
-claude
+fragua aprobar spec
 ```
 
-Dentro de Claude Code, escribe:
+Te pide teclear un código que ves en pantalla. Sin ella no se puede planificar.
 
-```
-/forge
-```
-
-FORGE te pedirá tu idea. Escríbela en lenguaje natural:
-
-```
-/forge quiero construir una API REST para gestionar inventario con autenticación JWT
-```
-
----
-
-## Paso 5 — Seguir el pipeline
-
-El pipeline tiene 9 etapas. FORGE avanza de una en una, produciendo artefactos en `.sdd/`:
-
-```
-idea
-  └→ /sdd.descubrir      → .sdd/discovery/
-       └→ /sdd.interpretar → .sdd/ir.json
-            └→ /sdd.diseñar   → .sdd/product-design.json
-                 └→ /sdd.especificar → .sdd/especificaciones/
-```
-
-En cada etapa, FORGE produce un artefacto y espera tu revisión antes de continuar.
-
-### Punto de control obligatorio: aprobación de la spec
-
-Antes de que FORGE pueda planificar, tú debes revisar y aprobar la especificación:
+## 5. Ver el estado y retomar
 
 ```bash
-# Revisa .sdd/especificaciones/ — lee la spec generada
-# Cuando estés conforme:
-forge aprobar spec
+fragua status          # etapa del pipeline y transiciones
+fragua logs --last 20  # consumo de tokens
+fragua ui              # dashboard en http://localhost:3001 (solo lectura)
+fragua resume          # retoma lo interrumpido o lo que espera tu decisión
 ```
 
-Sin este comando, el pipeline bloquea. El estado de la state machine requiere `spec_aprobado: true` para avanzar a `plan`.
+Dentro de Claude Code: `/sdd.estado` e `/sdd.implementar continuar`.
 
-```
-spec → [forge aprobar spec] → plan → tasks → code → done
-```
+## Configuración
 
----
+Fichero `.sdd/sdd.config.yaml`. Se consulta y cambia con `fragua config show|get|set|validate`. Las secciones que lee el ciclo (`motor`, `sandbox`, `presupuesto`…) exigen exactamente dos espacios de sangría. Referencia completa: [configuration.md](configuration.md).
 
-## Paso 6 — Monitorear
+## Siguiente
 
-Mientras el pipeline avanza, puedes ver el progreso en tiempo real:
-
-```bash
-forge ui      # abre http://localhost:3001
-```
-
-El dashboard usa SSE (Server-Sent Events) — los datos se actualizan en tiempo real sin recargar. Muestra:
-- Estado actual del pipeline
-- Consumo de tokens y costo en USD
-- Log de eventos recientes
-- Progreso de tareas
-
-El dashboard se cierra automáticamente tras 30 minutos de inactividad.
-
-```bash
-forge status  # alternativa en terminal — estado + presupuesto USD
-forge logs    # historial de consumo en .sdd/observabilidad/consumo.jsonl
-```
-
----
-
-## Paso 7 — Reanudar una sesión interrumpida
-
-Si la sesión de Claude Code termina a mitad del pipeline:
-
-```bash
-forge resume
-```
-
-O dentro de Claude Code:
-
-```
-/sdd.implementar continuar
-```
-
-FORGE lee el checkpoint en `.sdd/` y retoma desde la última tarea completada.
-
----
-
-## Configuración básica
-
-FORGE crea `.sdd/sdd.config.yaml` con valores por defecto. Las opciones más comunes:
-
-```yaml
-perfil: guiado      # guiado (paso a paso con confirmaciones) | experto (más rápido)
-
-llm:
-  provider: anthropic   # anthropic | openai | ollama | stub
-  model: sonnet         # sonnet | opus | haiku
-
-memoria:
-  backend: sqlite       # sqlite (Node ≥22.5) | markdown
-```
-
-→ Ver [Configuración completa](configuration.md) para todas las opciones.
-
----
-
-## Próximos pasos
-
-- [Conceptos fundamentales](core-concepts.md) — IR, pipeline, estado, memoria
-- [Los 14 agentes](agents.md) — qué hace cada agente y cómo configurarlos
-- [Configuración](configuration.md) — referencia completa de sdd.config.yaml
-- [Arquitectura](architecture.md) — cómo funciona FORGE por dentro
-- [Solución de problemas](TROUBLESHOOTING.md) — errores comunes y soluciones
+- [Qué es y sus límites](introduction.md)
+- [Solución de problemas](TROUBLESHOOTING.md)
+- [Conceptos](core-concepts.md) · [Agentes](agents.md)

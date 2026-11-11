@@ -1,5 +1,8 @@
 # Cadena de evidencia
 
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 `fragua verificar --registrar` guarda cada verificación en `.sdd/verificaciones/<id>.json`. Desde esta fase, cada archivo lleva un bloque `evidencia` que lo **encadena** con el anterior y, si hay clave local, lo **firma**. Sirve para que alterar, borrar o reordenar informes ya guardados se note. No es una prueba de que lo que dice el informe sea cierto.
 
 ## Qué lleva el bloque `evidencia`
@@ -45,4 +48,11 @@ Detecta: alterar un campo, borrar un informe del medio, reordenar, bifurcar, qui
 - Dos `--registrar` simultáneos pueden bifurcar la cadena: se detecta como error, no se arregla solo.
 - Una escritura interrumpida entre el informe y la cabeza deja la cabeza un paso atrás y se avisa como desfase.
 
-Siguiente fase (no hecha): puertas declarables, `modelos` poblados por el ciclo, `DockerCli.identidadImagen`, y bloquear al agente la escritura de `tsconfig*.json`, `mypy.ini`, `ruff.toml`, `biome.json`... (la lista ya existe en `core/evidencia/protegidos.js`, sin cablear).
+Estado de lo que antes figuraba como «siguiente fase»: las puertas declarables existen ([puertas-de-calidad.md](puertas-de-calidad.md)); la lista de configuración protegida de `core/evidencia/protegidos.js` ya la usa `core/ciclo/protocolo-archivos.js:21` para negar escrituras del agente. `DockerCli.identidadImagen` no existe en el código (búsqueda en `core/`); `modelos` solo se rellena si quien registra le pasa datos (`opciones.modelos`, `cadena.js:484`): que el ciclo los pase no está verificado.
+
+## Límites
+
+- No prueba que lo que afirma el informe sea cierto ni que las pruebas sean buenas.
+- No hay firma asimétrica ni verificación por terceros.
+- `aprobador` es siempre `null` (`cadena.js:502`).
+- El resultado de `--comprobar-evidencia` distingue los niveles `firmada`, `encadenada_sin_firma`, `firmas_no_verificables`, `rota` y `vacia`; el esquema público del informe es [`contrato/resultado-verificar.schema.json`](contrato/resultado-verificar.schema.json).

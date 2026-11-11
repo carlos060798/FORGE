@@ -4,13 +4,16 @@ Este documento responde a las preguntas más comunes de usuarios no-técnicos cu
 
 ---
 
-## Premisa: Tu código está **siempre seguro**
+## Premisa: qué protege y qué no
 
-Antes de cualquier respuesta, recuerda esto:
+Fragua no guarda tu código por su cuenta. Lo que te permite volver atrás es **Git**, y solo si lo usas:
 
-✅ Tu código está guardado en GitHub (historial completo)
-✅ Cada cambio se registra (puedes ver quién cambió qué y cuándo)
-✅ Puedes volver a una versión anterior en cualquier momento (sin perder nada)
+- Si haces commit con frecuencia, puedes volver a cualquier commit (`git log`, `git checkout`).
+- Si además haces push a GitHub u otro remoto, hay una copia fuera de tu equipo.
+- Si no haces commit, un cambio mal hecho puede no tener vuelta atrás. Haz commit antes de lanzar `/sdd.implementar`.
+- Lo que Fragua sí deja es un registro en `.sdd/` (spec, plan, tareas, aprobaciones en `.sdd/aprobaciones.jsonl`). Es un archivo del proyecto: léelo, no lo da por seguro nadie más.
+
+Las secciones de abajo describen el comportamiento esperado de los comandos; no se han ejecutado de extremo a extremo contra Vercel ni GitHub reales (no verificado, ver [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
 
 ---
 
@@ -279,20 +282,19 @@ Ejemplo de cambios:
 
 ## Escenario 8: "¿Qué pasa si alguien hackea mi sitio?"
 
-### Respuesta: SDD-ES lo previene
+### Respuesta: Fragua reduce el riesgo, no lo elimina
 
 ```
-Durante el proceso:
+Durante el proceso, si ejecutas los comandos de seguridad:
 
-✅ El agente de seguridad revisó el código automáticamente
-✅ Se prueban ataques comunes (XSS, SQL injection, etc.)
-✅ Secretos (contraseñas, API keys) no están en el código
-✅ Validación de datos (usuario no puede inyectar código malicioso)
+- El agente de seguridad revisa el código; es un modelo, puede dejarse cosas.
+- Los secretos en lo que escribe el modelo se rechazan (garantía G13 de [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md)).
+- Nada de esto sustituye una auditoría de seguridad independiente
 
 Si algo pasara:
 
-1. GitHub registra quién cambió qué (auditoría completa)
-2. Puedes volver a una versión anterior en segundos
+1. Git registra quién cambió qué, si hiciste commit
+2. Puedes volver a una versión anterior con Git
 3. Investigar qué pasó (historial de cambios)
 ```
 
@@ -355,49 +357,15 @@ Voy a restaurar desde GitHub...
 
 ---
 
-## Resumen: No hay error que no se pueda arreglar
+## Resumen: qué depende de qué
 
-| Problema | Tiempo | Reversible | Datos seguros |
-|----------|--------|-----------|----------------|
-| Deploy falló | 2 min reintentar | ✅ Sí | ✅ Sí (GitHub) |
-| Cambié de idea | 10 min refactor | ✅ Sí | ✅ Sí (ramas) |
-| Cliente reporta bug | 5 min fix + test | ✅ Sí | ✅ Sí (auditoria) |
-| GitHub desaparece | 1 hora mover | ✅ Sí | ✅ Sí (backup local) |
-| Vercel cobra extra | 30 min migrar | ✅ Sí | ✅ Sí (GitHub) |
-| Compliance nueva | 20 min auditar | ✅ Sí | ✅ Sí (reportes) |
-| Hackeo potencial | — | ✅ Sí (rollback) | ✅ Sí (GitHub audit) |
+| Problema | Qué lo hace reversible | Condición |
+|----------|------------------------|-----------|
+| Deploy falló | Reintentar el deploy | Que el error sea pasajero; si es de código, hay que corregirlo |
+| Cambié de idea | Una rama de Git | Que hayas hecho commit antes |
+| Cliente reporta bug | Un fix con su prueba | Que se pueda reproducir |
+| Un cambio mal hecho | `git revert` o `git checkout` | Que ese cambio esté en un commit |
 
----
+## Si necesitas ayuda
 
-## Mantra: "Tu código está seguro, cualquier cambio es reversible"
-
-Esto no es verdad en 99% de las herramientas.
-
-**Con SDD-ES:**
-
-```
-GitHub    → historial completo (quién, qué, cuándo)
-Vercel    → roll-forward/rollback en 1 click
-Especificación → documento versionado
-Plan      → aprobado por ti, registrado
-
-No hay decisión que no puedas deshacer.
-```
-
----
-
-## Última línea: Si necesitas ayuda
-
-```
-Tu proyecto tiene:
-
-📝 Especificación clara (qué debería hacer)
-📋 Plan técnico (cómo se construyó)
-📊 Cambios documentados (quién hizo qué)
-✅ Tests automáticos (qué funciona)
-🔒 Auditoría de seguridad (vulnerabilidades conocidas)
-
-Si algo está mal, Claude tiene TODA la información para arreglarlo.
-
-Sin necesidad de programar. Solo describir el problema.
-```
+Describe el problema a Claude con el contenido de `.sdd/` (spec, plan, tareas) y la salida de `fragua doctor` y `fragua status`. Eso le da contexto, pero no garantiza que pueda arreglarlo. Problemas conocidos: [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md).

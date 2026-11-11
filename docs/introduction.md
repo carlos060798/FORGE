@@ -1,120 +1,45 @@
 # Introducción
 
-FORGE es un **framework de Desarrollo Guiado por Especificaciones (SDD)** que corre completamente dentro de [Claude Code](https://claude.ai/code). Provee un pipeline estructurado, un equipo de 14 agentes de IA especializados, memoria persistente de proyecto y un conjunto de restricciones constitucionales, para que construir software desde una idea en lenguaje natural sea un proceso repetible y auditable, no una conversación improvisada.
+> Tipo: Explicación
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
-**Nota:** Si encuentras términos poco claros (SDD, agente, comando, skill, hook, pipeline, etapa), consulta el [Glosario](GLOSARIO.md) para definiciones canónicas.
+Términos poco claros (SDD, agente, comando, skill, hook, pipeline): [Glosario](GLOSARIO.md). Estado real y cifras de pruebas: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md). Versión 5.0.0-beta.1, sin publicar en npm.
 
----
+## Qué es
 
-## El problema que resuelve FORGE
+Fragua (antes FORGE; el comando `fragua` equivale a `forge`) es un conjunto de archivos y una línea de comandos para trabajar con Claude Code por especificaciones. El flujo es: describir una idea, escribir una especificación, aprobarla tú, planificar, dividir en tareas e implementar. Cada paso deja un archivo en `.sdd/` del proyecto.
 
-Claude Code es un asistente de programación capaz, pero por defecto no tiene memoria de sesiones anteriores, ni contexto arquitectónico, ni coordinación entre distintos tipos de trabajo (diseño, implementación, testing, seguridad), ni mecanismo para respetar las restricciones que tu equipo ha decidido. Cada sesión empieza desde cero.
+Instala en tu proyecto 39 comandos `/sdd.*`, 14 agentes y 31 skills, que son archivos Markdown, y hooks en Node. Los hooks bloquean ciertas escrituras y registran cambios. No es un servicio: no hay servidor de Fragua. Lo que sale de tu equipo son las llamadas al proveedor del modelo.
 
-Para tareas pequeñas y únicas eso está bien. Para construir software real, genera cuatro problemas que se acumulan:
+La parte de código propia es el **ciclo verificado** (`core/ciclo/`): un agente escribe pruebas, otro escribe el código sin poder tocarlas, y las pruebas corren en un contenedor Docker sin red. La tarea se da por buena según el código de salida de las pruebas, no según lo que diga el modelo. Instalación por defecto: perfil `esencial` (seis comandos) y preset `lean` (6 agentes activos).
 
-**1. Pérdida de contexto.** Los requisitos decididos en la sesión uno son desconocidos en la sesión dos. Las decisiones arquitectónicas se vuelven a debatir. El asistente redescubre tu stack desde cero cada vez.
+## Qué puede hacer
 
-**2. Sin especialización.** El mismo modelo de propósito general escribe código frontend, revisa seguridad, diseña esquemas de base de datos y escribe documentación. No puede estar en el modo correcto para todos ellos al mismo tiempo.
+| Capacidad | Respaldo | Estado de la prueba |
+|---|---|---|
+| Ciclo verificado: pruebas rojas, implementación, pase por código de salida, en Docker sin red | `core/ciclo/`, `tests/sandbox-real.test.js` (11 de 11), `tests/corte-real.test.js` | Docker real probado solo en Windows 11 con Docker Desktop (2026-11-10). Sin probar en Linux ni macOS. Modelo real: 24 ejecuciones pequeñas con Anthropic (2026-10) |
+| Veredicto de pruebas sin modelo: `fragua verificar` (con mutación y cadena de evidencia) | `core/verificar/`, `tests/verificar-mutacion.test.js` | Pruebas automáticas; Docker real en Windows |
+| Aprobación humana de la spec desde un terminal real, con código de un solo uso | `cli/comandos/aprobar.js`, `tests/aprobaciones-identidad.test.js`, `tests/state-machine-aprobacion.test.js` | Pruebas automáticas. Con el mismo usuario del sistema no hay separación criptográfica |
+| Contención ante archivos hostiles del proyecto (rutas vetadas, secretos, dependencias, red) | [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md) (G1 a G55), `tests/proyecto-hostil.test.js` | Modelo guionizado que obedece al ataque; sin revisión independiente ni modelo real |
+| Puertas de calidad (tipos, lint) tras las pruebas | `core/puertas/`, `tests/puertas-ciclo-completo.test.js` | Docker falso y modelo guionizado; no con modelo real |
+| Reanudar tras una interrupción, con estado sellado | `tests/estado-sellado.test.js`, `fragua resume` | Pruebas automáticas. Un estado de otro equipo no se reanuda |
+| Tope de gasto por sesión (2 USD por defecto) | `core/ciclo/presupuesto.js`, `core/session-budget.js` | El gasto calculado nunca se comparó con una factura |
+| Proveedores Anthropic, OpenAI y Ollama | `core/llm-providers/` | Solo Anthropic con llamadas reales; OpenAI y Ollama contra servidores falsos |
+| Servidor MCP (perfil `verificacion`) y API HTTP local con token | `core/mcp/`, `tests/mcp-dato-no-confiable.test.js`, `tests/api-http.test.js` | Pruebas automáticas; sin cliente MCP real documentado aquí |
+| Instalar las skills en otras 8 herramientas (`--integracion`) | `core/instalacion/`, `tests/instalacion-integraciones.test.js` | **Sin probar en ninguna herramienta real**; sin guardián por hooks fuera de Claude Code |
+| Dashboard local en `127.0.0.1:3001` | `ui/server.js` | Solo lectura (`GET`); se cierra a los 30 min sin uso |
 
-**3. Sin disciplina impuesta.** Sin restricciones, el asistente puede borrar archivos silenciosamente, ignorar tus convenciones de nomenclatura, saltarse los tests cuando hay presión de tiempo, o desviarse de la especificación.
+## Qué no puede hacer / límites
 
-**4. Sin visibilidad.** No puedes ver qué cambió el asistente, por qué lo cambió, qué agente tomó la decisión, ni cómo el proyecto en conjunto está progresando.
+| Límite | Evidencia | Qué hacer |
+|---|---|---|
+| Pasar las pruebas no demuestra que el código sea correcto | [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) C-2, P-1 | Revisa el diff y ejecuta las pruebas tú antes de hacer commit |
+| El ciclo exige Docker en marcha; sin él sale con código 4 | `docs/referencia-cli.md` (`run`), `fragua doctor` | Abre Docker Desktop o usa `--motor clasico` (sin aislamiento, en tu equipo) |
+| Solo JavaScript/TypeScript, Python y Go; en Python, dependencias solo desde `requirements.txt` | [MIGRACION-5.0.md](MIGRACION-5.0.md) 2.2 y 4.2 | Otros lenguajes: solo el modo clásico |
+| Sin probar en Linux ni macOS; la CI de GitHub sigue en rojo en el último run comprobado (2026-11-09) | [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md) | No lo uses como garantía en esas plataformas |
+| Los agentes son prompts; pueden desviarse de su rol | [limitations.md](limitations.md), hooks solo mitigan escrituras | Aprueba la spec y revisa los cambios |
+| El flujo interactivo completo corre dentro de Claude Code | [limitations.md](limitations.md) | Sin Claude Code solo quedan `run`, `verificar`, `mcp` y `api` |
+| La 5.0.0 no está publicada en npm | `docs/ESTADO-ACTUAL.md` | Instala desde el repositorio ([getting-started.md](getting-started.md)) |
+| No es una herramienta para tareas de cinco minutos: el recorrido spec, plan y tareas tiene coste en tiempo y modelo | [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) | Para cambios menores, usa Claude Code directamente |
 
-FORGE resuelve los cuatro.
-
----
-
-## Qué es FORGE
-
-FORGE es un **plugin para Claude Code** — un conjunto de comandos, agentes, skills y hooks que instalas una vez y que corren dentro de cada sesión de Claude Code en tu proyecto.
-
-No es un proceso separado. No es un servicio web. No es un wrapper alrededor de la API. Corre completamente dentro del modelo de ejecución de Claude Code, usando el sistema de hooks nativo de Claude Code para interceptar y aumentar cada llamada a herramientas.
-
-Concretamente, FORGE instala:
-
-- **39 [comandos](GLOSARIO.md#comando) slash** (archivos `.md` en `.claude/commands/`) — las etapas del pipeline y operaciones de utilidad
-- **14 definiciones de [agentes](GLOSARIO.md#agente)** (archivos `.md` en `.claude/agents/`) — prompts de sistema específicos por rol con restricciones de herramientas
-- **31 [skills](GLOSARIO.md#skill)** (archivos `.md` en `.claude/skills/`) — capacidades reutilizables invocadas por los comandos
-- **8 archivos de [hooks](GLOSARIO.md#hook) en `claude-hooks/`** (guardia PreToolUse, memoria y convenciones PostToolUse, índice AST, etc.); 3 tienen `.sh`, que solo delega en Node ≥ 20. Detalle en [hooks.md](hooks.md)
-- **Un directorio de estado del proyecto** (`.sdd/`) — almacenamiento duradero para todos los artefactos del pipeline
-
----
-
-## Cómo se relaciona FORGE con SDD
-
-**Desarrollo Guiado por Especificaciones** es la metodología que implementa FORGE. La idea central es que cada pieza de implementación debe ser trazable a una especificación escrita y aprobada por humanos. El flujo es siempre:
-
-```
-entender → especificar → [aprobación humana] → planificar → implementar → verificar
-```
-
-No:
-
-```
-pedir → generar → esperar lo mejor
-```
-
-La especificación es un artefacto de primera clase. Contiene criterios de aceptación escritos antes de que se escriba cualquier código. La etapa de verificación al final comprueba el comportamiento real del código contra esos criterios, no contra lo que el agente cree que construyó.
-
----
-
-## Lo que FORGE no es
-
-**FORGE no es un framework de agentes.** No provee un SDK de Python ni un motor de ejecución de grafos. Es un framework de ingeniería de prompts — sus agentes son archivos Markdown con instrucciones de rol, no objetos con métodos.
-
-**FORGE no es un servicio en la nube.** No existe ningún servidor FORGE. El dashboard en `localhost:3001` lee archivos de tu propio directorio `.sdd/`. Nada sale de tu máquina excepto las llamadas normales a la API de Claude Code que ya estabas haciendo.
-
-**FORGE no reemplaza tus herramientas.** No gestiona tu repositorio Git, tu pipeline de CI ni tu infraestructura de despliegue. Se integra con ellos vía comandos (`/sdd.desplegar`, `/sdd.release`) pero no los posee.
-
-**FORGE no es una plataforma de automatización de propósito general.** Es opinionado sobre el desarrollo de software. Si quieres automatizar algo no relacionado con construir software, FORGE es la herramienta equivocada.
-
----
-
-## Principios de diseño
-
-Los siguientes principios son observables en todo el código y guiaron cada decisión de diseño:
-
-### Artefactos sobre conversaciones
-
-Cada salida significativa se escribe en disco en `.sdd/`. El IR, el diseño del producto, la spec, el plan, la lista de tareas, las memorias de agentes, los ADRs, el reporte de verificación — todos son archivos que puedes leer, comparar y versionar. La conversación es efímera; los artefactos no lo son.
-
-### Dependencias externas mínimas
-
-FORGE tiene tres dependencias npm: `@anthropic-ai/sdk` (el proveedor de Anthropic; es dependencia desde 5.0.0), `acorn` (parser AST de JavaScript) y `@sqlite.org/sqlite-wasm` (backend de memoria opcional). Todo lo demás usa APIs nativas de Node.js. Es una elección deliberada: cuantas menos cosas puedan romperse en la instalación, más confiablemente funciona FORGE en distintos entornos.
-
-### Hooks como gobernanza
-
-En lugar de confiar en que el agente siga instrucciones, FORGE usa los hooks PreToolUse y PostToolUse de Claude Code para imponer restricciones en tiempo de ejecución. `pre-tool-guard.js` bloquea comandos destructivos antes de que se ejecuten. `agent-memory.js` registra cada cambio de archivo después de que ocurre. Estas no son sugerencias — son compuertas duras.
-
-### Reanudabilidad por defecto
-
-Cada etapa del pipeline escribe su checkpoint en `.sdd/`. Si una sesión termina a mitad de la implementación, `/sdd.implementar continuar` lee `.sdd/especificaciones/{id}/.estado-tareas.json` y retoma desde la última tarea completada. No se pierde ningún trabajo.
-
-### Dos modos para dos audiencias
-
-FORGE tiene un modo `guiado` para no-programadores y un modo `experto` para desarrolladores. En modo guiado, las confirmaciones están en lenguaje llano, la jerga técnica se traduce y el pipeline pausa para aprobación humana en cada etapa mayor. En modo experto, el pipeline avanza más rápido y expone más detalle técnico.
-
----
-
-## Resumen de la arquitectura
-
-FORGE está organizado en seis capas:
-
-| Capa | Contenido |
-|------|-----------|
-| **L0 — Modelos** | Anthropic (Opus/Sonnet/Haiku), OpenAI, Ollama, Stub — motor agnóstico auto-detectado |
-| **L1 — Memoria** | `.sdd/memoria/` — Markdown por agente o SQLite; memoria compartida entre agentes |
-| **L2 — Interfaz** | 39 comandos, 31 skills — la API del pipeline |
-| **L3 — Herramientas** | Herramientas nativas de Claude Code: Read, Write, Bash, Task |
-| **L4 — Orquestación** | 14 agentes despachados secuencialmente o en paralelo |
-| **L5 — Gobernanza** | 6 hooks (.js + .sh): pre-tool-guard, agent-memory, post-write-conventions |
-
-→ Ver [Arquitectura](architecture.md) para el diagrama completo y documentación por capa.
-
----
-
-## Próximos pasos
-
-- [Inicio rápido](getting-started.md) — instala FORGE y ejecuta tu primer pipeline
-- [Conceptos fundamentales](core-concepts.md) — entiende el IR, el estado del pipeline, la memoria de agentes y la constitución
-- [Arquitectura](architecture.md) — el diagrama completo del sistema
+Lista completa y verificada: [limitations.md](limitations.md). Cómo empezar: [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) o [getting-started.md](getting-started.md).

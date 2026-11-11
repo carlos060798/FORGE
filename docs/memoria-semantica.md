@@ -1,8 +1,13 @@
 # Memoria semántica del ciclo
 
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 Con `motor.recuperador: semantico`, el ciclo verificado da a los agentes, además de los archivos que la tarea o el plan nombran, los **trozos del repositorio más parecidos a la tarea**. Spec `2026-10-04-memoria-semantica`, decisión en `ADR-14`.
 
 ## Activarla
+
+Por defecto `motor.recuperador` es `archivos` (solo los archivos que nombran la tarea y el plan); `semantico` es opt-in (`core/ciclo/config.js:33`). Un valor de `embeddings` distinto de `hash` u `ollama` falla al cargar la configuración (`config.js:453`).
 
 En `.sdd/sdd.config.yaml`:
 
@@ -42,4 +47,5 @@ Lo que un modelo no puede leer: carpetas vetadas (`.git`, `.sdd`, `node_modules`
 - El índice se guarda en `.sdd/indice/` y contiene vectores derivados de tu código. **FORGE no modifica el `.gitignore` de tu proyecto**: añade `.sdd/indice/` para no subirlo por error. Está acotado a 3000 archivos y 20 000 trozos.
 - Con Ollama, las peticiones no siguen redirecciones y tienen un plazo que cubre la respuesta entera; una respuesta de más de 512 KB o un vector de más de 8192 dimensiones se rechaza.
 - No sustituye al indexador de `utils/hybrid-indexer.js`, que sigue como estaba.
+- Cada trozo se corta a 2400 caracteres y cada archivo se tokeniza como mucho en sus primeros 6000 caracteres con `hash`.
 - Autoevaluada: sin verificación ni revisión de seguridad independientes.

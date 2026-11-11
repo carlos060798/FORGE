@@ -1,435 +1,138 @@
-# Ejemplos
+# Ejemplos de uso
 
-Recorridos completos de extremo a extremo que ilustran FORGE en escenarios reales.
+> Tipo: Guía
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
----
+Cada ejemplo indica qué se ejecuta y qué produce. Los comandos de la CLI están descritos en [referencia-cli.md](referencia-cli.md); los comandos `/sdd.*` son instrucciones para Claude Code (archivos de `commands/`), no órdenes de shell. Estado del proyecto (pre-beta, sin publicar): [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
-## Ejemplo 1 — API REST con autenticación JWT
+**Ningún ejemplo de esta página se ejecutó en esta revisión.** Se comprobó que los comandos y subcomandos existen y que los mensajes citados están en el código. Las salidas que dependen de un modelo (preguntas, specs, planes) varían entre ejecuciones y aquí no se reproducen.
 
-**Escenario:** Un desarrollador necesita construir una API REST con Node.js, JWT y PostgreSQL para una aplicación de gestión de tareas.
-
-**Nivel de complejidad:** Medio  
-**Tiempo estimado:** 2–3 sesiones
+Para un recorrido largo con salidas de ejemplo de cada agente, ver [EJEMPLO-API-REST.md](EJEMPLO-API-REST.md).
 
 ---
 
-### Sesión 1: Descubrimiento y planificación
+## 1. Instalar y comprobar el entorno
 
-```
-/sdd.descubrir necesito una API REST para gestión de tareas de equipos
-```
-
-FORGE ejecuta el formulario de discovery:
-
-```
-FORGE: ¿Para quién es esta API? ¿Quiénes serán los usuarios principales?
-Usuario: Equipos de desarrollo, de 3 a 20 personas por equipo
-
-FORGE: ¿Qué problema resuelve que las alternativas actuales no cubren bien?
-Usuario: Los equipos usan Jira pero es muy complejo. Queremos algo simple
-         con API limpia para integrar con nuestras herramientas internas.
-
-FORGE: ¿Qué debería poder hacer alguien en su primera sesión con esta API?
-Usuario: Crear una tarea, asignarla a alguien del equipo, marcarla como hecha.
-```
-
-Tras las cinco preguntas, FORGE procede automáticamente:
-
-```
-/sdd.interpretar
-```
-
-Resultado en `.sdd/ir.json`:
-```json
-{
-  "confidence": 0.89,
-  "product": {
-    "name": "TaskAPI",
-    "type": "api",
-    "target_users": "Equipos de desarrollo 3-20 personas"
-  },
-  "features": {
-    "core": [
-      "gestión de tareas (CRUD)",
-      "equipos y membresía",
-      "asignación de tareas",
-      "estados (pendiente/en progreso/completada)",
-      "autenticación JWT"
-    ]
-  }
-}
-```
-
-```
-/sdd.diseñar
-```
-
-El agente `architecture-designer` recomienda:
-- Backend: Node.js 20 + Fastify + TypeScript
-- Base de datos: PostgreSQL 16
-- Autenticación: JWT con RS256
-- Despliegue: Railway
-- Complejidad estimada: `medium`
-
-```
-/sdd.especificar
-```
-
-El agente `arquitecto` + `disenador-api` producen `spec.md` con criterios como:
-
-```markdown
-## AC-001: Autenticación
-- DADO un usuario con email y contraseña registrados
-- CUANDO POST /auth/login con credenciales correctas
-- ENTONCES recibe { token: JWT, expires_in: 900 }
-- Y el token es válido por 15 minutos
-
-## AC-007: Crear tarea
-- DADO un usuario autenticado y miembro de un equipo
-- CUANDO POST /teams/{id}/tasks con { title, assignee_id }
-- ENTONCES la tarea se crea con estado "pending"
-- Y se devuelve 201 con el objeto tarea completo
-```
-
-```
-/sdd.planificar
-```
-
-El agente `arquitecto` diseña el plan. El agente `critico` identifica un riesgo:
-
-> *"El plan no contempla el caso de tokens expirados durante una operación larga. ¿Se renovará automáticamente o el cliente debe manejar 401?"*
-
-Se resuelve la ambigüedad y se añade a la spec. El plan se aprueba.
-
----
-
-### Sesión 2: Implementación
-
-```
-/sdd.tareas
-```
-
-FORGE genera 11 tareas atómicas:
-
-```
-T-001: Schema BD (asesor-datos)          ← sin dependencias
-T-002: Migrations (asesor-datos)         ← depende T-001
-T-003: Config Fastify + env (dev-backend) ← sin dependencias
-T-004: Auth middleware JWT (dev-backend)  ← depende T-003
-T-005: Endpoints /auth/* (dev-backend)   ← depende T-004
-T-006: Endpoints /teams/* (dev-backend)  ← depende T-004
-T-007: Endpoints /tasks/* (dev-backend)  ← depende T-006
-T-008: Tests unitarios auth (tester)     ← depende T-005
-T-009: Tests integración API (tester)    ← depende T-007
-T-010: Dockerfile + Railway config (ops) ← depende T-003
-T-011: Revisión final (revisor)          ← depende T-009
-```
-
-```
-/sdd.implementar
-```
-
-FORGE despacha agentes en orden de dependencias. La sesión termina tras T-007.
-
----
-
-### Sesión 3: Tests, verificación y despliegue
-
-```
-/sdd.implementar continuar
-```
-
-FORGE reanuda desde T-008. El agente `tester` escribe 43 tests. El agente `revisor` aprueba.
-
-```
-/sdd.verificar
-```
-
-Resultado: 11/11 criterios de aceptación cumplidos. Cobertura: 84%.
-
-```
-/sdd.desplegar
-```
-
-El agente `seguridad` hace auditoría final. El agente `operaciones` despliega a Railway. Health check: `200 OK`.
-
----
-
-## Ejemplo 2 — Modo guiado para no-programadores
-
-**Escenario:** Un emprendedor sin conocimientos técnicos quiere construir una landing page para su producto SaaS.
-
-**Nivel de complejidad:** Bajo  
-**Tiempo estimado:** 1 sesión
-
----
+Qué ejecuta: instalación en el proyecto actual y diagnóstico.
 
 ```bash
-npx forge-sdd init --guided --preset lean
+npx fragua init --preset lean
+npx fragua doctor
 ```
 
-El wizard guiado pregunta:
-```
-? Perfil: guiado
-? Stack: otro (no sé de tecnología)
-? Despliegue: Vercel
-? Calidad de modelos: equilibrada (Sonnet)
-```
+- `init` copia el núcleo, comandos, agentes y hooks al proyecto y crea `.sdd/` (ver [referencia-cli.md](referencia-cli.md#init)). `--guided` ejecuta además un asistente interactivo que pregunta cuestiones de configuración (`wizardGuiado` en `cli/comandos/instalar.js`); `--ui` instala también el dashboard.
+- `doctor` comprueba Node (>= 20), Docker, hooks, configuración y la clave del proveedor. Si Docker falla, indica si no está instalado, no está arrancado o falta permiso (`core/sandbox/diagnostico.js`).
 
----
+Resultado esperado: un informe de líneas informativas y avisos. `doctor` sale con 0 aunque detecte problemas. No ejecutado en esta revisión.
 
-```
-/forge
-```
+## 2. Idea a código verificado con un comando
+
+Qué ejecuta: el comando `/forge` en el chat de Claude Code (`commands/forge.md`), que recibe la idea en lenguaje natural y conduce el flujo (descubrimiento, spec, plan, tareas). No es un comando de shell.
 
 ```
-FORGE: ¡Hola! Cuéntame qué quieres construir. Puedes describirlo
-       como si se lo explicaras a un amigo.
-
-Usuario: Quiero una página web para mostrar mi app de meditación.
-         Que tenga una sección de qué es, para quién es, precios
-         y un botón para unirse a la lista de espera.
-
-FORGE: Perfecto. Solo necesito entender un poco más para construir
-       algo que realmente funcione para ti...
+/forge una API REST para gestionar tareas de equipos, con autenticación
 ```
 
-Tras el discovery, FORGE produce el IR y continúa:
+La spec generada queda en `.sdd/especificaciones/`. **Para pasar de spec a plan hace falta una aprobación humana** que no puede dar el modelo: en una terminal real, `npx fragua aprobar spec` muestra lo que se aprueba y pide teclear un código de un solo uso (`cli/comandos/aprobar.js`, `core/aprobaciones-identidad.js`). Queda registrada en `.sdd/aprobaciones.jsonl` con el hash del archivo; si la spec cambia después, hay que aprobarla de nuevo.
 
-```
-FORGE: He entendido tu idea. Voy a proponer el diseño de la página.
-       ¿Qué estilo visual te gusta más?
+Límite: la calidad de la spec y del plan depende del modelo. No ejecutado en esta revisión.
 
-       1. Minimalista — simple y limpia
-       2. Bold — impactante y moderna
-       3. Cálida — acogedora y amigable ← recomendada para apps de bienestar
-       4. Editorial — inspirada en revistas
-       5. Brutalist — sin decoraciones, muy directa
+## 3. Ejecutar las tareas con el ciclo verificado
 
-Usuario: La 3, la cálida
+Qué ejecuta: el motor `ciclo`, por defecto desde 5.0.0 (referencia: [`run`](referencia-cli.md#run)).
+
+```bash
+npx fragua run --tasks tareas.json
 ```
 
-FORGE genera el wireframe y la spec en lenguaje llano:
+Cada tarea de código se corrige hasta que sus pruebas pasan, en un contenedor Docker sin red. Salidas posibles:
 
-```
-FORGE: Aquí está lo que voy a construir:
+| Código | Qué ha pasado |
+|---|---|
+| 0 | completado |
+| 1 | fallo |
+| 3 | una tarea espera tu decisión |
+| 4 | Docker no disponible |
 
-  ✦ Sección hero: título, subtítulo, botón "Únete a la lista de espera"
-  ✦ Sección "Para quién es": 3 perfiles de usuario con iconos
-  ✦ Sección de precios: 2 planes (gratis y premium)
-  ✦ Formulario de lista de espera: email + botón
-  ✦ Footer simple
+Puede gastar dinero: el tope por sesión es `presupuesto.tope_usd` (2,00 USD por defecto). Si el ciclo se pausa, no gasta nada hasta que decidas:
 
-  ¿Esto es lo que tenías en mente? (sí/no/cambiar algo)
-
-Usuario: sí, perfecto
-```
-
-```
-/sdd.implementar
+```bash
+npx fragua resume --decision continuar --presupuesto-extra 1
 ```
 
-FORGE genera la landing completa como HTML + CSS. Sin frameworks, sin dependencias.
+`--decision` admite `continuar`, `aceptar` (dar la tarea por buena) y `abortar` (restaurar los archivos). Causas de pausa y qué hacer: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#el-ciclo-se-pausa-código-de-salida-3). No ejecutado en esta revisión (requiere Docker y modelo; ver [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md) sobre qué se ha probado con Docker real).
 
-```
-/sdd.desplegar
-```
+## 4. Cambiar de modo para prototipar
 
-El agente `operaciones` despliega a Vercel. URL activa en 3 minutos.
-
----
-
-## Ejemplo 3 — Prototipar rápido con modo prototipo
-
-**Escenario:** Un desarrollador quiere explorar una idea de API de reportes sin comprometerse a producción.
+Qué ejecuta (en el chat de Claude Code):
 
 ```
 /sdd.modo prototipo
-/sdd.especificar API de reportes analíticos para dashboard
-```
-
-En modo `prototipo`:
-- ❌ Sin agente `critico`
-- ❌ Sin agente `seguridad`
-- ❌ Sin generación de ADRs
-- ✅ Solo los pasos esenciales
-
-```
-FORGE: ⚠️ Modo prototipo activo.
-       Este plan no es apto para producción.
-       Los agentes de crítica y seguridad están desactivados.
-```
-
-La spec se genera en ~3 minutos. La implementación en ~20 minutos.
-
-Para convertir el prototipo en producción:
-
-```
 /sdd.modo normal
-/sdd.analizar    ← auditoría de lo que se construyó
-/sdd.planificar  ← re-planificación con todos los agentes
 ```
 
----
+`/sdd.modo` lee y escribe `sesion.modo` en `.sdd/sdd.config.yaml`. Según `commands/sdd.modo.md`: `normal` es el flujo completo, `rapido` omite el crítico y `prototipo` omite crítico, seguridad y ADR. Sin argumento muestra el modo actual. Alternativa desde la CLI: `npx fragua config set sesion.modo rapido`. No ejecutado en esta revisión.
 
-## Ejemplo 4 — Reanudar una implementación interrumpida
-
-**Escenario:** La implementación de una feature se interrumpió en T-006 de 12. El desarrollador abre Claude Code al día siguiente.
+## 5. Consultar el estado y reanudar
 
 ```
 /sdd.estado
 ```
 
-```
-FORGE v4.0.0 — Estado del proyecto
-
-  Pipeline:     implementar (etapa 6/10)
-  Spec activa:  2026-06-20-user-notifications
-  Progreso:     T-006 / T-012 (50%)
-  Última acción: desarrollador-backend — src/notifications/email.service.ts
-                 (ayer a las 18:42)
-  Modo:         normal
-```
-
-```
-/sdd.implementar continuar
-```
-
-FORGE reanuda desde T-007 automáticamente. No hay que repetir contexto ni explicar dónde se quedó.
-
----
-
-## Ejemplo 5 — Añadir un agente especializado
-
-**Escenario:** El equipo necesita un agente que genere tests de accesibilidad con `axe-core`.
-
-```
-/sdd.crear-agente
-```
-
-```
-FORGE: ¿Nombre del agente? accessibility-tester
-FORGE: ¿Modelo? sonnet
-FORGE: ¿Herramientas? Read, Write, Edit, Bash
-FORGE: ¿Fase de activación? implementar
-FORGE: ¿Descripción? Tests de accesibilidad con axe-core y WCAG 2.1 AA
-```
-
-FORGE crea `agents/accessibility-tester.md` y actualiza `plugin.json`.
-
-Editar `sdd.config.yaml`:
-
-```yaml
-agentes:
-  accessibility-tester:
-    activo: true
-    modelo: sonnet
-```
-
-Desde el siguiente `/sdd.tareas`, el nuevo agente aparece como opción para tareas de tipo `accesibilidad`.
-
----
-
-## Ejemplo 6 — Ver el historial de un agente
-
-**Escenario:** El desarrollador quiere entender qué cambió el agente `asesor-datos` en las últimas dos sesiones.
+Muestra la fase, la spec activa y el progreso (`commands/sdd.estado.md`). Desde la CLI, sin modelo:
 
 ```bash
-# Abrir el dashboard
-forge ui
-# Navegar a localhost:3001 → panel de agentes → asesor-datos
+npx fragua status     # paso del pipeline y transiciones disponibles
+npx fragua resume     # si hay tareas esperando decisión, las lista sin gastar
 ```
 
-O directamente:
+El formato exacto de la salida de `/sdd.estado` lo decide el modelo; no se reproduce aquí. No ejecutado en esta revisión.
+
+## 6. Auditar consistencia antes de implementar
+
+```
+/sdd.checklist
+/sdd.analizar
+```
+
+`/sdd.checklist` aplica una lista de calidad a la spec activa; `/sdd.analizar` verifica la consistencia entre constitución, spec, plan y tareas y detecta huecos o contradicciones (descripciones en `commands/`). El informe lo redacta el modelo. No ejecutado en esta revisión.
+
+## 7. Proyecto existente
+
+```bash
+npx fragua init
+```
+```
+/sdd.mapear
+/sdd.constitucion
+/sdd.especificar la siguiente funcionalidad
+```
+
+`/sdd.mapear` indexa estructura, símbolos y dependencias en `.sdd/mapa/`. Límite documentado: el mapa que reciben los agentes es parcial (C-9 en [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md)). No ejecutado en esta revisión.
+
+## 8. Historial de memoria de un agente
+
+Los agentes dejan memoria en `.sdd/memoria/agente-<nombre>.md` cuando el hook usa el formato markdown (`claude-hooks/agent-memory.js`; con Node >= 22.5 puede usar SQLite en su lugar):
 
 ```bash
 cat .sdd/memoria/agente-asesor-datos.md
 ```
 
-```markdown
-# Memoria — asesor-datos
+El contenido depende de lo que haya hecho el agente. No ejecutado en esta revisión.
 
-## 2026-06-21T14:20:00Z
-**Archivo:** db/migrations/002_add_indexes.sql
-**Acción:** Añadió índice en users.email y tasks.assignee_id
-**Contexto:** Query de búsqueda de tareas por usuario era O(n) sin índice
+## 9. Exportar a otro formato
 
-## 2026-06-20T18:30:00Z
-**Archivo:** db/migrations/001_init.sql
-**Acción:** Schema inicial — tablas users, teams, team_members, tasks
-**Decisión:** Sin ORM — SQL directo via pg (ver constitución)
+```bash
+npx fragua export --format=speckit --out=export
 ```
+
+Escribe `spec.md`, `plan.md`, `tasks.md`, `README.md` y, si hay ADR, `decisions.md` (ver [`export`](referencia-cli.md#export)). No ejecutado en esta revisión.
 
 ---
 
-## Ejemplo 7 — Auditoría antes del despliegue
+## Qué se quitó respecto a la versión de junio
 
-**Escenario:** Antes de un despliegue importante, el equipo quiere asegurarse de que todo es consistente.
-
-```
-/sdd.analizar
-```
-
-El agente `revisor` hace auditoría cruzada entre constitución, spec, plan y código:
-
-```
-FORGE: Auditoría completada.
-
-  ✅ Spec: 11/11 criterios con implementación correspondiente
-  ✅ Constitución: sin violaciones detectadas
-  ⚠️  Plan: ADR-002 referencia 'connection pooling' pero no hay config visible
-  ⚠️  Tests: cobertura en src/auth/ es 71% (mínimo: 80%)
-
-  Recomendación: resolver las advertencias antes del despliegue
-```
-
-El equipo decide resolver las advertencias:
-
-```
-/sdd.implementar    ← agente tester añade tests en auth/
-/sdd.configurar set calidad.cobertura_tests_minima 75    ← ajuste temporal documentado
-```
-
----
-
-## Patrones de uso recomendados
-
-### Para proyectos nuevos
-
-```bash
-npx forge-sdd init --guided   # configuración adaptada al proyecto
-/sdd.constitucion              # establecer principios antes de cualquier código
-/sdd.descubrir                 # empezar desde la idea
-```
-
-### Para proyectos existentes
-
-```bash
-npx forge-sdd init            # instalación sin --guided
-/sdd.mapear                   # indexar el código existente
-/sdd.constitucion             # documentar las convenciones actuales
-/sdd.especificar              # especificar la siguiente feature
-```
-
-### Para iteraciones rápidas
-
-```
-/sdd.modo rapido
-/sdd.especificar [feature]
-/sdd.planificar
-/sdd.implementar
-/sdd.modo normal              ← restaurar para el merge final
-```
-
-### Para features de alto riesgo
-
-```
-/sdd.constitucion             ← actualizar si cambia el stack
-/sdd.especificar
-/sdd.checklist                ← validar calidad de la spec
-/sdd.planificar               ← critico + seguridad activos
-/sdd.analizar                 ← auditoría pre-implementación
-/sdd.implementar
-/sdd.verificar
-/sdd.desplegar
-```
+- Salidas inventadas (`ir.json` con `confidence: 0.89`, «11/11 criterios», «43 tests», cobertura 84 %, tiempos de «3 minutos»): dependen del modelo y no las produce el código de forma fija.
+- `npx forge-sdd ...` (el paquete se llama `fragua`, sin publicar) y el panel de `forge ui` en `localhost:3001` (puerto no verificado).
+- `/sdd.configurar set calidad.cobertura_tests_minima`: esa clave no está comprobada en la configuración.
+- Un agente `accessibility-tester` con edición manual de `sdd.config.yaml`: el flujo de `/sdd.crear-agente` existe (`commands/sdd.crear-agente.md`) pero la sección `agentes:` del ejemplo no está verificada.

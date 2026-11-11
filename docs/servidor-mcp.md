@@ -1,9 +1,12 @@
 # Servidor MCP de FORGE
 
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
 > Disponible desde la versión en desarrollo posterior a 4.2.0.
 > Especificación: `.sdd/especificaciones/2026-10-03-herramientas-mcp/`. Decisión: `.sdd/arquitectura/ADR-12`.
 
-`forge mcp` arranca un servidor del protocolo [MCP](https://modelcontextprotocol.io) con tres herramientas. Sirve para que **otro agente** (Claude Code u otro cliente MCP) use el aislamiento y las reglas de escritura del [ciclo verificado](ciclo-verificado.md): ejecutar las pruebas del proyecto en un contenedor sin red, y leer y escribir archivos sin salirse del proyecto.
+`forge mcp` arranca un servidor del protocolo [MCP](https://modelcontextprotocol.io) con el perfil `completo` (por defecto), que expone tres herramientas. Con `--perfil verificacion` expone una sola, `verificar` ([mcp-verificar.md](mcp-verificar.md)). Un perfil desconocido o una opción mal escrita impide arrancar (`core/mcp/perfiles.js`, `core/mcp/argumentos.js`); las únicas opciones son `--cwd <carpeta>` y `--perfil <nombre>`. Sirve para que **otro agente** (Claude Code u otro cliente MCP) use el aislamiento y las reglas de escritura del [ciclo verificado](ciclo-verificado.md): ejecutar las pruebas del proyecto en un contenedor sin red, y leer y escribir archivos sin salirse del proyecto.
 
 No lo usa el propio ciclo, que sigue llamando a las mismas funciones directamente.
 
@@ -51,6 +54,7 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 
 - `leer_archivo` y `escribir_archivo` no necesitan nada más.
 - `ejecutar_pruebas` necesita **Docker**. Se comprueba al primer uso, no al arrancar. Sin Docker devuelve un error y no ejecuta nada en tu equipo.
+- Interruptor y auditoría: si `FRAGUA_MCP_CICLO=apagado` (o un valor no reconocido) o existe `mcp/apagado` en el estado del usuario, ninguna herramienta ejecuta; cada llamada deja una línea en `mcp/auditoria.jsonl` con los nombres de los argumentos, nunca sus valores (`core/mcp/servidor.js:96-115`). Los topes de tiempo, tamaño y cupos por hora/día (`FRAGUA_MCP_*`) son solo del perfil `verificacion`.
 - Solo una ejecución a la vez por proyecto, compartida con el ciclo verificado: si hay un `forge run --motor ciclo` en marcha, o dos llamadas simultáneas, la segunda recibe un error de «proyecto ocupado».
 - Proyectos en JavaScript/TypeScript, Python o Go: los mismos que el ciclo, con la misma comprobación (`comprobarProyecto`). Un proyecto Go necesita `go.mod` en la raíz.
 - Por la salida estándar solo salen mensajes del protocolo; los avisos van a la salida de errores.
@@ -60,7 +64,7 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 
   El servidor atiende las dos a la vez y elige petición a petición. A un cliente que pida sin saludo una revisión que no admite le responde el error `-32022` con las que sí. Qué cambia en cada revisión y de qué página oficial sale: `.sdd/especificaciones/2026-10-09-puesta-al-dia/spikes/mcp-revision-vigente.md`.
 - Si `sandbox.runtime` está configurado, `ejecutar_pruebas` usa ese mecanismo de aislamiento; si Docker no lo tiene, devuelve un error y no ejecuta nada. Un mecanismo distinto de `runc` además tiene que estar en `FORGE_RUNTIMES_PERMITIDOS` (variable de entorno del proceso `forge mcp`): el archivo del proyecto puede ser ajeno y no basta para elegirlo.
-- **Con saludo y versión desconocida o ausente**, `initialize` responde `2025-06-18`, como antes de esta fase (no la más reciente). Una versión que sí se admite se devuelve tal cual.
+- **Con saludo y versión desconocida o ausente**, `initialize` responde `2025-11-25`, la más reciente de las que se admiten con saludo (`VERSION_POR_DEFECTO`, `core/mcp/protocolo.js:35`; antes era `2025-06-18`). Una versión que sí se admite se devuelve tal cual.
 - **Peticiones sin `_meta` de versión y sin saludo**: `tools/list` y `tools/call` se atienden como siempre, con la forma de las revisiones con saludo y sin `resultType` (es lo que hacía el servidor antes y lo que esperan los clientes que nunca saludan). `server/discover` y `subscriptions/listen`, que solo existen en la revisión sin estado, responden `-32602` si falta `_meta`.
 - **Suscripciones** (`subscriptions/listen`): como mucho 64 abiertas a la vez por conexión y sin ids repetidos; en otro caso `-32602`. Cancelar una libera su sitio.
 
@@ -71,7 +75,10 @@ Las mismas reglas que el ciclo, con una sola implementación (`core/ciclo/protoc
 - **Los respaldos se guardan, pero no hay herramienta para restaurarlos**: están en `.sdd/motor/mcp-<n>/respaldo/mcp/archivos/`.
 - **Cancelar una petición no detiene la herramienta**: sin estado, la respuesta de una petición cancelada ya no se envía, pero `ejecutar_pruebas` o `escribir_archivo` terminan y sus efectos se aplican (la especificación pide dejar de trabajar, «SHOULD»). Abierto (revisión H-09).
 - **`supported` de `-32022` lista solo `2026-07-28`**; el ejemplo oficial lista también otras. No se pudo contrastar con el esquema (revisión H-12).
+- **Peticiones de más de 10 MiB por línea se descartan** (`MAX_LINEA`, `core/mcp/protocolo.js:68`).
 - **No hay mensajes agrupados** (retirados en la versión 2025-06-18 del protocolo); solo herramientas: ni recursos, ni prompts, ni muestreo.
 - **El resultado de las pruebas se decide por el código de salida**, con los mismos límites que el ciclo: un `process.exit(0)` en el código falsea un éxito.
 - **La revisión 2026-07-28 no se ha probado con el cliente oficial**, solo con un cliente mínimo escrito a partir de la especificación (`tests/mcp-sin-estado.test.js`). De esa revisión se implementa lo que necesita un servidor de herramientas: `server/discover`, `tools/list`, `tools/call`, la cancelación y una suscripción que no notifica nada (la lista de herramientas no cambia).
 - Las revisiones con saludo: probado con el cliente oficial del SDK de MCP y con Docker real en Windows. **No probado con Claude Code ni con otros clientes**, ni en Linux con Docker.
+
+Esquemas públicos del resultado de `verificar`: [`docs/contrato/resultado-verificar.schema.json`](contrato/resultado-verificar.schema.json).

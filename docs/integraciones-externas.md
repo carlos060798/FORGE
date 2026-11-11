@@ -1,6 +1,9 @@
 # Integraciones externas: GitHub, GitLab y Jira
 
-> Fecha: **2026-10-12**. Estado: **en construcción**, en la rama `feature/motor-agentico`, sin publicar (5.0.0 no está publicada). Spec: `.sdd/especificaciones/2026-10-11-integraciones-externas/spec.md` (en implementación por instrucción del dueño, **pendiente de su ratificación formal**). Decisión técnica: ADR-22.
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
+> Estado: implementado en código, **apagado por defecto** y probado solo contra servidores simulados; ninguna operación se ha ejecutado contra una cuenta real de GitHub, GitLab o Jira. Spec: `.sdd/especificaciones/2026-10-11-integraciones-externas/spec.md` (en implementación por instrucción del dueño, **pendiente de su ratificación formal**). Decisión técnica: ADR-22.
 >
 > No confundir con [INTEGRACIONES.md](INTEGRACIONES.md), que describe los servidores MCP (Vercel, GitHub, Figma) que usa **Claude Code** junto a FORGE. Este documento trata de lo que **FORGE** hace por su cuenta con tres plataformas de gestión de trabajo, y es otra cosa.
 
@@ -18,14 +21,14 @@ Una tarea puede **nacer de una incidencia o ticket** y su resultado puede **volv
 | Auditoría, topes por sesión e interruptor de apagado | Hecha | `core/integraciones/auditoria.js` |
 | Adaptadores de GitHub, GitLab y Jira Cloud (leer, comentar, proponer, comprobar alcance) | Hechos, **contra servidores simulados**; ninguno se ha ejecutado contra una cuenta real | `core/integraciones/proveedores/` |
 | Prueba de contrato común a los tres adaptadores | Hecha | `tests/integraciones-contrato-comun.test.js` |
-| Cola de pendientes, vista previa y aprobación | Implementada en código (`core/integraciones/aprobacion.js`); sin probar contra una plataforma real | `core/integraciones/aprobacion.js` |
+| Cola de pendientes (en el estado del usuario, firmada), vista previa y aprobación con huella | Hecha (`core/integraciones/aprobacion.js`, `tests/integraciones-aprobacion.test.js`); sin probar contra una plataforma real | `core/integraciones/aprobacion.js` |
 | Armar la publicación desde el estado del ciclo | Implementada en código; sin probar contra una plataforma real | `core/integraciones/publicacion.js` |
 | Comando `forge integraciones` (`leer`, `publicar`, `pendientes`, `vista`, `aprobar`, `rechazar`, `estado`, `doctor`, `apagar`, `encender`) | Existe | `cli/integraciones.js`, registrado en `cli/index.js` |
 | Comprobaciones de integraciones (`forge integraciones doctor`) | Existen (`core/integraciones/doctor.js`); no se ha verificado su integración en `forge doctor` general | `core/integraciones/doctor.js` |
 | Prueba de no filtración del token en todo el recorrido, revisión independiente | **Pendientes** (F5) | — |
 | Cliente MCP de solo lectura detrás del mismo puerto | **No empezado**; solo con decisión del dueño (F6) | — |
 
-Corrección 2026-11: este documento decía que el comando `forge integraciones` no existía; sí existe (`cli/integraciones.js`). Lo que sigue sin hacerse es ejecutarlo contra cuentas reales de GitHub, GitLab o Jira: todo se probó con servidores simulados. Los textos «en construcción» que quedan más abajo reflejan el plan original de la spec y pueden estar desfasados; la fuente de verdad es el código.
+Corrección 2026-11: este documento decía que el comando `forge integraciones` no existía; sí existe (`cli/integraciones.js`). Lo que sigue sin hacerse es ejecutarlo contra cuentas reales de GitHub, GitLab o Jira: todo se probó con servidores simulados. Revisión 2026-11-10: se quitaron los «en construcción» y «todavía no existe» sobre cola, vista previa, aprobación y `apagar`, que ya están en el código. Lo que sigue pendiente (F5: pruebas de no filtración, de extremo a extremo con el ciclo y revisión independiente) se mantiene marcado.
 
 ## Qué hace
 
@@ -75,14 +78,15 @@ integraciones:
 | Clave | Obligatoria con el proveedor activo | Regla |
 |---|---|---|
 | `<proveedor>_modo` | No (por defecto `apagado`) | Uno de los cuatro modos. Sin ella el proveedor queda apagado aunque tenga otras claves (con un aviso) |
-| `<proveedor>_token_env` | Sí | Nombre de variable (`[A-Za-z_][A-Za-z0-9_]*`). **No hay nombre por defecto.** Un valor que parezca un token (formato conocido, más de 64 caracteres, o 20 o más mezclando mayúsculas, minúsculas y cifras) impide empezar, y el mensaje no lo imprime |
+| `<proveedor>_token_env` | Sí | Nombre de variable que empiece por `FRAGUA_` (o `FORGE_`) y siga con mayúsculas, dígitos y `_`; se rechazan las reservadas (`core/integraciones/config.js:153-177`). **No hay nombre por defecto.** Un valor que parezca un token (formato conocido, más de 64 caracteres, o 20 o más mezclando mayúsculas, minúsculas y cifras) impide empezar, y el mensaje no lo imprime |
 | `<proveedor>_destinos` | Sí | Lista cerrada. Sin comodines (`* ? [ ] { }`). Formato: `org/repo` (GitHub), `grupo[/subgrupo]/proyecto` (GitLab), clave en mayúsculas (Jira). No existe «todos» |
 | `gitlab_host` | No | Solo nombre de host, sin esquema (siempre HTTPS), sin ruta ni credenciales ni dirección IP |
 | `jira_sitio` | Sí en Jira | Debe ser `nombre.atlassian.net` |
 | `jira_usuario_env` | Sí en Jira | Variable con el correo del usuario de servicio |
+| `<proveedor>_alcance` | No | Texto libre que describe el alcance del token (solo informativo, acotado; si parece un token se rechaza) |
 | `topes_operaciones_por_sesion` | No (20) | Entero de 1 a 1000. Cuenta intentos, no éxitos |
 
-El host de GitHub es siempre `api.github.com`.
+El host de GitHub es siempre `api.github.com`. Un GitLab autoalojado o un sitio de Jira solo se usan si el usuario los autoriza en `FORGE_INTEGRACIONES_HOSTS` (ver más abajo).
 
 **Interruptor.** `FORGE_INTEGRACIONES=apagado` en el entorno, o el archivo `.sdd/integraciones/apagado`, detiene toda operación posterior, también las ya aprobadas y aún no publicadas. No cancela una petición que ya salió (ver Límites).
 
@@ -106,8 +110,8 @@ El modo por defecto al activar un proveedor es `solo_lectura`. En Jira, `propone
 3. **El token vive en una variable de entorno** y solo se lee, de una sola función, cuando el proveedor está activo. No se guarda en archivos, no aparece en errores (se enmascara) ni en el registro.
 4. **Red estricta.** Solo HTTPS; el host debe estar en la lista; sin redirecciones a otro host (se sigue una sola, a la misma ruta de un host permitido y solo para lecturas); tiempo máximo y tope de bytes por respuesta; reintento acotado solo para 429 y 503.
 5. **Lista cerrada de destinos**, comprobada antes de cualquier llamada de red.
-6. **La publicación la decide el estado de control, no un texto** (Principio VI): qué se publica y dónde sale del estado del ciclo y de la configuración. *(Esta pieza es parte de F3: en construcción.)*
-7. **Aprobación humana con vista previa exacta**, y la solicitud en borrador de la plataforma como segunda barrera. *(En construcción.)*
+6. **La publicación la decide el estado de control, no un texto** (Principio VI): qué se publica y dónde sale del estado del ciclo y de la configuración (`core/integraciones/publicacion.js`).
+7. **Aprobación humana con vista previa exacta** (`aprobar <id> --huella <hex>`), y la solicitud en borrador de la plataforma como segunda barrera.
 8. **Idempotencia local**, porque ninguna de las tres APIs documenta una clave de idempotencia: un marcador oculto en el texto y una búsqueda previa.
 9. **Topes y apagado**, con el mismo espíritu que el tope de gasto.
 
@@ -119,14 +123,14 @@ Los nombres ASI01 a ASI10 son los del Top 10 de OWASP para aplicaciones agéntic
 |---|---|---|
 | **ASI01** secuestro del objetivo | El texto de la plataforma es dato delimitado; ninguna regla, tope ni herramienta depende de él. La defensa es estructural, no un detector | Capa de datos hecha y probada con una batería hostil; la prueba de extremo a extremo con el ciclo (F5.3) **pendiente** |
 | **ASI02** mal uso de herramientas | Operaciones cerradas; ningún modelo tiene herramientas de red; tope de operaciones | Capa hecha; la prueba de que no existe ruta del modelo a la red (F5.2) **pendiente** |
-| **ASI03** abuso de identidad y privilegios | Token por proveedor en variable de entorno, lista de destinos obligatoria, modo por proveedor | Hecha; comprobación de alcance en `doctor` (F4.2) **en construcción**; prueba de no filtración (F5.1) **pendiente** |
+| **ASI03** abuso de identidad y privilegios | Token por proveedor en variable de entorno, lista de destinos obligatoria, modo por proveedor | Hecha; comprobación de alcance en `forge integraciones doctor [--red]`; prueba de no filtración (F5.1) **pendiente** |
 | **ASI04** cadena de suministro | Sin dependencias nuevas, sin descarga de esquemas remotos, versión de API fijada | Hecha |
 | **ASI05** ejecución inesperada | La integración corre en el anfitrión y nunca ejecuta lo traído; el código generado sigue en el entorno aislado | Hecha (por diseño); revisión independiente **pendiente** |
 | **ASI06** contaminación de contexto | El texto traído no entra en memoria persistente ni en el índice semántico sin marca de origen | **Pendiente** de prueba con la memoria semántica activa |
 | **ASI07** comunicación entre agentes | No aplica: no hay mensajes entre agentes; las llamadas son de FORGE a la plataforma con TLS verificado y sin redirecciones a otro host | Hecha; prueba de redirección hecha en `tests/integraciones-http.test.js` |
-| **ASI08** fallos en cascada | Tope por sesión y por proveedor, reintento acotado, una plataforma caída no detiene el ciclo | Topes y reintentos hechos; que la publicación quede pendiente y reintentable (F3.4) **en construcción** |
-| **ASI09** confianza humano-agente | Vista previa exacta y aprobación explícita; el comentario declara su origen; borrador, nunca fusión | **En construcción** (F3); el borrador sí está en los adaptadores |
-| **ASI10** agentes fuera de control | Apagado inmediato, auditoría y modo `apagado` por defecto | Interruptor, auditoría y modo por defecto hechos; `forge integraciones apagar` **en construcción** |
+| **ASI08** fallos en cascada | Tope por sesión y por proveedor, reintento acotado, una plataforma caída no detiene el ciclo | Topes y reintentos hechos; la publicación fallida queda pendiente y reintentable (`aprobacion.js`) |
+| **ASI09** confianza humano-agente | Vista previa exacta y aprobación explícita; el comentario declara su origen; borrador, nunca fusión | Vista previa, huella y aprobación hechas; borrador en los adaptadores GitHub y GitLab |
+| **ASI10** agentes fuera de control | Apagado inmediato, auditoría y modo `apagado` por defecto | Interruptor, auditoría y modo por defecto hechos; `forge integraciones apagar` existe |
 
 La revisión independiente (`revisor` y `seguridad`) con esta lista como guion es la tarea F5.4 y **no se ha hecho**.
 
@@ -191,7 +195,7 @@ forge integraciones aprobar <id>                      (el comando existe)
   → evento integracion:publicado
 ```
 
-Lo que la spec y el plan prometen para ese flujo y **todavía no existe**: la cola de pendientes (`.sdd/integraciones/pendientes/`), la vista previa, la aprobación por línea de comandos, y excluir de lo publicado los archivos de dependencias y configuración que el ciclo pausó. Si una publicación falla (caída, límite de uso, token caducado), la tarea y su evidencia no se pierden: queda pendiente y reintentable (criterio CA-005-04, **sin implementar**).
+Subcomandos, uso y códigos de salida (0 bien, 1 rechazo o fallo, 2 uso incorrecto): `cli/integraciones.js:1-20`. La cola vive en el estado del usuario (ver «revisión 2»), no en `.sdd/integraciones/pendientes/`. Si una publicación falla (caída, límite de uso, token caducado), queda pendiente y reintentable. Excluir de lo publicado los archivos de dependencias y configuración que el ciclo pausó: ver «Exclusiones» al final; que el ciclo los entregue ya filtrados **no está verificado** en esta revisión.
 
 ## Límites
 
@@ -205,7 +209,7 @@ Lo que la spec y el plan prometen para ese flujo y **todavía no existe**: la co
 - **Marcadores de idempotencia.** Quien pueda comentar puede pegar el marcador y hacer que FORGE **omita** una publicación (nunca duplicarla ni falsearla).
 - **Comentarios muy largos o muchos.** Pasados 1000 comentarios (GitHub, Jira) o 500 notas (GitLab), la lectura devuelve los primeros sin avisar en el elemento y la publicación se niega.
 - **GitHub.** Máximo 20 archivos y 1 MiB por propuesta, todos con modo `100644` (un ejecutable pierde el modo); `.github/workflows/` rechazado. No se ha confirmado por ejecución la forma de los cuerpos de la API Git Data.
-- **GitLab.** El adaptador no distingue `.gitlab-ci.yml`: una solicitud en borrador que lo cambie ejecuta pipelines en la rama (es un filtro de F3.2, **pendiente**).
+- **GitLab.** La lista común de rutas excluidas incluye `.gitlab/` y CI (ver «revisión 1»); `.gitlab-ci.yml` y `.gitlab-ci.yaml` figuran en la lista de rutas excluidas (`core/integraciones/rutas.js:33`).
 - **Jira.** Las marcas del formato (negrita, código…) se pierden salvo el enlace; los nodos ADF desconocidos se reducen a su texto. Un 403 por falta de «Add comments» solo se descubre al publicar.
 - **Aprobación mecánica.** Un revisor que apruebe sin leer anula la barrera. La vista previa y el borrador en la plataforma reducen el riesgo; no lo eliminan.
 - **Sin revisión independiente** de seguridad de este módulo todavía (F5.4).

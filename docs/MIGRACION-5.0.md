@@ -12,12 +12,7 @@ Este documento lista lo que cambia **sin que toques tu configuración**. Lo nuev
 forge run --motor clasico
 ```
 
-o, de forma permanente, en `.sdd/sdd.config.yaml`:
-
-```yaml
-motor:
-  modo: clasico
-```
+`motor.modo: clasico` en `.sdd/sdd.config.yaml` **no basta por sí solo**: por seguridad hay que pedirlo también en la orden (`--motor clasico`), si no `forge run` se niega y lo explica (`core/engine-cli.js`, líneas 118-119).
 
 El modo clásico **ejecuta las pruebas en tu equipo, sin aislamiento**, como en 4.2.0. Con él no se aplican las secciones 2, 3 y 4, ni los puntos 1.2 (Docker), 5.1 (medición por mutación), 5.5 (imagen de Docker) y 6.4 (`sandbox.runtime`). Todo lo demás se aplica también en modo clásico.
 
@@ -27,14 +22,14 @@ El modo clásico **ejecuta las pruebas en tu equipo, sin aislamiento**, como en 
 
 | # | Cambio | A quién afecta | Cómo evitarlo | Dónde se comprueba |
 |---|---|---|---|---|
-| 1.1 | **Node ≥20** (antes ≥18). `instalar.sh`, `instalar.ps1` y `forge doctor` lo comprueban | A quien use Node 18 | No se puede: actualiza Node | `package.json` (`engines`), `cli/index.js:887` |
-| 1.2 | **`forge run` y `forge resume` exigen Docker en marcha.** Sin él salen con el código 4 y no ejecutan nada | A todos los que usen `forge run` | `--motor clasico` o `motor.modo: clasico` | `core/engine-cli.js:139-140`; `tests/ciclo-hallazgos.test.js` («sin --motor el ciclo es el modo por defecto…») |
+| 1.1 | **Node ≥20** (antes ≥18). `instalar.sh`, `instalar.ps1` y `forge doctor` lo comprueban | A quien use Node 18 | No se puede: actualiza Node | `package.json` (`engines`), `cli/comandos/doctor.js` (comprobación de Node) |
+| 1.2 | **`forge run` y `forge resume` exigen Docker en marcha.** Sin él salen con el código 4 y no ejecutan nada | A todos los que usen `forge run` | `--motor clasico` | `core/engine-cli.js:139-140`; `tests/ciclo-hallazgos.test.js` («sin --motor el ciclo es el modo por defecto…») |
 | 1.3 | **`@anthropic-ai/sdk` pasa a ser dependencia** y se instala con el paquete. Son tres dependencias, no dos | A quien audite dependencias | No se puede | `package.json` |
 | 1.4 | LangGraph.js ya no existe. `motor.grafo: langgraph` se acepta con un aviso y usa el motor propio | A quien lo configuró en una versión de desarrollo | Quita la clave | `core/ciclo/motores/index.js` |
 
 ## 2. El ciclo verificado es el modo por defecto
 
-Todo lo de esta sección se evita con `--motor clasico` o `motor.modo: clasico`.
+Todo lo de esta sección se evita con `--motor clasico`.
 
 | # | Cambio | A quién afecta | Cómo ajustarlo sin salir del ciclo | Dónde se comprueba |
 |---|---|---|---|---|
@@ -95,7 +90,7 @@ En todos los casos `forge run` termina con el código 3 y `forge resume` muestra
 | # | Cambio | A quién afecta | Cómo evitarlo | Dónde se comprueba |
 |---|---|---|---|---|
 | 7.1 | **`forge init` no escribe a través de enlaces simbólicos ni uniones.** Si `CLAUDE.md`, `AGENTS.md`, `.claudeignore`, `.sdd/`, `.claude/` o algo dentro de ellos es un enlace, se avisa y no se escribe | Quien tenga `CLAUDE.md` enlazado a otro archivo: **ya no se actualiza** | Sustituye el enlace por el archivo, o actualízalo a mano | `core/escritura-segura.js`, `cli/index.js`; `tests/puesta-al-dia-revision.test.js` |
-| 7.2 | `forge init` **crea `AGENTS.md`** en el proyecto. Si ya existe no lo toca y deja la propuesta en `.sdd/AGENTS.propuesto.md` | Todos los que ejecuten `forge init` | Borra el archivo si no lo quieres | `cli/index.js:391-451`; `tests/agents-md.test.js` |
+| 7.2 | `forge init` **crea `AGENTS.md`** en el proyecto. Si ya existe no lo toca y deja la propuesta en `.sdd/AGENTS.propuesto.md` | Todos los que ejecuten `forge init` | Borra el archivo si no lo quieres | `cli/comandos/instalar.js`; `tests/agents-md.test.js` |
 | 7.3 | `forge init` copia también `claude-hooks/shared/config.js` y los envoltorios `.sh` (en 4.2.0 los hooks instalados fallaban al importar) | Todos | — | `tests/saneamiento.test.js` («forge init instala hooks que cargan») |
 | 7.4 | **La guarda de escritura** (hook `pre-tool-guard.js`) bloquea además cualquier escritura cuyo contenido incluya un término de la sección `## Patrones prohibidos` de un ADR **aceptado** de `.sdd/arquitectura/`. Esos términos no se aplican al escribir dentro de `.sdd/` | Proyectos con ADR en `.sdd/arquitectura/` que tengan esa sección | Quita el término de la sección | `claude-hooks/pre-tool-guard.js` (`cargarPatronesDeArquitectura`); `tests/guarda-adr-arquitectura.test.js` |
 | 7.5 | El `.mcp.json` del plugin fija `@playwright/mcp@0.0.83` (antes `@latest`) | Quien use ese servidor a través del plugin | Edita tu `.mcp.json` | `.mcp.json` |
@@ -115,11 +110,11 @@ En todos los casos `forge run` termina con el código 3 y `forge resume` muestra
 - La medición por mutación nunca bloquea una tarea con el valor por defecto. Solo `motor.mutacion: exigir` puede pausarla.
 - No se usa ningún mecanismo de aislamiento distinto del de Docker por defecto.
 - `forge mcp` y `forge api` no arrancan solos.
-- **Las integraciones externas con GitHub, GitLab y Jira no cambian nada.** Están apagadas por defecto: sin la sección `integraciones:` en `sdd.config.yaml`, o con todo `apagado`, no se abre ninguna conexión, no se lee ninguna variable de entorno de tokens y `forge run`, `forge resume`, el modo clásico, el servidor MCP y la API HTTP se comportan igual. No hay nada que migrar ni que desactivar. Además, hoy ningún comando las usa (el comando `forge integraciones` está en construcción). Ver [integraciones-externas.md](integraciones-externas.md).
+- **Las integraciones externas con GitHub, GitLab y Jira no cambian nada.** Están apagadas por defecto: sin la sección `integraciones:` en `sdd.config.yaml`, o con todo `apagado`, no se abre ninguna conexión, no se lee ninguna variable de entorno de tokens y `forge run`, `forge resume`, el modo clásico, el servidor MCP y la API HTTP se comportan igual. No hay nada que migrar ni que desactivar. Además, el subcomando `forge integraciones` existe (ver [referencia-cli.md](referencia-cli.md#integraciones)) pero solo actúa si activas la sección. Ver [integraciones-externas.md](integraciones-externas.md).
 
 ## Comprobar que tu configuración se lee como esperas
 
-1. `forge doctor`: Node, proveedor, clave y, si lo hay, `sandbox.runtime`. **No comprueba que Docker esté en marcha** salvo que haya un `sandbox.runtime` configurado (`cli/index.js:1181-1183`): para eso, `docker info`.
+1. `forge doctor`: Node, proveedor, clave, Docker (siempre; distingue no instalado de no arrancado) y, si lo hay, `sandbox.runtime`. Termina con «Siguiente paso» (`cli/comandos/doctor.js`).
 2. `forge status`: sesión, gasto, mecanismo de aislamiento configurado y, tras una ejecución, la puntuación de mutación de cada tarea. Si pusiste `mutacion: no` y aparece una puntuación, la clave no se está leyendo: revisa la sangría.
 3. Con una tarea pequeña, `forge run` y después `forge resume` sin más: muestra el motivo de cualquier pausa sin gastar.
 

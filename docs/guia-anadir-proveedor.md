@@ -1,5 +1,23 @@
 # Cómo añadir un proveedor de modelos
 
+> Tipo: Guía
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
+
+## Proveedores que existen
+
+`crearProvider` (`core/llm-providers/index.js:200-252`) elige por `FORGE_LLM_PROVIDER`, luego `provider:` de la configuración y, si no hay, por claves de entorno (`ANTHROPIC_API_KEY`/`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_BASE_URL`; si no, `anthropic`). Cuatro implementaciones, con alias:
+
+| Implementación | Nombres que la seleccionan |
+|---|---|
+| `AnthropicProvider` | `anthropic`, `claude` |
+| `OpenAIProvider` | `openai`, `gpt`, `codex`, `azure`, `github-models`, `cursor` |
+| `OllamaProvider` | `ollama`, `local`, `deepseek`, `llama`; un nombre que empiece por `http` se toma como `base_url` de Ollama |
+| `StubProvider` | `stub`, `test` (pruebas y CI, sin modelo) |
+
+Un nombre desconocido avisa y usa `anthropic`. **No hay proveedor de Gemini.** Los alias (`azure`, `github-models`, `cursor`, `codex`) no son implementaciones distintas: son `OpenAIProvider` con otra `base_url`; qué servicios concretos funcionan con ella no está verificado (la batería usa servidores falsos). La dirección de un servidor puesta por el proyecto la filtra `sanearConfigDelProyecto`; el usuario permite destinos con `FORGE_LLM_HOSTS`.
+
+## Pasos para añadir uno nuevo
+
 Un proveedor está listo para FORGE cuando pasa la batería común de conformidad
 (`tests/proveedores-conformidad.test.js`). La batería corre contra servidores falsos locales: sin red ni claves.
 
@@ -43,3 +61,9 @@ Para un modelo sin coste real, declara cero de forma explícita en `precios:` de
 
 Pasar la batería no prueba el proveedor con un modelo real. Hasta que se ejecute el kit de pruebas
 independientes con él, la documentación debe seguir diciendo «sin probar con modelo real».
+
+## Límites
+
+- La batería no habla con servicios reales: prueba el contrato, no la calidad del modelo ni el coste real.
+- Añadir una rama al `switch` de `crearProvider` es un cambio de código; no hay mecanismo de complementos para proveedores.
+- Un proveedor sin `admiteHerramientas` no sirve para el implementador por turnos.

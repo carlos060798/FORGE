@@ -1,4 +1,6 @@
 # Puertas de calidad en `fragua verificar`
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
 Una **puerta** es una comprobación adicional que el proyecto declara (tipos, linter, seguridad, cobertura) y que corre en el **mismo contenedor sin red** que las pruebas. Decide solo el **código de salida** de su comando. Spec: `.sdd/especificaciones/2026-10-14-puertas-de-calidad-y-evidencia/` (fase B1). Corren en `fragua verificar` y, en el ciclo, dentro del nodo `sandbox`, tras las pruebas. Si una puerta no pasa, la tarea vuelve al implementador con la salida de la puerta; solo una herramienta ausente (código 127) pide revisión humana. Todavía no hay un evento `ciclo:puerta`.
 
