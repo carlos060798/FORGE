@@ -64,7 +64,8 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 - [ciclo-verificado.md](ciclo-verificado.md): aislamiento, presupuesto, pausas y por qué decide el código de salida.
 - [cadena-de-evidencia.md](cadena-de-evidencia.md): registro firmado de verificaciones.
 - [memoria-semantica.md](memoria-semantica.md): índice de memoria por agente.
-- [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md): qué primitivas de Claude Code usa y qué no.
+- [ANFITRIONES.md](ANFITRIONES.md): qué recibe Claude Code y qué recibe cada otra herramienta de código.
+- [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md): puntero a ANFITRIONES.md.
 - Decisiones de arquitectura: [../.sdd/arquitectura/](../.sdd/arquitectura/) (un ADR por decisión). Especificaciones: [../.sdd/INDICE.md](../.sdd/INDICE.md).
 
 ## Estado, garantías y límites
@@ -75,6 +76,7 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 - 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md) y [../SECURITY.md](../SECURITY.md): seguridad sin jerga y cómo reportar.
 - 📏 [COBERTURA.md](COBERTURA.md): cobertura de pruebas por archivo.
 - 🗺️ [roadmap.md](roadmap.md): hacia dónde va.
+- [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md): diagnóstico de qué sigue amarrado a Claude Code (comandos, agentes, hooks) y plan por fases para que otras herramientas reciban lo mismo. Propuesta sin aprobar.
 
 ## Comunidad y gobierno
 

@@ -24,7 +24,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { leerForgeConfig } from './shared/config.js';
-import { leerVariableRestrictiva } from './shared/entorno.js';
+import { agenteActivo, leerVariableRestrictiva } from './shared/entorno.js';
 
 /** Umbral numérico del entorno; ante conflicto entre FRAGUA_* y FORGE_* o valor no numérico, el de por defecto. */
 function umbral(sufijo, defecto) {
@@ -152,7 +152,7 @@ function extraerMetricas(evento) {
 
   return {
     tool_name: evento?.tool_name ?? 'unknown',
-    agente: process.env?.CLAUDE_AGENT_NAME ?? evento?.session_id ?? 'main',
+    agente: (agenteActivo() || undefined) ?? evento?.session_id ?? 'main',
     modelo: evento?.model ?? 'claude-sonnet-4-6',
     tokens_input: usage.input_tokens ?? 0,
     tokens_output: usage.output_tokens ?? 0,

@@ -5,6 +5,21 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Añadido
+
+- **Roles `rol-*`.** Con `--integracion` distinta de `claude`, `init` instala cada uno de los 14 agentes como una skill `rol-<agente>` (nivel neutral `alto`/`medio`/`economico` en `metadata`), porque esas herramientas no tienen los subagentes de Claude Code.
+- **Adaptación de comandos y skills a otras herramientas.** Al instalar en una integración que no es Claude Code, las órdenes `/sdd.x` se reescriben a la forma de invocar de esa herramienta, se quita `allowed-tools` y «Claude Code» del texto, y se antepone una nota con las equivalencias de `Task`, `TodoWrite`, `/effort` y los hooks. Módulo nuevo: `core/instalacion/adaptar-anfitrion.js`. Las fuentes de `commands/`, `agents/` y `skills/` y lo que recibe Claude Code no cambian.
+- **Guardián en otras herramientas.** `fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` traduce el evento de cada herramienta al contrato y aplica el mismo guardián. `forge init --integracion <x> --con-hooks` registra la orden en el hook de esa herramienta (nunca pisa un archivo existente). Nueva clave de integración `codex`. Sin probar en una instalación real; Gemini y Codex fallan abiertos.
+- **Documentación.** `docs/ANFITRIONES.md` (qué recibe cada herramienta; reemplaza a `RELACION-CON-CLAUDE-CODE.md`) y `docs/PLAN-AGNOSTICO.md`.
+
+### Límites
+
+- Ninguna herramienta distinta de Claude Code está probada en real. La memoria por hooks solo existe en Claude Code; el guardián en otras herramientas es opcional (`--con-hooks`).
+
+---
+
 ## [5.0.0-beta.1] — Sin publicar
 
 > **Esta es una beta.** Se publica con la etiqueta de npm `beta` (`npm publish --tag beta`) y `latest` no se mueve: quien instale `fragua` sin más no la recibe. El contenido de abajo es el de 5.0.0, que sigue siendo la base de esta beta.

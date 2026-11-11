@@ -1,38 +1,43 @@
-# FORGE / SDD-ES — Relación con las primitivas oficiales de Claude Code
+# Relación con Claude Code
 
-FORGE no es un reemplazo de Claude Code. Es una **capa de opinión en español** que organiza y conecta las primitivas nativas de Claude Code en un flujo de trabajo estructurado (idea → deploy).
+> Tipo: Explicación
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
-Toda la funcionalidad de FORGE descansa sobre primitivas que Claude Code ya provee.
+Qué usa Fragua de Claude Code, qué no, y qué funciona sin él. Detalle por herramienta: [ANFITRIONES.md](ANFITRIONES.md). El plan de volver el resto agnóstico es una propuesta sin aprobar ([PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md)); este documento describe solo lo que el código hace hoy.
 
----
+## Dos capas
 
-## Tabla de correspondencias
+- **Motor** (`core/`, `cli/`): ciclo verificado, aislamiento, proveedores de modelo, servidor MCP, API local. No depende de Claude Code. Admite los proveedores Anthropic, OpenAI y Ollama, y uno simulado para pruebas.
+- **Metodología** (`commands/`, `agents/`, `skills/`, `claude-hooks/`): escrita para Claude Code.
 
-| Pieza de FORGE | Primitiva oficial de Claude Code | Notas |
-|----------------|----------------------------------|-------|
-| `commands/*.md` (ej. `/sdd.especificar`) | **Slash commands** (`.claude/commands/*.md`) | FORGE instala sus comandos en `.claude/commands/`. El mecanismo de invocación es idéntico al de cualquier slash command de Claude Code. |
-| `agents/*.md` (ej. `arquitecto`, `tester`) | **Subagents** (`model: …`, `tools: […]`) | Cada archivo `agents/X.md` es un subagente que Claude Code puede instanciar con su propio contexto, modelo y herramientas. |
-| `skills/*.md` (ej. `modo-guiado`, `constitucion-constraint`) | **Skills** (`.claude/skills/*.md`) | Las skills de FORGE son skills de Claude Code: fragmentos de instrucción reutilizables que los agentes y comandos incluyen cuando los necesitan. |
-| `claude-hooks/` | **Hooks** (`.claude/settings.json → hooks`) | Los hooks de FORGE se registran en `settings.json` y se ejecutan en los puntos de ciclo de vida que Claude Code expone (`PreToolUse`, `PostToolUse`, `Stop`, etc.). |
-| Presets (`presets/lean.yaml`, etc.) | Configuración de usuario / proyecto | Los presets son archivos YAML que `/sdd.configurar` copia a `.sdd/sdd.config.yaml`. No son una primitiva de Claude Code; son configuración propia de FORGE. |
-| `plantillas/*.md` | Sin equivalente directo | Plantillas Markdown que los comandos llenan al generar artefactos (specs, planes, ADRs). Claude Code no tiene un sistema de plantillas nativo. |
-| `.sdd/estado.json` | Sin equivalente directo | Estado persistente del proyecto (spec activa, fase, ID de sesión). Claude Code no tiene estado global nativo; FORGE lo gestiona en disco. |
-| Modo guiado (`perfil: guiado`) | Sin equivalente directo | Comportamiento de conducción paso a paso implementado dentro del slash command `/sdd`, no una primitiva de Claude Code. |
+## Primitivas de Claude Code que usa
 
----
+| Primitiva | Uso en Fragua | Dónde |
+|---|---|---|
+| Comandos (slash) | 39 comandos `/sdd.*` | `commands/`, instalados en `.claude/commands` |
+| Subagentes | 14 agentes con cabecera propia de Claude Code | `agents/`, instalados en `.claude/agents`; los comandos los invocan con `Task` |
+| Hooks `PreToolUse` y `PostToolUse` | Guardián, memoria de agentes, convenciones | `claude-hooks/`; contrato en [COMPATIBILIDAD.md](COMPATIBILIDAD.md) |
+| Skills | 31 skills propias (formato `SKILL.md`) | `skills/`, instaladas en `.claude/skills` |
+| `CLAUDE.md` y `settings.json` | Se instalan en el proyecto | `forge init` ([ANFITRIONES.md](ANFITRIONES.md)) |
+| Servidores MCP del plugin | `playwright` y `github` declarados para Claude Code | `.mcp.json`, referenciado por `.claude-plugin/plugin.json` |
 
-## Lo que FORGE añade sobre Claude Code
+## Qué no usa
 
-1. **Flujo ordenado**: encadena los slash commands en fases (descubrir → especificar → planificar → implementar → verificar → desplegar) con transiciones explícitas.
-2. **Lenguaje español**: todos los artefactos, comandos y mensajes están en español.
-3. **Memoria entre sesiones**: `estado.json` y los artefactos en `.sdd/` persisten el contexto del proyecto entre conversaciones.
-4. **Presets de calidad**: configuraciones probadas (lean / startup / enterprise) que ajustan qué agentes están activos y con qué modelo.
-5. **Modo guiado**: conduce a usuarios no-técnicos sin exponer la nomenclatura de comandos.
+- Otros eventos de hook además de `PreToolUse` y `PostToolUse` ([COMPATIBILIDAD.md](COMPATIBILIDAD.md)).
+- Ningún formato de agente de otra herramienta: no se genera ninguno (sin confirmar).
+- Claude Code no ejecuta el ciclo verificado: `fragua run` es el motor de Fragua, que llama al modelo por su cuenta.
 
----
+## Qué recibe otra herramienta
 
-## Lo que FORGE NO hace
+Con `fragua init --integracion <clave>` distinta de `claude` (tabla en `core/instalacion/herramientas-destino.js`): las skills propias adaptadas, los comandos convertidos en skills `sdd-*`, los 14 agentes como skills de rol `rol-*` y `AGENTS.md`. **No** recibe guardián, memoria de agentes, validación de convenciones, `settings.json` ni `CLAUDE.md`, ni subagentes: lo que un comando delega con `Task` pasa a hacerse en la misma conversación. Ninguna de esas herramientas está probada en uso real (estado «Confirmado en doc; sin probar» en [ANFITRIONES.md](ANFITRIONES.md)).
 
-- No modifica el binario de Claude Code ni su comportamiento base.
-- No reemplaza las primitivas: si Claude Code actualiza Skills, Subagents o Hooks, FORGE se beneficia automáticamente.
-- No requiere acceso a la API de Anthropic directamente — todo pasa por Claude Code como intermediario.
+## Qué funciona sin Claude Code
+
+| Capacidad | Cómo | Estado |
+|---|---|---|
+| Ciclo verificado | `fragua run`, `fragua resume`; aislamiento Docker | Docker real probado solo en Windows ([SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md)) |
+| Veredicto de pruebas sin modelo | `fragua verificar` | Igual |
+| Servidor MCP | `fragua mcp` con `--perfil completo` o `--perfil verificacion` ([mcp-verificar.md](mcp-verificar.md), [servidor-mcp.md](servidor-mcp.md)) | Cómo lo consume cada cliente MCP real: no verificado |
+| CLI de gestión | `init`, `doctor`, `config`, `status`, `export`, `import`… | Ver `fragua help` |
+
+Lo que no existe fuera de Claude Code es el guardián como hook. Sus reglas viven en `core/evidencia/` y el motor aplica otros controles propios (aislamiento, perfiles, estado sellado), pero el filtro de órdenes de un agente en otra herramienta no está implementado (fase F3 del plan, en curso).

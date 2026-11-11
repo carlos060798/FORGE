@@ -46,6 +46,7 @@ async function registry() {
 
 // ── Configuración (importada desde módulo compartido) ─────────────────────────
 import { leerSddConfig, leerMaxMBConsumo } from "./shared/config.js";
+import { agenteActivo } from "./shared/entorno.js";
 
 const CONFIG = leerSddConfig(process.cwd());
 
@@ -67,7 +68,7 @@ const AGENTES_CON_MEMORIA = new Set([
 // ── Funciones auxiliares ─────────────────────────────────────────────────────
 
 function detectarAgente() {
-  return (process.env.CLAUDE_AGENT_NAME ?? "").toLowerCase().trim();
+  return (agenteActivo()).toLowerCase().trim();
 }
 
 function extraerResumen(contenido) {

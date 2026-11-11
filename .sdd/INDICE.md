@@ -5,9 +5,9 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 30
+- Total: 32
 - Completadas: 0
-- En progreso: 16
+- En progreso: 18
 - En borrador: 14
 
 ## Especificaciones
@@ -25,7 +25,7 @@
 | 2026-10-09-pruebas-confiables | Pruebas confiables | en_implementacion (aprobada por delegación del dueño; implementada sin plan ni tareas formales; autoevaluada, sin revisión independiente ni modelo real) | mediano | ✅ | — | — | ⚠️ autoevaluación (20 de 20 criterios con test) | 2026-10-09 |
 | 2026-10-09-puesta-al-dia | Puesta al día | en_implementacion (aprobada por delegación del dueño; autoevaluada, sin revisión independiente; ahorro de la caché sin medir y revisión nueva del protocolo sin probar con un cliente real) | mediano | ✅ | — | — | ⚠️ autoevaluación (17 de 19 criterios con prueba) | 2026-10-09 |
 | 2026-10-11-integraciones-externas | Integraciones con GitHub, GitLab y Jira con el mínimo privilegio | en_implementacion (por instrucción del dueño; ADR-22 propuesta; spikes primero) | grande | ✅ | ✅ | ✅ | — | 2026-10-11 |
-| 2026-10-13-instalacion-agnostica | Instalación agnóstica de herramienta: integraciones por clave y comandos como skills | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
+| 2026-10-13-instalacion-agnostica | Instalación agnóstica de herramienta: integraciones por clave y comandos como skills | en_implementacion (aprobada por delegación del dueño el 2026-11-11, pendiente de ratificación; F1 a F3 y F5.1 a F5.3 hechas; faltan pruebas manuales por herramienta) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-verificar-sin-modelo | `forge verificar`: veredicto aislado sin llamar a un modelo | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-proveedores-agnosticos | Proveedores agnósticos: conformidad, herramientas en OpenAI y Ollama, niveles neutrales | borrador (redactada por un agente por encargo del dueño; sin aprobar; nada implementado) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
 | 2026-10-13-renombrar-a-fragua | El proyecto pasa a llamarse Fragua, sin romper a quien ya usa FORGE | en_implementacion (por instrucción del dueño; F1 hecha: orden `fragua`; F3 y F4 tocan seguridad y esperan a los inventarios y a una revisión independiente) | mediano | ✅ | ✅ | ✅ | — | 2026-10-13 |
@@ -43,6 +43,8 @@
 | 2026-11-11-correcciones-de-precision | Correcciones de precisión halladas al documentar: versión que estampa export y tipo del estado | borrador (implementada; la aprueba el dueño; micro) | micro | ✅ | — | ✅ | — | 2026-11-11 |
 | 2026-11-11-sitio-generado-desde-docs | Sitio de documentación generado desde docs/ con enlaces comprobados | borrador (solo especificación; ADR-25 propuesta; cuatro decisiones del dueño; nada implementado) | mediano | ✅ | — | ✅ | — | 2026-11-11 |
 | 2026-11-10-equipos-y-ciclo-en-ci | Equipos pequeños: aprobaciones atribuibles, estado compartible y ciclo verificado en CI | borrador (solo especificación, Fase 4 del plan MVP; cinco decisiones abiertas del dueño; nada implementado) | grande | ✅ | — | — | — | 2026-11-10 |
+| 2026-11-10-metodologia-agnostica | Metodología agnóstica del anfitrión: comandos y agentes utilizables fuera de Claude Code | en_implementacion (aprobada por delegación del dueño el 2026-11-11, pendiente de ratificación; F1 y F2 implementadas por adaptación al instalar, sin probar en herramientas reales) | grande | ✅ | — | — | — | 2026-11-10 |
+| 2026-11-11-guardian-fuera-de-claude-code | Guardián y memoria fuera de Claude Code: orden `fragua guardian`, traducción del evento por anfitrión y plantillas de hook | borrador (código F3 implementado por instrucción del dueño antes de la spec; redactada a posteriori; **sin aprobar**; dos criterios P1 incumplidos anotados; sin probar en herramienta real) | mediano | ✅ | — | — | — | 2026-11-11 |
 | 2026-10-14-despliegue-con-aprobacion | Despliegue con aprobación: puerto de despliegue con un adaptador de AWS; el modelo propone, una persona aprueb | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 | 2026-10-14-perfiles-de-agente | Perfiles de agente: herramientas, rutas, contexto y pasos por rol, impuestos por el motor | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 

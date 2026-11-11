@@ -59,3 +59,14 @@ export function sinVariable(sufijo, env = process.env) {
   for (const p of PREFIJOS) delete copia[`${p}${sufijo}`];
   return copia;
 }
+
+/**
+ * Identidad del agente activo: FRAGUA_AGENTE / FORGE_AGENTE; si no hay, CLAUDE_AGENT_NAME (respaldo de Claude Code).
+ * Ante conflicto entre las dos formas devuelve '' (sin identidad): nunca elige una.
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {string}
+ */
+export function agenteActivo(env = process.env) {
+  const propio = leerVariableRestrictiva('AGENTE', env, '');
+  return String((propio !== undefined && propio !== '' ? propio : env.CLAUDE_AGENT_NAME) ?? '').trim();
+}

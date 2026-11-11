@@ -488,6 +488,14 @@ El perfil `completo` expone `ejecutar_pruebas`, `leer_archivo` y `escribir_archi
 {"mcpServers":{"forge":{"command":"npx","args":["forge","mcp"]}}}
 ```
 
+### `guardian`
+
+`fragua guardian evaluar` lee un evento de herramienta (JSON, contrato en [contrato/evento-herramienta.md](contrato/evento-herramienta.md)) por la entrada estándar y ejecuta el mismo guardián que el hook de Claude Code. Código de salida `0` permite, `2` bloquea (también si no puede evaluar) y `1` es uso incorrecto. Solo es «impuesto» si la herramienta que lo llama puede bloquear con ese código; si no, es consultivo. La identidad del agente sale de `FRAGUA_AGENTE` o `FORGE_AGENTE`, con `CLAUDE_AGENT_NAME` de respaldo.
+
+### `memoria`
+
+`fragua memoria registrar` lee un evento de herramienta por la entrada estándar y lo registra en la memoria de agentes, con la misma lógica que el hook de Claude Code. Códigos de salida como en `guardian`.
+
 ### `adr`
 
 Busca ADRs escritos como comentarios en el código y, con `--update-ledger`, los añade al registro. Delega en `utils/adr-parser.js`.

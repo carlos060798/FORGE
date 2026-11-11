@@ -47,8 +47,9 @@ Uso:
                  [--template api-rest|cli-tool|saas-mvp]
                                      Instala FORGE (proyecto actual o global)
   npx forge update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
-  Opciones de init/update: --integracion <claude|generica|agents|copilot|cursor|gemini|windsurf|opencode|kiro>
+  Opciones de init/update: --integracion <claude|generica|agents|codex|copilot|cursor|gemini|windsurf|opencode|kiro>
                            --perfil <esencial|completo>   --carpeta-skills <ruta> (solo generica)
+                           --con-hooks   registra el guardián en los hooks de cursor, copilot, gemini o codex (opcional)
   npx forge doctor                   Diagnostica la instalación y providers disponibles
   npx forge ui [--port N] [--no-open]  Abre el dashboard en el navegador
   npx forge config show [sección]    Muestra sdd.config.yaml o una sección
@@ -124,6 +125,7 @@ async function main() {
   OPCIONES_INSTALACION.integracion = valorDe("--integracion");
   OPCIONES_INSTALACION.perfil = valorDe("--perfil");
   OPCIONES_INSTALACION.carpetaSkills = valorDe("--carpeta-skills");
+  OPCIONES_INSTALACION.conHooks = args.includes("--con-hooks");
 
   switch (comando) {
     case "init":
@@ -134,6 +136,12 @@ async function main() {
       break;
     case "doctor":
       await cmdDoctor();
+      break;
+    case "guardian":
+      process.exitCode = (await import("./comandos/guardian.js")).cmdGuardian(args.slice(1));
+      break;
+    case "memoria":
+      process.exitCode = (await import("./comandos/guardian.js")).cmdMemoria(args.slice(1));
       break;
     case "esquema":
       process.exitCode = (await import("./esquema.js")).cmdEsquema(args.slice(1));

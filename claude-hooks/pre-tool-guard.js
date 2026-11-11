@@ -35,11 +35,12 @@ try {
     ...(await import("./shared/protegidos.js")),
     ...(await import("./shared/guardian-reglas.js")),
     ...(await import("./shared/config.js")),
+    ...(await import("./shared/entorno.js")),
   };
 } catch (e) {
   fallarCerrado(`faltan o no cargan sus módulos: ${String(/** @type {any} */ (e)?.message ?? e).slice(0, 160)}`);
 }
-const { clasificarConfiguracionProtegida, esConfiguracionProtegida, evaluarComando, escribeAlgo, esRutaCriticaDelGuardian, esSecreto, motivoDestinoProtegido,
+const { agenteActivo, clasificarConfiguracionProtegida, esConfiguracionProtegida, evaluarComando, escribeAlgo, esRutaCriticaDelGuardian, esSecreto, motivoDestinoProtegido,
   leerForgeConfig, leerNivelEjecucion, dlqAppend } = M;
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
@@ -219,7 +220,7 @@ function main(raw) {
 
   const toolName = String(event?.tool_name ?? "");
   const toolInput = event?.tool_input ?? {};
-  const agentName = process.env.CLAUDE_AGENT_NAME ?? "";
+  const agentName = agenteActivo();
   const editaGuardian = process.env.FORGE_EDITAR_GUARDIAN === "1";   // lo fija el dueño al lanzar Claude Code; el agente no puede
 
   // ── CircuitBreaker: el nivel se evalúa ANTES de cualquier salida con exit(0) ──
@@ -228,7 +229,7 @@ function main(raw) {
   // AG-01: Advertir si la variable de identidad del agente no está disponible.
   if (!agentName && (toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit" || toolName === "NotebookEdit")) {
     process.stderr.write(
-      `⚠️  [pre-tool-guard] CLAUDE_AGENT_NAME no disponible — los guardias de agentes read-only están desactivados.\n` +
+      `⚠️  [pre-tool-guard] FRAGUA_AGENTE (o CLAUDE_AGENT_NAME) no disponible — los guardias de agentes read-only están desactivados.\n` +
       `   Actualiza Claude Code a la versión que expone esta variable de entorno en hooks.\n`
     );
   }
