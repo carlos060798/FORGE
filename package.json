@@ -79,7 +79,7 @@
     "url": "https://github.com/carlos060798/FORGE.git"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.132.1",
+    "@anthropic-ai/sdk": "^1.6.0",
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "acorn": "^8.17.0"
   },
