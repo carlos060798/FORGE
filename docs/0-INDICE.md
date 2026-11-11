@@ -1,4 +1,4 @@
-# 📑 Índice General de FORGE (Fragua) 5.0.0
+# 📑 Índice General de FORGE (Fragua) 5.0.0-beta.1
 
 **Punto de entrada único a la documentación.** Versión sin publicar: el estado al día, con cifras y pendientes, está en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
@@ -74,6 +74,7 @@ Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contien
 - 🔀 [MIGRACION-5.0.md](MIGRACION-5.0.md): qué cambia al actualizar desde 4.2.0
 - 📏 [COBERTURA.md](COBERTURA.md): cobertura de pruebas por archivo
 - 🧪 [PRUEBAS-INDEPENDIENTES.md](PRUEBAS-INDEPENDIENTES.md): cómo comprobar FORGE instalado como paquete sobre proyectos independientes
+- 📝 [uso-real/PLANTILLA.md](uso-real/PLANTILLA.md): plantilla para contar un uso real de Fragua (tiempo, gasto, pausas, fallos)
 
 ### Arquitectura y referencia
 - 🏗️ [architecture.md](architecture.md): capas, diagramas, flujos de extremo a extremo
@@ -158,6 +159,6 @@ Si buscas algo que no está aquí, mira primero en [archivo/](archivo/): contien
 
 ## 🔄 Actualización
 
-**Última actualización:** 2026-10-24 · **Versión:** 5.0.0 (sin publicar) · **Historial:** [../CHANGELOG.md](../CHANGELOG.md)
+**Última actualización:** 2026-10-24 · **Versión:** 5.0.0-beta.1 (sin publicar) · **Historial:** [../CHANGELOG.md](../CHANGELOG.md)
 
 > FORGE pasa a llamarse **Fragua** (paquete `fragua`). Los documentos conservan el nombre con el que se escribieron; la equivalencia está en el README.
