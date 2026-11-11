@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { extraerCriterios, calcularMatriz, matrizDelProyecto, textoMatriz, leerArchivosDePrueba, LIMITE_DECLARADO } from '../core/evidencia/criterios.js';
 import { cmdVerificar, leerOpciones } from '../cli/verificar.js';
 import { seccionCriterios } from '../core/ciclo/nodos.js';
+import { crearEnlace, noVerificado } from './helpers-enlaces.js';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const base = realpathSync(mkdtempSync(join(tmpdir(), 'forge-criterios-')));
@@ -274,7 +275,7 @@ describe('leerArchivosDePrueba: los topes y las exclusiones (T5, B1)', () => {
     const cwd = vacio();
     const fuera = vacio();
     crear(fuera, 'tests/secreto.test.js', '// CA-001-01\n');
-    try { symlinkSync(fuera, join(cwd, 'enlace'), 'junction'); } catch { t.skip('sin permiso para crear enlaces en este equipo'); return; }
+    if (!crearEnlace(fuera, join(cwd, 'enlace'), 'dir').creado) { noVerificado(t, 'no se pudo crear ni enlace simbólico ni unión de directorio'); return; }
     assert.deepEqual(leerArchivosDePrueba(cwd), []);
   });
   test('un identificador pegado a otro texto no cuenta como cita', () => {

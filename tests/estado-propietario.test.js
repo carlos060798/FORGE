@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { comprobarPropietarioDelEstado, directorioDeEstado, rutaDeEstado } from '../core/estado-usuario.js';
+import { crearEnlace, noVerificado } from './helpers-enlaces.js';
 
 const carpeta = (/** @type {object} */ o) => ({ isDirectory: () => true, isSymbolicLink: () => false, uid: 1000, mode: 0o40700, ...o });
 
@@ -41,7 +42,7 @@ describe('directorioDeEstado con una carpeta preexistente', () => {
     const env = { FRAGUA_HOME: raiz };
     const dir = rutaDeEstado(proyecto, env);
     mkdirSync(join(raiz, 'integraciones'), { recursive: true });
-    try { symlinkSync(otro, dir, process.platform === 'win32' ? 'junction' : 'dir'); } catch (e) { return t.skip(`no se pudo crear el enlace: ${/** @type {Error} */ (e).message}`); }
+    if (!crearEnlace(otro, dir, 'dir').creado) return noVerificado(t, 'no se pudo crear ni enlace simbólico ni unión de directorio');
     assert.throws(() => directorioDeEstado(proyecto, env), /carpeta normal|no se usa/);
   });
 

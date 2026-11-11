@@ -26,6 +26,7 @@ import { Respaldo } from "../core/ciclo/respaldo.js";
 import { escribirArchivo, EDAD_TEMPORAL_HUERFANO_MS } from "../core/escritura-segura.js";
 import { cmdImport } from "../cli/import.js";
 import { cmdExport } from "../cli/export.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sha = (t) => createHash("sha256").update(t).digest("hex");
@@ -267,7 +268,7 @@ describe("N4-07 — temporales huérfanos", () => {
 
 // ── N4-08 ───────────────────────────────────────────────────────────────────────
 function union(destino, enlace) {
-  try { symlinkSync(destino, enlace, "junction"); return true; } catch { return false; }
+  return crearEnlace(destino, enlace, "dir").creado;
 }
 
 describe("N4-08 — import/export no escriben a través de enlaces", () => {
@@ -283,7 +284,7 @@ describe("N4-08 — import/export no escriben a través de enlaces", () => {
     const cwd = join(base, "proy"); const fuera = join(base, "fuera");
     mkdirSync(cwd); mkdirSync(fuera);
     writeFileSync(join(base, "spec.json"), openspec);
-    if (!union(fuera, join(cwd, ".sdd"))) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!union(fuera, join(cwd, ".sdd"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     await assert.rejects(silencio(() => cmdImport(["--from=openspec", `--file=${join(base, "spec.json")}`], cwd)), /enlace|unión|fuera/i);
     assert.deepEqual(readdirSync(fuera), []);
   });
@@ -293,7 +294,7 @@ describe("N4-08 — import/export no escriben a través de enlaces", () => {
     const cwd = join(base, "proy"); const hueco = join(base, "hueco");
     mkdirSync(cwd); mkdirSync(hueco);
     writeFileSync(join(base, "spec.json"), openspec);
-    if (!union(hueco, join(cwd, ".sdd"))) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!union(hueco, join(cwd, ".sdd"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     rmSync(hueco, { recursive: true });
     await assert.rejects(silencio(() => cmdImport(["--from=openspec", `--file=${join(base, "spec.json")}`], cwd)), /enlace|unión|fuera|no existe/i);
     assert.ok(!existsSync(hueco), "no recreó el destino del enlace");
@@ -313,7 +314,7 @@ describe("N4-08 — import/export no escriben a través de enlaces", () => {
     const base = mkdtempSync(join(tmpdir(), "forge-exp-"));
     const cwd = join(base, "proy"); const fuera = join(base, "fuera");
     mkdirSync(cwd); mkdirSync(fuera);
-    if (!union(fuera, join(cwd, "salida"))) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!union(fuera, join(cwd, "salida"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     await assert.rejects(silencio(() => cmdExport(["--format=openspec", "--out=salida"], cwd)), /enlace|unión|fuera/i);
     assert.deepEqual(readdirSync(fuera), []);
   });

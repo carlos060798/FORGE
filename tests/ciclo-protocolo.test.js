@@ -14,6 +14,7 @@ import {
   aplicarArchivos, esRutaDePrueba, extraerBloque, huella, huellasAlteradas, validarRuta,
 } from "../core/ciclo/protocolo-archivos.js";
 import { coincide } from "../core/glob.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 /** Crea <tmp>/base/proy y devuelve la ruta del proyecto. */
 function proyecto() {
@@ -98,12 +99,7 @@ describe("validarRuta — confinamiento", () => {
     const { base, dir: d } = proyecto();
     const fuera = join(base, "fuera");
     mkdirSync(fuera);
-    try {
-      symlinkSync(fuera, join(d, "enlace"), "junction");
-    } catch {
-      t.skip("este sistema no permite crear enlaces");
-      return;
-    }
+    if (!crearEnlace(fuera, join(d, "enlace"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     assert.equal(/** @type {any} */ (validarRuta(d, "enlace/x.js")).motivo, "fuera_del_proyecto");
   });
 });
@@ -288,7 +284,7 @@ describe("rutas escribibles del perfil y enlaces intermedios (revisión 2026-10-
     const dir = mkdtempSync(join(tmpdir(), "forge-perfil-enlace-"));
     mkdirSync(join(dir, "src"), { recursive: true });
     mkdirSync(join(dir, "otro"), { recursive: true });
-    try { symlinkSync(join(dir, "otro"), join(dir, "src", "enlace"), "junction"); } catch { t.skip("sin permiso para crear enlaces en este equipo"); rmSync(dir, { recursive: true, force: true }); return; }
+    if (!crearEnlace(join(dir, "otro"), join(dir, "src", "enlace"), "dir").creado) { noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio"); rmSync(dir, { recursive: true, force: true }); return; }
     const r = aplicarArchivos(dir, [{ ruta: "src/enlace/x.js", contenido: "export const x = 1;\n" }, { ruta: "src/ok.js", contenido: "export const y = 2;\n" }], { rol: "coder", rutasEscribir: ["src/"], politicaDestinos: [] });
     assert.deepEqual(r.rechazados.map((x) => [x.ruta, x.motivo]), [["src/enlace/x.js", "fuera_de_perfil"]]);
     assert.deepEqual(r.escritos.map((x) => x.ruta), ["src/ok.js"]);

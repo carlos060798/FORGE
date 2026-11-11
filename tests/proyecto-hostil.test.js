@@ -45,6 +45,7 @@ import { DockerCli } from "../core/sandbox/docker-cli.js";
 import { comprobarProyecto, prepararImagen } from "../core/sandbox/preparar-imagen.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { crearCopia, eliminarCopia } from "../core/sandbox/staging.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "cli", "index.js");
@@ -86,7 +87,7 @@ function escribirSiSePuede(dir, ruta, contenido) {
 
 /** Una unión de directorio (`mklink /J` en Windows, enlace simbólico en los demás). false si el sistema no deja. */
 function union(destino, enlace) {
-  try { symlinkSync(destino, enlace, "junction"); return true; } catch { return false; }
+  return crearEnlace(destino, enlace, "dir").creado;
 }
 
 /** Marcas que no deben aparecer nunca en un prompt ni en el registro. */
@@ -484,7 +485,7 @@ function conSecretosYUniones() {
 describe("uniones hacia fuera, secretos e instrucciones dirigidas al modelo", () => {
   test("sin que el modelo pida nada: FORGE no lleva por su cuenta a ningún prompt ni .gitignore, ni .env, ni secrets/, ni lo de fuera", async (t) => {
     const { m, uniones } = conSecretosYUniones();
-    if (!uniones.fuera) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!uniones.fuera) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const antes = { fuera: foto(m.fuera), marcas: Object.values(MARCAS) };
     const c = ciclo(m, { motor: { mutacion: "informar", mutacion_max: 2 }, ejecuciones: [FALLA, PASA] });
     const r = await c.ejecutar();
@@ -504,7 +505,7 @@ describe("uniones hacia fuera, secretos e instrucciones dirigidas al modelo", ()
 
   test("un modelo que obedece al archivo hostil: pide leer lo vetado y escribir fuera, y el motor no le deja", async (t) => {
     const { m, uniones } = conSecretosYUniones();
-    if (!uniones.fuera) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!uniones.fuera) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const antes = { fuera: foto(m.fuera) };
     const absoluta = join(m.fuera, "absoluta.js");
     const LEER = [
@@ -824,7 +825,7 @@ const dockerActivo = process.env.FORGE_TEST_DOCKER === "1" && spawnSync("docker"
 describe("proyecto hostil con Docker real", { skip: !dockerActivo && "requiere FORGE_TEST_DOCKER=1 y Docker en marcha" }, () => {
   test("las pruebas corren en el contenedor aunque el proyecto tenga nombres raros, secretos y uniones; dentro no hay nada vetado", async (t) => {
     const { m, uniones } = conSecretosYUniones();
-    if (!uniones.fuera) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!uniones.fuera) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     for (const ruta of ["src/con espacios/mi archivo.js", "src/acentos/cañón_ñandú.js", "src/emoji/🚀cohete.js", "src/日本語/ファイル.js"]) escribir(m.cwd, ruta, "export const x = 1;\n");
     escribir(m.cwd, "datos/imagen.bin", randomBytes(64 * 1024));
     escribir(m.cwd, "src/calc.js", IMPL_OK);
@@ -890,7 +891,7 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
 
   test("config set: si `.sdd` es una unión hacia fuera, no escribe al otro lado y lo dice", (t) => {
     const { m, hayUnion } = conSddFuera();
-    if (!hayUnion) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!hayUnion) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const antes = foto(m.fuera);
     const r = forge(m.cwd, "config", "set", "sesion.modo", "rapido");
     assert.notEqual(r.codigo, 0, r.salida);
@@ -902,7 +903,7 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
 
   test("config set: un enlace duro hacia un archivo de fuera no se pisa; el proyecto queda con su propio archivo", (t) => {
     const { m, hayEnlace } = conEnlaceDuro("sdd.config.yaml", YAML);
-    if (!hayEnlace) return t.skip("este sistema no permite crear enlaces duros");
+    if (!hayEnlace) return noVerificado(t, "no se pudo crear un enlace duro (sistema de archivos sin enlaces duros)");
     const r = forge(m.cwd, "config", "set", "sesion.modo", "rapido");
     assert.equal(r.codigo, 0, r.salida);
     assert.equal(readFileSync(join(m.fuera, "sdd.config.yaml"), "utf8"), YAML, "el archivo de fuera conserva su contenido");
@@ -923,7 +924,7 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
 
   test("aprobar spec: si `.sdd` es una unión hacia fuera, no aprueba nada al otro lado y lo dice", (t) => {
     const { m, hayUnion } = conSddFuera();
-    if (!hayUnion) return t.skip("este sistema no permite crear uniones de directorio");
+    if (!hayUnion) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const antes = foto(m.fuera);
     const r = forge(m.cwd, "aprobar", "spec");
     assert.notEqual(r.codigo, 0, r.salida);
@@ -934,7 +935,7 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
 
   test("aprobar spec: un enlace duro hacia un archivo de fuera no se pisa", (t) => {
     const { m, hayEnlace } = conEnlaceDuro("estado.json", ESTADO);
-    if (!hayEnlace) return t.skip("este sistema no permite crear enlaces duros");
+    if (!hayEnlace) return noVerificado(t, "no se pudo crear un enlace duro (sistema de archivos sin enlaces duros)");
     escribir(m.cwd, ".sdd/especificaciones/001-demo/spec.md", "# spec\n");
     const r = forge(m.cwd, "aprobar", "spec");
     assert.notEqual(r.codigo, 0, r.salida);
@@ -946,7 +947,8 @@ describe("forge config set y forge aprobar no escriben a través de enlaces", ()
     const m = montar();
     escribir(m.fuera, "sdd.config.yaml", YAML);
     mkdirSync(join(m.cwd, ".sdd"));
-    try { symlinkSync(join(m.fuera, "sdd.config.yaml"), join(m.cwd, ".sdd", "sdd.config.yaml"), "file"); } catch { return t.skip("este sistema no permite crear enlaces simbólicos de archivo sin privilegios"); }
+    // Enlace simbólico de archivo: el comando lo detecta con `lstat`; el caso del enlace duro ya tiene su propia prueba arriba.
+    if (!crearEnlace(join(m.fuera, "sdd.config.yaml"), join(m.cwd, ".sdd", "sdd.config.yaml"), "archivo").creado) return noVerificado(t, "symlink de archivo hacia fuera requiere privilegio de enlaces; el enlace duro tiene su prueba aparte y no es un enlace simbólico");
     const r = forge(m.cwd, "config", "set", "sesion.modo", "rapido");
     assert.notEqual(r.codigo, 0, r.salida);
     assert.match(r.salida, /No se escribe/);

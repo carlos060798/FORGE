@@ -32,6 +32,7 @@ import { PassThrough } from "node:stream";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { registrarDestino, olvidarDestinos } from "../core/session-budget.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 import { limpiar, generarAgentsMd, neutralizar, unaLinea, bloqueDeCodigo } from "../core/agents-md.js";
 import { redactar } from "../core/ciclo/redactar.js";
@@ -58,15 +59,7 @@ const temporal = (p = "forge-rev9-") => mkdtempSync(join(tmpdir(), p));
 
 /** Crea un enlace a un directorio (unión en Windows). */
 function enlazarDir(objetivo, ruta) {
-  symlinkSync(resolve(objetivo), ruta, process.platform === "win32" ? "junction" : "dir");
-}
-
-/** Enlace simbólico a un archivo; false si el sistema no deja crearlo (Windows sin privilegios). */
-function enlazarArchivo(objetivo, ruta) {
-  try { symlinkSync(objetivo, ruta, "file"); return true; } catch (e) {
-    if (["EPERM", "EACCES", "ENOSYS", "UNKNOWN"].includes(/** @type {any} */ (e).code)) return false;
-    throw e;
-  }
+  if (!crearEnlace(resolve(objetivo), ruta, "dir").creado) throw new Error(`no se pudo crear ni enlace simbólico ni unión hacia ${objetivo}`);
 }
 
 /** Foto del contenido de un árbol: ruta → texto, para comprobar que nada cambió ni apareció. */
@@ -223,7 +216,8 @@ describe("H-01 — `forge init` con enlaces y enlaces duros a ARCHIVOS", () => {
 
   test("enlaces simbólicos a archivos (colgantes, hacia fuera, hacia dentro) — donde el sistema deja crearlos", (t) => {
     const dir0 = temporal();
-    if (!enlazarArchivo("x", join(dir0, "prueba"))) { t.skip("este sistema no deja crear enlaces simbólicos a archivos (EPERM); cubierto con Docker más abajo"); return; }
+    // La prueba comprueba que `init` conserva ENLACES SIMBÓLICOS (`esEnlace`), colgantes incluidos: un enlace duro no lo reproduce.
+    if (!crearEnlace("x", join(dir0, "prueba"), "archivo").creado) { noVerificado(t, "symlink de archivo (colgante, hacia fuera) requiere privilegio de enlaces; un enlace duro no es un enlace simbólico. Cubierto con Docker más abajo (FORGE_TEST_DOCKER=1)"); return; }
     for (const nombre of ["AGENTS.md", "CLAUDE.md", ".claudeignore", ".sdd/AGENTS.propuesto.md", ".sdd/sdd.config.yaml", ".sdd/hooks/README.md", ".claude/settings.json"]) {
       for (const tipo of ["colgante-fuera", "existente-fuera", "existente-dentro"]) {
         const dir = proyectoNode(), fuera = temporal("forge-fuera-");

@@ -24,6 +24,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { ErrorEnlace, escribirArchivo, leerArchivo, verificarRuta, crearArchivo, crearDirectorio } from "../core/escritura-segura.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "cli", "index.js");
@@ -31,7 +32,7 @@ const MUERTE = join(ROOT, "tests", "fixtures", "muerte-en-rename.mjs");
 
 const temporal = (p = "forge-global-") => realpathSync(mkdtempSync(join(tmpdir(), p)));
 const escribir = (ruta, texto) => { mkdirSync(dirname(ruta), { recursive: true }); writeFileSync(ruta, texto); };
-const union = (destino, enlace) => { try { symlinkSync(destino, enlace, "junction"); return true; } catch { return false; } };
+const union = (destino, enlace) => crearEnlace(destino, enlace, "dir").creado;
 const esEnlace = (ruta) => { try { return lstatSync(ruta).isSymbolicLink(); } catch { return false; } };
 
 /** `forge <args>` con un HOME falso. */
@@ -106,7 +107,7 @@ describe("N-14 — ~/.claude/commands como unión a los dotfiles del usuario", (
   test("se sigue por decisión explícita, solo en lo global, y lo dice", (t) => {
     const home = temporal("forge-home-"), cwd = proyecto(), dotfiles = temporal("forge-dotfiles-");
     mkdirSync(join(home, ".claude"), { recursive: true });
-    if (!union(dotfiles, join(home, ".claude", "commands"))) return t.skip("este sistema no permite uniones");
+    if (!union(dotfiles, join(home, ".claude", "commands"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = forge(cwd, home, "init", "--global");
     assert.equal(r.status, 0, r.salida);
     assert.ok(readdirSync(dotfiles).includes("forge.md"), "los comandos están en el repositorio de dotfiles");
@@ -119,7 +120,7 @@ describe("N-14 — ~/.claude/commands como unión a los dotfiles del usuario", (
   test("en un proyecto ningún enlace se sigue, ni siquiera .claude/commands", (t) => {
     const home = temporal("forge-home-"), cwd = proyecto(), fuera = temporal("forge-fuera-");
     mkdirSync(join(cwd, ".claude"), { recursive: true });
-    if (!union(fuera, join(cwd, ".claude", "commands"))) return t.skip("este sistema no permite uniones");
+    if (!union(fuera, join(cwd, ".claude", "commands"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = forge(cwd, home, "init");
     assert.equal(r.status, 1, r.salida);
     assert.deepEqual(readdirSync(fuera), []);
@@ -183,7 +184,7 @@ describe("N-05 — un corte entre escribir y reemplazar no pierde el archivo", (
   test("si el destino es un enlace, no se crea ni el temporal", (t) => {
     const raiz = temporal(), fuera = temporal();
     const dir = join(raiz, "d");
-    if (!union(fuera, dir)) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
+    if (!union(fuera, dir)) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     assert.throws(() => escribirArchivo(raiz, join(dir, "x.txt"), "x"), ErrorEnlace);
     assert.deepEqual(readdirSync(fuera), []);
   });
@@ -210,7 +211,7 @@ describe("N-07 — init no lee a través de enlaces", () => {
     const home = temporal("forge-home-"), cwd = proyecto(), fuera = temporal("forge-fuera-");
     escribir(join(fuera, "constitucion.md"), "# Constitución\n\n## Principios\n\n- PRIVADO-DE-FUERA\n");
     mkdirSync(join(cwd, ".sdd"), { recursive: true });
-    if (!union(fuera, join(cwd, ".sdd", "memoria"))) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
+    if (!union(fuera, join(cwd, ".sdd", "memoria"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = forge(cwd, home, "init");
     assert.ok(!/PRIVADO-DE-FUERA/.test(readFileSync(join(cwd, "AGENTS.md"), "utf8")), "el contenido ajeno no está en AGENTS.md");
     assert.match(r.salida, /No se lee|enlace|unión/i);
@@ -219,7 +220,8 @@ describe("N-07 — init no lee a través de enlaces", () => {
   test("un package.json enlazado a otro de fuera no pone su nombre en AGENTS.md", (t) => {
     const home = temporal("forge-home-"), cwd = temporal("forge-proy-"), fuera = temporal("forge-fuera-");
     escribir(join(fuera, "package.json"), JSON.stringify({ name: "NOMBRE-PRIVADO-DE-FUERA", scripts: { test: "node --test" } }));
-    try { symlinkSync(join(fuera, "package.json"), join(cwd, "package.json"), "file"); } catch { return t.skip("sin enlaces simbólicos a archivo (EPERM)"); }
+    // Enlace simbólico de archivo: `init` lo detecta con `lstat`; un enlace duro es un archivo corriente más y se leería.
+    if (!crearEnlace(join(fuera, "package.json"), join(cwd, "package.json"), "archivo").creado) return noVerificado(t, "symlink de archivo hacia fuera requiere privilegio de enlaces; un enlace duro no es un enlace simbólico y `init` no puede distinguirlo");
     forge(cwd, home, "init");
     assert.ok(!/NOMBRE-PRIVADO-DE-FUERA/.test(readFileSync(join(cwd, "AGENTS.md"), "utf8")));
   });
@@ -229,7 +231,7 @@ describe("N-08 — el proyecto abierto a través de una unión se inicializa ent
   test("CLAUDE.md, AGENTS.md y .claudeignore se crean en el proyecto real", (t) => {
     const home = temporal("forge-home-"), real = proyecto(), base = temporal("forge-via-");
     const via = join(base, "via");
-    if (!union(real, via)) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
+    if (!union(real, via)) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = forge(via, home, "init");
     assert.equal(r.status, 0, r.salida);
     for (const f of ["CLAUDE.md", "AGENTS.md", ".claudeignore", join(".sdd", "sdd.config.yaml"), join(".claude", "commands", "forge.md")]) {
@@ -240,7 +242,7 @@ describe("N-08 — el proyecto abierto a través de una unión se inicializa ent
 
   test("crearDirectorio acepta como raíz una unión", (t) => {
     const real = temporal(), base = temporal();
-    if (!union(real, join(base, "via"))) return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)");
+    if (!union(real, join(base, "via"))) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     assert.doesNotThrow(() => crearDirectorio(join(base, "via"), join(base, "via")));
     assert.doesNotThrow(() => crearArchivo(join(base, "via"), join(base, "via", "a", "b.txt"), "x"));
     assert.equal(readFileSync(join(real, "a", "b.txt"), "utf8"), "x");

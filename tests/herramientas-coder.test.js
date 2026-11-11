@@ -17,6 +17,7 @@ import {
 } from "../core/ciclo/herramientas-coder.js";
 import { aplicarArchivos } from "../core/ciclo/protocolo-archivos.js";
 import { Respaldo } from "../core/ciclo/respaldo.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const escribir = (dir, ruta, contenido) => { mkdirSync(join(dir, ruta, ".."), { recursive: true }); writeFileSync(join(dir, ruta), contenido); };
 
@@ -139,7 +140,7 @@ describe("leer_archivo (HU-001)", () => {
     const fuera = join(e.base, "fuera");
     mkdirSync(fuera);
     writeFileSync(join(fuera, "x.js"), "SECRETO-123");
-    try { symlinkSync(fuera, join(e.dir, "enlace"), "junction"); } catch { t.skip("este sistema no permite crear enlaces"); return; }
+    if (!crearEnlace(fuera, join(e.dir, "enlace"), "dir").creado) { noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio"); return; }
     const r = await e.usar("leer_archivo", { ruta: "enlace/x.js" });
     assert.equal(r.error, true);
     assert.doesNotMatch(r.texto, /SECRETO-123/);

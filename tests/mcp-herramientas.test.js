@@ -15,6 +15,7 @@ import { PassThrough } from "node:stream";
 import { crearHerramientas, MAX_ESCRITURA_BYTES, MAX_LECTURA_BYTES } from "../core/mcp/herramientas.js";
 import { ServidorMcp } from "../core/mcp/protocolo.js";
 import { validarRuta } from "../core/ciclo/protocolo-archivos.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 const escribir = (dir, ruta, contenido) => { mkdirSync(join(dir, ruta, ".."), { recursive: true }); writeFileSync(join(dir, ruta), contenido); };
@@ -155,7 +156,7 @@ describe("leer_archivo", () => {
   test("CA-002-02: un enlace a un secreto no sirve para leerlo", async (t) => {
     const { h, cwd } = herramientas();
     escribir(cwd, ".env", "SECRETO");
-    try { symlinkSync(join(cwd, ".env"), join(cwd, "inocente.txt"), "file"); } catch { t.skip("este sistema no permite enlaces de archivo"); return; }
+    if (!crearEnlace(join(cwd, ".env"), join(cwd, "inocente.txt"), "archivo").creado) return noVerificado(t, "symlink de archivo hacia un secreto requiere privilegio de enlaces; un enlace duro no lo demuestra (la herramienta no puede distinguirlo por nombre)");
     const r = await h.leer_archivo.ejecutar({ ruta: "inocente.txt" });
     assert.equal(r.error, true);
     assert.ok(!r.texto.includes("SECRETO"));
@@ -221,7 +222,7 @@ describe("escribir_archivo", () => {
   test("CA-003-02: un enlace a .git no sirve para escribir dentro del repositorio", async (t) => {
     const { h, cwd } = herramientas();
     mkdirSync(join(cwd, ".git", "hooks"), { recursive: true });
-    try { symlinkSync(join(cwd, ".git"), join(cwd, "g"), "junction"); } catch { t.skip("no se pueden crear enlaces"); return; }
+    if (!crearEnlace(join(cwd, ".git"), join(cwd, "g"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = await h.escribir_archivo.ejecutar({ ruta: "g/hooks/pre-commit", contenido: "#!/bin/sh" });
     assert.equal(r.error, true);
     assert.ok(!existsSync(join(cwd, ".git", "hooks", "pre-commit")));

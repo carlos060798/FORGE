@@ -22,6 +22,7 @@ import { estadoInicial } from "../core/ciclo/estado.js";
 import { POR_DEFECTO } from "../core/ciclo/config.js";
 import { crearCopia } from "../core/sandbox/staging.js";
 import { comprobarProyecto } from "../core/sandbox/preparar-imagen.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
@@ -97,7 +98,7 @@ describe("seguridad A2 — enlaces", () => {
   test("una carpeta enlazada a .git no sirve para escribir dentro del repositorio", (t) => {
     const dir = tmp("forge-h-");
     mkdirSync(join(dir, ".git", "hooks"), { recursive: true });
-    try { symlinkSync(join(dir, ".git"), join(dir, "g"), "junction"); } catch { t.skip("no se pueden crear enlaces"); return; }
+    if (!crearEnlace(join(dir, ".git"), join(dir, "g"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = aplicarArchivos(dir, [{ ruta: "g/hooks/pre-commit", contenido: "#!/bin/sh\necho pwned" }], { rol: "coder" });
     assert.deepEqual(r.escritos, []);
     assert.ok(!existsSync(join(dir, ".git", "hooks", "pre-commit")));
@@ -107,14 +108,15 @@ describe("seguridad A2 — enlaces", () => {
     const base = tmp("forge-h-");
     const dir = join(base, "proy"); mkdirSync(dir);
     mkdirSync(join(base, "fuera"));
-    try { symlinkSync(join(base, "fuera"), join(dir, "salida"), "junction"); } catch { t.skip("no se pueden crear enlaces"); return; }
+    if (!crearEnlace(join(base, "fuera"), join(dir, "salida"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     assert.equal(motivo(dir, "salida/x.js"), "fuera_del_proyecto");
   });
 
   test("un archivo que es un enlace (también roto) no se escribe a través de él", (t) => {
     const base = tmp("forge-h-");
     const dir = join(base, "proy"); mkdirSync(dir);
-    try { symlinkSync(join(base, "fuera", "nuevo.sh"), join(dir, "colgado.txt"), "file"); } catch { t.skip("este sistema no permite enlaces de archivo"); return; }
+    // Enlace simbólico COLGANTE: un enlace duro exige que el destino exista, así que no reproduce el caso.
+    if (!crearEnlace(join(base, "fuera", "nuevo.sh"), join(dir, "colgado.txt"), "archivo").creado) return noVerificado(t, "symlink de archivo colgante requiere privilegio de enlaces; ni una unión ni un enlace duro pueden estar colgados");
     assert.equal(motivo(dir, "colgado.txt"), "enlace_simbolico");
     assert.ok(!existsSync(join(base, "fuera")));
   });

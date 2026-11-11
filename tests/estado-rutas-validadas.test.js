@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { leerArchivosDeEstado } from '../core/ciclo/protocolo-archivos.js';
+import { crearEnlace, noVerificado } from './helpers-enlaces.js';
 
 const SECRETO = 'CONTENIDO-SECRETO-QUE-NO-DEBE-LLEGAR-AL-PROMPT-7f3a';
 
@@ -52,7 +53,7 @@ describe('leerArchivosDeEstado', () => {
 
   test('ATAQUE: un enlace dentro del proyecto hacia fuera no se sigue', (t) => {
     const { cwd, fuera } = escenario();
-    try { symlinkSync(fuera, join(cwd, 'enlace'), 'junction'); } catch { t.skip('el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)'); return; }
+    if (!crearEnlace(fuera, join(cwd, 'enlace'), 'dir').creado) { noVerificado(t, 'no se pudo crear ni enlace simbólico ni unión de directorio'); return; }
     const r = leerArchivosDeEstado(cwd, [{ ruta: 'enlace/id_rsa' }]);
     assert.ok(!JSON.stringify(r).includes(SECRETO));
     assert.equal(r[0].contenido, null);

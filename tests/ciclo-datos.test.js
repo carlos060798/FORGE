@@ -17,6 +17,7 @@ import { aplicar, estadoInicial } from "../core/ciclo/estado.js";
 import { Respaldo } from "../core/ciclo/respaldo.js";
 import { crearCopia, eliminarCopia } from "../core/sandbox/staging.js";
 import { crearRecuperador, registrarRecuperador } from "../core/recuperacion/recuperador.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 const escribir = (dir, ruta, contenido) => {
@@ -316,11 +317,9 @@ describe("T025 — recuperador de contexto por archivos", () => {
     });
     assert.deepEqual(r.contexto.fragmentos, []);
     assert.equal(r.texto, "");
-    try {
-      symlinkSync(join(cwd, ".npmrc"), join(cwd, "inocente.txt"));
-    } catch {
-      t.skip("este sistema no permite crear enlaces");
-      return;
+    // Enlace simbólico de archivo: un enlace duro no lo demuestra (es otro nombre del mismo archivo, sin `lstat` que lo delate).
+    if (!crearEnlace(join(cwd, ".npmrc"), join(cwd, "inocente.txt"), "archivo").creado) {
+      return noVerificado(t, "symlink de archivo hacia un secreto requiere privilegio de enlaces; una unión no enlaza archivos y un enlace duro no es un enlace simbólico");
     }
     const e = crearRecuperador()({ cwd, maxBytes: 10_000, tarea: { archivos: ["inocente.txt"] }, plan: null });
     assert.ok(!e.texto.includes("TOKEN_NPM"));

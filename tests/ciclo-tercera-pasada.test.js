@@ -23,6 +23,7 @@ import { POR_DEFECTO } from "../core/ciclo/config.js";
 import { recuperarPorArchivos } from "../core/recuperacion/recuperador-archivos.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { sesionSellada } from "../core/ciclo/sello.js";
+import { crearEnlace, noVerificado } from "./helpers-enlaces.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
@@ -73,14 +74,14 @@ describe("NUEVO-2 — credenciales de uso habitual no se leen ni se copian", () 
 describe("NUEVO-3 — un enlace de directorio no sirve para leer ni escribir lo vetado", () => {
   /** @param {string} dir */
   const enlazar = (dir, destino, nombre) => {
-    try { symlinkSync(join(dir, destino), join(dir, nombre), "junction"); return true; } catch { return false; }
+    return crearEnlace(join(dir, destino), join(dir, nombre), "dir").creado;
   };
 
   test("pub -> secrets: pub/app.config.json y pub/Makefile se rechazan como vetados, no como configuración", (t) => {
     const dir = tmp("forge-t3-");
     escribir(dir, "secrets/app.config.json", '{"db":"PASSWORD-DE-SECRETS"}');
     escribir(dir, "secrets/Makefile", "TOKEN=abc");
-    if (!enlazar(dir, "secrets", "pub")) return t.skip("no se pueden crear enlaces de directorio aquí");
+    if (!enlazar(dir, "secrets", "pub")) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     for (const ruta of ["pub/app.config.json", "pub/Makefile"]) {
       assert.equal(/** @type {any} */ (validarRuta(dir, ruta)).motivo, "ruta_vetada", ruta);
     }
@@ -89,7 +90,7 @@ describe("NUEVO-3 — un enlace de directorio no sirve para leer ni escribir lo 
   test("y el recuperador no los lee", (t) => {
     const dir = tmp("forge-t3-");
     escribir(dir, "secrets/app.config.json", '{"db":"PASSWORD-DE-SECRETS"}');
-    if (!enlazar(dir, "secrets", "pub")) return t.skip("no se pueden crear enlaces de directorio aquí");
+    if (!enlazar(dir, "secrets", "pub")) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const r = recuperarPorArchivos({ cwd: dir, tarea: { archivos: ["pub/app.config.json"] }, plan: {}, maxBytes: 10_000 });
     assert.ok(!r.texto.includes("PASSWORD-DE-SECRETS"));
   });
@@ -406,7 +407,7 @@ describe("H3 y H4 — el respaldo y el barrido no tocan lo vetado ni siguen enla
     const cwd = join(base, "p"); const fuera = join(base, "fuera");
     mkdirSync(cwd); mkdirSync(fuera);
     writeFileSync(join(fuera, "victima.txt"), "no");
-    try { symlinkSync(fuera, join(cwd, "enlace"), "junction"); } catch { return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)"); }
+    if (!crearEnlace(fuera, join(cwd, "enlace"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const d = mkdtempSync(join(base, "r-"));
     writeFileSync(join(d, "manifiesto.json"), JSON.stringify({ entradas: [{ ruta: "enlace/victima.txt", existia: false }] }));
     assert.throws(() => new Respaldo(cwd, d), /anifiesto/);
@@ -417,7 +418,7 @@ describe("H3 y H4 — el respaldo y el barrido no tocan lo vetado ni siguen enla
     const motor = join(base, "motor"); const fuera = join(base, "fuera");
     mkdirSync(motor); mkdirSync(join(fuera, "a"), { recursive: true });
     writeFileSync(join(fuera, "a", "x.txt"), "no");
-    try { symlinkSync(fuera, join(motor, "staging"), "junction"); } catch { return t.skip("el sistema no permite crear enlaces simbólicos/uniones (en Windows hace falta modo desarrollador o administrador)"); }
+    if (!crearEnlace(fuera, join(motor, "staging"), "dir").creado) return noVerificado(t, "no se pudo crear ni enlace simbólico ni unión de directorio");
     const sbx = new SandboxRunner({ dirMotor: motor, runId: "r1", lenguaje: "javascript", testCmd: "npm test", cli: /** @type {any} */ ({}), imagenBase: "n" });
     assert.equal(sbx.barrerCopias().length, 1, "se informa y no se toca");
     assert.ok(existsSync(join(fuera, "a", "x.txt")));
