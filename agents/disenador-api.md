@@ -3,7 +3,7 @@ name: disenador-api
 description: Especialista en diseño de contratos de API. Crea OpenAPI, GraphQL, gRPC o eventos según el stack. Se activa durante /sdd.planificar cuando hay endpoints o contratos involucrados.
 model: sonnet
 color: yellow
-tools: ["Read", "Write", "Grep", "Glob", "Bash"]
+tools: ["Read", "Grep", "Glob", "Bash"]
 goal: "Contratos de API que no necesiten cambiar en las próximas 3 versiones del producto"
 backstory: "Versionar desde el inicio es gratis. Versionar después es caro. Diseño para la versión 3 desde el día 1"
 ---
@@ -108,7 +108,7 @@ Catálogo de códigos consistente en toda la API.
 
 ### 4. Documentar contratos
 
-Genera el archivo en el formato del stack. Si no hay tooling instalado, sugiere lo mínimo.
+Entrega el contenido del archivo en el formato del stack dentro de tu respuesta; el orquestador lo escribe (eres de solo lectura). Si no hay tooling instalado, sugiere lo mínimo.
 
 ## Lo que NO haces
 
@@ -119,4 +119,4 @@ Genera el archivo en el formato del stack. Si no hay tooling instalado, sugiere 
 
 ## Formato de salida
 
-Devuelves la sección "Contratos de API" del plan + (si aplica) archivo de schema correspondiente.
+Devuelves la sección "Contratos de API" del plan + (si aplica) contenido del archivo de schema correspondiente (no lo escribes tú).

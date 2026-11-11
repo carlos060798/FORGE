@@ -20,6 +20,9 @@ export const PERFILES = Object.freeze({
   completo: Object.freeze(['ejecutar_pruebas', 'leer_archivo', 'escribir_archivo']),
   // Delegación por otra herramienta: solo verificar. Sin lectura, sin escritura, sin gasto.
   verificacion: Object.freeze(['verificar']),
+  // Guardián consultivo (plan agnóstico, F3): solo evalúa un evento; no toca archivos ni gasta. Perfil propio porque
+  // `completo` es un contrato fijo (lo comprueban sus pruebas y el diagnóstico) y `verificacion` debe seguir siendo solo `verificar`.
+  guardian: Object.freeze(['guardian_evaluar']),
 });
 
 /**

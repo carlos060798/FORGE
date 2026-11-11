@@ -35,9 +35,9 @@ const SKILLS = skillNamesAll().length;
 
 /** Agentes de solo lectura que impone el guardia de escritura. */
 function agentesSoloLectura() {
-  const src = leer("claude-hooks/pre-tool-guard.js");
-  const m = /const READ_ONLY_AGENTS = new Set\(\[([\s\S]*?)\]\)/.exec(src);
-  assert.ok(m, "no se encontró READ_ONLY_AGENTS en claude-hooks/pre-tool-guard.js");
+  const src = leer("core/evidencia/guardian-reglas.js");
+  const m = /export const AGENTES_SOLO_LECTURA = Object\.freeze\(\[([\s\S]*?)\]\)/.exec(src);
+  assert.ok(m, "no se encontró AGENTES_SOLO_LECTURA en core/evidencia/guardian-reglas.js");
   return [...m[1].matchAll(/'([a-z-]+)'/g)].map((x) => x[1]);
 }
 
@@ -175,7 +175,7 @@ describe("cifras en prosa — las que no son el total", () => {
 
   test("los agentes de solo lectura del guardia existen", () => {
     const existentes = mdFiles("agents").map((f) => stem(f));
-    for (const a of SOLO_LECTURA) assert.ok(existentes.includes(a), `READ_ONLY_AGENTS nombra «${a}», que no existe en agents/`);
+    for (const a of SOLO_LECTURA) assert.ok(existentes.includes(a), `AGENTES_SOLO_LECTURA nombra «${a}», que no existe en agents/`);
   });
 
   test("data.js reparte los agentes entre solo lectura y escritura sin que sobre ni falte", () => {

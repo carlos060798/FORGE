@@ -13,6 +13,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { crearHerramientas } from './herramientas.js';
 import { crearHerramientaVerificar } from './herramientas-verificar.js';
+import { crearHerramientaGuardian } from './herramientas-guardian.js';
 import { aplicarPerfil, resolverPerfil } from './perfiles.js';
 import { ServidorMcp } from './protocolo.js';
 import { directorioDeEstado } from '../estado-usuario.js';
@@ -29,6 +30,12 @@ const INSTRUCCIONES_VERIFICACION = [
   'Ejecuta las pruebas del proyecto en un contenedor aislado y devuelve un veredicto (pasa, falla, sin_pruebas, infraestructura).',
   'Solo "pasa" es éxito: cero pruebas ejecutadas no lo es. No escribe, no publica, no gasta y no acepta comandos.',
   'Si responde ocupado, apagado, cupo o tiempo, díselo al usuario: no insistas en bucle.',
+].join(' ');
+
+const INSTRUCCIONES_GUARDIAN = [
+  'Fragua: una sola herramienta, guardian_evaluar.',
+  'Es CONSULTIVA: te dice si el guardián permitiría o bloquearía una acción antes de hacerla, pero nada te obliga a llamarla y no impide nada por sí sola.',
+  'Si responde bloquear, no hagas la acción y díselo al usuario. No lee ni escribe archivos, no ejecuta comandos, no gasta.',
 ].join(' ');
 
 function versionDelPaquete() {
@@ -128,11 +135,13 @@ export function iniciarServidor(opciones = {}) {
   const perfil = p.perfil;
   const herramientas = perfil === 'verificacion'
     ? [crearHerramientaVerificar({ cwd, env: opciones.env, cli: opciones.cli })]
-    : conInterruptorYAuditoria(crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) }), { cwd, env: opciones.env });
+    : perfil === 'guardian'
+      ? conInterruptorYAuditoria([crearHerramientaGuardian({ cwd, env: opciones.env })], { cwd, env: opciones.env })
+      : conInterruptorYAuditoria(crearHerramientas({ cwd, crearRunner: () => crearRunnerDocker(cwd) }), { cwd, env: opciones.env });
   const servidor = new ServidorMcp({
     nombre: 'forge',
     version: versionDelPaquete(),
-    instrucciones: perfil === 'verificacion' ? INSTRUCCIONES_VERIFICACION : INSTRUCCIONES,
+    instrucciones: perfil === 'verificacion' ? INSTRUCCIONES_VERIFICACION : perfil === 'guardian' ? INSTRUCCIONES_GUARDIAN : INSTRUCCIONES,
     herramientas: aplicarPerfil(herramientas, perfil),
     entrada: opciones.entrada ?? process.stdin,
     salida: opciones.salida ?? process.stdout,

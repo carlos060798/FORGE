@@ -13,6 +13,16 @@
  * (igual que `protegidos.js`), así que no puede depender del resto del paquete.
  */
 
+/**
+ * Agentes de SOLO LECTURA: el guardián les bloquea Write/Edit/MultiEdit/NotebookEdit y las escrituras por terminal.
+ * Fuente única: la usan el guardián (claude-hooks/pre-tool-guard.js) y el generador de agentes nativos
+ * (core/instalacion/agentes-nativos.js), de modo que ningún agente de esta lista reciba herramientas de escritura.
+ * @type {readonly string[]}
+ */
+export const AGENTES_SOLO_LECTURA = Object.freeze([
+  'arquitecto', 'asesor-datos', 'critico', 'seguridad', 'investigador', 'revisor', 'disenador-api',
+]);
+
 const MAX_TEXTO = 20000;
 const MAX_PROFUNDIDAD = 4;
 

@@ -151,7 +151,7 @@ export function leerArchivo(raiz, ruta, opciones = {}) {
 
 /**
  * Crea un archivo que no existe. Nunca sobrescribe.
- * @param {string} raiz @param {string} ruta @param {string|Buffer} contenido
+ * @param {Raiz} raiz @param {string} ruta @param {string|Buffer} contenido
  * @param {number} [modo]
  * @returns {boolean} true si lo creó; false si ya existía un archivo normal
  * @throws {ErrorEnlace} si el destino (o algo en su camino) es un enlace, incluso colgante
@@ -221,7 +221,7 @@ function barrerTemporales(dir) {
  * Deja `ruta` con este contenido: la crea o la reemplaza, pero solo si ya es un archivo normal.
  * El reemplazo borra el archivo y lo crea de nuevo con 'wx', de modo que no se escribe sobre un
  * enlace duro que apunte a otro lugar ni se sigue un enlace puesto a medias.
- * @param {string} raiz @param {string} ruta @param {string|Buffer} contenido
+ * @param {Raiz} raiz @param {string} ruta @param {string|Buffer} contenido
  * @param {number} [modo]
  */
 export function escribirArchivo(raiz, ruta, contenido, modo) {
@@ -253,7 +253,7 @@ export function escribirArchivo(raiz, ruta, contenido, modo) {
 
 /**
  * Copia un archivo del plugin (de confianza) a un destino del proyecto, conservando su modo.
- * @param {string} raiz @param {string} origen @param {string} destino
+ * @param {Raiz} raiz @param {string} origen @param {string} destino
  */
 export function copiarArchivo(raiz, origen, destino) {
   return escribirArchivo(raiz, destino, readFileSync(origen), statSync(origen).mode & 0o777);
@@ -262,7 +262,7 @@ export function copiarArchivo(raiz, origen, destino) {
 /**
  * Copia un árbol del plugin al proyecto. Un destino que sea un enlace se omite y se anota en
  * `bloqueados`; el resto se copia. Los enlaces dentro del ORIGEN (el plugin) se ignoran.
- * @param {string} raiz @param {string} origen @param {string} destino
+ * @param {Raiz} raiz @param {string} origen @param {string} destino
  * @returns {{ copiados: number, bloqueados: string[] }}
  */
 export function copiarArbol(raiz, origen, destino) {

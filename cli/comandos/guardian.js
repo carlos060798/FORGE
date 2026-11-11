@@ -49,8 +49,12 @@ export function cmdGuardian(args) {
 
 /** @param {string[]} args  p. ej. ["registrar"] */
 export function cmdMemoria(args) {
-  if (args[0] !== "registrar") { console.error("Uso: fragua memoria registrar   (evento JSON de PostToolUse por la entrada estándar)"); return 1; }
-  return correr("memoria");
+  const USO = "Uso: fragua memoria registrar [--anfitrion " + ANFITRIONES_CON_HOOK.join("|") + "]   (evento JSON posterior a la herramienta por la entrada estándar)";
+  if (args[0] !== "registrar") { console.error(USO); return 1; }
+  const i = args.indexOf("--anfitrion");
+  const anfitrion = i === -1 ? "claude" : (args[i + 1] ?? "");
+  if (anfitrion !== "claude" && !ANFITRIONES_CON_HOOK.includes(anfitrion)) { console.error(`Anfitrión desconocido: "${anfitrion}". ${USO}`); return 1; }
+  return correr("memoria", anfitrion);
 }
 
 function correr(/** @type {"guardian"|"memoria"} */ cual, anfitrion = "claude") {
@@ -66,7 +70,7 @@ function correr(/** @type {"guardian"|"memoria"} */ cual, anfitrion = "claude") 
   let eventos;
   try { eventos = traducirEvento(anfitrion, JSON.parse(entrada)); } catch {
     process.stderr.write("El evento no es un JSON válido.\n");
-    return cual === "guardian" ? 2 : 1;
+    return cual === "guardian" ? 2 : 0; // la memoria nunca bloquea fuera de Claude Code
   }
   let codigo = 0;
   for (const ev of eventos) {
@@ -74,5 +78,6 @@ function correr(/** @type {"guardian"|"memoria"} */ cual, anfitrion = "claude") 
     if (r.stderr) process.stderr.write(r.stderr);
     if (r.codigo !== 0 && codigo === 0) codigo = r.codigo;
   }
-  return codigo;
+  // La memoria solo registra: un código distinto de 0 haría que la herramienta oculte el resultado (Gemini) o reintente
+  return cual === "memoria" ? 0 : codigo;
 }

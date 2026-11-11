@@ -40,7 +40,7 @@ try {
 } catch (e) {
   fallarCerrado(`faltan o no cargan sus módulos: ${String(/** @type {any} */ (e)?.message ?? e).slice(0, 160)}`);
 }
-const { agenteActivo, clasificarConfiguracionProtegida, esConfiguracionProtegida, evaluarComando, escribeAlgo, esRutaCriticaDelGuardian, esSecreto, motivoDestinoProtegido,
+const { AGENTES_SOLO_LECTURA, agenteActivo, clasificarConfiguracionProtegida, esConfiguracionProtegida, evaluarComando, escribeAlgo, esRutaCriticaDelGuardian, esSecreto, motivoDestinoProtegido,
   leerForgeConfig, leerNivelEjecucion, dlqAppend } = M;
 
 const FORGE_CONFIG = leerForgeConfig(process.cwd());
@@ -162,10 +162,10 @@ function redactarSecretos(texto) {
 }
 
 // ── Agentes read-only que NO pueden modificar archivos ────────────────────
-const READ_ONLY_AGENTS = new Set([
-  'arquitecto', 'asesor-datos', 'critico', 'seguridad',
-  'investigador', 'revisor', 'disenador-api'
-]);
+// La lista vive en la fuente única de reglas (shared/guardian-reglas.js → core/evidencia/guardian-reglas.js)
+// Un shared/guardian-reglas.js instalado antes de existir la lista dejaría vacío este conjunto y apagaría la guarda: falla cerrado
+if (!Array.isArray(AGENTES_SOLO_LECTURA)) fallarCerrado('shared/guardian-reglas.js está desactualizado respecto al hook; ejecuta "fragua update"');
+const READ_ONLY_AGENTS = new Set(AGENTES_SOLO_LECTURA);
 
 /**
  * ADR de `.sdd/arquitectura/ADR-NN-*.md` (ADR-16): solo los aceptados y solo los términos
@@ -230,7 +230,7 @@ function main(raw) {
   if (!agentName && (toolName === "Write" || toolName === "Edit" || toolName === "MultiEdit" || toolName === "NotebookEdit")) {
     process.stderr.write(
       `⚠️  [pre-tool-guard] FRAGUA_AGENTE (o CLAUDE_AGENT_NAME) no disponible — los guardias de agentes read-only están desactivados.\n` +
-      `   Actualiza Claude Code a la versión que expone esta variable de entorno en hooks.\n`
+      `   Define FRAGUA_AGENTE con el nombre del agente activo (o usa una versión de tu herramienta que exponga CLAUDE_AGENT_NAME en los hooks).\n`
     );
   }
 

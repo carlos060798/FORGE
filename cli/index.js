@@ -49,7 +49,8 @@ Uso:
   fragua update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
   Opciones de init/update: --integracion <claude|generica|agents|codex|copilot|cursor|gemini|windsurf|opencode|kiro>
                            --perfil <esencial|completo>   --carpeta-skills <ruta> (solo generica)
-                           --con-hooks   registra el guardián en los hooks de cursor, copilot, gemini o codex (opcional)
+                           --con-hooks   registra el guardián en los hooks de cursor, copilot, gemini, codex, windsurf u opencode (opcional;
+                                         update lo recuerda). --sin-hooks lo desactiva y update lo respeta.
   fragua doctor                   Diagnostica la instalación y providers disponibles
   fragua ui [--port N] [--no-open]  Abre el dashboard en el navegador
   fragua config show [sección]    Muestra sdd.config.yaml o una sección
@@ -80,10 +81,11 @@ Uso:
   fragua api [--port N] [--cwd <ruta>]
                                      API HTTP local (127.0.0.1) con token: lanzar el ciclo verificado, ver su
                                      estado y decidir las revisiones. Escribe en una sola línea JSON la URL y el token
-  fragua mcp [--cwd <ruta>] [--perfil completo|verificacion]
+  fragua mcp [--cwd <ruta>] [--perfil completo|verificacion|guardian]
                                      Servidor MCP por stdin/stdout con tres herramientas: ejecutar pruebas
                                      en el entorno aislado, leer y escribir archivos con las reglas del ciclo.
                                      --perfil verificacion expone solo "verificar" (para otra herramienta; ver docs/mcp-verificar.md).
+                                     --perfil guardian expone solo "guardian_evaluar" (consultivo: el modelo puede no llamarla).
                                      Configúralo en tu cliente: {"mcpServers":{"forge":{"command":"npx","args":["forge","mcp"]}}}
   fragua run [--tasks <json>] [--motor clasico|ciclo] [--force]
                                      Ejecuta las tareas. Con --motor ciclo, cada tarea de código
@@ -126,6 +128,7 @@ async function main() {
   OPCIONES_INSTALACION.perfil = valorDe("--perfil");
   OPCIONES_INSTALACION.carpetaSkills = valorDe("--carpeta-skills");
   OPCIONES_INSTALACION.conHooks = args.includes("--con-hooks");
+  OPCIONES_INSTALACION.sinHooks = args.includes("--sin-hooks");
 
   switch (comando) {
     case "init":

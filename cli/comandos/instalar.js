@@ -11,6 +11,7 @@ import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../../core/i
 import { nombreDeSkill } from "../../core/instalacion/skills-de-comandos.js";
 import { PREFIJO_INVOCACION, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
 import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
+import { FORMATOS_NATIVOS, agenteANativo } from "../../core/instalacion/agentes-nativos.js";
 import { PLUGIN_DIR, c, info, aviso, titulo, error, raices, PROYECTO, sinEscribir, CARPETAS_GLOBALES_ENLAZABLES, fijarRaices, raizPara, protegido, paso, cerrarSiFalto, crearDir, crearNuevo, escribirSeguro, leerSeguro, copyMd, copyDir, copiarSeguro, pluginVersion, claudeEnPath } from "./comun.js";
 import { yamlGet } from "./config.js";
 
@@ -108,10 +109,10 @@ function copiarNucleo(claudeDir, inst = null, { actualizar = false } = {}) {
 // ─── Integración por herramienta y perfil (spec 2026-10-13-instalacion-agnostica) ────
 
 /** Opciones de la línea de comandos: `--integracion`, `--perfil`, `--carpeta-skills` (las fija `main`). */
-export const OPCIONES_INSTALACION = { integracion: /** @type {string|null} */ (null), perfil: /** @type {string|null} */ (null), carpetaSkills: /** @type {string|null} */ (null), conHooks: false };
+export const OPCIONES_INSTALACION = { integracion: /** @type {string|null} */ (null), perfil: /** @type {string|null} */ (null), carpetaSkills: /** @type {string|null} */ (null), conHooks: false, sinHooks: false };
 
 /** Lo que dejó la instalación en esta ejecución, para el resumen final. */
-export const instalado = { skills: 0, generadas: 0, roles: 0, hooks: "", omitidas: /** @type {string[]} */ ([]), destino: "" };
+export const instalado = { skills: 0, generadas: 0, roles: 0, hooks: "", nativos: 0, nativosOmitidos: /** @type {string[]} */ ([]), omitidas: /** @type {string[]} */ ([]), destino: "" };
 
 /** Integración, perfil y carpeta guardados en `.sdd/sdd.config.yaml` (sección `instalacion`). */
 export function leerInstalacionGuardada() {
@@ -123,6 +124,8 @@ export function leerInstalacionGuardada() {
     integracion: yamlGet(yaml, "instalacion.integracion") ?? undefined,
     perfil: yamlGet(yaml, "instalacion.perfil") ?? undefined,
     carpeta: yamlGet(yaml, "instalacion.carpeta_skills") ?? undefined,
+    // El proyecto (no confiable) solo puede activar el registro; la ruta del archivo sale siempre de PLANTILLAS_HOOKS
+    conHooks: yamlGet(yaml, "instalacion.con_hooks") === "true",
   };
 }
 
@@ -133,7 +136,8 @@ export function leerInstalacionGuardada() {
  * @param {boolean} global
  */
 function resolverInstalacion(global) {
-  const { integracion: oi, perfil: op, carpetaSkills: oc } = OPCIONES_INSTALACION;
+  const { integracion: oi, perfil: op, carpetaSkills: oc, conHooks: och, sinHooks: osh } = OPCIONES_INSTALACION;
+  if (och && osh) error("--con-hooks y --sin-hooks se excluyen: elige una.");
   const guardada = global ? {} : leerInstalacionGuardada();
   const clave = oi ?? guardada.integracion ?? null;
   const nombrePerfil = op ?? guardada.perfil ?? null;
@@ -167,8 +171,10 @@ function resolverInstalacion(global) {
   // fuera de él se protege siempre, aunque la configuración diga que ya hubo una instalación
   const fueraDelProyecto = carpeta !== null && relative(PROYECTO, /** @type {string} */ (carpeta)).startsWith("..");
   const previa = Boolean(guardada.integracion || guardada.perfil) && !fueraDelProyecto;
+  // --con-hooks / --sin-hooks de la línea de comandos mandan sobre lo guardado
+  const conHooks = osh ? false : (och || Boolean(guardada.conHooks));
   // `perfilFijado`: la línea de comandos o la configuración guardada dijeron el perfil (si no, es el de por defecto y `update` mira lo ya instalado)
-  return { integracion, perfil, carpeta, previa, explicita: oi !== null || op !== null || oc !== null, perfilFijado: nombrePerfil !== null };
+  return { integracion, perfil, carpeta, previa, conHooks, explicita: oi !== null || op !== null || oc !== null || och || osh, perfilFijado: nombrePerfil !== null };
 }
 
 /** Carpeta donde van las skills de una integración que no es Claude Code. */
@@ -242,7 +248,31 @@ function copiarSkillsDeIntegracion(inst) {
     instalado.roles++;
   }
   info(`Skills instaladas en ${destino}: ${instalado.skills} propias + ${instalado.generadas} de comandos + ${instalado.roles} roles`);
-  if (OPCIONES_INSTALACION.conHooks) instalarHookDeGuardian(inst);
+  instalarAgentesNativos(inst, opciones, proteger);
+  if (inst.conHooks) instalarHookDeGuardian(inst);
+}
+
+/** Agentes en el formato propio de la herramienta, solo donde ese formato está confirmado (core/instalacion/agentes-nativos.js). */
+function instalarAgentesNativos(inst, opciones, proteger) {
+  const clave = inst.integracion.clave;
+  const formato = FORMATOS_NATIVOS[clave];
+  if (!formato) return;
+  const agentes = join(PLUGIN_DIR, "agents");
+  for (const f of readdirSync(agentes).filter((x) => x.endsWith(".md")).sort()) {
+    const r = agenteANativo(clave, f.slice(0, -3), readFileSync(join(agentes, f), "utf8"), opciones);
+    if (r === null) return;
+    if ("omitido" in r) { instalado.nativosOmitidos.push(r.omitido); continue; }
+    const d = join(PROYECTO, ...r.ruta.split("/"));
+    if (existsSync(d)) {
+      let igual = false;
+      try { igual = readFileSync(d, "utf8") === r.contenido; } catch { /* ilegible: no se pisa */ }
+      if (!igual && proteger) { aviso(`Ya existe y no es de FORGE, no se pisa: ${d}`); instalado.omitidas.push(d); continue; }
+    }
+    if (crearDir(dirname(d)) === undefined) continue;
+    if (escribirSeguro(d, r.contenido)) instalado.nativos++;
+  }
+  if (instalado.nativos) info(`Agentes nativos de ${formato.nombre}: ${instalado.nativos} en ${formato.carpeta}/`);
+  if (instalado.nativosOmitidos.length) aviso(`Agentes nativos no generados (${instalado.nativosOmitidos.length}): ${instalado.nativosOmitidos.map((o) => o.split(":")[0]).join(", ")}. Motivo en el módulo agentes-nativos.js; siguen disponibles como rol-*.`);
 }
 
 /** Registra `fragua guardian evaluar` en el hook «antes de usar una herramienta» de la herramienta, si tiene adaptador. Nunca pisa un archivo existente. */
@@ -254,6 +284,11 @@ function instalarHookDeGuardian(inst) {
   const contenido = plantilla.contenido(orden);
   const destino = join(PROYECTO, ...plantilla.ruta.split("/"));
   if (existsSync(destino)) {
+    // Ya es el de Fragua (p. ej. en `update`): nada que hacer y nada que avisar
+    let igual = false;
+    const actual = leerSeguro(destino);
+    igual = actual !== null && actual.replace(/\r\n/g, "\n") === contenido;
+    if (igual) { instalado.hooks = plantilla.ruta; info(`Guardián ya registrado en ${plantilla.ruta} (${plantilla.nombre}).`); return; }
     aviso(`--con-hooks: ya existe ${plantilla.ruta} y no se modifica. Añade tú esta orden al hook de ${plantilla.nombre} antes de usar una herramienta: ${orden}`);
     return;
   }
@@ -277,6 +312,7 @@ function guardarInstalacion(inst) {
     `  integracion: "${inst.integracion.clave}"`,
     `  perfil: "${inst.perfil}"`,
     ...(carpeta ? [`  carpeta_skills: ${JSON.stringify(carpeta)}`] : []),
+    ...(inst.conHooks ? ["  con_hooks: true"] : []),
     "",
   ].join("\n");
   const sin = yaml.replace(/^instalacion:[^\n]*\n(?:[ \t]+[^\n]*\n?)*/m, "");
@@ -295,6 +331,10 @@ function resumenInstalacion(inst) {
   } else {
     info(`Instalado: ${instalado.skills} skills propias, ${instalado.generadas} skills de comandos y ${instalado.roles} roles (los agentes, como skills rol-*) en ${instalado.destino || destinoSkills(inst)}; AGENTS.md.`);
     info("No instalado: hooks (guardián, memoria de agentes), settings.json ni CLAUDE.md, que son de Claude Code. Sin el guardián, las reglas de AGENTS.md se piden, no se imponen.");
+    const fn = FORMATOS_NATIVOS[i.clave];
+    if (fn) info(`Agentes nativos de ${fn.nombre}: ${instalado.nativos} en ${fn.carpeta}/ (${fn.nota}).`);
+    else info("Agentes nativos: no se generan para esta herramienta (formato sin confirmar); los roles rol-* hacen el mismo trabajo.");
+    if (instalado.nativosOmitidos.length) info(`  Sin versión nativa (siguen como rol-*): ${instalado.nativosOmitidos.length} agente(s).`);
     info("Delegación entre agentes: sin subagentes, un rol se carga y se ejecuta en la misma conversación; lo paralelo pasa a secuencial.");
     if (instalado.omitidas.length) aviso(`${instalado.omitidas.length} archivo(s) ya existían y no se pisaron.`);
   }

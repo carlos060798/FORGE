@@ -33,6 +33,59 @@ describe("adaptarCuerpo", () => {
   });
 });
 
+describe("adaptarCuerpo: no rompe código ni markdown (revisión del paquete R)", () => {
+  const FENCE = "`".repeat(3);
+  const bloque = (linea) => `${FENCE}bash\n${linea}\n${FENCE}`;
+
+  test("con prefijo $ un bloque de código no lleva $sdd-x (se expandiría como variable de shell)", () => {
+    const t = adaptarCuerpo(bloque('echo "ERROR: ejecuta /sdd.constitucion primero"'), { prefijo: "$", comandos });
+    assert.match(t, /ejecuta sdd-constitucion primero/);
+    assert.ok(!/\$sdd/.test(t), t);
+  });
+  test("con prefijo vacío un bloque no lleva comillas invertidas (ejecutarían una sustitución de comando)", () => {
+    const t = adaptarCuerpo(bloque('echo "ERROR: ejecuta /sdd.constitucion primero"'), { prefijo: "", comandos });
+    assert.match(t, /echo "ERROR: ejecuta sdd-constitucion primero"/);
+    assert.ok(!/la skill `/.test(t), t);
+  });
+  test("con prefijo / o @ el bloque conserva / o usa el nombre desnudo, nunca @", () => {
+    assert.match(adaptarCuerpo(bloque("ejecuta /sdd.estado"), { prefijo: "/", comandos }), /ejecuta \/sdd-estado/);
+    assert.match(adaptarCuerpo(bloque("ejecuta /sdd.estado"), { prefijo: "@", comandos }), /ejecuta sdd-estado/);
+  });
+  test("un span en línea no anida comillas invertidas con prefijo vacío y conserva el prefijo con los demás", () => {
+    assert.equal(adaptarCuerpo("alias de `/sdd.comprimir aplicar`", { prefijo: "", comandos }), "alias de `sdd-comprimir aplicar`");
+    assert.equal(adaptarCuerpo("alias de `/sdd.comprimir aplicar`", { prefijo: "$", comandos }), "alias de `$sdd-comprimir aplicar`");
+    assert.equal(adaptarCuerpo("alias de `/sdd.comprimir aplicar`", { prefijo: "@", comandos }), "alias de `@sdd-comprimir aplicar`");
+  });
+  test("la prosa sí usa la referencia de la herramienta", () => {
+    assert.equal(adaptarCuerpo("Pasa a /sdd.tareas ahora", { prefijo: "@", comandos }), "Pasa a @sdd-tareas ahora");
+    assert.equal(adaptarCuerpo("Pasa a /sdd.tareas ahora", { prefijo: "", comandos }), "Pasa a la skill `sdd-tareas` ahora");
+  });
+  test("no toca rutas, URLs, correos ni /forge/subcarpeta", () => {
+    const sinCambios = [
+      "ver https://ejemplo.com/forge y https://ejemplo.com/sdd.estado",
+      "ruta /forge/FORGE/docs y docs/forge",
+      "escribe a equipo@forge.dev",
+      "archivo /forge.config.json y .claude/commands/sdd.estado.md",
+      "variable $CLAUDE_PLUGIN_ROOT y ~/.claude/skills",
+    ];
+    for (const prefijo of ["$", "@", "/", ""]) for (const s of sinCambios) assert.equal(adaptarCuerpo(s, { prefijo, comandos }), s.replace(/Claude Code/g, "tu herramienta de código"), `${prefijo}: ${s}`);
+  });
+  test("«Claude Code» se reemplaza en prosa pero las rutas .claude/ y las variables CLAUDE_* se conservan", () => {
+    const t = adaptarCuerpo("En Claude Code usa .claude/settings.json y CLAUDE_AGENT_NAME", { prefijo: "$", comandos });
+    assert.equal(t, "En tu herramienta de código usa .claude/settings.json y CLAUDE_AGENT_NAME");
+  });
+  test("ninguna skill instalada para otra herramienta tiene $sdd/$forge ni backticks de referencia dentro de un bloque", () => {
+    const { skills } = require_generar();
+    const fence = new RegExp("`{3}[\\s\\S]*?`{3}", "g");
+    for (const [prefijo, mala] of [["$", /\$(?:sdd-|forge\b)/], ["", /la skill `/], ["@", /@(?:sdd-|forge\b)/]]) {
+      for (const [nombre, md] of skills) {
+        const r = adaptarSkill(md, { prefijo, comandos });
+        for (const b of r.replace(NOTA, "").match(fence) ?? []) assert.ok(!mala.test(b), `${nombre} (prefijo "${prefijo}"): ${b.match(mala)?.[0]}`);
+      }
+    }
+  });
+});
+
 describe("adaptarSkill", () => {
   test("quita allowed-tools, antepone la nota y conserva el resto de la cabecera", () => {
     const md = "---\nname: sdd-x\ndescription: \"d\"\nallowed-tools: Read Task\nmetadata:\n  forge-comando: \"sdd.x\"\n---\n\nCuerpo con Task(\"a\", p).\n";

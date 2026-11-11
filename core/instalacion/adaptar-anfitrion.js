@@ -62,11 +62,21 @@ export function adaptarCuerpo(cuerpo, { prefijo, comandos }) {
   let t = cuerpo;
   if (comandos.length) {
     const alternativas = [...comandos].sort((a, b) => b.length - a.length).map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-    // `/sdd.planificar` suelto: no `.sdd/…`, no rutas `a/sdd.config.yaml`, no `/sdd.planificar.md`
-    const r = new RegExp(`(?<![\\w./-])/(${alternativas})(?![\\w-]|\\.\\w)`, 'g');
-    t = t.replace(r, (_, c) => referencia(prefijo, nombreDeSkill(c)));
+    // `/sdd.planificar` suelto: no `.sdd/…`, no rutas `a/sdd.config.yaml` ni `/forge/dir`, no `/sdd.planificar.md`
+    const r = new RegExp(`(?<![\\w./-])/(${alternativas})(?![\\w/-]|\\.\\w)`, 'g');
+    // Cómo se escribe la referencia según dónde cae. En un bloque de código un `$sdd-x` se expandiría como
+    // variable de shell y una referencia con comillas invertidas ejecutaría una sustitución de comando
+    // (`echo "ejecuta $sdd-x"`); en un span en línea las comillas se anidarían. Por eso, en bloques solo se
+    // conserva el prefijo `/` (inerte) y en el resto va el nombre desnudo; en un span en línea no se usa la
+    // forma con comillas.
+    const enBloque = (c) => (prefijo === '/' ? `/${nombreDeSkill(c)}` : nombreDeSkill(c));
+    const enSpan = (c) => (prefijo ? `${prefijo}${nombreDeSkill(c)}` : nombreDeSkill(c));
+    t = t.split(/(```[\s\S]*?```|`[^`\n]+`)/g).map((trozo, i) => {
+      if (i % 2 === 0) return trozo.replace(r, (_, c) => referencia(prefijo, nombreDeSkill(c)));
+      return trozo.startsWith('```') ? trozo.replace(r, (_, c) => enBloque(c)) : trozo.replace(r, (_, c) => enSpan(c));
+    }).join('');
   }
-  t = t.replace(/[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./g, 'En esta herramienta no hay hook de memoria: al terminar, anota tus decisiones en `.sdd/memoria/`.');
+  t = t.replace(/(^|[ \t])[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./gm, (_m, antes) => antes + 'En esta herramienta no hay hook de memoria: al terminar, anota tus decisiones en `.sdd/memoria/`.');
   t = t.replace(/\bClaude Code\b/g, 'tu herramienta de código');
   return t;
 }
