@@ -7,7 +7,7 @@ Términos poco claros (SDD, agente, comando, skill, hook, pipeline): [Glosario](
 
 ## Qué es
 
-Fragua (antes FORGE; el comando `fragua` equivale a `forge`) es un conjunto de archivos y una línea de comandos para trabajar con Claude Code por especificaciones. El flujo es: describir una idea, escribir una especificación, aprobarla tú, planificar, dividir en tareas e implementar. Cada paso deja un archivo en `.sdd/` del proyecto.
+Fragua (antes FORGE; el comando `fragua` equivale a `forge`) es un conjunto de archivos y una línea de comandos para trabajar por especificaciones desde Claude Code (anfitrión nativo) o desde otras herramientas de código (adaptación sin probar en real: [ANFITRIONES.md](ANFITRIONES.md)). El flujo es: describir una idea, escribir una especificación, aprobarla tú, planificar, dividir en tareas e implementar. Cada paso deja un archivo en `.sdd/` del proyecto.
 
 Instala en tu proyecto 39 comandos `/sdd.*`, 14 agentes y 31 skills, que son archivos Markdown, y hooks en Node. Los hooks bloquean ciertas escrituras y registran cambios. No es un servicio: no hay servidor de Fragua. Lo que sale de tu equipo son las llamadas al proveedor del modelo.
 
@@ -26,7 +26,7 @@ La parte de código propia es el **ciclo verificado** (`core/ciclo/`): un agente
 | Tope de gasto por sesión (2 USD por defecto) | `core/ciclo/presupuesto.js`, `core/session-budget.js` | El gasto calculado nunca se comparó con una factura |
 | Proveedores Anthropic, OpenAI y Ollama | `core/llm-providers/` | Solo Anthropic con llamadas reales; OpenAI y Ollama contra servidores falsos |
 | Servidor MCP (perfil `verificacion`) y API HTTP local con token | `core/mcp/`, `tests/mcp-dato-no-confiable.test.js`, `tests/api-http.test.js` | Pruebas automáticas; sin cliente MCP real documentado aquí |
-| Instalar las skills en otras 8 herramientas (`--integracion`) | `core/instalacion/`, `tests/instalacion-integraciones.test.js` | **Sin probar en ninguna herramienta real**; sin guardián por hooks fuera de Claude Code |
+| Instalar skills, comandos adaptados, roles y agentes nativos en otras herramientas (`--integracion`); guardián y memoria opcionales por hooks (`--con-hooks`) | `core/instalacion/`, `tests/instalacion-integraciones.test.js`, `tests/hooks-anfitrion.test.js`, `tests/agentes-nativos.test.js` | **Sin probar en ninguna herramienta real**; el guardián fuera de Claude Code es opcional, consultivo y falla abierto en Gemini, Codex y Windsurf |
 | Dashboard local en `127.0.0.1:3001` | `ui/server.js` | Solo lectura (`GET`); se cierra a los 30 min sin uso |
 
 ## Qué no puede hacer / límites
@@ -38,8 +38,8 @@ La parte de código propia es el **ciclo verificado** (`core/ciclo/`): un agente
 | Solo JavaScript/TypeScript, Python y Go; en Python, dependencias solo desde `requirements.txt` | [MIGRACION-5.0.md](MIGRACION-5.0.md) 2.2 y 4.2 | Otros lenguajes: solo el modo clásico |
 | Sin probar en Linux ni macOS; la CI de GitHub sigue en rojo en el último run comprobado (2026-11-09) | [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md) | No lo uses como garantía en esas plataformas |
 | Los agentes son prompts; pueden desviarse de su rol | [limitations.md](limitations.md), hooks solo mitigan escrituras | Aprueba la spec y revisa los cambios |
-| El flujo interactivo completo corre dentro de Claude Code | [limitations.md](limitations.md) | Sin Claude Code solo quedan `run`, `verificar`, `mcp` y `api` |
+| El flujo interactivo completo solo es nativo de Claude Code; en otras herramientas corre como skills adaptadas, sin probar en real | [limitations.md](limitations.md), [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md) | Fuera de Claude Code, además, `run`, `verificar`, `mcp` y `api` no dependen de la herramienta |
 | La 5.0.0 no está publicada en npm | `docs/ESTADO-ACTUAL.md` | Instala desde el repositorio ([getting-started.md](getting-started.md)) |
-| No es una herramienta para tareas de cinco minutos: el recorrido spec, plan y tareas tiene coste en tiempo y modelo | [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) | Para cambios menores, usa Claude Code directamente |
+| No es una herramienta para tareas de cinco minutos: el recorrido spec, plan y tareas tiene coste en tiempo y modelo | [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) | Para cambios menores, usa tu herramienta de código directamente |
 
 Lista completa y verificada: [limitations.md](limitations.md). Cómo empezar: [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) o [getting-started.md](getting-started.md).

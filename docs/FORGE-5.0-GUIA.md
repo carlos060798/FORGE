@@ -16,7 +16,7 @@
 
 ## 1. Qué es y para quién
 
-FORGE es una herramienta de línea de comandos (`forge`, paquete `forja-mvp`) que organiza el desarrollo asistido por modelos de lenguaje alrededor de una especificación escrita y aprobada por una persona. Se usa dentro de Claude Code (comandos `/forge`, `/sdd.*`) y también desde la terminal con `forge run`.
+FORGE es una herramienta de línea de comandos (`forge`, paquete `forja-mvp`) que organiza el desarrollo asistido por modelos de lenguaje alrededor de una especificación escrita y aprobada por una persona. Se usa dentro de Claude Code (comandos `/forge`, `/sdd.*`, anfitrión nativo), desde otras herramientas de código mediante skills adaptadas (sin probar en real: [ANFITRIONES.md](ANFITRIONES.md), [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md)) y desde la terminal con `forge run`.
 
 Es para quien quiere que un modelo escriba código **y que algo distinto de otro modelo diga si funciona**: un contenedor que ejecuta las pruebas y devuelve un código de salida.
 

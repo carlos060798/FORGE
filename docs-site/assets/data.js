@@ -77,7 +77,7 @@ const PAGES = {
       </ul>
 
       <h2>Cómo se usa</h2>
-      <p>Los comandos y los agentes son nativos de Claude Code. Otras herramientas (Cursor, Copilot, Gemini CLI y similares) reciben solo las skills. La CLI <code>fragua</code> (equivalente a <code>forge</code>) instala, diagnostica y verifica. Ver <a href="#instalacion">Instalación</a>.</p>
+      <p>Los comandos y los agentes son nativos de Claude Code. Otras herramientas (Cursor, Copilot, Gemini CLI, Codex y similares) reciben skills, comandos adaptados, roles y, en varias, agentes nativos y un guardián opcional por hooks; nada de eso está probado en una herramienta real (ver docs/ANFITRIONES.md). La CLI <code>fragua</code> (equivalente a <code>forge</code>) instala, diagnostica y verifica. Ver <a href="#instalacion">Instalación</a>.</p>
 
       <div class="callout tip">
         <p><strong>Siguiente paso:</strong> <a href="#instalacion">Instalación y primer uso</a>, o la guía de una página <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">Primeros 15 minutos</a>.</p>
@@ -116,7 +116,7 @@ const PAGES = {
       </ul>
 
       <h2>How it is used</h2>
-      <p>Commands and agents are native to Claude Code. Other tools (Cursor, Copilot, Gemini CLI and similar) receive only the skills. The <code>fragua</code> CLI (equivalent to <code>forge</code>) installs, diagnoses and verifies. See <a href="#instalacion">Installation</a>.</p>
+      <p>Commands and agents are native to Claude Code. Other tools (Cursor, Copilot, Gemini CLI, Codex and similar) receive skills, adapted commands, roles and, for several, native agents and an optional hooks-based guard; none of it has been tested in a real tool (see docs/ANFITRIONES.md). The <code>fragua</code> CLI (equivalent to <code>forge</code>) installs, diagnoses and verifies. See <a href="#instalacion">Installation</a>.</p>
 
       <div class="callout tip">
         <p><strong>Next:</strong> <a href="#instalacion">Installation and first use</a>, or the one-page guide <a href="https://github.com/carlos060798/FORGE/blob/main/docs/PRIMEROS-15-MINUTOS.md">First 15 minutes</a> (Spanish).</p>
@@ -438,7 +438,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
           <tr><td>API HTTP local y panel</td><td>Pruebas automáticas; desactivados por defecto</td><td>Uso externo</td></tr>
           <tr><td>Proveedores OpenAI y Ollama</td><td>Conformidad con dobles de prueba</td><td>Una ejecución con modelo real</td></tr>
           <tr><td>Integraciones GitHub, GitLab y Jira</td><td>Servidores simulados</td><td>Cuentas reales</td></tr>
-          <tr><td>Instalación en otras herramientas</td><td>Pruebas automáticas; solo skills</td><td>Comandos, agentes y hooks son de Claude Code</td></tr>
+          <tr><td>Instalación en otras herramientas</td><td>Pruebas automáticas; sin probar en una herramienta real</td><td>Comandos, agentes y hooks son nativos de Claude Code; fuera, adaptados, y el guardián por hooks es opcional (falla abierto en varias)</td></tr>
           <tr><td>Distribución</td><td>Paquete preparado y revisado</td><td>No publicado; integración continua de Linux sin verde</td></tr>
         </tbody>
       </table>
@@ -466,7 +466,7 @@ forge decisions search "authentication"  # TF-IDF semantic search</code></pre>
           <tr><td>Local HTTP API and dashboard</td><td>Automated tests; off by default</td><td>External use</td></tr>
           <tr><td>OpenAI and Ollama providers</td><td>Conformance with test doubles</td><td>A run with a real model</td></tr>
           <tr><td>GitHub, GitLab and Jira integrations</td><td>Simulated servers</td><td>Real accounts</td></tr>
-          <tr><td>Installation in other tools</td><td>Automated tests; skills only</td><td>Commands, agents and hooks belong to Claude Code</td></tr>
+          <tr><td>Installation in other tools</td><td>Automated tests; not tested in a real tool</td><td>Commands, agents and hooks are native to Claude Code; elsewhere they are adapted and the hooks-based guard is optional (fails open in several)</td></tr>
           <tr><td>Distribution</td><td>Package prepared and reviewed</td><td>Not published; Linux continuous integration not green</td></tr>
         </tbody>
       </table>

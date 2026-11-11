@@ -87,7 +87,7 @@ Una skill sigue el formato abierto de Agent Skills: una carpeta con un `SKILL.md
 - `allowed-tools` explícito.
 - Declárala en `skills` de `.claude-plugin/plugin.json`.
 
-Instalación en otras herramientas: `fragua init --integracion <clave>` copia las skills propias y las generadas de los comandos del perfil elegido a la carpeta de esa herramienta. No copia comandos, agentes ni hooks ([RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md)). Que una skill instalada se invoque de verdad en otra herramienta **no se ha probado a mano** ([ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
+Instalación en otras herramientas: `fragua init --integracion <clave>` copia las skills propias y las generadas de los comandos del perfil elegido a la carpeta de esa herramienta. Además instala los agentes como roles `rol-*` y, donde el formato está confirmado, como agentes nativos; los hooks solo con `--con-hooks` ([ANFITRIONES.md](ANFITRIONES.md)). Que una skill instalada se invoque de verdad en otra herramienta **no se ha probado a mano** ([ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
 
 ## Hooks de proyecto (`.sdd/hooks/`)
 

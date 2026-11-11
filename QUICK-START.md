@@ -3,11 +3,11 @@
 > Tipo: Tutorial
 > Última revisión: 2026-11-10 contra el commit 55a9dd9
 
-Fragua es un marco de desarrollo por especificaciones para Claude Code, con un ciclo que da una tarea por buena solo si sus pruebas pasan en un contenedor Docker sin red. Qué hace y qué no: [docs/introduction.md](docs/introduction.md). Versión 5.0.0-beta.1, sin publicar en npm.
+Fragua es un marco de desarrollo por especificaciones. Su anfitrión nativo es Claude Code; otras herramientas de código reciben una versión adaptada, sin probar en real ([docs/ANFITRIONES.md](docs/ANFITRIONES.md), [docs/USO-EN-OTRAS-HERRAMIENTAS.md](docs/USO-EN-OTRAS-HERRAMIENTAS.md)). Tiene un ciclo que da una tarea por buena solo si sus pruebas pasan en un contenedor Docker sin red. Qué hace y qué no: [docs/introduction.md](docs/introduction.md). Versión 5.0.0-beta.1, sin publicar en npm.
 
 ## Requisitos
 
-Node ≥ 20, Claude Code, Git, Docker en marcha (para `/sdd.implementar` y `fragua run`) y `ANTHROPIC_API_KEY` en el entorno.
+Node ≥ 20, una herramienta de código (Claude Code es el camino nativo; para otras, [docs/USO-EN-OTRAS-HERRAMIENTAS.md](docs/USO-EN-OTRAS-HERRAMIENTAS.md)), Git, Docker en marcha (para `/sdd.implementar` y `fragua run`) y `ANTHROPIC_API_KEY` en el entorno.
 
 ## Instalar (desde el repositorio)
 

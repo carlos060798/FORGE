@@ -34,6 +34,18 @@ Abreviaturas de la evidencia (rutas del repositorio; el paquete de npm no incluy
 
 ---
 
+## Fuera de Claude Code (anfitriones, 2026-11-11)
+
+Problemática vigente de usar Fragua desde otra herramienta de código. El detalle, con su evidencia, está en [limitations.md](limitations.md) («Fuera de Claude Code») y en [ANFITRIONES.md](ANFITRIONES.md). Todo está *abierto*:
+
+- **Sin probar en real:** ninguna herramienta distinta de Claude Code se ha probado en una instalación real. Los esquemas de hooks y agentes salen de resúmenes de la documentación oficial.
+- **Hooks que fallan abiertos:** Gemini CLI, Codex y Windsurf dejan pasar la acción si el hook se rompe o si falta `fragua` en el PATH.
+- **Cobertura parcial:** el guardián de Windsurf solo evalúa comandos de terminal; el de opencode, solo lectura de archivos.
+- **Kiro sin guardián:** la documentación no da los nombres de herramienta.
+- **`Bash` en agentes de solo lectura:** los agentes nativos lo conservan; fuera de Claude Code nada impide escribir por la terminal sin hook.
+- **Requisitos:** Node ≥ 20 y `fragua` en el PATH para cualquier hook.
+- **Sin subagentes:** un rol se ejecuta en la misma conversación y lo paralelo pasa a secuencial.
+
 ## 1. Ciclo
 
 ### C-1 · Con el nivel de modelo económico, el agente de pruebas escribe a veces valores esperados erróneos (abierto)

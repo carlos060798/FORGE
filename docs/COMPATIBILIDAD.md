@@ -3,7 +3,7 @@
 > Tipo: Referencia
 > Última revisión: 2026-11-10 contra el commit 55a9dd9
 
-Qué espera Fragua de Claude Code en sus hooks, comprobado contra `claude-hooks/` y `tests/hooks-contract.test.js`. Qué hace cada hook: [hooks.md](hooks.md). Qué recibe otra herramienta: [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md).
+Qué espera Fragua de Claude Code en sus hooks, comprobado contra `claude-hooks/` y `tests/hooks-contract.test.js`. Qué hace cada hook: [hooks.md](hooks.md). Qué recibe otra herramienta: [ANFITRIONES.md](ANFITRIONES.md). El contrato de evento que usan las demás herramientas: [contrato/evento-herramienta.md](contrato/evento-herramienta.md).
 
 ## Versión de Claude Code
 
@@ -67,6 +67,10 @@ Las demás variables `FORGE_*` y `FRAGUA_*` son del motor, no de Claude Code.
 `tests/hooks-contract.test.js` valida con ejemplos fijos que el evento tiene `tool_name` y `tool_input` (y `tool_response` en `PostToolUse`) y detecta si esos campos se renombran o desaparecen. **No** ejecuta Claude Code, así que no detecta que un hook haya dejado de invocarse.
 
 Si Claude Code dejara de invocar `PreToolUse`, el guardián dejaría de actuar sin avisar, y la memoria y las convenciones dejarían de actualizarse. `fragua doctor` comprueba que los archivos de hook existan, tengan sintaxis válida y estén registrados en `settings.json`; no comprueba que Claude Code los invoque.
+
+## Otros anfitriones
+
+Este documento fija lo que Fragua espera de **Claude Code**. Para Cursor, Copilot, Gemini CLI, Codex, Windsurf y opencode, `fragua guardian evaluar --anfitrion <x>` traduce el evento propio de cada herramienta al mismo contrato (`tool_name`, `tool_input`, `tool_response`); sus esquemas se leyeron de resúmenes de la documentación oficial y **no están verificados contra una instalación real**. Las pruebas están en `tests/hooks-anfitrion.test.js`. La identidad del agente puede darse con `FRAGUA_AGENTE` (o `FORGE_AGENTE`); `CLAUDE_AGENT_NAME` sigue como respaldo.
 
 ## Si cambia el formato
 

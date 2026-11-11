@@ -18,17 +18,18 @@ Esta página describe solo lo que el código hace hoy. Dos palabras de estado:
 | Skills propias (31) | Sí, en `.claude/skills` | Sí, adaptadas (sin `allowed-tools`, sin «Claude Code» en el texto, con nota de equivalencias) |
 | Comandos | Sí, `.claude/commands` (formato de Claude Code) | Como skills `sdd-*`, con las órdenes `/sdd.x` reescritas a la forma de invocar de esa herramienta; solo los del perfil elegido |
 | Agentes | Sí, `.claude/agents` (subagentes) | Como **roles**: una skill `rol-<agente>` por agente (14), que se carga y se ejecuta en la misma conversación |
-| Agentes nativos del anfitrión | No aplica | **No instalados.** Ningún formato de agente de otra herramienta está confirmado ni generado |
-| Hooks: guardián | Sí, `PreToolUse` | **Solo con `--con-hooks`**, en Cursor, Copilot, Gemini CLI y Codex (ver la matriz). **Consultivo, no impuesto, mientras la herramienta falle abierto (Gemini, Codex) o no se haya probado en real.** Sin `--con-hooks`, no instalado |
-| Hooks: memoria de agentes y convenciones | Sí, `PostToolUse` | **No instalados.** `fragua memoria registrar` existe como orden manual, sin traducción de evento ni plantilla de hook |
+| Agentes nativos del anfitrión | No aplica | Sí, en el formato de Copilot, Cursor, Codex, Gemini CLI, opencode y Kiro (14 agentes). No en Windsurf, Zed, Goose, la carpeta común ni la genérica: su formato no está confirmado. Los de solo lectura, salvo `revisor` e `investigador`, no reciben terminal. **Sin probar en la herramienta real** |
+| Hooks: guardián | Sí, `PreToolUse` | **Solo con `--con-hooks`**, en Cursor, Copilot, Gemini CLI, Codex, Windsurf y opencode (ver la matriz). **Consultivo, no impuesto, mientras la herramienta falle abierto (Gemini, Codex, Windsurf) o no se haya probado en real.** Kiro, Zed, Goose y las demás: sin adaptador. Sin `--con-hooks`, no instalado |
+| Hooks: memoria de agentes y convenciones | Sí, `PostToolUse` | **Solo con `--con-hooks`**, y solo la memoria (no las convenciones), en Cursor, Copilot, Gemini, Codex y Windsurf. opencode no tiene. Nunca bloquea |
 | `settings.json`, `CLAUDE.md` | Sí | No |
 | `AGENTS.md` | Sí | Sí |
 
 Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 
-- **El guardián no se impone por defecto.** Sin `--con-hooks`, las reglas de `AGENTS.md` se piden al modelo y nada las hace cumplir. Con `--con-hooks` hay un hook en cuatro herramientas, pero ninguna está probada en real y Gemini y Codex fallan abierto: se lee como consultivo. La defensa que sí vale en cualquier anfitrión es el aislamiento del ciclo verificado (`fragua run`, `fragua verificar`) y el servidor MCP con perfil `verificacion`.
+- **El guardián no se impone por defecto.** Sin `--con-hooks`, las reglas de `AGENTS.md` se piden al modelo y nada las hace cumplir. Con `--con-hooks` hay un hook en seis herramientas, pero ninguna está probada en real y Gemini, Codex y Windsurf fallan abierto: se lee como consultivo. La defensa que sí vale en cualquier anfitrión es el aislamiento del ciclo verificado (`fragua run`, `fragua verificar`) y el servidor MCP con perfil `verificacion`.
 - **La delegación entre agentes pierde el subagente.** Donde un comando dice `Task("agente", …)`, la nota de anfitrión pide cargar la skill del rol y trabajar en la misma conversación; lo paralelo pasa a secuencial. No hay aislamiento de contexto entre roles.
-- **La memoria por agente no se registra sola.** El hook que la escribe es de Claude Code; en los roles se sustituyó la frase por una instrucción de anotar decisiones en `.sdd/memoria/`.
+- **La memoria por agente solo se registra sola con `--con-hooks`** (Cursor, Copilot, Gemini, Codex, Windsurf). En los roles se sustituyó la frase del hook por una instrucción de anotar decisiones en `.sdd/memoria/`.
+- **Un agente de solo lectura puede escribir por la terminal si conserva el shell y la herramienta no tiene hook.** En los formatos nativos solo `revisor` e `investigador` lo conservan (ejecutan pruebas y consultan versiones); los roles `rol-*` corren en la conversación principal y no tienen esa restricción. Nada de esto es un límite impuesto sin el guardián.
 - **La adaptación es textual** (`core/instalacion/adaptar-anfitrion.js`, aplicada al instalar). Las fuentes de `commands/`, `agents/` y `skills/` no cambian, y lo que recibe Claude Code tampoco.
 
 ## Matriz por herramienta
@@ -36,17 +37,19 @@ Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 | Herramienta (clave) | Carpeta de skills | Skills, comandos adaptados y roles instalados | Agentes nativos | Guardián y memoria | Estado |
 |---|---|---|---|---|---|
 | Claude Code (`claude`) | `.claude/skills` | Sí (más comandos y agentes en formato nativo) | Sí | Sí, por hooks | Confirmado en doc (2026-10-14); es el camino de siempre |
-| Codex CLI (`codex`) | `.agents/skills` | Sí | Sí (TOML) | Con `--con-hooks`: guardián y memoria en `.codex/hooks.json` (falla abierto; el proyecto debe ser de confianza) | Carpeta confirmada en doc; hook leído en doc, sin probar |
+| Codex CLI (`codex`) | `.agents/skills` | Sí | Sí (TOML) | Con `--con-hooks`: guardián y memoria en `.codex/hooks.json` (falla abierto; el proyecto debe ser de confianza) | Carpeta y hook leídos en doc; sin probar |
 | Carpeta común (`agents`) | `.agents/skills` | Sí | No | No | Carpeta confirmada en doc (Codex y otras la leen); sin probar |
 | GitHub Copilot (`copilot`) | `.github/skills` | Sí | Sí | Con `--con-hooks`: guardián y memoria en `.github/hooks/fragua-guardian.json` (falla cerrado ante error; usa `bash`/`powershell`, no `command`) | Carpeta y hook leídos en doc; sin probar |
 | Cursor (`cursor`) | `.cursor/skills` | Sí | Sí | Con `--con-hooks`: guardián y memoria en `.cursor/hooks.json` (`failClosed` en el guardián) | Carpeta y hook leídos en doc; sin probar |
-| Gemini CLI (`gemini`) | `.gemini/skills` | Sí | Parcial (7 de 14) | Con `--con-hooks`: guardián y memoria en `.gemini/settings.json` (falla abierto; si el archivo existe no se toca) | Carpeta y hook leídos en doc; nombres de herramienta y de campos sin confirmar; sin probar |
-| Windsurf (`windsurf`) | `.devin/skills` | Sí | No | Con `--con-hooks`: guardián en `.devin/hooks.v1.json`, **falla abierto** y solo evalúa comandos de terminal (los nombres de herramientas de archivo no están en la documentación). Sin memoria | Carpeta y hook leídos en doc; sin probar |
-| opencode (`opencode`) | `.opencode/skills` | Sí | Sí | Con `--con-hooks`: plugin `.opencode/plugins/fragua-guardian.js` (falla cerrado); solo `read` está confirmado, bash/write/edit pasan sin evaluar. Sin memoria | Carpeta y plugin leídos en doc; que el plugin pueda ejecutar un proceso externo no está confirmado; sin probar |
-| Kiro (`kiro`) | `.kiro/skills` | Sí | Sí (JSON) | **Sin adaptador**: la documentación no da los nombres de herramienta ni las claves de entrada, y un guardián ahí dejaría pasar todo sin avisar | Confirmado en doc; sin probar |
+| Gemini CLI (`gemini`) | `.gemini/skills` | Sí | Sí (14) | Con `--con-hooks`: guardián y memoria en `.gemini/settings.json` (falla abierto; si el archivo existe no se toca) | Carpeta, hook y herramientas leídos en doc; sin probar |
+| Windsurf (`windsurf`) | `.devin/skills` | Sí | No | Con `--con-hooks`: guardián en `.devin/hooks.v1.json` (falla abierto) que evalúa terminal, lectura, escritura, edición y parches, y memoria tras escribir o editar. Solo la terminal tiene claves de entrada documentadas: en las de archivo la ruta se busca por heurística y, si usan otra clave, la acción pasa sin evaluar | Carpeta y hook leídos en doc; sin probar |
+| opencode (`opencode`) | `.opencode/skills` | Sí | Sí | Con `--con-hooks`: plugin `.opencode/plugins/fragua-guardian.js` (falla cerrado) que evalúa `read`, `edit`, `write`, `patch` y `shell`. **Sin confirmar:** la forma del evento de `tool.execute.before` y que un plugin pueda lanzar un proceso externo; si fallan, el plugin bloquea toda herramienta. Sin memoria | Carpeta y herramientas leídas en doc; plugin sin probar |
+| Kiro (`kiro`) | `.kiro/skills` | Sí | Sí (JSON) | **Sin adaptador:** la documentación da el formato del archivo de hooks y los campos de entrada, pero no los nombres de las herramientas integradas ni qué código bloquea en `PreToolUse`; un guardián ahí dejaría pasar todo sin avisar | Carpeta confirmada en doc; sin probar |
+| Zed (`zed`) | `.agents/skills` | Sí | No | No (sin hooks ni agentes confirmados) | Carpeta confirmada en doc (2026-11-11); sin probar |
+| Goose (`goose`) | `.agents/skills` | Sí | No | No (sin hooks ni agentes confirmados) | Carpeta confirmada en doc (2026-11-11); sin probar |
 | Genérica (`generica`) | la que pases con `--carpeta-skills` | Sí | No | No | Sin probar |
 
-Codex tiene clave propia (`codex`) y comparte carpeta con `agents`. Zed y Goose no tienen clave: su carpeta no se pudo confirmar.
+Codex, Zed y Goose tienen clave propia y comparten carpeta (`.agents/skills`) con la clave `agents`. Ninguna de las páginas de Zed y Goose menciona `AGENTS.md`.
 
 ## Cómo se invoca cada skill
 
@@ -63,9 +66,8 @@ En Claude Code los comandos conservan su nombre con punto (`/sdd.planificar`).
 
 ## Lo que está en curso
 
-- **Guardián fuera de los hooks de Claude Code** (fase F3): hecho el contrato de evento ([contrato/evento-herramienta.md](contrato/evento-herramienta.md)), la orden `fragua guardian evaluar --anfitrion <x>` y el registro opcional con `forge init --integracion <x> --con-hooks` para Cursor, Copilot, Gemini y Codex. **Sin probar en una instalación real de ninguna.** Límites: Gemini y Codex dejan pasar la acción si el hook se rompe; el guardián solo conoce las herramientas que traduce (lo desconocido pasa); la memoria de agentes se registra con el mismo `--con-hooks` y nunca bloquea; la vía MCP consultiva existe como perfil `guardian` del servidor MCP (`fragua mcp --perfil guardian`, herramienta `guardian_evaluar`), pero el modelo puede no llamarla. **Windsurf, opencode y Kiro** admiten un guardián según su documentación (Windsurf/Devin falla abierto; opencode solo como plugin de código; Kiro con esquema de entrada sin documentar), pero **no tienen adaptador**: ver `.sdd/especificaciones/2026-11-10-metodologia-agnostica/spikes/hooks-windsurf-opencode-kiro.md`.
-- **Vocabulario neutral de modelos, `doctor` por proveedor y metadatos** (fase F4): **en curso.**
-- **Agentes en el formato nativo de cada herramienta:** hechos para Copilot, Cursor, Codex, opencode y Kiro (14 agentes) y de forma parcial para Gemini (7 de 14, solo los sin escritura; el resto sigue como `rol-*`). Windsurf, la carpeta común y la genérica no generan agentes: formato sin confirmar. **Sin probar en la herramienta real.** Detalle en `core/instalacion/agentes-nativos.js`.
+- **Guardián y memoria fuera de Claude Code:** hechos con `--con-hooks` ([contrato](contrato/evento-herramienta.md), `fragua guardian evaluar --anfitrion <x>`, `fragua memoria registrar --anfitrion <x>`, perfil MCP `guardian`). **Sin probar en una instalación real de ninguna.** Pendiente por falta de documentación: Kiro, y la forma exacta del evento y el proceso externo en opencode.
+- **Evaluación independiente:** [informes/EVALUACION-AGNOSTICISMO.md](informes/EVALUACION-AGNOSTICISMO.md) (veredicto «parcialmente»). Es una fotografía de un momento: varios hallazgos se corrigieron después.
 - **Prueba manual por herramienta** (fase F5): pendiente; hasta entonces ninguna fila de la matriz dirá «probado».
 
 ## Dónde mirar

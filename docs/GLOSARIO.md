@@ -62,7 +62,7 @@ Una **skill** es un archivo `SKILL.md` en `skills/<nombre>/` (instalado en `.cla
 
 ### Hook
 
-Un script de `claude-hooks/` que **Claude Code** (no el modelo) ejecuta en un evento. Los que registra el plugin: `pre-tool-guard.js` (`PreToolUse`; exit 2 bloquea la acción), `agent-memory.js` y `post-write-conventions.js` (`PostToolUse`, sobre `Write|Edit`), y `context-manager.js` (`PostToolUse`); `ast-indexer.js` solo está en el `settings.json` de este repositorio. En `PostToolUse` el archivo ya está escrito: el exit 2 devuelve un mensaje al agente, no revierte. Los hooks no existen en otros anfitriones, y el motor (`forge run`, `resume`, `verificar`) no depende de ellos. Tabla completa en [hooks.md](hooks.md).
+Un script de `claude-hooks/` que **Claude Code** (no el modelo) ejecuta en un evento. Los que registra el plugin: `pre-tool-guard.js` (`PreToolUse`; exit 2 bloquea la acción), `agent-memory.js` y `post-write-conventions.js` (`PostToolUse`, sobre `Write|Edit`), y `context-manager.js` (`PostToolUse`); `ast-indexer.js` solo está en el `settings.json` de este repositorio. En `PostToolUse` el archivo ya está escrito: el exit 2 devuelve un mensaje al agente, no revierte. Los hooks de Claude Code no existen en otros anfitriones: con `--con-hooks`, `fragua guardian evaluar --anfitrion <x>` los sustituye de forma opcional y sin probar en real (ver [ANFITRIONES.md](ANFITRIONES.md)). El motor (`forge run`, `resume`, `verificar`) no depende de ellos. Tabla completa en [hooks.md](hooks.md).
 
 ### Perfil de instalación
 

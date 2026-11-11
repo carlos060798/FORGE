@@ -37,6 +37,8 @@ fragua doctor
 | Windsurf | `windsurf` | `.devin/skills` |
 | opencode | `opencode` | `.opencode/skills` |
 | Kiro | `kiro` | `.kiro/skills` |
+| Zed | `zed` | `.agents/skills` |
+| Goose | `goose` | `.agents/skills` |
 | Varias a la vez que leen `.agents/skills` | `agents` | `.agents/skills` |
 | Otra herramienta | `generica` | la que pases con `--carpeta-skills <ruta>` (dentro del proyecto o de tu carpeta personal) |
 
@@ -44,7 +46,7 @@ Notas:
 
 - Sin `--perfil`, se instala el perfil **esencial** (seis comandos). `--perfil completo` instala los 39.
 - `fragua update` recuerda la clave, el perfil y si instalaste con `--con-hooks`; `--sin-hooks` lo desactiva.
-- Zed y Goose no tienen clave: su carpeta de skills no se pudo confirmar en la documentación oficial. Usa `generica`.
+- Zed y Goose tienen clave propia (`zed`, `goose`) y leen `.agents/skills`, igual que `agents` y `codex`. Sin hooks ni agentes confirmados: `--con-hooks` no aplica.
 - `fragua init` no pisa un archivo ajeno que ya exista en la carpeta de destino: avisa y lo deja.
 
 ## 3. Qué recibes y qué no
@@ -145,15 +147,19 @@ Crea el archivo de hooks de tu herramienta. **Nunca pisa uno que ya exista**: en
 | GitHub Copilot | `.github/hooks/fragua-guardian.json` | **Bloquea** ante un error del hook; ante un tiempo agotado deja pasar y avisa |
 | Gemini CLI | `.gemini/settings.json` | **Deja pasar** la acción |
 | Codex CLI | `.codex/hooks.json` | **Deja pasar** la acción |
+| Windsurf | `.devin/hooks.v1.json` | **Deja pasar** la acción |
+| opencode | `.opencode/plugins/fragua-guardian.js` | **Bloquea** (el plugin lanza si `fragua` falta o bloquea) |
 
 Lo que significa en la práctica:
 
-- En **Gemini y Codex**, si `fragua` no está instalado o el hook se rompe, la acción continúa sin aviso de bloqueo. Trátalo como una ayuda, no como una garantía.
+- En **Gemini, Codex y Windsurf**, si `fragua` no está instalado o el hook se rompe, la acción continúa sin aviso de bloqueo. Trátalo como una ayuda, no como una garantía.
 - En Codex, los hooks del proyecto solo se cargan si la carpeta `.codex/` es de confianza, y hay que revisarlos y aprobarlos dentro de Codex.
 - El hook llama a la orden `fragua`: debe estar instalada y en el `PATH`.
 - El guardián solo conoce las herramientas cuyo evento sabe traducir. Una herramienta que no reconoce **pasa sin evaluar**.
 - Los nombres de herramienta y de campos de Gemini y Copilot están **sin confirmar** en la documentación leída.
-- Windsurf, opencode, Kiro, `agents` y `generica` no tienen adaptador de hook: `--con-hooks` avisa y no escribe nada.
+- Windsurf evalúa terminal, lectura, escritura, edición y parches, pero solo la terminal tiene claves de entrada documentadas. opencode evalúa `read`, `edit`, `write`, `patch` y `shell`; la forma exacta del evento y que un plugin pueda lanzar un proceso externo **no están confirmadas**: si fallan, el plugin bloquea toda herramienta.
+- Kiro, Zed, Goose, `agents` y `generica` no tienen adaptador de hook: `--con-hooks` avisa y no escribe nada. Kiro, porque su documentación no da los nombres de herramienta ni qué código bloquea.
+- Con `--con-hooks` se registra también la memoria de agentes en Cursor, Copilot, Gemini, Codex y Windsurf; nunca bloquea.
 - **Ningún hook está probado en una instalación real** de su herramienta.
 
 El guardián es una red de seguridad, no un límite. La defensa que sí vale en cualquier herramienta es el aislamiento del ciclo verificado (`fragua run` y `fragua verificar`, en un contenedor sin red) y los permisos de tu propia herramienta. Detalle en [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md) y en el contrato [contrato/evento-herramienta.md](contrato/evento-herramienta.md).

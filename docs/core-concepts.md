@@ -217,7 +217,7 @@ Las consultas selectivas (`query-memory.js`) funcionan sobre el índice JSONL. L
 
 ## Los hooks de Claude Code
 
-Los hooks son scripts de Node que Claude Code ejecuta antes (`PreToolUse`) o después (`PostToolUse`) de una herramienta. Son una integración con Claude Code: el motor (`core/`, `forge run`) **no** depende de ellos. La referencia completa, con qué hook registra cada `settings.json`, está en [hooks.md](hooks.md); el comportamiento de cada uno, en [runtime.md](runtime.md). En resumen:
+Los hooks son scripts de Node que Claude Code ejecuta antes (`PreToolUse`) o después (`PostToolUse`) de una herramienta. Son una integración con Claude Code: el motor (`core/`, `forge run`) **no** depende de ellos. En otras herramientas el mismo guardián se registra, de forma opcional y sin probar en real, con `forge init --integracion <clave> --con-hooks` (orden `fragua guardian evaluar --anfitrion <x>`; ver [ANFITRIONES.md](ANFITRIONES.md) y [contrato/evento-herramienta.md](contrato/evento-herramienta.md)). La referencia completa, con qué hook registra cada `settings.json`, está en [hooks.md](hooks.md); el comportamiento de cada uno, en [runtime.md](runtime.md). En resumen:
 
 - `pre-tool-guard.js` (`PreToolUse`): el guardián. Bloquea comandos destructivos, secretos en lo que se escribe, escritura de agentes de solo lectura, edición de la configuración de calidad protegida y del propio guardián. Falla cerrado.
 - `agent-memory.js` y `post-write-conventions.js` (`PostToolUse`): memoria y convenciones.
@@ -240,7 +240,7 @@ Ninguno de los dos modos desactiva el aislamiento ni las pruebas del ciclo verif
 
 ## Despacho paralelo de agentes (PTC)
 
-**PTC (Programmatic Tool Calling)** es un patrón descrito en la skill [orquestacion-ptc](../skills/orquestacion-ptc/SKILL.md): el orquestador despacha en paralelo agentes independientes con la herramienta `Task` de Claude Code y agrega solo un resultado mínimo por agente (pasa o falla más un diff pequeño), en vez de leer cada conversación entera. Aplica cuando hay tres o más tareas independientes y no cuando un paso depende del anterior o hay una acción irreversible.
+**PTC (Programmatic Tool Calling)** es un patrón descrito en la skill [orquestacion-ptc](../skills/orquestacion-ptc/SKILL.md): el orquestador despacha en paralelo agentes independientes con la herramienta `Task` de Claude Code y agrega solo un resultado mínimo por agente (en herramientas sin subagentes, los roles se ejecutan en secuencia en la misma conversación) (pasa o falla más un diff pequeño), en vez de leer cada conversación entera. Aplica cuando hay tres o más tareas independientes y no cuando un paso depende del anterior o hay una acción irreversible.
 
 Es un patrón de instrucciones para el modelo, no una función del motor. La reducción de tokens que anuncia la skill («~85 %», citada de una referencia externa) **no está medida en este repositorio**: no verificado. El motor de `forge run` tiene su propio umbral de paralelismo para tareas que no usan el ciclo (`parallelThreshold: 3` en [core/orchestrator.js](../core/orchestrator.js)); con el ciclo verificado activo las tareas de código se ejecutan en secuencia.
 

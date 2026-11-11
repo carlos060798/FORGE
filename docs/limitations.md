@@ -15,7 +15,7 @@ Tabla única de límites comprobados contra el código el 2026-11-10. Los límit
 | La instalación de dependencias en la imagen del contenedor usa red | PROBLEMAS-CONOCIDOS A-4 | Ten presente que la preparación de la imagen no es «sin red» |
 | Los agentes son archivos Markdown, no procesos; no se comunican salvo por artefactos en `.sdd/` | `agents/*.md` | Aprueba la spec; los hooks solo frenan escrituras (`claude-hooks/pre-tool-guard.js`), no el razonamiento |
 | Las tareas de código del ciclo se ejecutan de una en una, y una tarea en revisión detiene la ejecución | MIGRACION-5.0 2.7 (tomado del CHANGELOG, no vuelto a comprobar) | No contar con paralelismo |
-| El flujo interactivo completo (`/sdd.*`) corre dentro de Claude Code. Fuera quedan `run`, `resume`, `verificar`, `api` y `mcp`, que necesitan un proveedor de modelo y, el ciclo, Docker | `docs/referencia-cli.md` | Sin Claude Code, usa esas órdenes |
+| El flujo interactivo completo (`/sdd.*`) es nativo de Claude Code. En otras herramientas se instala como skills adaptadas (sin probar en real; ver la sección «Fuera de Claude Code»). `run`, `resume`, `verificar`, `api` y `mcp` no dependen de la herramienta, pero necesitan un proveedor de modelo y, el ciclo, Docker | `docs/referencia-cli.md`, [ANFITRIONES.md](ANFITRIONES.md) | Fuera de Claude Code, usa esas órdenes o las skills adaptadas |
 | Solo Anthropic se ha probado con llamadas reales; OpenAI y Ollama, contra servidores falsos; Gemini no está soportado | PROBLEMAS-CONOCIDOS G-3, ESTADO-ACTUAL («Proveedores») | Usa Anthropic para algo que importe |
 | El gasto calculado nunca se comparó con una factura | PROBLEMAS-CONOCIDOS G-1 | Mira la consola del proveedor y fija un tope allí |
 | Instalar en otras herramientas (`--integracion`) no se ha probado en ninguna real y el guardián por hooks solo se instala con `--con-hooks` (Cursor, Copilot, Gemini, Codex), sin probar y consultivo donde la herramienta falla abierto | ESTADO-ACTUAL («Instalación agnóstica»), [RELACION-CON-CLAUDE-CODE.md](RELACION-CON-CLAUDE-CODE.md) | Verifica a mano en tu herramienta |
@@ -28,7 +28,24 @@ Tabla única de límites comprobados contra el código el 2026-11-10. Los límit
 | `mcp-figma/` tiene código (8 herramientas, 780 líneas en `mcp-figma/src/`) pero ningún archivo de `tests/` lo cubre y no se ha ejecutado contra Figma real | `mcp-figma/README.md`; `ls tests` sin ruta a Figma | Trátalo como no probado |
 | El dashboard (`fragua ui`) muestra solo las últimas 50 entradas de `consumo.jsonl` y `events.jsonl`, solo atiende `GET` y se cierra a los 30 minutos sin uso | `ui/server.js` (`readLastJsonlLines`, `IDLE_TIMEOUT_MS`) | El archivo completo está en `.sdd/observabilidad/` |
 | La suite de pruebas deja 31 omitidas en Windows (Docker real, enlaces simbólicos de archivo, proveedores sin herramientas, cuenta real, SDK opcional, permisos POSIX) y es inestable bajo carga en algunas máquinas | ESTADO-ACTUAL («Cifras», «La última pasada»), [COBERTURA.md](COBERTURA.md) | Corre las de Docker con `FORGE_TEST_DOCKER=1` |
-| Para una tarea puntual de minutos, el recorrido spec, plan y tareas cuesta más que el cambio | [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) | Usa Claude Code directamente |
+| Para una tarea puntual de minutos, el recorrido spec, plan y tareas cuesta más que el cambio | [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md) | Usa tu herramienta de código directamente |
+
+## Fuera de Claude Code: problemática vigente (2026-11-11)
+
+Qué recibe cada herramienta: [ANFITRIONES.md](ANFITRIONES.md). Cómo se usa: [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md).
+
+| Límite | Evidencia | Qué hacer |
+|---|---|---|
+| **Ninguna herramienta distinta de Claude Code está probada en una instalación real**: skills, roles, agentes nativos y hooks tienen pruebas automáticas con eventos y archivos construidos, no capturas de la herramienta | `tests/instalacion-anfitrion.test.js`, `tests/hooks-anfitrion.test.js`, `tests/agentes-nativos.test.js` | Prueba tú en tu herramienta y anota el resultado en `.sdd/especificaciones/2026-11-10-metodologia-agnostica/verificacion.md` |
+| Los esquemas de hooks y de agentes de otras herramientas se leyeron de resúmenes de la documentación oficial (WebFetch), no de copias literales | spikes en `.sdd/especificaciones/2026-11-10-metodologia-agnostica/spikes/` | Contrasta el archivo generado con la documentación vigente de tu herramienta |
+| Los hooks de Gemini CLI, Codex y Windsurf **fallan abiertos**: si el hook se rompe o falta `fragua`, la acción continúa. Cursor (`failClosed`) y Copilot (ante error) fallan cerrados; el plugin de opencode, también | `core/instalacion/hooks-anfitrion.js` (notas de cada plantilla) | No lo trates como barrera; el aislamiento del ciclo verificado sí aplica en cualquier herramienta |
+| Cobertura parcial: el guardián de Windsurf solo evalúa comandos de terminal y el de opencode solo la lectura de archivos; el resto de herramientas pasa sin evaluar | `core/instalacion/hooks-anfitrion.js` | Revisa los cambios de esas herramientas a mano |
+| **Kiro no tiene guardián**: su documentación no da los nombres de herramienta ni las claves de entrada | `SIN_ADAPTADOR_POR_AHORA` en `core/instalacion/hooks-anfitrion.js` | Sin guardián en Kiro |
+| Los agentes de solo lectura conservan `Bash` en los formatos nativos: fuera de Claude Code, nada les impide escribir por la terminal si la herramienta no tiene hook | `core/instalacion/agentes-nativos.js` | Revisa lo que ejecutan |
+| opencode, Kiro, Zed y Goose no tienen memoria de agentes por hooks; Zed, Goose, Windsurf y la carpeta común no reciben agentes nativos (solo roles) | [ANFITRIONES.md](ANFITRIONES.md) | Usa los roles `rol-*` |
+| Sin subagentes, un rol se ejecuta en la misma conversación: pierde el contexto aislado y lo paralelo pasa a secuencial | `core/instalacion/adaptar-anfitrion.js` (nota de anfitrión) | Es el comportamiento esperado de la adaptación |
+| Los hooks necesitan Node ≥ 20 y la orden `fragua` en el PATH; sin ella, Cursor y Copilot bloquean y Gemini, Codex y Windsurf dejan pasar | [runtime.md](runtime.md), [referencia-cli.md](referencia-cli.md) | Instala `fragua` globalmente antes de usar `--con-hooks` |
+| `--con-hooks` nunca pisa un archivo de hooks existente: si ya tienes uno, hay que añadir la orden a mano | `tests/instalacion-con-hooks.test.js` | Sigue el aviso que imprime la instalación |
 
 ## Quitado de la versión anterior de este documento
 

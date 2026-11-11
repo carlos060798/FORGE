@@ -124,7 +124,7 @@ fragua init [--global] [--preset lean|startup|enterprise] [--ui]
 | `--template <nombre>` | Aplica `presets/templates/<nombre>/` (IR, spec y configuración de partida). Uno de `api-rest`, `cli-tool`, `saas-mvp`; otro valor aborta con error |
 | `--ui` | Copia el dashboard a `.forge-ui/` |
 | `--guided` | Asistente interactivo (perfil de conducción, modelo, modo de sesión); no está en la ayuda |
-| `--integracion <clave>` | Herramienta de destino: `claude` (por defecto), `generica`, `agents`, `copilot`, `cursor`, `gemini`, `windsurf`, `opencode`, `kiro`, `codex` |
+| `--integracion <clave>` | Herramienta de destino: `claude` (por defecto), `generica`, `agents`, `copilot`, `cursor`, `gemini`, `windsurf`, `opencode`, `kiro`, `codex`, `zed`, `goose` |
 | `--perfil <nombre>` | Perfil de instalación: `esencial` (por defecto, 6 comandos) o `completo` (todos). Ver [configuration.md](configuration.md#perfil-de-instalación-y-preset-lean-por-defecto) |
 | `--carpeta-skills <ruta>` | Solo con `--integracion generica`: carpeta de destino de las skills |
 | `--con-hooks` | Registra el guardián (y la memoria donde existe) en los hooks de la herramienta: cursor, copilot, gemini, codex, windsurf, opencode. Nunca pisa un archivo existente. `update` lo recuerda |

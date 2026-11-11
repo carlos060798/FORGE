@@ -1,6 +1,6 @@
 # Primeros 15 minutos con Fragua
 
-> Para una persona sola, en Windows 11 (también vale en Linux o macOS), con Claude Code. Una página; el resto de la documentación es opcional hasta que la necesites. Estado real del proyecto: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
+> Para una persona sola, en Windows 11 (también vale en Linux o macOS), con Claude Code (con otra herramienta de código, ver [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md); sin probar en real). Una página; el resto de la documentación es opcional hasta que la necesites. Estado real del proyecto: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 ## 0. Qué necesitas (2 minutos)
 
@@ -34,7 +34,7 @@ Lee la salida de arriba abajo. Lo que importa: Node, la clave, Docker y la secci
 
 ## 3. El camino de cinco comandos (8 minutos la primera vez)
 
-Abre Claude Code dentro del proyecto y escribe, en este orden:
+Abre Claude Code dentro del proyecto (en otra herramienta, la invocación cambia: [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md)) y escribe, en este orden:
 
 | Paso | Comando | Qué pasa | Qué haces tú |
 |---|---|---|---|

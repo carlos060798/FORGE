@@ -56,6 +56,18 @@ Cada etapa deja un artefacto en `.sdd/` y se puede reanudar (`/sdd.implementar c
 
 Guía: [ciclo-verificado.md](docs/ciclo-verificado.md). Qué falla y cómo recuperarse: [QUE-PASA-SI-FALLA.md](docs/QUE-PASA-SI-FALLA.md).
 
+## Qué es agnóstico y qué no
+
+Tres niveles, de más a menos independiente de la herramienta. Ninguna herramienta distinta de Claude Code está probada en real todavía ([docs/ANFITRIONES.md](docs/ANFITRIONES.md)).
+
+| Nivel | Qué es | Estado fuera de Claude Code |
+|---|---|---|
+| **Motor** | `fragua run`, `resume`, `verificar`, el servidor MCP y la API HTTP. El ciclo verificado y el aislamiento con Docker | Agnóstico: no depende de ninguna herramienta. Solo Anthropic está probado con llamadas reales; OpenAI y Ollama, contra servidores falsos |
+| **Metodología** | Comandos, agentes y skills | Claude Code los recibe nativos. Las otras herramientas reciben skills, comandos adaptados como skills, 14 roles `rol-*` y agentes nativos (Copilot, Cursor, Codex, opencode, Kiro; Gemini 7 de 14). Sin subagentes, un rol se ejecuta en la misma conversación y lo paralelo pasa a secuencial |
+| **Guardián** | Reglas que bloquean comandos destructivos, secretos y escrituras de agentes de solo lectura | En Claude Code, por hooks. En otras, solo con `--con-hooks` (Cursor, Copilot, Gemini, Codex, Windsurf, opencode): Gemini, Codex y Windsurf fallan abiertos, Windsurf y opencode cubren solo parte de las herramientas y Kiro no tiene guardián. Es una red de seguridad, no un límite |
+
+Límites y problemática vigente fuera de Claude Code: [docs/limitations.md](docs/limitations.md). Cómo se usa en otra herramienta: [docs/USO-EN-OTRAS-HERRAMIENTAS.md](docs/USO-EN-OTRAS-HERRAMIENTAS.md).
+
 ## Requisitos
 
 | Requisito | Por qué |
@@ -86,7 +98,7 @@ Cuando se publique: `npm install -g fragua`. No uses `npx forge`: descargaría o
 
 ## Primera tarea
 
-Dentro de Claude Code, en tu proyecto, en este orden:
+Dentro de Claude Code, en tu proyecto, en este orden (en otra herramienta la invocación cambia: ver [docs/USO-EN-OTRAS-HERRAMIENTAS.md](docs/USO-EN-OTRAS-HERRAMIENTAS.md)):
 
 ```
 /sdd.especificar "una idea en una frase"   →  fragua aprobar spec  (en una terminal)

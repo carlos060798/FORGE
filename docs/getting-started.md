@@ -10,7 +10,7 @@ Esta guía instala Fragua y explica qué hacen `fragua init` y `fragua doctor`. 
 | Requisito | Para qué | Comprobación |
 |---|---|---|
 | Node.js ≥ 20 | Todo (`engines` de `package.json`) | `node --version` |
-| Claude Code | Los comandos `/sdd.*` | `claude --version` |
+| Claude Code (u otra herramienta de código) | Los comandos `/sdd.*`. Con otra herramienta se instalan como skills y no están probadas en real: [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md) | `claude --version` |
 | Docker en marcha | El ciclo verificado (`fragua run`, `/sdd.implementar`); sin él sale con código 4 | `docker version` |
 | `ANTHROPIC_API_KEY` en el entorno | Llamadas al modelo del ciclo | `fragua doctor` |
 | Proyecto en JavaScript/TypeScript, Python o Go | Lenguajes que el ciclo sabe probar | [MIGRACION-5.0.md](MIGRACION-5.0.md) 2.2 |
@@ -61,7 +61,7 @@ Revisa Node, la instalación del proyecto, `sdd.config.yaml`, los hooks, la clav
 
 ## 4. Primer uso
 
-Abre Claude Code en el proyecto y sigue [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md). La aprobación de la spec es obligatoria y se hace en una terminal real:
+Abre Claude Code en el proyecto (con otra herramienta, instala con `--integracion <clave>` y sigue [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md)) y sigue [PRIMEROS-15-MINUTOS.md](PRIMEROS-15-MINUTOS.md). La aprobación de la spec es obligatoria y se hace en una terminal real:
 
 ```bash
 fragua aprobar spec
@@ -78,7 +78,7 @@ fragua ui              # dashboard en http://localhost:3001 (solo lectura)
 fragua resume          # retoma lo interrumpido o lo que espera tu decisión
 ```
 
-Dentro de Claude Code: `/sdd.estado` e `/sdd.implementar continuar`.
+Dentro de Claude Code: `/sdd.estado` e `/sdd.implementar continuar`. En otras herramientas, las mismas órdenes se invocan como skills (`sdd-estado`, `sdd-implementar`) con la sintaxis de cada una.
 
 ## Configuración
 
