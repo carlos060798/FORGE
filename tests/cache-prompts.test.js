@@ -394,7 +394,8 @@ describe("CA-001-04 — con un proveedor que no lo permite, nada cambia", () => 
     const c = new CicloVerificado(/** @type {any} */ ({ cwd, runId: "r1", config: POR_DEFECTO, log: { append() {} }, llamar }));
     await c._llamador("r1:T1", "T1")({ agente: "a", modeloAlias: "sonnet", userPrompt: "u" });
     const linea = JSON.parse(readFileSync(c.libro.archivo, "utf8").trim());
-    assert.deepEqual(Object.keys(linea).sort(), ["inputTokens", "outputTokens", "taskId", "ts", "usd"]);
+    // `quien` (core/actor.js) se añadió en la fase 1 de equipos; sigue sin haber campos de caché
+    assert.deepEqual(Object.keys(linea).sort(), ["inputTokens", "outputTokens", "quien", "taskId", "ts", "usd"]);
     assert.ok(Math.abs(linea.usd - (10 * 2.5 + 2 * 10) / M) < 1e-12);
     assert.deepEqual(Object.keys(c.libro.total()).sort(), ["llamadas", "tokens_in", "tokens_out", "usd"]);
   });

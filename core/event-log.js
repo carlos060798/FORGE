@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { jsonRedactado } from './ciclo/redactar.js';
+import { actorActual } from './actor.js';
 
 /**
  * @typedef {'pipeline_step_changed'|'pipeline_step_forzado'|'task_started'|'task_completed'|'task_failed'|'task_skipped'|'agent_invoked'|'agent_result'|'runner_started'|'runner_result'|'spec_validated'|'checkpoint_written'|'resume_attempted'|'custom'|'task_paused'|'ciclo:nodo_completado'|'ciclo:ejecucion'|'ciclo:regresion'|'ciclo:escritura_rechazada'|'ciclo:presupuesto_degradado'|'ciclo:revision_decidida'|'ciclo:precio_desconocido'|'ciclo:llamada_abortada'|'ciclo:llamada_huerfana'|'ciclo:contenido_aviso'|'ciclo:contenido_rechazado'|'ciclo:consumo_estimado'|'verificar:resultado'|'ciclo:turno'|'ciclo:herramienta'|'ciclo:lectura_rechazada'|'ciclo:turnos_agotados'|'ciclo:implementador_sin_herramientas'|'ciclo:perfil_resuelto'|'ciclo:perfil_cambiado'|'ciclo:perfil_ampliacion_ignorada'|'ciclo:rojo'|'ciclo:mutante'|'ciclo:mutacion'|'ciclo:mutacion_omitida'|'integracion:leer_elemento'|'integracion:comentar'|'integracion:proponer_cambio'|'integracion:comprobar_alcance'|'integracion:publicar'} EventType
@@ -23,6 +24,7 @@ import { jsonRedactado } from './ciclo/redactar.js';
  * @property {EventType} type
  * @property {string} ts
  * @property {string} [agent]
+ * @property {import('./actor.js').Actor} [quien]  quién lo provocó, según el entorno (declarado, no verificado)
  * @property {string} [taskId]
  * @property {string} [pipelineStep]
  * @property {Record<string, unknown>} payload
@@ -60,6 +62,7 @@ export class EventLog {
       id: `${Date.now()}-${this.counter}`,
       type,
       ts: new Date().toISOString(),
+      quien: actorActual(),
       ...meta,
       payload,
     };

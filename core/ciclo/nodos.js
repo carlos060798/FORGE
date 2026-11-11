@@ -40,6 +40,7 @@ import { perfilEfectivo } from './perfiles.js';
 import { DETALLE_PRUEBAS_NO_FALLAN, mutacion, refuerzo, seccionPasabanAntes, seccionPasanSinImplementacion } from './pruebas-confiables.js';
 import { listarArchivosIndexables } from '../recuperacion/indice-vectorial.js';
 import { nombreListable, comoArchivo } from './dato-no-confiable.js';
+import { actorActual } from '../actor.js';
 
 /** @typedef {import('./estado.js').EstadoCiclo} EstadoCiclo */
 
@@ -725,7 +726,9 @@ export async function revisionHumana(estado, deps, decision) {
     throw new Error(`Decisión no válida. Opciones: ${DECISIONES.join(', ')}`);
   }
 
-  const revision = { ...estado.revision, decision: decision.decision, ts: new Date().toISOString() };
+  // `quien` es lo que el entorno declara (persona, agente o CI), no una identidad verificada (core/actor.js)
+  const quien = actorActual();
+  const revision = { ...estado.revision, decision: decision.decision, ts: new Date().toISOString(), quien };
 
   // Se valida ANTES de registrar nada: una decisión rechazada no deja rastro
   let presupuesto = estado.presupuesto;
@@ -748,7 +751,7 @@ export async function revisionHumana(estado, deps, decision) {
     }
   }
 
-  deps.log.append('ciclo:revision_decidida', { decision: decision.decision, motivo: revision.motivo, iteracionesExtra: decision.iteracionesExtra, presupuestoExtra: decision.presupuestoExtra }, { taskId: estado.taskId });
+  deps.log.append('ciclo:revision_decidida', { decision: decision.decision, motivo: revision.motivo, iteracionesExtra: decision.iteracionesExtra, presupuestoExtra: decision.presupuestoExtra }, { taskId: estado.taskId, quien });
 
   if (decision.decision === 'abortar') {
     const restaurado = deps.respaldo.restaurar();
