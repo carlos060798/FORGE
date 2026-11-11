@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import { claveLocal, directorioDeEstado, existeEstado, firmaValida, firmar } from '../estado-usuario.js';
+import { actorActual } from '../actor.js';
 
 const nombre = (threadId) => threadId.replace(/[^\w.-]/g, '_') + '.jsonl';
 
@@ -131,14 +132,14 @@ export class LibroDeGasto {
   /**
    * `cacheCreationTokens` y `cacheReadTokens` solo se escriben si el proveedor los informó
    * (caché de prompts): `inputTokens` NO los incluye, son tres cantidades aparte.
-   * @param {{ taskId: string, usd: number, inputTokens: number, outputTokens: number, cacheCreationTokens?: number, cacheReadTokens?: number, estimado?: boolean }} llamada  (`estimado`: llamada cancelada por tiempo, consumo no informado)
+   * @param {{ taskId: string, usd: number, inputTokens: number, outputTokens: number, cacheCreationTokens?: number, cacheReadTokens?: number, estimado?: boolean, quien?: import('../actor.js').Actor }} llamada  (`estimado`: llamada cancelada por tiempo, consumo no informado; `quien`: por defecto el actor del entorno)
    */
-  anotar({ taskId, usd, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, estimado }) {
+  anotar({ taskId, usd, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, estimado, quien = actorActual() }) {
     fs.mkdirSync(path.dirname(this.archivo), { recursive: true });
     const cache = typeof cacheCreationTokens === 'number' || typeof cacheReadTokens === 'number'
       ? { cacheCreationTokens: cacheCreationTokens ?? 0, cacheReadTokens: cacheReadTokens ?? 0 }
       : {};
-    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, usd, inputTokens, outputTokens, ...cache, ...(estimado ? { estimado: true } : {}) }) + '\n', 'utf8');
+    fs.appendFileSync(this.archivo, JSON.stringify({ ts: new Date().toISOString(), taskId, quien, usd, inputTokens, outputTokens, ...cache, ...(estimado ? { estimado: true } : {}) }) + '\n', 'utf8');
   }
 
   /**
