@@ -1,468 +1,257 @@
 # Conceptos fundamentales
 
-Este documento explica los conceptos centrales de FORGE. Entenderlos te permitirá usar el framework de manera efectiva y razonar sobre su comportamiento.
+> Tipo: Explicación
+> Última revisión: 2026-11-10 contra el commit 7683f83
+
+Este documento explica los conceptos sobre los que se apoya FORGE (paquete `fragua`, comando `forge` o `fragua`): qué es una especificación, cómo se avanza por el pipeline, qué hace distinto al ciclo verificado y qué papel tienen los hooks. Es una explicación, no una referencia: los formatos exactos están en los esquemas de [contrato/](contrato/) y en [api-reference.md](api-reference.md).
+
+El estado real del proyecto (pre-beta, `5.0.0-beta.1` sin publicar, qué está probado y qué no) está en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md). Aquí no se repiten sus cifras.
 
 ---
 
 ## Índice
 
-1. [Desarrollo Guiado por Especificaciones (SDD)](#desarrollo-guiado-por-especificaciones)
-2. [El Requisito Interpretado (IR)](#el-requisito-interpretado-ir)
-3. [La Constitución del proyecto](#la-constitución-del-proyecto)
-4. [El pipeline de etapas](#el-pipeline-de-etapas)
-5. [Estado del pipeline](#estado-del-pipeline)
-6. [Memoria de agentes](#memoria-de-agentes)
-7. [El sistema de hooks](#el-sistema-de-hooks)
-8. [Modos de conducción](#modos-de-conducción)
-9. [Programmatic Tool Calling (PTC)](#programmatic-tool-calling-ptc)
-10. [Registros de Decisiones Arquitectónicas (ADR)](#registros-de-decisiones-arquitectónicas-adr)
+1. [Desarrollo guiado por especificaciones (SDD)](#desarrollo-guiado-por-especificaciones-sdd)
+2. [El requisito interpretado (IR)](#el-requisito-interpretado-ir)
+3. [La constitución del proyecto](#la-constitución-del-proyecto)
+4. [Etapas, comandos y estados](#etapas-comandos-y-estados)
+5. [El estado del pipeline](#el-estado-del-pipeline)
+6. [El ciclo verificado](#el-ciclo-verificado)
+7. [Lo que un repositorio ajeno no puede decidir](#lo-que-un-repositorio-ajeno-no-puede-decidir)
+8. [Memoria de agentes](#memoria-de-agentes)
+9. [Los hooks de Claude Code](#los-hooks-de-claude-code)
+10. [Perfiles y modos de sesión](#perfiles-y-modos-de-sesión)
+11. [Despacho paralelo de agentes (PTC)](#despacho-paralelo-de-agentes-ptc)
+12. [Registros de decisiones de arquitectura (ADR)](#registros-de-decisiones-de-arquitectura-adr)
 
 ---
 
-## Desarrollo Guiado por Especificaciones
+## Desarrollo guiado por especificaciones (SDD)
 
-**SDD (Spec-Driven Development)** es la metodología que organiza todo el trabajo en FORGE. Establece que ningún código se escribe sin que exista primero una especificación escrita y aprobada por un humano.
+**SDD (Spec-Driven Development)** es la metodología que organiza el trabajo en FORGE: primero una especificación escrita y aprobada por una persona, después el plan, las tareas y el código. En este repositorio la regla está en [AGENTS.md](../AGENTS.md): «Todo cambio empieza por una especificación» y «Ningún agente ni comando marca una aprobación por su cuenta».
 
-La especificación no es un documento de requisitos informal. Es un artefacto estructurado que contiene:
+Una especificación contiene criterios de aceptación, escenarios de usuario, restricciones y una definición de «hecho». La razón de exigirla es reducir la ambigüedad antes de implementar: un agente que trabaja contra criterios precisos produce algo que se puede comprobar; uno que trabaja contra instrucciones vagas, no.
 
-- **Criterios de aceptación** — condiciones precisas que el sistema debe satisfacer
-- **Escenarios de usuario** — flujos concretos descritos desde la perspectiva del usuario
-- **Restricciones técnicas** — límites de rendimiento, seguridad, compatibilidad
-- **Definición de "hecho"** — qué debe ser verdad para que la feature se considere completada
-
-La razón de esta disciplina es eliminar la ambigüedad antes de la implementación. Un agente que implementa contra una especificación precisa produce código verificable. Un agente que implementa contra instrucciones vagas produce código que parece correcto pero cuyo comportamiento es impredecible.
-
-La etapa de verificación (`/sdd.verificar`) cierra el ciclo: comprueba el código real contra los criterios de aceptación de la especificación original, no contra lo que el agente cree que construyó.
+La aprobación es una operación real del CLI, no una convención. `forge aprobar spec` exige un terminal interactivo y que la persona teclee un código de un solo uso; deja el registro (quién, cuándo, qué y el hash del archivo) en `.sdd/aprobaciones.jsonl` ([cli/comandos/aprobar.js](../cli/comandos/aprobar.js)). Límite documentado en ese mismo archivo: con el mismo usuario del sistema operativo no hay separación criptográfica total entre la persona y un agente.
 
 ---
 
-## El Requisito Interpretado (IR)
+## El requisito interpretado (IR)
 
-El **IR (Interpreted Requirement)** es la primera transformación estructurada de una idea en lenguaje natural. Lo produce el comando `/sdd.interpretar` y se almacena en `.sdd/ir.json`.
+El **IR (Interpreted Requirement)** es la primera transformación estructurada de una idea en lenguaje natural. Lo produce `/sdd.interpretar` y se guarda en `.sdd/ir.json`. Su forma está definida por [core/schemas/ir.schema.json](../core/schemas/ir.schema.json) (versión de esquema `1.0`).
 
-### Estructura del IR
+Campos obligatorios del esquema: `schemaVersion`, `id`, `created_at`, `raw_input`, `confidence`, `product`, `features`, `constraints`, `assumptions`, `ambiguities` y `requires_clarification`.
 
 ```json
 {
+  "schemaVersion": "1.0",
   "id": "ir-2026-06-21-abc123",
   "created_at": "2026-06-21T10:00:00Z",
   "raw_input": "quiero un gestor de tareas para equipos",
   "confidence": 0.87,
-
   "product": {
     "name": "TaskFlow",
     "type": "saas",
-    "tagline": "Gestión de tareas colaborativa para equipos",
+    "tagline": "Gestión de tareas colaborativa",
     "value_proposition": "...",
-    "target_users": "Equipos de desarrollo de 5-20 personas"
+    "target_users": "Equipos de desarrollo de 5 a 20 personas"
   },
-
   "features": {
-    "core": ["crear tareas", "asignar a miembros", "notificaciones", "tablero kanban"],
-    "nice_to_have": ["integración Slack", "reportes de tiempo"]
+    "core": ["crear tareas", "asignar a miembros"],
+    "nice_to_have": ["integración con Slack"]
   },
-
-  "constraints": {
-    "timeline": "MVP en 4 semanas",
-    "tech_preference": "Node.js + React"
-  },
-
-  "assumptions": ["el usuario tiene acceso a correo corporativo"],
+  "constraints": { "timeline": "MVP en 4 semanas", "tech_preference": "Node.js + React" },
+  "assumptions": ["el usuario tiene correo corporativo"],
   "ambiguities": [
-    { "field": "notificaciones", "question": "¿por correo, push, o ambas?" }
+    { "field": "notificaciones", "issue": "no se dice el canal", "resolution": "pendiente" }
   ],
   "requires_clarification": true
 }
 ```
 
+El esquema exige entre 2 y 5 funciones en `features.core`, y `product.type` es uno de `saas`, `mobile`, `web`, `api`, `cli`, `other`. Cada elemento de `ambiguities` lleva `field`, `issue` y `resolution`.
+
 ### La puntuación de confianza
 
-El campo `confidence` (0.0–1.0) indica cuánta información tiene el IR para proceder sin aclaraciones adicionales. Es un campo orientativo generado por el agente — **no es un guard automático de la state machine** (la transición `discovery → ir` solo requiere `ir_generado: true`, no un umbral de confidence).
+`confidence` (0 a 1) es orientativa. **No es una guarda de la máquina de estados**: la transición `discovery → ir` solo comprueba que `ir_generado` sea verdadero ([core/state-machine.js](../core/state-machine.js)). El comando `/sdd.interpretar` recomienda aclarar (`/sdd.aclarar`) cuando `confidence < 0.7`; esa recomendación vive en el texto del comando, no en el código del motor.
 
-Interpretación recomendada:
-
-- `≥ 0.7` — el IR está listo; puede proceder al diseño directamente
-- `< 0.7` — se recomienda ejecutar `/sdd.aclarar` antes de continuar para evitar specs ambiguas
-- `requires_clarification: true` — el agente detectó ambigüedades explícitas; ejecutar `/sdd.aclarar` antes de avanzar
-
-El IR es inmutable una vez aprobado. Si los requisitos cambian sustancialmente, se genera un nuevo IR y se crea una nueva rama de especificación.
+Que el IR sea inmutable una vez aprobado, como se afirmaba en versiones anteriores de este documento: **no verificado**. No hay en `core/` ningún código que lo impida.
 
 ---
 
-## La Constitución del proyecto
+## La constitución del proyecto
 
-La **constitución** es el documento de principios del proyecto. Se almacena en `.sdd/memoria/constitucion.md` y se establece con el comando `/sdd.constitucion`.
+La **constitución** es el documento de principios del proyecto. Se guarda en `.sdd/memoria/constitucion.md` (la plantilla es [plantillas/constitucion.md](../plantillas/constitucion.md)) y se crea con `/sdd.constitucion`. Este repositorio tiene la suya: [.sdd/memoria/constitucion.md](../.sdd/memoria/constitucion.md), de la que [AGENTS.md](../AGENTS.md) es un resumen.
 
-### Qué contiene
+### Qué hace el código con ella
 
-- **Stack tecnológico acordado** — lenguajes, frameworks, bibliotecas autorizadas
-- **Principios de arquitectura** — patrones que se deben seguir, anti-patrones prohibidos
-- **Restricciones de seguridad** — qué no se puede hacer bajo ninguna circunstancia
-- **Convenciones de código** — nomenclatura, estructura de archivos, estilo
-- **Criterios de calidad** — cobertura mínima de tests, umbrales de rendimiento
+Se ha comprobado qué lee de verdad el código, porque es menos de lo que sugiere el nombre:
 
-### Por qué es una restricción dura
+- `claude-hooks/post-write-conventions.js` extrae de la constitución tres cosas, con expresiones regulares: un límite de longitud de función, una cobertura mínima y los patrones prohibidos escritos como `NUNCA`, `PROHIBIDO` o `NO USAR` seguidos de un fragmento entre comillas invertidas. Si un archivo de código recién escrito contiene un patrón prohibido, el hook termina con código 2 y un mensaje. Es un hook `PostToolUse`: el archivo ya está escrito; el código 2 devuelve el mensaje al agente para que lo corrija. Que el hook «revierta» la escritura, como decía una versión anterior de este documento, no es cierto ([post-write-conventions.js:295-298 y 411](../claude-hooks/post-write-conventions.js)).
+- Los agentes `critico` y `seguridad` la mencionan en sus instrucciones ([agents/critico.md](../agents/critico.md), [agents/seguridad.md](../agents/seguridad.md)). Es una instrucción al modelo, no un control del motor.
+- Lo que el motor sí impone sin depender de un modelo son los patrones prohibidos de los ADR aceptados (véase [ADR](#registros-de-decisiones-de-arquitectura-adr)).
 
-La constitución no es una sugerencia. El hook `post-write-conventions.js` la lee en cada escritura y bloquea archivos que la violan (exit code 2). El agente `critico` la usa como criterio de evaluación. El agente `seguridad` comprueba que ninguna decisión técnica la contradiga.
+Cuando la constitución prohíbe algo, la forma fiable de que se cumpla es expresarlo como patrón prohibido (hook) o como prueba (ciclo verificado), no solo como prosa.
 
-Esto elimina la deriva arquitectónica — la tendencia de un asistente de IA a elegir soluciones convenientes que contradicen las decisiones tomadas al principio del proyecto.
-
-### Ejemplo
+### Ejemplo de contenido
 
 ```markdown
 # Constitución — TaskFlow
 
 ## Stack
-- Backend: Node.js 20 + Fastify + TypeScript
-- Base de datos: PostgreSQL 16 (sin ORMs — SQL directo vía pg)
-- Frontend: React 19 + Vite + TailwindCSS
-- Tests: Vitest + Testing Library
-- Deploy: Railway (contenedores Docker)
+- Backend: Node.js 20 + Fastify
+- Tests: Vitest
 
 ## Principios
-- Sin dependencias no aprobadas explícitamente en esta constitución
-- Toda función de negocio debe tener test de integración
-- Sin secrets en código fuente bajo ninguna circunstancia
-- Autenticación: JWT firmado con RS256, tokens de 15 minutos
+- Sin dependencias no aprobadas en esta constitución
+- Sin secretos en el código fuente
 
 ## Prohibido
-- `eval()`, `Function()`, `exec()` en código de aplicación
-- Consultas SQL construidas por concatenación de strings
-- `console.log` en producción (usar logger estructurado)
+- NUNCA: `eval(`
+- NUNCA: `console.log`
 ```
 
 ---
 
-## Aclaración: Etapas, Comandos y Estados del Pipeline
+## Etapas, comandos y estados
 
-Cuando hablamos de "el pipeline de FORGE", podemos referirse a 3 niveles de granularidad distintos. Es importante distinguir:
+Tres niveles de granularidad distintos usan palabras parecidas. Conviene separarlos.
 
-### Nivel 1: Etapas conceptuales (5 totales)
+### Etapas (conceptuales)
 
-Las 5 fases conceptuales del ciclo de desarrollo, desde idea a producción:
+Especificación, diseño, implementación, verificación y despliegue. Es la forma de hablar del flujo; no existe como estructura en el código.
 
-1. **Especificación** — de idea a requisitos precisos
-   - Incluye: Descubrimiento, Interpretación (IR), Diseño, Especificación, Aclaración
-   
-2. **Diseño** — de requisitos a arquitectura y mockups
-   - Incluye: Product Design, Wireframes, Stack Selection
+### Comandos
 
-3. **Implementación** — de arquitectura a código
-   - Incluye: Planificación, Desglose de tareas, Codificación
+Los comandos `/sdd.*` son archivos Markdown en [commands/](../commands/) con instrucciones para el modelo; no son código ejecutable. El camino principal es: `/sdd.descubrir`, `/sdd.interpretar`, `/sdd.diseñar`, `/sdd.especificar`, `/sdd.planificar`, `/sdd.tareas`, `/sdd.implementar` y `/sdd.desplegar` (la lista numerada del [glosario](GLOSARIO.md) es la que vigila `tests/consistencia-cifras.test.js`). `/sdd.aclarar` y `/sdd.verificar` son comandos adicionales. Un perfil de instalación (`esencial` por defecto, `completo`) decide cuántos comandos se copian al proyecto ([core/instalacion/perfiles.js](../core/instalacion/perfiles.js)).
 
-4. **Verificación** — de código a producto validado
-   - Incluye: Testing, QA, Criterios de aceptación
+### Estados de la máquina
 
-5. **Despliegue** — de producto a producción
-   - Incluye: Release, Health checks, Monitoreo
-
-### Nivel 2: Comandos ejecutables (8 principales)
-
-Los 8 comandos slash que avanzan el pipeline de forma lineal y que invoca el usuario:
-
-1. `/sdd.descubrir` — extrae requisitos brutos del usuario
-2. `/sdd.interpretar` — genera IR estructurado (confidence score)
-3. `/sdd.diseñar` — crea ProductDesign
-4. `/sdd.especificar` — genera spec.md con criterios de aceptación
-5. `/sdd.planificar` — diseña plan técnico detallado
-6. `/sdd.tareas` — desglosa en tareas atómicas
-7. `/sdd.implementar` — ejecuta tareas con agentes paralelos
-8. `/sdd.desplegar` — lleva a producción
-
-**Nota:** `/sdd.aclarar` es un comando condicional que ramifica desde `/sdd.especificar` cuando hay ambigüedades.
-
-### Nivel 3: Estados de máquina (11 totales)
-
-Los 11 valores posibles de `estado.json → pipeline_step`, que registran el progreso exacto del proyecto:
-
-```
-idea 
-  ↓
-discovery (después de /sdd.descubrir)
-  ↓
-ir (después de /sdd.interpretar)
-  ↓
-diseño (después de /sdd.diseñar)
-  ↓
-spec (después de /sdd.especificar)
-  ↓
-aclaracion (si hay ambigüedades; regresa a spec después de /sdd.aclarar)
-  ↓
-plan (después de /sdd.planificar)
-  ↓
-tareas (después de /sdd.tareas)
-  ↓
-codigo (durante /sdd.implementar)
-  ↓
-verificacion (durante /sdd.verificar; puede regre sar a spec si falla)
-  ↓
-despliegue (después de /sdd.desplegar)
-  ↓
-[finalizado]
-```
-
-### Cuándo usamos cada término
-
-- **"Etapas"** — cuando hablamos de nivel conceptual (especificación, diseño, implementación, etc.)
-- **"Comandos"** — cuando hablamos de lo que invoca el usuario (`/sdd.especificar`, etc.)
-- **"Estados"** — cuando debuggeamos o consultamos `estado.json`
-- **"Pipeline"** — cuando nos referimos al sistema completo (ambiguo, pero generalmente significa Nivel 2)
-
----
-
-## El pipeline de etapas
-
-El **pipeline** es la secuencia ordenada de transformaciones que llevan una idea a un producto desplegado. Cada etapa tiene:
-
-- Un comando que la activa
-- Entradas que lee de `.sdd/`
-- Una salida que escribe en `.sdd/`
-- Un checkpoint que permite reanudar desde esa etapa
+`estado.json → pipeline_step` toma uno de **nueve** valores, definidos por [core/state-machine.js](../core/state-machine.js) y el esquema [core/schemas/estado.schema.json](../core/schemas/estado.schema.json):
 
 ```mermaid
 flowchart LR
-    A[idea] --> B[descubrimiento]
-    B --> C[IR]
-    C --> D[diseño]
-    D --> E[spec]
-    E --> F[plan]
-    F --> G[tareas]
-    G --> H[código]
-    H --> I[verificación]
-    I --> J[despliegue]
+    idea --> discovery
+    discovery -->|"ir_generado = true"| ir
+    ir -->|"ir_path registrado"| design
+    design -->|"product_design_aprobado = true"| spec
+    spec -->|"spec aprobada (registro firmado)"| plan
+    plan -->|"plan_activo registrado"| tasks
+    tasks --> code
+    code --> done
 ```
 
-### Por qué el orden importa
+Hay ocho transiciones, todas hacia delante. Una versión anterior de este documento (y el [glosario](GLOSARIO.md), que conviene corregir) hablaba de 11 estados con `aclaracion` y `verificacion`: esos valores no existen en la máquina. `aclarar` y `verificar` son comandos, no estados.
 
-Cada etapa reduce la ambigüedad de la anterior. El IR convierte la idea vaga en estructura. El diseño convierte el IR en pantallas y stack concretos. La spec convierte el diseño en criterios de aceptación verificables. El plan convierte la spec en decisiones técnicas. Las tareas convierten el plan en trabajo atómico asignable.
+Particularidades comprobadas en el código:
 
-Saltar etapas aumenta la probabilidad de que la implementación final no resuelva el problema original. FORGE permite saltarse etapas explícitamente (si ya tienes una spec, puedes empezar en `/sdd.planificar`) pero registra que se saltaron.
+- `spec → plan` exige una spec activa (`spec_activa`, `especificacion_activa` o `spec_draft_path`), `spec_aprobado` verdadero **y** que el registro firmado de la aprobación se verifique (`opciones.verificarSpec`). Sin verificador, la transición falla cerrada.
+- Saltarse una guarda exige `--force` con un motivo de al menos 10 caracteres, y deja un evento firmado en el registro (`pipeline_step_forzado`) antes de escribir el estado.
+- Si falta `pipeline_step`, la máquina lo deduce de `fase_actual` con una tabla de traducción (`descubrimiento`, `especificacion`, `tareas_generadas`, `implementacion`, `implementacion_completa`).
+- Desde la terminal: `forge status`, `forge step <paso>`, `forge validate` y `forge state` ([cli/index.js](../cli/index.js)); `forge reset --force` devuelve el pipeline a `idea`.
 
 ---
 
-## Estado del pipeline
+## El estado del pipeline
 
-El **estado del pipeline** es la fuente de verdad sobre dónde está el proyecto. Se almacena en `.sdd/estado.json`.
+El estado del pipeline es la fuente de verdad sobre dónde está el proyecto: `.sdd/estado.json`. Campos del esquema (todos opcionales salvo `schemaVersion`): `pipeline_step`, `ultima_actualizacion`, `ir_generado`, `ir_path`, `product_design_generado`, `product_design_aprobado`, `product_design_path`, `design_direction`, `design_system_path`, `spec_draft_path`, `spec_activa`, `plan_activo` y `artefactos_sesion` (con `ir_confidence`, `stack_decidido`, `complejidad_estimada`, `agentes_activos_ultimo_plan`).
 
-### Campos principales
+Hay además dos estados de tareas con propósito distinto:
 
-```typescript
-interface ForgeEstado {
-  schemaVersion: "1.0";
-  pipeline_step: 'idea' | 'discovery' | 'ir' | 'design' | 'spec' |
-                 'plan' | 'tasks' | 'code' | 'done';
-  spec_activa?: string;           // ruta a la spec en curso
-  plan_activo?: string;           // ruta al plan en curso
-  ir_generado?: boolean;
-  ir_path?: string;
-  product_design_generado?: boolean;
-  product_design_aprobado?: boolean;
-  design_direction?: string;
-  ultima_actualizacion?: string;
+- `.sdd/especificaciones/<id>/.estado-tareas.json`: el punto de reanudación de `/sdd.implementar` cuando lo conduce Claude Code ([commands/sdd.implementar.md](../commands/sdd.implementar.md)). Lo gestiona el comando, y [core/checkpoint.js](../core/checkpoint.js) lee y escribe `ultima_tarea_completada`.
+- `.sdd/motor/`: el estado del motor del ciclo verificado (`forge run` / `forge resume`). Es otro mecanismo, con sello (véase abajo).
 
-  artefactos_sesion?: {
-    ir_confidence?: number;
-    stack_decidido?: string;
-    complejidad_estimada?: 'low' | 'medium' | 'high';
-    agentes_activos_ultimo_plan?: string[];
-  };
-}
-```
+---
 
-### Checkpoints de tareas
+## El ciclo verificado
 
-Dentro de cada spec activa, `.sdd/especificaciones/{id}/.estado-tareas.json` registra el estado de cada tarea individual:
+Es el cambio central de la serie 5.0. En vez de pedir una vez al modelo que escriba una tarea, `forge run` repite un ciclo hasta que las pruebas pasan o hasta que hace falta una persona. Desde 5.0.0 es el modo por defecto (`motor.modo: ciclo` en [core/ciclo/config.js](../core/ciclo/config.js)); el modo antiguo exige pedirlo (`--motor clasico`) y avisa de que ejecuta en el equipo, sin aislamiento.
 
-```json
-{
-  "tareas": [
-    { "id": "T-001", "titulo": "Crear schema BD", "estado": "completada", "agente": "asesor-datos" },
-    { "id": "T-002", "titulo": "Implementar auth JWT", "estado": "en_progreso", "agente": "desarrollador-backend" },
-    { "id": "T-003", "titulo": "Tests de integración", "estado": "pendiente", "agente": "tester" }
-  ]
-}
-```
+Las ideas que lo definen:
 
-Este archivo es el mecanismo de reanudación. Cuando ejecutas `/sdd.implementar continuar`, FORGE lee este archivo, encuentra la primera tarea con estado `en_progreso` o `pendiente`, y la despacha al agente asignado.
+1. **El veredicto lo decide un código de salida, no un modelo.** Las rutas del grafo salen de funciones puras sobre el código de salida y el estado ([core/ciclo/router.js](../core/ciclo/router.js)). Esa es una restricción del proyecto ([AGENTS.md](../AGENTS.md)).
+2. **El código generado se ejecuta aislado.** Las pruebas corren en un contenedor sin red, sin privilegios y con límites ([core/sandbox/](../core/sandbox/)). Si Docker no está disponible, `forge run` se detiene con el código 4; no degrada a ejecutar en el equipo.
+3. **Rojo obligatorio.** El agente de pruebas escribe las pruebas y se comprueba que *fallan* sin implementación. Unas pruebas que ya pasan se rehacen una vez; si siguen pasando, se pide revisión.
+4. **Medición de las pruebas por mutación.** Tras un pase se alteran líneas del código escrito y se mide cuántas alteraciones detectan las pruebas. Con `motor.mutacion: informar` (valor por defecto) solo se registra; con `exigir` un resultado bajo manda a reforzar las pruebas y, si no basta, a revisión humana.
+5. **Puertas de calidad opcionales.** Tipos, linter, seguridad y cobertura se declaran en `sdd.config.yaml`; si una falla, la tarea vuelve al implementador ([puertas-de-calidad.md](puertas-de-calidad.md)).
+6. **Revisión humana explícita.** Un tope de iteraciones, el gasto agotado, un fallo del entorno o un «pase sospechoso» detienen el ciclo hasta que alguien decide `continuar`, `aceptar` o `abortar` (`forge resume --decision ...`). Mientras no hay decisión no se gasta nada.
+7. **Tope de gasto por sesión**, con los precios de una lista interna ([core/precios.js](../core/precios.js)). La comparación del gasto calculado con la factura real no se ha hecho ([ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
+
+El diagrama de nodos y transiciones, leído de [core/ciclo/grafo.js](../core/ciclo/grafo.js), está en [mapa-de-modulos.md](mapa-de-modulos.md#el-ciclo-verificado-nodos-y-transiciones). La descripción de uso, en [ciclo-verificado.md](ciclo-verificado.md). Lo que garantiza y lo que no, en [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md).
+
+---
+
+## Lo que un repositorio ajeno no puede decidir
+
+Un proyecto puede venir de un tercero. La revisión de seguridad de 5.0 siguió un patrón: *un archivo del proyecto no decide nada que proteja al usuario*. Los mecanismos, cada uno con su módulo:
+
+| Mecanismo | Qué impide | Dónde |
+|---|---|---|
+| Estado sellado | Que un repositorio traiga un punto de guardado o una sesión fabricados y se presente como «verificado». El sello es un HMAC-SHA256 con una clave del usuario, fuera del proyecto; sin sello válido el estado se ignora y la tarea empieza de cero | [core/ciclo/sello.js](../core/ciclo/sello.js) |
+| Perfiles de agente | Que el proyecto amplíe las herramientas, rutas o topes de un rol (`planner`, `qa`, `coder`). El proyecto solo puede apretar; lo que intente ampliar se ignora y se avisa | [core/ciclo/perfiles.js](../core/ciclo/perfiles.js) |
+| Saneado de `llm:` | Que `sdd.config.yaml` envíe la clave del modelo a otro servidor (`base_url`, `api_key`) | [core/llm-providers/index.js](../core/llm-providers/index.js) |
+| Topes del entorno | Subir CPU, memoria, tiempo o gasto desde un archivo del proyecto | [core/ciclo/config.js](../core/ciclo/config.js), [core/puertas/config.js](../core/puertas/config.js) |
+| Delimitador de datos ajenos | Que el contenido del proyecto llegue al modelo como instrucciones | [core/ciclo/dato-no-confiable.js](../core/ciclo/dato-no-confiable.js) |
+| Control de salida | Que el modelo escriba secretos, rutas fuera del proyecto o configuración de calidad protegida | [core/ciclo/control-salida.js](../core/ciclo/control-salida.js), [core/evidencia/protegidos.js](../core/evidencia/protegidos.js) |
+| Cadena de evidencia | Retocar después un informe de `forge verificar --registrar`: cada informe lleva el hash del anterior y una firma con la clave local | [core/evidencia/cadena.js](../core/evidencia/cadena.js), [cadena-de-evidencia.md](cadena-de-evidencia.md) |
+| Guardián de hooks | Que un agente edite el propio guardián, `.git/` o los ajustes de hooks | [claude-hooks/pre-tool-guard.js](../claude-hooks/pre-tool-guard.js) |
+
+Los límites (secretos partidos o en base64 que no se detectan, firma simétrica que el mismo usuario del sistema podría leer, estado no portable entre equipos) están en [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md) y [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
 ---
 
 ## Memoria de agentes
 
-La **memoria de agentes** es el mecanismo por el que el sistema recuerda qué hizo cada agente entre sesiones. Se gestiona automáticamente por el hook `agent-memory.js`.
+El hook `agent-memory.js` (`PostToolUse` sobre `Write|Edit`) guarda, tras cada escritura, qué agente tocó qué archivo. Se identifica al agente por la variable de entorno `CLAUDE_AGENT_NAME`. Lo que hace, comprobado en [claude-hooks/agent-memory.js](../claude-hooks/agent-memory.js):
 
-### Cómo funciona
+1. Añade una línea a `.sdd/observabilidad/consumo.jsonl` (`ts`, `agente`, `tool`, `archivo`, `bytes`, `tokens_est`, `provider`, `effort_level`). Los tokens son una estimación por tamaño del contenido, no un consumo real.
+2. Añade una línea a `.sdd/observabilidad/mutaciones.jsonl`.
+3. Extrae los comentarios `ADR: {...}` del contenido escrito (véase [ADR](#registros-de-decisiones-de-arquitectura-adr)).
+4. Solo para nueve agentes (`arquitecto`, `asesor-datos`, `disenador-api`, `critico`, `desarrollador-backend`, `desarrollador-frontend`, `tester`, `documentador`, `operaciones`): actualiza el índice `.sdd/memoria/indice.jsonl` y la memoria del agente.
 
-Cada vez que un agente escribe o edita un archivo, el hook PostToolUse:
+La memoria del agente tiene dos soportes, elegidos por [claude-hooks/shared/config.js](../claude-hooks/shared/config.js): SQLite (`.sdd/memoria/memoria.db`) si Node es 22.5 o superior, o Markdown (`.sdd/memoria/agente-<nombre>.md`) en caso contrario. Se puede forzar con `memoria.backend` en `sdd.config.yaml`. Si SQLite falla se cae a Markdown con un aviso. El hook comprime una memoria Markdown cuando supera `umbral_bytes` (40 000 por defecto): conserva la última entrada por archivo y guarda el original en `.original.md`. La versión anterior de este documento decía que invocaba una skill `memory-compactor` y que el umbral por defecto era 50 000: ninguna de las dos cosas es cierta.
 
-1. Identifica el agente por la variable de entorno `CLAUDE_AGENT_NAME`
-2. Añade una entrada al archivo `.sdd/memoria/agente-{nombre}.md`
-3. Actualiza el índice invertido `.sdd/memoria/indice.jsonl`
-4. Registra la entrada en el ledger `.sdd/observabilidad/consumo.jsonl`
-5. Si el archivo supera `umbral_bytes`, invoca el compactador de memoria
-
-### Estructura del archivo de memoria
-
-```markdown
-# Memoria — arquitecto
-
-## 2026-06-21T10:15:00Z
-**Archivo:** src/auth/jwt.service.ts
-**Acción:** Creó implementación de JWT con RS256
-**Contexto:** Spec T-002 requería autenticación stateless
-
-## 2026-06-21T10:32:00Z
-**Archivo:** src/config/database.ts
-**Acción:** Configuró pool de conexiones PostgreSQL
-**Decisión:** Pool máximo de 20 conexiones (ver ADR-003)
-```
-
-### Backend SQLite (Node ≥22.5)
-
-Cuando se detecta Node ≥22.5, el hook puede usar SQLite como backend de memoria. Esto habilita consultas más rápidas y búsqueda semántica sobre el historial de agentes. La migración de Markdown a SQLite no es automática — requiere configuración explícita (`memoria.backend: sqlite`).
-
-### Compactación automática
-
-Cuando un archivo de memoria supera `memoria.umbral_bytes` (predeterminado: 50.000 bytes), la skill `memory-compactor` condensa las entradas antiguas en un resumen, preservando las entradas recientes intactas. Esto evita que los archivos de memoria crezcan indefinidamente.
+Las consultas selectivas (`query-memory.js`) funcionan sobre el índice JSONL. La recuperación semántica del ciclo es otra cosa: véase [memoria-semantica.md](memoria-semantica.md).
 
 ---
 
-## El sistema de hooks
+## Los hooks de Claude Code
 
-Los **hooks** son scripts JavaScript que Claude Code ejecuta automáticamente antes (PreToolUse) o después (PostToolUse) de cada llamada a herramienta.
+Los hooks son scripts de Node que Claude Code ejecuta antes (`PreToolUse`) o después (`PostToolUse`) de una herramienta. Son una integración con Claude Code: el motor (`core/`, `forge run`) **no** depende de ellos. La referencia completa, con qué hook registra cada `settings.json`, está en [hooks.md](hooks.md); el comportamiento de cada uno, en [runtime.md](runtime.md). En resumen:
 
-FORGE registra tres hooks en `.claude/settings.json`:
+- `pre-tool-guard.js` (`PreToolUse`): el guardián. Bloquea comandos destructivos, secretos en lo que se escribe, escritura de agentes de solo lectura, edición de la configuración de calidad protegida y del propio guardián. Falla cerrado.
+- `agent-memory.js` y `post-write-conventions.js` (`PostToolUse`): memoria y convenciones.
+- `ast-indexer.js` o `context-manager.js` según el `settings.json` que se use.
 
-### pre-tool-guard.js (PreToolUse)
-
-Se ejecuta antes de `Bash`, `Write`, `Edit`, `MultiEdit`. Bloquea:
-
-**Comandos destructivos del sistema:**
-- `rm -rf /`, `rm -rf ~`, `rm -rf .`
-- `git push --force` a ramas protegidas
-- `DROP DATABASE`, `DROP TABLE` (sin flag explícito)
-- `chmod 777` y `chmod -R 777`
-
-**Secrets hardcodeados** (8 patrones):
-- API keys (`sk-`, `pk-`, claves de 32+ caracteres)
-- Contraseñas en código fuente
-- Tokens de acceso
-
-**Restricciones por agente:**
-- Agentes marcados como `read-only` en la constitución no pueden escribir archivos
-
-**Edit sobre archivo inexistente:**
-- Bloquea `Edit`/`MultiEdit` sobre rutas que no existen (sugiere usar `Write` en su lugar)
-
-### agent-memory.js (PostToolUse)
-
-Se ejecuta después de `Write`, `Edit`, `MultiEdit`. Registra la actividad del agente y actualiza todos los índices de memoria.
-
-### post-write-conventions.js (PostToolUse)
-
-Se ejecuta después de `Write`, `Edit`. Lee dinámicamente la constitución y detecta convenciones del proyecto existente (nomenclatura, indentación, uso de semicolons, etc.), luego valida el archivo recién escrito contra ellas.
+El guardián se describe a sí mismo como una **red de seguridad, no un límite**: la defensa principal es `permissions.deny` gestionado y el aislamiento (véase [SECURITY.md](../SECURITY.md)).
 
 ---
 
-## Modos de conducción
+## Perfiles y modos de sesión
 
-FORGE tiene dos modos que cambian cómo se presenta la información y cuánto se detiene el pipeline para aprobación humana.
+Hay dos ejes independientes, ambos en `sdd.config.yaml` ([configuracion-ejemplo/sdd.config.yaml](../configuracion-ejemplo/sdd.config.yaml)):
 
-### Modo `guiado`
+- **`perfil`**: `guiado` (por defecto si no se declara) o `experto`. Según el comentario del archivo de ejemplo, el perfil guiado no programa por la persona: el sistema decide lo técnico, explica sin jerga y confirma antes de actuar; el rigor no cambia. Lo establece `/sdd.constitucion`. Quién lo aplica: las instrucciones de los comandos y los agentes, no el motor.
+- **`sesion.modo`**: `normal`, `rapido` o `prototipo`, que se cambia con `/sdd.modo` o `forge config set sesion.modo rapido`. Según el texto de [commands/sdd.modo.md](../commands/sdd.modo.md): `rapido` omite el agente `critico`; `prototipo` omite `critico`, `seguridad` y los ADR. Los lee el texto de los comandos; no hay en `core/` código que lea `sesion.modo`. La cifra de ahorro de tokens que cita el comando («~30 %») no está medida: no verificado.
 
-Para usuarios no técnicos o proyectos que requieren supervisión estrecha:
-
-- El pipeline pausa para aprobación humana en cada etapa mayor
-- Los mensajes usan lenguaje llano, sin jerga técnica
-- Las opciones se presentan como selecciones simples, no como configuración YAML
-- Los errores se explican con causas y pasos de resolución, no con stack traces
-
-Activar: `perfil: guiado` en `sdd.config.yaml`, o `npx forge-sdd init --guided`.
-
-### Modo `experto`
-
-Para desarrolladores que quieren control total y velocidad:
-
-- El pipeline avanza sin pausas de confirmación (excepto despliegues)
-- Los mensajes incluyen detalle técnico completo
-- Los comandos aceptan flags avanzados
-- Los errores exponen el contexto completo
-
-Activar: `perfil: experto` en `sdd.config.yaml`.
-
-### Modo de sesión
-
-Independientemente del perfil, cada sesión puede estar en uno de tres modos:
-
-| Modo | Qué omite | Cuándo usar |
-|------|-----------|-------------|
-| `normal` | Nada | Trabajo de producción |
-| `rapido` | Agente `critico`, algunas verificaciones | Iteraciones internas rápidas |
-| `prototipo` | `critico`, `seguridad`, generación de ADR | Exploración y pruebas de concepto |
-
-Cambiar el modo de sesión: `/sdd.modo rapido` o editar `sesion.modo` en `sdd.config.yaml`.
+Ninguno de los dos modos desactiva el aislamiento ni las pruebas del ciclo verificado: esos controles no dependen de `perfil` ni de `sesion.modo`.
 
 ---
 
-## Programmatic Tool Calling (PTC)
+## Despacho paralelo de agentes (PTC)
 
-**PTC (Programmatic Tool Calling)** es el mecanismo de despacho paralelo de agentes. Usa la herramienta `Task` nativa de Claude Code para ejecutar múltiples agentes simultáneamente.
+**PTC (Programmatic Tool Calling)** es un patrón descrito en la skill [orquestacion-ptc](../skills/orquestacion-ptc/SKILL.md): el orquestador despacha en paralelo agentes independientes con la herramienta `Task` de Claude Code y agrega solo un resultado mínimo por agente (pasa o falla más un diff pequeño), en vez de leer cada conversación entera. Aplica cuando hay tres o más tareas independientes y no cuando un paso depende del anterior o hay una acción irreversible.
 
-### Sin PTC (despacho secuencial)
-
-```
-orquestador → arquitecto → [espera] → critico → [espera] → seguridad → [espera] → resultado
-```
-
-Cada agente produce una respuesta completa. El orquestador lee esa respuesta, la procesa y despacha el siguiente agente. El costo en tokens es lineal con el número de agentes.
-
-### Con PTC (despacho paralelo)
-
-```
-orquestador → [backend, frontend, tester en paralelo] → agrega: PASA/FALLA + diff mínimo → resultado
-```
-
-Los agentes producen solo un resultado compacto (pasa/falla + diff mínimo). El orquestador agrega los resultados sin leer las conversaciones completas. Reducción de tokens de orquestación: ~85%.
-
-PTC está disponible cuando la skill `orquestacion-ptc` está activa. `/sdd.implementar` y `/sdd.analizar` pueden usarla automáticamente cuando la complejidad de la tarea lo justifica.
+Es un patrón de instrucciones para el modelo, no una función del motor. La reducción de tokens que anuncia la skill («~85 %», citada de una referencia externa) **no está medida en este repositorio**: no verificado. El motor de `forge run` tiene su propio umbral de paralelismo para tareas que no usan el ciclo (`parallelThreshold: 3` en [core/orchestrator.js](../core/orchestrator.js)); con el ciclo verificado activo las tareas de código se ejecutan en secuencia.
 
 ---
 
-## Registros de Decisiones Arquitectónicas (ADR)
+## Registros de decisiones de arquitectura (ADR)
 
-Los **ADR (Architectural Decision Records)** son documentos cortos que registran por qué se tomó una decisión técnica significativa, qué alternativas se consideraron y cuáles son las consecuencias.
+Un **ADR** registra por qué se tomó una decisión técnica, qué alternativas había y qué consecuencias tiene. En este repositorio están en [.sdd/arquitectura/](../.sdd/arquitectura/) con el formato `ADR-NN-slug.md` y la fecha en la cabecera (ADR-01 a ADR-24 en esta revisión). La plantilla es [plantillas/decision-arquitectura.md](../plantillas/decision-arquitectura.md).
 
-FORGE genera ADRs automáticamente cuando:
+Hay tres vías, y no hacen lo mismo:
 
-- El agente `arquitecto` toma una decisión de diseño significativa
-- Un comentario en el código tiene el formato `// ADR: {...}` (el hook `agent-memory.js` lo extrae)
-- El comando `/sdd.adr` se invoca explícitamente
-
-Los ADRs se almacenan en `.sdd/arquitectura/ADR-{numero}-{slug}.md`.
-
-### Formato de un ADR
-
-```markdown
-# ADR-003 — Pool de conexiones máximo 20
-
-**Estado:** Aceptado
-**Fecha:** 2026-06-21
-**Agente:** arquitecto
-
-## Contexto
-El backend necesita manejar hasta 100 peticiones concurrentes con latencia < 100ms.
-
-## Decisión
-Configurar `pg` con pool máximo de 20 conexiones a PostgreSQL.
-
-## Alternativas consideradas
-- Pool de 50: excede los límites del plan Railway Starter (25 conexiones)
-- Sin pool: latencia de 800ms+ por overhead de nueva conexión
-
-## Consecuencias
-- Máximo 20 consultas BD simultáneas
-- Si se supera, las peticiones hacen cola (timeout: 5s)
-- Necesario monitorear `pool.waitingCount` en producción
-```
-
-En modo `prototipo`, la generación de ADRs está desactivada. En modo `rapido`, solo se generan para decisiones marcadas como de alto impacto.
+1. **`/sdd.adr`** (comando): guarda la decisión en `.sdd/arquitectura/ADRs.jsonl` (registro de solo adición), según el texto de [commands/sdd.adr.md](../commands/sdd.adr.md).
+2. **Comentario `ADR: {...}` en el código**: lo extrae el hook `agent-memory.js` y lo añade a `.sdd/arquitectura/ADRs.jsonl` y a `.sdd/memoria/compartida/decisiones-clave.md`, y lo registra en el almacén de decisiones ([core/decisions/decision-store.js](../core/decisions/decision-store.js)). El hook **no** crea archivos `ADR-NN-slug.md`, como afirmaba una versión anterior.
+3. **ADR con patrones prohibidos**: un archivo `.sdd/arquitectura/ADR-NN-*.md` con la línea `> Estado: aceptada` y una sección `## Patrones prohibidos` (un término entre comillas invertidas por línea) se vuelve una regla ejecutable. El guardián (`pre-tool-guard.js`) bloquea escribir un contenido que lo contenga, y el motor aplica la misma regla en [core/ciclo/adr-prohibidos.js](../core/ciclo/adr-prohibidos.js) con cualquier modelo (ADR-16). No se deduce nada del texto libre.

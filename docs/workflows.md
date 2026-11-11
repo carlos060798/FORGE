@@ -1,581 +1,141 @@
 # Flujos de trabajo
 
-Este documento describe cada etapa del pipeline de FORGE, los comandos disponibles, sus flags, entradas, salidas y cuándo usarlos.
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 7683f83
 
-**Conceptos previos:** Si no estás familiarizado con SDD (Spec-Driven Development), pipeline de etapas, o máquina de estados, [lee primero Conceptos Fundamentales](core-concepts.md).
+Qué etapas tiene el trabajo con Fragua, qué comando ejecuta cada una y qué comprueba el código en cada transición. Conceptos previos: [core-concepts.md](core-concepts.md). Estado del proyecto: [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).
 
----
+Hay dos niveles que conviene no mezclar:
 
-## El pipeline completo
+1. **Los comandos `/sdd.*`** (`commands/*.md`): textos que sigue el modelo dentro de Claude Code. Guían el trabajo, pero lo que hacen depende de que el modelo siga el texto.
+2. **La máquina de estados y el ciclo verificado** (`core/state-machine.js`, `core/ciclo/`): código determinista. Las comprobaciones que no dependen del modelo están aquí.
 
-```mermaid
-flowchart TD
-    IDEA["💡 Idea\n(lenguaje natural)"]
-    DESC["📋 Descubrimiento\n/sdd.descubrir"]
-    INTERP["🔍 Interpretación\n/sdd.interpretar"]
-    DIS["🎨 Diseño\n/sdd.diseñar"]
-    SPEC["📄 Especificación\n/sdd.especificar"]
-    ACLAR["❓ Aclaración\n/sdd.aclarar"]
-    PLAN["🗺️ Planificación\n/sdd.planificar"]
-    TAREAS["✅ Tareas\n/sdd.tareas"]
-    IMPL["⚙️ Implementación\n/sdd.implementar"]
-    VERIF["🔬 Verificación\n/sdd.verificar"]
-    DESP["🚀 Despliegue\n/sdd.desplegar"]
-    DONE["✨ Producción"]
+## Máquina de estados del pipeline
 
-    IDEA --> DESC
-    DESC --> INTERP
-    INTERP --> DIS
-    DIS --> SPEC
-    SPEC --> ACLAR
-    ACLAR --> SPEC
-    SPEC --> PLAN
-    PLAN --> TAREAS
-    TAREAS --> IMPL
-    IMPL --> VERIF
-    VERIF -->|falla| SPEC
-    VERIF -->|pasa| DESP
-    DESP --> DONE
-```
+Nueve pasos, definidos en `core/state-machine.js` (`TRANSITIONS`). Solo existen las transiciones de la tabla; cualquier otra se rechaza con la lista de las válidas.
 
----
-
-## Etapa 1 — Descubrimiento
-
-### `/sdd.descubrir`
-
-**Propósito:** Extraer la intención real del usuario desde una descripción inicial que puede ser vaga o incompleta.
-
-**Agente:** `investigador`
-
-**Proceso:**
+| Desde | Hacia | Condición que comprueba el código |
+|---|---|---|
+| `idea` | `discovery` | ninguna |
+| `discovery` | `ir` | `ir_generado` verdadero |
+| `ir` | `design` | `ir_path` registrado |
+| `design` | `spec` | `product_design_aprobado` verdadero |
+| `spec` | `plan` | hay spec activa o borrador, y `spec_aprobado` verdadero (se aprueba con `fragua aprobar spec`, que exige un terminal real) |
+| `plan` | `tasks` | `plan_activo` registrado |
+| `tasks` | `code` | ninguna |
+| `code` | `done` | ninguna |
 
 ```mermaid
-sequenceDiagram
-    actor Usuario
-    participant CMD as sdd.descubrir
-    participant INV as investigador
-    participant SDD as .sdd/
-
-    Usuario->>CMD: /sdd.descubrir [descripción]
-    CMD->>INV: activa skill descubrir-idea
-    INV->>Usuario: Pregunta 1: ¿Para quién es esto?
-    Usuario->>INV: respuesta
-    INV->>Usuario: Pregunta 2: ¿Qué problema resuelve?
-    Usuario->>INV: respuesta
-    Note over INV: ... 3 preguntas más ...
-    INV->>CMD: respuestas estructuradas
-    CMD->>SDD: actualiza pipeline_step → discovery
-    CMD->>Usuario: Discovery completo — ¿continuar con /sdd.interpretar?
+flowchart LR
+    idea --> discovery --> ir --> design --> spec --> plan --> tasks --> code --> done
 ```
 
-**Salida:** Respuestas estructuradas almacenadas temporalmente; `pipeline_step` → `discovery`.
+- Se consulta y se mueve a mano, sin modelo, con `fragua status`, `fragua step <paso>`, `fragua validate` y `fragua state` ([referencia-cli.md](referencia-cli.md)).
+- `fragua step <paso> --force --motivo "..."` salta las condiciones; exige un motivo de al menos 10 caracteres y deja un evento firmado `pipeline_step_forzado`.
+- Los comandos `/sdd.*` registran su avance en `fase_actual` con su propio vocabulario (`descubrimiento`, `especificacion`, `tareas_generadas`, `implementacion`, `implementacion_completa`); la máquina lo traduce cuando falta `pipeline_step`. Verificación y despliegue **no** son pasos de la máquina: `code` pasa directamente a `done`.
 
-**Cuándo saltarla:** Si ya tienes una descripción detallada, puedes ir directamente a `/sdd.interpretar [descripción]` o a `/sdd.especificar` si ya tienes requisitos escritos.
+## Los comandos, por etapa
 
----
+Descripciones tomadas de la cabecera de cada archivo de `commands/`. «Perfil esencial» marca los seis comandos que instala `fragua init` sin opciones (ver [configuration.md](configuration.md#perfil-de-instalación-y-preset-lean-por-defecto)).
 
-### `/sdd.interpretar`
+### Entrada
 
-**Propósito:** Transformar la descripción o las respuestas del discovery en un IR estructurado con puntuación de confianza.
+| Comando | Qué hace |
+|---|---|
+| `/forge` (perfil esencial) | Punto de entrada principal: tomas una idea en lenguaje natural y Fragua la especifica, construye, prueba y verifica |
+| `/sdd` | Hub: lee el estado del proyecto y guía al siguiente paso; acepta intenciones en lenguaje natural y enruta al comando adecuado |
+| `/sdd.construir` | Pipeline completo en un solo comando: interpreta si no hay IR, diseña si no hay diseño y luego mapea spec, planifica, genera tareas e implementa |
+| `/sdd.ayuda` | Guía de comandos, flujos y agentes |
 
-**Agente:** `investigador` + skill `interpretar-idea`
+### Descubrimiento y diseño
 
-**Salida:** `.sdd/ir.json`
+| Comando | Qué hace |
+|---|---|
+| `/sdd.descubrir` | Extrae contexto mínimo cuando la descripción es vaga: preguntas concretas y un documento de contexto base antes de especificar |
+| `/sdd.interpretar` | Convierte una idea en texto libre en un IR (JSON validado); orquesta discovery, interpretación y validación |
+| `/sdd.diseñar` | Fase de diseño: orquesta el selector de dirección visual, `product-designer`, `architecture-designer`, el wireframe del MVP y la crítica del diseño. Requiere `.sdd/ir.json` |
+| `/sdd.constitucion` | Crea o actualiza la constitución del proyecto (principios fundacionales, versionado semántico) |
 
-**Flags:**
+### Especificación
 
-| Flag | Descripción |
-|------|-------------|
-| *(ninguno)* | Lee el resultado del descubrimiento previo |
-| `[descripción]` | Interpreta directamente desde el texto dado |
+| Comando | Qué hace |
+|---|---|
+| `/sdd.especificar` (perfil esencial) | Convierte una intención en una especificación con criterios de aceptación en formato Dado/Cuando/Entonces, sin detalles de implementación |
+| `/sdd.aclarar` | Resuelve marcadores `[NECESITA_ACLARACION]` y ambigüedades de la spec activa con preguntas estructuradas |
+| `/sdd.checklist` | Aplica un checklist de calidad a la spec activa (completitud, claridad, testabilidad, alineación con la constitución) |
+| `/sdd.importar` | Importa una especificación externa (Markdown, issue de GitHub o GitLab, documento compartido) al formato del proyecto |
 
-**Ejemplo:**
-```
-/sdd.interpretar plataforma de cursos online con pagos y certificados
-```
+### Planificación
 
-**Cuándo el IR necesita aclaración:** Si `confidence < 0.7` o `requires_clarification: true`, FORGE sugiere ejecutar `/sdd.aclarar` antes de continuar. Puedes ignorar la sugerencia con `/sdd.diseñar forzar`.
+| Comando | Qué hace |
+|---|---|
+| `/sdd.planificar` (perfil esencial) | Plan técnico desde la spec: arquitectura, contratos de API, modelo de datos, archivos afectados, riesgos; delega en los agentes configurados |
+| `/sdd.analizar` | Comprueba consistencia y cobertura cruzada entre constitución, spec, plan y tareas antes de implementar |
+| `/sdd.tareas` (perfil esencial) | Desglosa el plan en tareas atómicas, ordenadas por dependencias, con criterios de verificación y agente responsable |
+| `/sdd.adr` | Indexa, lista y gestiona las decisiones arquitectónicas |
 
----
+### Implementación
 
-## Etapa 2 — Diseño
+| Comando | Qué hace |
+|---|---|
+| `/sdd.implementar` (perfil esencial) | Ejecuta las tareas con los agentes: todas en secuencia (sin argumentos), una concreta (por ejemplo `T003`) o `continuar` |
 
-### `/sdd.diseñar`
+Para código verificado en contenedor, el camino es la CLI (`fragua run`), descrita más abajo.
 
-**Propósito:** Producir el diseño del producto: pantallas principales, flujo de usuario, dirección visual y stack tecnológico recomendado.
+### Verificación y despliegue
 
-**Agentes:** `product-designer`, `architecture-designer`
+| Comando | Qué hace |
+|---|---|
+| `/sdd.verificar` | Comprueba que el código cumple los criterios de aceptación de la spec, con el agente `revisor` |
+| `/sdd.qa` | Prueba el producto en un navegador real generando casos E2E a partir de los criterios de aceptación; usa un MCP de navegador |
+| `/sdd.compliance` | Reporte de cumplimiento regulatorio (GDPR, SOC2, ISO 27001, HIPAA) contra el estado del proyecto |
+| `/sdd.desplegar` | Despliega con verificación previa y comprobación posterior; no publica si fallan las pruebas o la verificación contra la spec, y exige confirmación explícita |
+| `/sdd.canary` | Vigila un servicio recién desplegado consultando su endpoint de salud a intervalos |
 
-**Proceso:**
-1. `product-designer` lee el IR y define pantallas P0/P1/P2 y flujo de usuario
-2. `architecture-designer` recomienda el stack y estima complejidad
-3. La skill `elegir-direccion` presenta las 5 opciones visuales al usuario
-4. El resultado se guarda en `product-design.json`
+### Estado, sesión y mantenimiento
 
-**Salida:** `.sdd/product-design.json`, wireframe HTML de pantalla P0
+| Comando | Qué hace |
+|---|---|
+| `/sdd.estado` (perfil esencial) | Estado actual: fase, spec activa, progreso de tareas, siguiente paso recomendado |
+| `/sdd.modo` | Muestra o cambia `sesion.modo` (`normal`, `rapido`, `prototipo`) en `sdd.config.yaml` |
+| `/sdd.configurar` | Ajusta `sdd.config.yaml`: agentes, modelos, comportamientos, presets |
+| `/sdd.mapear` | Indexa estructura, símbolos públicos y dependencias en `.sdd/mapa/` |
+| `/sdd.comprimir` | Comprime archivos para ahorrar tokens de entrada (memoria y configuración del plugin) |
+| `/sdd.optimizar`, `/sdd.optimizar-memoria`, `/compact` | Alias de `/sdd.comprimir` según sus cabeceras |
+| `/sdd.glosario` | Gestiona el glosario del dominio |
+| `/sdd.snapshot` | Actualiza `SNAPSHOT.md` con las funcionalidades activas, tras completar una spec |
+| `/sdd.release` | Calcula una versión semántica desde las specs completadas, actualiza el número de versión y el `CHANGELOG.md` |
+| `/sdd.retro` | Retrospectiva ligera tras completar una feature o un despliegue |
+| `/sdd.defect-report` | Reporte de calidad con tasa de escape y mutaciones |
+| `/sdd.exportar` | Exporta el proyecto como bundle portable con las piezas usadas |
 
-**Flags:**
+### Creación
 
-| Flag | Descripción |
-|------|-------------|
-| *(ninguno)* | Flujo completo con elección de dirección visual |
-| `aprobar` | Acepta la primera dirección visual propuesta sin preguntar |
+| Comando | Qué hace |
+|---|---|
+| `/sdd.crear-agente` | Asistente para crear un agente nuevo |
+| `/sdd.crear-app` | Convierte una descripción en una app web o CLI mínima, lista para `/sdd.desplegar` |
+| `/sdd.crear-mcp` | Convierte una descripción en un servidor MCP empaquetado como `.mcpb`; cada criterio de aceptación se vuelve una herramienta |
 
----
+Total: 39 archivos en `commands/`. Los alias `/sdd.optimizar`, `/sdd.optimizar-memoria` y `/compact` redirigen a `/sdd.comprimir`.
 
-## Etapa 3 — Especificación
+## El ciclo verificado
 
-### `/sdd.especificar`
+`fragua run` (motor `ciclo`, el predeterminado desde 5.0.0) ejecuta las tareas de código fuera del flujo de comandos y con comprobaciones deterministas. Detalle en [ciclo-verificado.md](ciclo-verificado.md). Lo que el código garantiza (`core/engine-cli.js`, `core/ciclo/`):
 
-**Propósito:** Producir la especificación del proyecto: criterios de aceptación, modelo de datos, contrato de API y definición de "hecho".
+- Solo se ejecuta en la etapa `code` (o avanza solo desde `tasks`); con `--force` se salta esa comprobación.
+- Cada tarea de código se corrige hasta que sus pruebas pasan, ejecutadas en un contenedor Docker sin red. Sin Docker, sale con código 4.
+- Los agentes que intervienen son `arquitecto` (planifica), `tester` (escribe las pruebas) y el agente que nombra cada tarea (implementa).
+- Hay un tope de gasto por sesión (2,00 USD por defecto) y, cuando una tarea no puede terminar sola, queda esperando tu decisión y el comando sale con código 3. Se decide con `fragua resume --decision continuar|aceptar|abortar`.
+- Opcionalmente se miden las pruebas por mutación y se ejecutan las puertas de calidad declaradas en `sdd.config.yaml` ([puertas-de-calidad.md](puertas-de-calidad.md)).
 
-**Agentes:** `arquitecto`, `disenador-api`, `asesor-datos`
+Sin modelo, `fragua verificar` da el veredicto de las pruebas en el contenedor ([ciclo-verificado.md](ciclo-verificado.md), [cadena-de-evidencia.md](cadena-de-evidencia.md)).
 
-**Salida:** `.sdd/especificaciones/{YYYY-MM-DD-slug}/spec.md`
+## Qué pasa si algo falla
 
-**Estructura de la spec:**
+[QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md) describe los fallos por situación; [PROBLEMAS-CONOCIDOS.md](PROBLEMAS-CONOCIDOS.md) reúne los límites conocidos.
 
-```markdown
-# Especificación — TaskFlow Auth
+## No verificado
 
-## Criterios de aceptación
-
-### AC-001: Login con email y contraseña
-- DADO un usuario registrado
-- CUANDO ingresa email y contraseña correctos
-- ENTONCES recibe un JWT válido con expiración de 15 minutos
-- Y se registra el evento en el log de auditoría
-
-### AC-002: Refresh de token
-...
-
-## Modelo de datos
-...
-
-## Contrato de API
-...
-
-## Definición de "hecho"
-- [ ] Todos los criterios de aceptación satisfechos
-- [ ] Cobertura de tests ≥ 80%
-- [ ] Sin vulnerabilidades de seguridad conocidas
-```
-
-**Flags:**
-
-| Flag | Descripción |
-|------|-------------|
-| *(ninguno)* | Genera spec completa |
-| `rapido` | Omite el agente `critico` en la revisión |
-| `continuar` | Retoma una spec en progreso |
-
----
-
-### `/sdd.aclarar`
-
-**Propósito:** Resolver los marcadores `[NECESITA_ACLARACION]` que el proceso de especificación dejó pendientes.
-
-**Proceso:** Para cada marcador, hace una pregunta específica al usuario y actualiza la spec con la respuesta.
-
-**Cuándo se necesita:** Cuando la spec contiene `[NECESITA_ACLARACION]` — FORGE no puede proceder a la planificación hasta que estén resueltos (o se fuerce con `forzar`).
-
----
-
-### `/sdd.checklist`
-
-**Propósito:** Validar la calidad formal de la spec activa antes de proceder.
-
-**Validaciones:**
-- ≥ 3 criterios de aceptación definidos
-- Sin marcadores `[NECESITA_ACLARACION]` sin resolver
-- Alcance de MVP explícito
-- No hay contradicciones entre criterios
-
----
-
-## Etapa 4 — Planificación
-
-### `/sdd.planificar`
-
-**Propósito:** Producir el plan técnico de implementación: decisiones arquitectónicas, orden de trabajo, estimaciones y asignación de agentes.
-
-**Agentes:** `arquitecto`, `critico`, `seguridad`
-
-**Proceso:**
-
-```mermaid
-sequenceDiagram
-    participant CMD as sdd.planificar
-    participant ARQ as arquitecto
-    participant CRIT as critico
-    participant SEG as seguridad
-    participant SDD as .sdd/
-
-    CMD->>ARQ: diseña plan técnico
-    ARQ->>SDD: escribe plan.md (borrador)
-    CMD->>CRIT: revisa el plan
-    CRIT->>CMD: lista de riesgos y puntos ciegos
-    CMD->>ARQ: incorpora observaciones del crítico
-    CMD->>SEG: revisa implicaciones de seguridad
-    SEG->>CMD: observaciones de seguridad
-    CMD->>ARQ: versión final del plan
-    ARQ->>SDD: escribe plan.md (final)
-    CMD->>Usuario: Plan listo — ¿aprobar?
-```
-
-**Salida:** `.sdd/especificaciones/{id}/plan.md`
-
-**Flags:**
-
-| Flag | Descripción |
-|------|-------------|
-| *(ninguno)* | Flujo completo con crítica y seguridad |
-| `rapido` | Omite agente `critico` |
-| `prototipo` | Omite `critico`, `seguridad` y generación de ADRs |
-| `aprobar` | Aprueba el plan automáticamente sin pedir confirmación |
-| `revisión` | Activa modo de revisión más estricto |
-
----
-
-### `/sdd.analizar`
-
-**Propósito:** Auditoría cruzada entre la constitución, la spec, el plan y las tareas. Detecta inconsistencias antes de implementar.
-
-**Agentes:** `revisor`, `critico`, `investigador`
-
-**Cuándo usarlo:** Antes de `/sdd.implementar` en proyectos complejos, o cuando sospechas inconsistencias en los artefactos.
-
----
-
-## Etapa 5 — Desglose de tareas
-
-### `/sdd.tareas`
-
-**Propósito:** Descomponer el plan en tareas atómicas con agente asignado, estimación y orden de ejecución.
-
-**Agente:** `arquitecto`
-
-**Formato de tarea:**
-
-```markdown
-## T-001 — Crear schema de base de datos
-
-**Agente:** asesor-datos
-**Estimación:** 45 min
-**Dependencias:** ninguna
-**Archivos afectados:** db/migrations/001_init.sql, src/types/models.ts
-
-Crear el schema inicial de PostgreSQL con las tablas:
-- `usuarios` (id, email, password_hash, created_at)
-- `sesiones` (id, usuario_id, token, expires_at)
-```
-
-**Salida:** `.sdd/especificaciones/{id}/tareas.md`
-
----
-
-## Etapa 6 — Implementación
-
-### `/sdd.implementar`
-
-**Propósito:** Ejecutar las tareas del plan despachando los agentes asignados a cada una.
-
-**Proceso:**
-
-```mermaid
-flowchart TD
-    START["Leer tareas.md\ny .estado-tareas.json"]
-    NEXT["Siguiente tarea pendiente"]
-    ASSIGN["Despachar agente asignado"]
-    EXEC["Agente ejecuta tarea"]
-    CHECK["¿Tarea completada?"]
-    UPDATE["Actualizar .estado-tareas.json"]
-    MORE["¿Más tareas?"]
-    DONE["Implementación completada"]
-    FAIL["Registrar fallo\nesperar intervención"]
-
-    START --> NEXT
-    NEXT --> ASSIGN
-    ASSIGN --> EXEC
-    EXEC --> CHECK
-    CHECK -->|sí| UPDATE
-    CHECK -->|no| FAIL
-    UPDATE --> MORE
-    MORE -->|sí| NEXT
-    MORE -->|no| DONE
-```
-
-**Flags:**
-
-| Flag | Descripción |
-|------|-------------|
-| *(ninguno)* | Ejecuta desde la primera tarea pendiente |
-| `continuar` | Reanuda desde el último checkpoint |
-| `forzar` | Continúa aunque haya tareas marcadas como fallidas |
-
-**Reanudación:** Si la sesión termina durante la implementación, `/sdd.implementar continuar` retoma desde la última tarea completada.
-
----
-
-## Etapa 7 — Verificación
-
-### `/sdd.verificar`
-
-**Propósito:** Verificar que el código implementado satisface cada criterio de aceptación de la spec.
-
-**Agentes:** `revisor`, `tester`
-
-**Proceso:**
-1. `revisor` lee cada criterio de aceptación
-2. Busca evidencia de implementación en el código
-3. `tester` ejecuta los tests relevantes
-4. Se produce `verificacion.json` con resultado por criterio
-
-**Salida:** `.sdd/especificaciones/{id}/verificacion.json`
-
-**Si falla:** FORGE identifica los criterios no cumplidos y sugiere volver a `/sdd.especificar` para actualizar el alcance, o continuar implementando las partes faltantes.
-
----
-
-## Etapa 8 — Despliegue
-
-### `/sdd.desplegar`
-
-**Propósito:** Gate de calidad final → despliegue → health check.
-
-**Agente:** `operaciones`, `seguridad`
-
-**Proceso:**
-
-```mermaid
-sequenceDiagram
-    participant CMD as sdd.desplegar
-    participant SEG as seguridad
-    participant OPS as operaciones
-    participant PROD as Producción
-
-    CMD->>SEG: auditoría de seguridad pre-deploy
-    SEG-->>CMD: sin vulnerabilidades críticas
-    CMD->>OPS: ejecutar despliegue
-    OPS->>PROD: deploy
-    PROD-->>OPS: despliegue exitoso
-    OPS->>PROD: GET /health
-    PROD-->>OPS: 200 OK
-    OPS-->>CMD: health check pasado
-    CMD->>CMD: actualiza pipeline_step → done
-```
-
-**Plataformas soportadas:** Vercel (skill `deploy-vercel`), Railway, Docker. La plataforma se detecta desde `sdd.config.yaml → control_versiones.despliegue`.
-
----
-
-### `/sdd.canary`
-
-**Propósito:** Monitoreo post-deploy con seguimiento de latencia y errores en los primeros minutos tras el despliegue.
-
-**Cuándo usar:** Después de `/sdd.desplegar` en entornos de producción críticos.
-
----
-
-## Comandos de mantenimiento y soporte
-
-### `/sdd.estado`
-
-Dashboard de progreso en texto plano. Muestra el estado actual del pipeline, spec activa, última tarea, modo de sesión, presupuesto USD de la sesión y nivel del circuit breaker.
-
-```
-FORGE v4.0.0 — Estado del proyecto
-
-  Pipeline:          implementar (etapa 6/10)
-  Spec activa:       2026-06-21-auth-jwt
-  Progreso:          T-008 / T-012 (67%)
-  Modo:              normal
-  Tests:             52/52 ✅
-  Presupuesto:       $0.38 USD esta sesión
-  Circuit breaker:   sandbox
-  Último cambio:     arquitecto — src/auth/jwt.service.ts (hace 3 min)
-```
-
-Equivalente en CLI: `forge status`.
-
----
-
-### `/sdd.modo`
-
-Cambiar el modo de sesión sin editar el YAML.
-
-```
-/sdd.modo rapido      → activa modo rapido (omite critico)
-/sdd.modo prototipo   → activa modo prototipo
-/sdd.modo normal      → restaura modo normal
-/sdd.modo             → muestra el modo actual
-```
-
----
-
-### `/sdd.configurar`
-
-Visualizar y modificar `sdd.config.yaml` desde Claude Code.
-
-```
-/sdd.configurar show                          → muestra yaml completo
-/sdd.configurar show agentes                  → solo sección agentes
-/sdd.configurar set agentes.arquitecto.modelo opus
-/sdd.configurar set sesion.modo rapido
-/sdd.configurar set calidad.cobertura_tests_minima 90
-```
-
----
-
-### `/sdd.mapear`
-
-Genera un índice completo del proyecto: estructura de directorios, símbolos, dependencias entre módulos. Útil al comenzar a trabajar en un proyecto existente.
-
----
-
-### `/sdd.comprimir`
-
-Comprime los archivos de memoria de agentes que superan el umbral de bytes.
-
-```
-/sdd.comprimir           → comprime solo los archivos que superan el umbral
-/sdd.comprimir aplicar   → comprime todos los archivos de memoria
-```
-
----
-
-### `/sdd.adr`
-
-Gestionar registros de decisiones arquitectónicas manualmente.
-
-```
-/sdd.adr nuevo     → crear un ADR
-/sdd.adr listar    → ver todos los ADRs del proyecto
-/sdd.adr ver ADR-003
-```
-
----
-
-### `forge logs`
-
-Muestra el historial de consumo de agentes desde `.sdd/observabilidad/consumo.jsonl`.
-
-```bash
-forge logs          # últimas 20 entradas
-forge logs --last 5 # últimas 5 entradas
-```
-
-Cada entrada incluye: timestamp, agente, acción, tokens entrada/salida y costo estimado en USD. Útil para auditar qué agente consumió más en una sesión o diagnosticar dónde se detuvo el pipeline.
-
----
-
-### `/sdd.retro`
-
-Retrospectiva del ciclo de desarrollo completado. Genera un resumen de qué funcionó bien, qué salió mal y qué se puede mejorar, basado en `consumo.jsonl` y `mutaciones.jsonl`.
-
----
-
-### `/sdd.release`
-
-Gestión de versión semántica y CHANGELOG.
-
-```
-/sdd.release patch   → bump de parche (correcciones)
-/sdd.release minor   → bump menor (nueva funcionalidad)
-/sdd.release major   → bump mayor (cambios incompatibles)
-```
-
----
-
-### `/sdd.snapshot`
-
-Actualiza `SNAPSHOT.md` con una descripción del estado actual del producto, lista de features implementadas y métricas relevantes.
-
----
-
-### `/sdd.glosario`
-
-Gestionar el glosario del dominio del proyecto (`.sdd/dominio/glosario.md`).
-
-```
-/sdd.glosario añadir "tenant" "Organización cliente en arquitectura multi-tenant"
-/sdd.glosario buscar jwt
-/sdd.glosario listar
-```
-
----
-
-### `/sdd.defect-report`
-
-Reportar y registrar un defecto encontrado en producción. Crea un ticket estructurado que alimenta el siguiente ciclo de especificación.
-
----
-
-### `/sdd.ayuda`
-
-Guía completa de todos los comandos disponibles, con ejemplos y casos de uso.
-
----
-
-## Comandos de creación
-
-### `/sdd.crear-agente`
-
-Asistente interactivo para crear un nuevo agente especializado.
-
-→ Ver [Extender FORGE](extending-forge.md).
-
-### `/sdd.crear-app`
-
-Genera una aplicación web o CLI completa desde una descripción. Ejecuta el pipeline completo de forma más automatizada.
-
-### `/sdd.crear-mcp`
-
-Genera un servidor MCP empaquetado como `.mcpb` para distribuir como plugin de Claude Code.
-
----
-
-## Resumen de todos los comandos
-
-| Comando | Etapa | Requiere aprobación |
-|---------|-------|-------------------|
-| `/sdd.descubrir` | Discovery | No |
-| `/sdd.interpretar` | IR | No |
-| `/sdd.diseñar` | Diseño | Sí (dirección visual) |
-| `/sdd.especificar` | Spec | Sí |
-| `/sdd.aclarar` | Aclaración | No |
-| `/sdd.checklist` | Validación | No |
-| `/sdd.planificar` | Plan | Sí |
-| `/sdd.analizar` | Auditoría | No |
-| `/sdd.tareas` | Tareas | Sí (configurable) |
-| `/sdd.implementar` | Implementación | No (por tarea) |
-| `/sdd.verificar` | Verificación | No |
-| `/sdd.desplegar` | Despliegue | **Sí** (siempre) |
-| `/sdd.canary` | Monitoreo | No |
-| `/sdd.estado` | Utilidad | No |
-| `forge status` | CLI Utilidad | No |
-| `forge logs` | CLI Utilidad | No |
-| `/sdd.modo` | Utilidad | No |
-| `/sdd.configurar` | Utilidad | No |
-| `/sdd.comprimir` | Utilidad | No |
-| `/sdd.adr` | Utilidad | No |
-| `/sdd.retro` | Utilidad | No |
-| `/sdd.release` | Utilidad | Sí |
-| `/sdd.snapshot` | Utilidad | No |
-| `/sdd.glosario` | Utilidad | No |
-| `/sdd.mapear` | Utilidad | No |
-| `/sdd.optimizar` | Utilidad | No |
-| `/sdd.optimizar-memoria` | Utilidad | No |
-| `/sdd.qa` | QA E2E | No |
-| `/sdd.defect-report` | Incidencias | No |
-| `/sdd.crear-agente` | Extensión | No |
-| `/sdd.crear-app` | Creación | Sí |
-| `/sdd.crear-mcp` | Creación | No |
-| `/sdd.ayuda` | Documentación | No |
-| `/sdd.constitucion` | Configuración | Sí |
-| `/sdd.glosario` | Configuración | No |
-| `/sdd.importar` | Integración | No |
-| `/sdd.exportar` | Integración | No |
-| `/sdd.compliance` | Auditoría | No |
-| `/compact` | Alias | No |
+- Que cada comando `/sdd.*` ejecute sus pasos tal como los describen sus textos: depende del modelo que los sigue. Las pruebas automáticas del repositorio comprueban los textos de los comandos, no una ejecución real con un modelo.
+- La correspondencia fina entre comandos y pasos de la máquina de estados (`/sdd.diseñar` ↔ `design`, etc.) no se ha comprobado línea a línea: los comandos escriben `fase_actual`, no `pipeline_step`.
