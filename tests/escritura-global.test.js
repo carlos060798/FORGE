@@ -296,9 +296,12 @@ describe("N-13 — destinos raros: aviso y se sigue, nunca una traza ni un cuelg
     assert.ok(!hayTraza(r.salida), r.salida);
   });
 
-  test("un archivo que no se puede escribir (solo lectura) no tumba init", (t) => {
+  test("una carpeta que no se puede escribir (solo lectura) no tumba init", (t) => {
     if (process.platform === "win32") return t.skip("los permisos POSIX no aplican");
     if (typeof process.getuid === "function" && process.getuid() === 0) return t.skip("root escribe en cualquier sitio");
-    raro((cwd) => { escribir(join(cwd, ".claudeignore"), "mío"); spawnSync("chmod", ["444", join(cwd, ".claudeignore")]); void cwd; });
+    // Antes el escenario era un `.claudeignore` en solo lectura. `init` nunca escribe un `.claudeignore` que ya existe
+    // («ya existe, no se sobreescribe») y termina con 0, así que la prueba nunca ejercitaba lo que quería (y solo lo
+    // descubrió un entorno POSIX sin root, como el runner de CI). El destino que de verdad no se puede escribir es la carpeta.
+    raro((cwd) => { mkdirSync(join(cwd, ".sdd")); spawnSync("chmod", ["555", join(cwd, ".sdd")]); });
   });
 });
