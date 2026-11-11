@@ -10,11 +10,31 @@ import { PERFIL_POR_DEFECTO, resolverPerfil } from "../../core/instalacion/perfi
 import { PLUGIN_DIR, c, info, aviso, titulo, error, pluginVersion, claudeEnPath } from "./comun.js";
 import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from "./instalar.js";
 
-async function cmdDoctorLlm(apiKey, { problemas }) {
+/** Variables de entorno con la clave de cada proveedor (los que no figuran no usan clave). */
+const VARIABLES_DE_CLAVE = { anthropic: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], openai: ["OPENAI_API_KEY"] };
+
+/**
+ * Herramienta de código desde la que se usa Fragua: la integración guardada si hay una, o las señales de Claude Code.
+ * @param {string|undefined} guardada clave de `instalacion.integracion`
+ * @returns {{ nombre: string, claude: boolean } | null}
+ */
+function detectarAnfitrion(guardada) {
+  const ri = guardada ? resolverIntegracion(guardada) : null;
+  if (ri?.ok && !ri.integracion.nativa) return { nombre: ri.integracion.nombre, claude: false };
+  const señales = !!(
+    process.env.CLAUDE_AGENT_NAME ||
+    process.env.CLAUDE_SESSION_ID ||
+    existsSync(join(process.cwd(), ".claude", "settings.json")) ||
+    existsSync(join(process.cwd(), ".claude-plugin", ".claude", "settings.json"))
+  );
+  return señales || ri?.ok ? { nombre: "Claude Code", claude: true } : null;
+}
+
+async function cmdDoctorLlm({ problemas }) {
   // 0. Provider activo
   const providerActivo = leerVariable('LLM_PROVIDER') ?? 'anthropic (default)';
   info(`Provider LLM activo: ${providerActivo}`);
-  info("  Cambiar: FORGE_LLM_PROVIDER=ollama|openai|stub  o  llm.provider en sdd.config.yaml");
+  info("  Cambiar: FORGE_LLM_PROVIDER=anthropic|openai|ollama|stub  o  llm.provider en sdd.config.yaml");
   const { lineaRevision } = await import("../../core/precios.js");
   info(lineaRevision());
   try {
@@ -28,80 +48,71 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
     aviso(`No se pudieron leer los niveles de modelo: ${e?.message ?? e}`);
   }
 
-  // 1. Detectar modo de ejecución: Claude Code (hooks) vs API directa
-  const enClaudeCode = !!(
-    process.env.CLAUDE_AGENT_NAME ||
-    process.env.CLAUDE_SESSION_ID ||
-    existsSync(join(process.cwd(), ".claude", "settings.json")) ||
-    existsSync(join(process.cwd(), ".claude-plugin", ".claude", "settings.json"))
-  );
-
-  if (enClaudeCode) {
-    info("Modo Claude Code detectado — el LLM lo gestiona Claude Code, no FORGE directamente ✓");
-    info("  El SDK @anthropic-ai/sdk no es necesario en este modo");
+  // 1. Anfitrión: la herramienta de código desde la que se usa Fragua. No decide qué proveedor llama al modelo.
+  const g = leerInstalacionGuardada();
+  const anfitrion = detectarAnfitrion(g.integracion);
+  if (anfitrion) {
+    info(`Anfitrión detectado: ${anfitrion.nombre} ✓`);
   } else {
-    info("Modo API directa — FORGE llamará al LLM vía @anthropic-ai/sdk");
+    info("Anfitrión: ninguno detectado — Fragua llamará al proveedor de modelos directamente");
   }
 
-  // 2. SDK disponible (solo necesario en modo API directa)
-  let sdk = null;
+  // 2. Proveedor de modelos configurado (FORGE_LLM_PROVIDER, sdd.config.yaml o la clave presente)
+  let proveedor;
   try {
-    sdk = await import('@anthropic-ai/sdk');
-    info("SDK @anthropic-ai/sdk disponible ✓");
-  } catch {
-    if (enClaudeCode) {
-      info("SDK @anthropic-ai/sdk no instalado — no es necesario en modo Claude Code ✓");
-    } else {
-      aviso("@anthropic-ai/sdk no instalado — necesario para modo API directa");
-      aviso("  Solución: npm install @anthropic-ai/sdk");
-      problemas(1);
-    }
-    // En modo Claude Code podemos hacer diagnóstico parcial sin SDK
-    if (!enClaudeCode) return;
+    const { crearProvider } = await import("../../core/llm-providers/index.js");
+    proveedor = crearProvider({ cwd: process.cwd() });
+  } catch (e) {
+    aviso(`No se pudo crear el proveedor de modelos: ${e?.message ?? e}`);
+    problemas(1);
+    return;
+  }
+  const nombreProveedor = proveedor.nombre;
+  info(`Proveedor en uso: ${nombreProveedor}`);
+  if (nombreProveedor === "stub") {
+    info("Proveedor de pruebas: se omite el ping (no demostraría nada)");
+    return;
   }
 
-  // 3. API key presente (necesaria para el ping)
-  if (!apiKey) {
-    if (enClaudeCode) {
-      aviso("ANTHROPIC_API_KEY no definida — Claude Code la gestiona internamente");
-      aviso("  Si los agentes fallan, verifica que Claude Code tiene la key configurada");
+  // 3. Clave del proveedor activo (Ollama y compatibles no usan clave)
+  const variables = VARIABLES_DE_CLAVE[nombreProveedor] ?? [];
+  const clave = variables.map((v) => process.env[v]).find(Boolean);
+  if (variables.length && !clave) {
+    if (anfitrion) {
+      aviso(`${variables[0]} no definida — se omite el ping. Si usas ${anfitrion.nombre} con su propia cuenta, es normal; el ciclo de Fragua (fragua run) sí la necesita.`);
     } else {
-      aviso("Sin API key — se omite el ping al LLM");
+      aviso(`Sin ${variables[0]} — se omite el ping al proveedor ${nombreProveedor}`);
       problemas(1);
     }
-    // Sin key no podemos hacer ping
-    if (!apiKey) return;
+    return;
   }
 
-  // 3. Ping real al LLM con mensaje mínimo
-  titulo("Ping al LLM (modelo: claude-haiku-4-5-20251001)...");
+  // 4. Ping real con un mensaje mínimo, con el nivel económico del proveedor configurado
+  const modelo = proveedor.resolveModelId("economico");
+  titulo(`Ping al LLM (proveedor: ${nombreProveedor}, modelo: ${modelo})...`);
   const PING_PROMPT = "Responde exactamente con el JSON: {\"ok\":true}";
   const PING_TIMEOUT_MS = 10_000;
   let respuestaRaw = "";
+  const t0 = Date.now();
   try {
-    const client = new sdk.default({ apiKey });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
-    const res = await client.messages.create(
-      {
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 32,
-        messages: [{ role: "user", content: PING_PROMPT }],
-      },
-      { signal: controller.signal }
-    );
-    clearTimeout(timer);
-    respuestaRaw = res.content?.[0]?.text ?? "";
-    info(`LLM responde ✓ (${res.usage?.output_tokens ?? "?"} tokens de salida)`);
+    try {
+      const res = await proveedor.complete({ model: modelo, systemPrompt: "", userPrompt: PING_PROMPT, maxTokens: 32, signal: controller.signal });
+      respuestaRaw = res.output ?? "";
+      info(`LLM responde ✓ (${res.outputTokens ?? "?"} tokens de salida)`);
+    } finally {
+      clearTimeout(timer);
+    }
   } catch (e) {
     if (e?.name === "AbortError" || e?.code === "UND_ERR_CONNECT_TIMEOUT") {
-      aviso(`LLM no respondió en ${PING_TIMEOUT_MS / 1000}s — posible problema de red o API key inválida`);
+      aviso(`LLM no respondió en ${PING_TIMEOUT_MS / 1000}s — posible problema de red o de clave`);
     } else if (e?.status === 401) {
-      aviso("API key rechazada (401 Unauthorized) — verifica ANTHROPIC_API_KEY");
+      aviso(`Clave rechazada (401 Unauthorized) — verifica ${variables[0] ?? "la clave del proveedor"}`);
     } else if (e?.status === 429) {
       aviso("Rate limit alcanzado (429) — espera unos segundos y vuelve a intentarlo");
     } else if (e?.status >= 500) {
-      aviso(`Error del servidor Anthropic (${e.status}) — reintenta más tarde`);
+      aviso(`Error del servidor del proveedor ${nombreProveedor} (${e.status}) — reintenta más tarde`);
     } else {
       aviso(`Error inesperado al contactar el LLM: ${e?.message ?? e}`);
     }
@@ -109,7 +120,7 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
     return;
   }
 
-  // 4. Validar que la respuesta es JSON parseable
+  // 5. La respuesta debe ser JSON parseable
   try {
     const parsed = JSON.parse(respuestaRaw.match(/\{[\s\S]*\}/)?.[0] ?? "");
     if (parsed?.ok === true) {
@@ -123,22 +134,13 @@ async function cmdDoctorLlm(apiKey, { problemas }) {
     problemas(1);
   }
 
-  // 5. Latencia orientativa
-  const t0 = Date.now();
-  try {
-    const client = new sdk.default({ apiKey });
-    await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1,
-      messages: [{ role: "user", content: "di: ok" }],
-    });
-    const latencia = Date.now() - t0;
-    if (latencia < 3000) {
-      info(`Latencia de red: ~${latencia}ms ✓`);
-    } else {
-      aviso(`Latencia alta: ~${latencia}ms — el pipeline puede ser lento`);
-    }
-  } catch { /* no bloquear por latencia */ }
+  // Latencia orientativa (la del ping ya hecho)
+  const latencia = Date.now() - t0;
+  if (latencia < 3000) {
+    info(`Latencia de red: ~${latencia}ms ✓`);
+  } else {
+    aviso(`Latencia alta: ~${latencia}ms — el pipeline puede ser lento`);
+  }
 
   // 6. Modelo configurado en sdd.config.yaml
   const configPath = join(process.cwd(), ".sdd", "sdd.config.yaml");
@@ -203,22 +205,28 @@ export async function cmdDoctor() {
     problemas++;
   }
 
-  // ANTHROPIC_API_KEY
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-  if (!apiKey) {
-    problemas++;
-    aviso("ANTHROPIC_API_KEY no está definida — los agentes LLM no funcionarán");
-    aviso("  Solución: export ANTHROPIC_API_KEY=sk-ant-... (o añádela a tu .env)");
+  // Clave del proveedor activo (el detalle y el ping están en el diagnóstico del LLM, más abajo)
+  const proveedorActivo = (leerVariable("LLM_PROVIDER") ?? "anthropic").toLowerCase();
+  const variablesClave = VARIABLES_DE_CLAVE[proveedorActivo === "claude" ? "anthropic" : proveedorActivo === "gpt" ? "openai" : proveedorActivo] ?? [];
+  if (variablesClave.length) {
+    const apiKey = variablesClave.map((v) => process.env[v]).find(Boolean);
+    if (!apiKey) {
+      problemas++;
+      aviso(`${variablesClave[0]} no está definida — los agentes LLM no funcionarán con el proveedor ${proveedorActivo}`);
+      aviso(`  Solución: export ${variablesClave[0]}=... (o cambia de proveedor con FORGE_LLM_PROVIDER)`);
+    } else {
+      const preview = apiKey.slice(0, 4) + "..." + apiKey.slice(-4);
+      info(`${variablesClave[0]} presente (${preview}) ✓`);
+    }
   } else {
-    const preview = apiKey.slice(0, 8) + "..." + apiKey.slice(-4);
-    info(`ANTHROPIC_API_KEY presente (${preview}) ✓`);
+    info(`Proveedor ${proveedorActivo}: no usa clave en el entorno ✓`);
   }
 
-  // Claude CLI
+  // CLI de Claude Code: solo informativo, Fragua no la necesita para su motor
   if (claudeEnPath()) {
     info("Claude Code CLI detectado en PATH ✓");
   } else {
-    aviso("Claude Code CLI no está en PATH (instala desde claude.ai/code)");
+    info("Claude Code CLI no está en PATH (solo hace falta si lo usas como anfitrión: claude.ai/code)");
   }
 
   // Versión del plugin
@@ -253,9 +261,13 @@ export async function cmdDoctor() {
   }
 
   // ── Auditoría CLAUDE.md (límite oficial: 4,000 chars por archivo) ───────────
-  titulo("Auditoría de instrucciones (límites oficiales Claude Code)...");
+  const instGuardada = leerInstalacionGuardada();
+  const integracionEsClaude = !instGuardada.integracion || resolverIntegracion(instGuardada.integracion).integracion?.nativa === true;
+  titulo("Auditoría de instrucciones (límites oficiales de la herramienta)...");
   const claudeMdLocal = join(process.cwd(), ".claude", "CLAUDE.md");
-  if (existsSync(claudeMdLocal)) {
+  if (!integracionEsClaude) {
+    info("Auditoría de CLAUDE.md omitida: la integración instalada no es Claude Code (sus instrucciones van en AGENTS.md)");
+  } else if (existsSync(claudeMdLocal)) {
     const size = readFileSync(claudeMdLocal, "utf8").length;
     if (size > 3500) {
       aviso(`CLAUDE.md: ${size} chars — cerca del límite silencioso de 4,000 chars`);
@@ -406,7 +418,9 @@ export async function cmdDoctor() {
   // ── CLAUDE.md del proyecto ─────────────────────────────────────────────────
   titulo("Verificando CLAUDE.md del proyecto...");
   const claudeMdProyecto = join(process.cwd(), "CLAUDE.md");
-  if (existsSync(claudeMdProyecto)) {
+  if (!integracionEsClaude) {
+    info("CLAUDE.md omitido: la integración instalada no es Claude Code");
+  } else if (existsSync(claudeMdProyecto)) {
     const claudeMdContenido = readFileSync(claudeMdProyecto, "utf8");
     if (claudeMdContenido.includes("## FORGE")) {
       const tieneVersion = claudeMdContenido.includes(`forge-version: ${CLAUDE_MD_VERSION}`);
@@ -436,7 +450,7 @@ export async function cmdDoctor() {
       "   Si los agentes read-only no están bloqueando escrituras, actualiza Claude Code."
     );
   }
-  info("Provider: Claude Code (Anthropic) — provider único de FORGE");
+  info("El proveedor de modelos se comprueba más abajo (Anthropic, OpenAI u Ollama, según la configuración)");
 
   // ── schemaVersion del estado ────────────────────────────────────────────────
   titulo("Verificando esquema .sdd/estado.json...");
@@ -554,7 +568,7 @@ export async function cmdDoctor() {
 
   // ── Diagnóstico del LLM ──────────────────────────────────────────────────────
   titulo("Diagnosticando conexión con el LLM...");
-  await cmdDoctorLlm(apiKey, { problemas: (n) => { problemas += n; } });
+  await cmdDoctorLlm({ problemas: (n) => { problemas += n; } });
 
   console.log("");
   if (problemas === 0) {

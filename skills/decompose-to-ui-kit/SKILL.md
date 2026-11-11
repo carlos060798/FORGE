@@ -1,11 +1,12 @@
 ---
 name: decompose-to-ui-kit
 description: Descompone una imagen o descripción de UI en componentes reutilizables del design system y genera el kit de componentes base para el proyecto.
-version: 1.0.0
-agents: [product-designer, desarrollador-frontend]
-inputs: [imagen_ui, descripcion_pantalla, DESIGN.md]
-outputs: [components-kit.md, tokens.css]
 allowed-tools: Read, Write
+metadata:
+  forge-version: "1.0.0"
+  forge-agents: "[product-designer, desarrollador-frontend]"
+  forge-inputs: "[imagen_ui, descripcion_pantalla, DESIGN.md]"
+  forge-outputs: "[components-kit.md, tokens.css]"
 ---
 
 # Skill: decompose-to-ui-kit

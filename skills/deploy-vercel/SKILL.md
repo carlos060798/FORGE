@@ -1,15 +1,14 @@
 ---
 name: deploy-vercel
-id: deploy-vercel
-nombre: Deploy a Vercel (alias)
-descripcion: Alias de la skill vercel-deploy. Despliega en Vercel con pre-checks, build, health checks y rollback. Requiere el MCP de Vercel autenticado.
-aliases: ["/forge.deploy", "/sdd.desplegar vercel"]
-version: 1.1.0
-requisitos:
-  - mcp: vercel
-    descripcion: MCP de Vercel instalado y autenticado en Claude Code
 description: Alias de vercel-deploy. Úsala igual que esa skill cuando el usuario pida /forge.deploy o desplegar en Vercel; el procedimiento completo vive en skills/vercel-deploy/SKILL.md.
 allowed-tools: Read, Bash
+metadata:
+  forge-id: "deploy-vercel"
+  forge-nombre: "Deploy a Vercel (alias)"
+  forge-descripcion: "Alias de la skill vercel-deploy. Despliega en Vercel con pre-checks, build, health checks y rollback. Requiere el MCP de Vercel autenticado."
+  forge-aliases: "[\"/forge.deploy\", \"/sdd.desplegar vercel\"]"
+  forge-version: "1.1.0"
+  forge-requisitos: "mcp: vercel; descripcion: MCP de Vercel instalado y autenticado en tu herramienta"
 ---
 
 # deploy-vercel — alias de `vercel-deploy`

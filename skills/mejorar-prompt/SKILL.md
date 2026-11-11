@@ -1,6 +1,6 @@
 ---
 name: mejorar-prompt
-description: Transforma un prompt vago en versión profesional siguiendo los 7 patrones de Claude Code (Contexto · Tarea · Restricciones · Formato · Verificación). Detecta si el prompt solicita algo fuera de la spec activa y advierte antes de continuar.
+description: Transforma un prompt vago en versión profesional siguiendo los 7 patrones de prompting para agentes de código (Contexto · Tarea · Restricciones · Formato · Verificación). Detecta si el prompt solicita algo fuera de la spec activa y advierte antes de continuar.
 model: sonnet
 allowed-tools: Read, Bash
 ---
@@ -9,7 +9,7 @@ allowed-tools: Read, Bash
 
 ## Propósito
 
-Un prompt vago produce resultados impredecibles. Claude Code toma decisiones discrecionales
+Un prompt vago produce resultados impredecibles. El agente de código toma decisiones discrecionales
 sobre alcance, enfoque y dependencias cuando las instrucciones son ambiguas. Esta skill
 cierra esa brecha: toma la intención del usuario y la convierte en un prompt profesional
 con los componentes necesarios para obtener resultados predecibles y dentro de la spec activa.

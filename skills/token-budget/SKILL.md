@@ -36,7 +36,7 @@ cat .sdd/sdd.config.yaml 2>/dev/null | head -30 || echo "SIN_CONFIG"
 
 ### Costos de referencia por fase (en unidades de "peso relativo")
 
-Las unidades son relativas entre sí — no son tokens reales, ya que Claude Code no expone el conteo exacto. Se calibran con los datos del ledger si están disponibles.
+Las unidades son relativas entre sí — no son tokens reales, ya que el anfitrión no expone el conteo exacto. Se calibran con los datos del ledger si están disponibles.
 
 | Fase | Agentes activos | Peso base | Factor por tarea |
 |---|---|---|---|
@@ -171,7 +171,7 @@ La alerta es informativa y no bloquea: el usuario decide. Pero debe mostrarse SI
 
 ## Notas
 
-- Los pesos son relativos, no tokens reales. Claude Code no expone el conteo exacto de tokens al contexto.
+- Los pesos son relativos, no tokens reales. El anfitrión no expone el conteo exacto de tokens al contexto.
 - La calibración con el ledger mejora la precisión: si la sesión actual ya tiene datos, los pesos se ajustan a la velocidad real observada.
 - Para proyectos con presupuesto de API estricto, usar junto con `effort-router` para maximizar el ahorro antes de lanzar fases costosas.
 - Esta skill se invoca desde `/sdd.optimizar presupuesto` y como PASO 6 de `/sdd.optimizar`.

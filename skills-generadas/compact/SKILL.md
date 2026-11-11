@@ -15,7 +15,7 @@ Ejecuta la compresión completa del contexto actual:
 - Deduplica la memoria de agentes
 - Descarta contexto de herramientas ya cerradas
 
-**Cuándo usarlo:** cuando el indicador de uso de contexto de Claude Code supere el 60%, o si notas que las respuestas se vuelven más lentas o menos precisas.
+**Cuándo usarlo:** cuando el indicador de uso de contexto de tu herramienta supere el 60%, o si notas que las respuestas se vuelven más lentas o menos precisas.
 
 ---
 

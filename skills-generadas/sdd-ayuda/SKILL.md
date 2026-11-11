@@ -13,7 +13,7 @@ Muestra esta guía formateada:
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
 ║              SDD-ES — Desarrollo Guiado por Especificaciones          ║
-║                    Plugin para Claude Code | v2.0.0                   ║
+║                    Metodología SDD     | v5.0.0                   ║
 ║                                                                       ║
 ║   Inspirado en github/spec-kit y LiorCohen/sdd. En español.           ║
 ║   Agnóstico al stack. Completamente personalizable.                   ║
@@ -85,7 +85,7 @@ Muestra esta guía formateada:
    /sdd.optimizar                    Optimizar artefactos SDD para reducir uso de contexto
    /sdd.optimizar-memoria            Compactar la memoria del agente activo
 
-🖥️  CLI (terminal, fuera de Claude Code)
+🖥️  CLI (terminal, fuera de tu herramienta de código)
    forge status                      Estado del proyecto con presupuesto USD y nivel circuit breaker
    forge logs [--last N]             Historial de consumo de agentes desde consumo.jsonl
    forge doctor                      Verificar instalación: API key, hooks en disco, sintaxis YAML

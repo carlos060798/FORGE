@@ -159,6 +159,6 @@ for (const f of archivos) {
 
 ## Notas
 
-- El prompt caching es automático en Claude Code — no requiere cambios en el código del hook.
+- El prompt caching lo gestiona el proveedor — no requiere cambios en el código del hook.
 - Lo que sí requiere intervención manual son los invalidadores: un UUID en línea 1 del prompt hace que el modelo no pueda cachear nada de lo que sigue.
 - Esta skill audita; no modifica archivos. Los fixes los aplica el usuario (o un agente dedicado con permiso de Edit).

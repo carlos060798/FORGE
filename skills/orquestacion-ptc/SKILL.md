@@ -72,7 +72,7 @@ return resultados.map((r, i) => ({
 
 ## Fallback secuencial
 
-Si el entorno no soporta ejecución de código programática (sandbox no disponible, Claude Code en modo lectura, política de permisos):
+Si el entorno no soporta ejecución de código programática (sandbox no disponible, el anfitrión en modo lectura, política de permisos):
 
 ```
 MODO_PTC_DISPONIBLE = false

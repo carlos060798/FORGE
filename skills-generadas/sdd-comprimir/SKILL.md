@@ -113,7 +113,7 @@ Para revertir:
 
 ## Integración automática
 
-Si tienes archivos comprimidos, Claude Code los detecta automáticamente y:
+Si tienes archivos comprimidos, el agente los detecta automáticamente y:
 
 1. Los lee normalmente (ya están en texto)
 2. Entiende que están en formato comprimido

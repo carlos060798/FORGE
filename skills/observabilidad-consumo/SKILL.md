@@ -11,7 +11,7 @@ allowed-tools: Read, Bash
 
 Convertir el ledger de consumo en información accionable: ver cuántos agentes se activaron, qué archivos tocaron, en qué momentos hubo picos de actividad y si hay señales de fan-out excesivo que conviene corregir.
 
-El ledger es un proxy de magnitud (bytes escritos), no una facturación exacta de tokens — Claude Code no expone el conteo real de tokens al hook. Pero es suficiente para detectar patrones problemáticos.
+El ledger es un proxy de magnitud (bytes escritos), no una facturación exacta de tokens — el anfitrión no expone el conteo real de tokens al hook. Pero es suficiente para detectar patrones problemáticos.
 
 ---
 

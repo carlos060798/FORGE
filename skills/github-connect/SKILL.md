@@ -1,10 +1,11 @@
 ---
 name: github-connect
 description: Conecta el proyecto a GitHub automáticamente. Crea repo, configura remote, hace push inicial.
-tools: ["Bash", "Read", "Edit", "Grep"]
-version: 1.0.0
-author: SDD-ES Orchestrator
 allowed-tools: Bash, Read, Edit, Grep
+metadata:
+  forge-tools: "[\"Bash\", \"Read\", \"Edit\", \"Grep\"]"
+  forge-version: "1.0.0"
+  forge-author: "SDD-ES Orchestrator"
 ---
 
 # GitHub Connect Skill

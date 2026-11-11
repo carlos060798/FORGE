@@ -50,7 +50,7 @@ fi
 
 **Si proyecto nuevo (sin `.sdd/`):**
 
-> 👋 Hola. Soy Fragua — tu equipo técnico en Claude Code.
+> 👋 Hola. Soy Fragua — tu equipo técnico de desarrollo.
 >
 > Cuéntame **qué quieres construir**, en tus propias palabras.
 > Por ejemplo: *"una app para llevar mis gastos del mes"* o *"una herramienta para organizar mis tareas"*.

@@ -1,12 +1,13 @@
 ---
 name: share-progress
-id: share-progress
-nombre: Compartir progreso del proyecto
-descripcion: Genera un resumen compartible del estado actual del pipeline Fragua en formato Markdown con estadísticas.
-aliases: ["/forge.compartir", "/forge share", "/forge progress"]
-version: 1.0.0
 description: Genera un resumen compartible en Markdown del estado del pipeline Fragua con estadísticas de fases, tareas y agentes. Úsala cuando el usuario quiera compartir o reportar el avance del proyecto.
 allowed-tools: Read, Bash
+metadata:
+  forge-id: "share-progress"
+  forge-nombre: "Compartir progreso del proyecto"
+  forge-descripcion: "Genera un resumen compartible del estado actual del pipeline Fragua en formato Markdown con estadísticas."
+  forge-aliases: "[\"/forge.compartir\", \"/forge share\", \"/forge progress\"]"
+  forge-version: "1.0.0"
 ---
 
 # Skill: Compartir Progreso
