@@ -58,12 +58,9 @@ MCP de GitHub instalado en Claude Code.
 
 ### Uso desde FORGE
 
-```
-/sdd.github.pr       → crea un PR con el código generado
-/sdd.github.issue    → crea un issue desde un criterio de aceptación fallido
-```
+No hay comandos `/sdd.github.*`. Con el MCP de GitHub instalado, pídeselo a Claude en la conversación («crea un PR con lo que hicimos»). Para traer tickets y publicar resultados con aprobación humana y el mínimo privilegio, usa `fragua integraciones` (ver [integraciones-externas.md](integraciones-externas.md)).
 
-### Qué hace
+### Qué puede hacer Claude con el MCP (no es un comando de Fragua)
 
 - Lee el plan de tareas para generar la descripción del PR
 - Asocia tareas completadas con commits via convención de mensajes
@@ -79,12 +76,9 @@ MCP de Figma instalado en Claude Code + URL de un archivo Figma compartido.
 
 ### Uso desde FORGE
 
-```
-/forge.diseño <url-figma>   → importa especificaciones de diseño desde Figma
-/sdd.diseño figma            → alias técnico
-```
+No hay comandos `/forge.diseño` ni `/sdd.diseño figma`. Con el MCP de Figma instalado, pide a Claude en la conversación que lea el archivo (pégale la URL); Fragua no tiene un comando dedicado.
 
-### Qué hace
+### Qué puede hacer Claude con el MCP (no es un comando de Fragua)
 
 - Lee el archivo Figma via MCP para extraer:
   - Paleta de colores → genera variables CSS

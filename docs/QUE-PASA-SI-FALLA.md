@@ -326,15 +326,14 @@ Tú: "Algo no funciona bien"
 Claude:
 "Voy a revisar todo..."
 
-Ejecuta: /sdd.doctor
+Ejecuta en una terminal: `fragua doctor` (no existe un comando `/sdd.doctor` dentro de Claude Code)
 
-Este comando verifica:
-✅ Código sintaxis correcta
-✅ Todos los archivos presentes
-✅ Base de datos conectada
-✅ Servidor respondiendo
-✅ Tests pasando
-✅ Sin secretos expuestos
+Este comando verifica Node, la clave de API, Docker, los hooks, la configuración y la conexión con el modelo. Salida real (recortada):
+✓ Node 24.20.0 (>=20 requerido) ✓
+✓ commands/ (39 entradas)
+⚠  ANTHROPIC_API_KEY no está definida — los agentes LLM no funcionarán
+✓ Docker 29.7.2 disponible ✓
+⚠  9 problema(s) detectado(s). Revisa arriba.
 ```
 
 ### Paso 2: Obtener un reporte
