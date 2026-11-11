@@ -1,6 +1,6 @@
 # Plan: volver Fragua agnóstica del anfitrión
 
-> Tipo: Plan · Fecha: 2026-11-10 · Árbol: `5.0.0-beta.1` (commit `05e74da`) · Estado: **propuesta, sin aprobar por el dueño**.
+> Tipo: Plan · Fecha: 2026-11-10 · Árbol: `5.0.0-beta.1` (commit `05e74da`) · Estado: **propuesta sin aprobar por el dueño; F1, F2 y F3 ya implementadas por su instrucción (ver §8), F4 parcial, F0 y F5 pendientes**.
 > Convención del repositorio: nada de esto se implementa sin su especificación en `.sdd/especificaciones/` aprobada por el dueño (AGENTS.md, «Cómo se cambia algo»). Este documento es el diagnóstico y el orden de trabajo; cada fase se convierte en una spec.
 
 ## 1. Diagnóstico: qué está amarrado a Claude Code y qué no

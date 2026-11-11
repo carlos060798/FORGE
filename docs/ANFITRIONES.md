@@ -19,14 +19,14 @@ Esta página describe solo lo que el código hace hoy. Dos palabras de estado:
 | Comandos | Sí, `.claude/commands` (formato de Claude Code) | Como skills `sdd-*`, con las órdenes `/sdd.x` reescritas a la forma de invocar de esa herramienta; solo los del perfil elegido |
 | Agentes | Sí, `.claude/agents` (subagentes) | Como **roles**: una skill `rol-<agente>` por agente (14), que se carga y se ejecuta en la misma conversación |
 | Agentes nativos del anfitrión | No aplica | **No instalados.** Ningún formato de agente de otra herramienta está confirmado ni generado |
-| Hooks: guardián | Sí, `PreToolUse` | **No instalado** |
-| Hooks: memoria de agentes y convenciones | Sí, `PostToolUse` | **No instalados** |
+| Hooks: guardián | Sí, `PreToolUse` | **Solo con `--con-hooks`**, en Cursor, Copilot, Gemini CLI y Codex (ver la matriz). **Consultivo, no impuesto, mientras la herramienta falle abierto (Gemini, Codex) o no se haya probado en real.** Sin `--con-hooks`, no instalado |
+| Hooks: memoria de agentes y convenciones | Sí, `PostToolUse` | **No instalados.** `fragua memoria registrar` existe como orden manual, sin traducción de evento ni plantilla de hook |
 | `settings.json`, `CLAUDE.md` | Sí | No |
 | `AGENTS.md` | Sí | Sí |
 
 Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 
-- **El guardián no se impone.** Las reglas de `AGENTS.md` se piden al modelo; nada las hace cumplir. La defensa que sí vale en cualquier anfitrión es el aislamiento del ciclo verificado (`fragua run`, `fragua verificar`) y el servidor MCP con perfil `verificacion`.
+- **El guardián no se impone por defecto.** Sin `--con-hooks`, las reglas de `AGENTS.md` se piden al modelo y nada las hace cumplir. Con `--con-hooks` hay un hook en cuatro herramientas, pero ninguna está probada en real y Gemini y Codex fallan abierto: se lee como consultivo. La defensa que sí vale en cualquier anfitrión es el aislamiento del ciclo verificado (`fragua run`, `fragua verificar`) y el servidor MCP con perfil `verificacion`.
 - **La delegación entre agentes pierde el subagente.** Donde un comando dice `Task("agente", …)`, la nota de anfitrión pide cargar la skill del rol y trabajar en la misma conversación; lo paralelo pasa a secuencial. No hay aislamiento de contexto entre roles.
 - **La memoria por agente no se registra sola.** El hook que la escribe es de Claude Code; en los roles se sustituyó la frase por una instrucción de anotar decisiones en `.sdd/memoria/`.
 - **La adaptación es textual** (`core/instalacion/adaptar-anfitrion.js`, aplicada al instalar). Las fuentes de `commands/`, `agents/` y `skills/` no cambian, y lo que recibe Claude Code tampoco.

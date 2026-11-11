@@ -11,7 +11,7 @@
 
 </div>
 
-Fragua lleva una idea escrita en lenguaje natural hasta código probado, pasando por una especificación que **una persona aprueba** antes de que los agentes escriban nada. Orquesta 14 agentes, 39 comandos y 31 skills. Su anfitrión nativo es Claude Code; en otras herramientas recibe skills, comandos adaptados como skills y los agentes como roles (sin guardián por hooks; ver [docs/ANFITRIONES.md](docs/ANFITRIONES.md)). Guarda todo el estado en `.sdd/` para retomar entre sesiones.
+Fragua lleva una idea escrita en lenguaje natural hasta código probado, pasando por una especificación que **una persona aprueba** antes de que los agentes escriban nada. Orquesta 14 agentes, 39 comandos y 31 skills. Su anfitrión nativo es Claude Code; en otras herramientas recibe skills, comandos adaptados como skills y los agentes como roles (guardián por hooks solo con `--con-hooks` y sin probar en real; ver [docs/ANFITRIONES.md](docs/ANFITRIONES.md)). Guarda todo el estado en `.sdd/` para retomar entre sesiones.
 
 Lo que lo distingue es una decisión de diseño: **el veredicto sobre el código lo da el código de salida de las pruebas, ejecutadas en un contenedor sin red, y no la opinión de un modelo.**
 
@@ -64,7 +64,7 @@ Guía: [ciclo-verificado.md](docs/ciclo-verificado.md). Qué falla y cómo recup
 | Docker en marcha | `fragua run` ejecuta el código generado en un contenedor sin red. Sin Docker: `--motor clasico` (modo 4.x, sin aislamiento) |
 | `ANTHROPIC_API_KEY` (u otra) en tu entorno | Las claves nunca se leen del archivo del proyecto |
 | Proyecto en JS/TS, Python o Go | Lenguajes cubiertos por el ciclo verificado |
-| Una herramienta de código | Claude Code recibe comandos, subagentes y hooks (guardián y memoria). Las demás (`--integracion <clave>`) reciben skills, comandos adaptados como skills y 14 roles `rol-*`, sin guardián ni memoria por hooks. Ninguna está probada todavía: [docs/ANFITRIONES.md](docs/ANFITRIONES.md) |
+| Una herramienta de código | Claude Code recibe comandos, subagentes y hooks (guardián y memoria). Las demás (`--integracion <clave>`) reciben skills, comandos adaptados como skills y 14 roles `rol-*`; sin memoria por hooks y con el guardián solo si añades `--con-hooks` (Cursor, Copilot, Gemini, Codex; consultivo). Ninguna está probada todavía: [docs/ANFITRIONES.md](docs/ANFITRIONES.md) |
 
 ## Instalación
 

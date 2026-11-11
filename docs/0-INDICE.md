@@ -76,7 +76,7 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 - 🔐 [SEGURIDAD-PARA-NOTECNICOS.md](SEGURIDAD-PARA-NOTECNICOS.md) y [../SECURITY.md](../SECURITY.md): seguridad sin jerga y cómo reportar.
 - 📏 [COBERTURA.md](COBERTURA.md): cobertura de pruebas por archivo.
 - 🗺️ [roadmap.md](roadmap.md): hacia dónde va.
-- [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md): diagnóstico de qué sigue amarrado a Claude Code (comandos, agentes, hooks) y plan por fases para que otras herramientas reciban lo mismo. Propuesta sin aprobar.
+- [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md): diagnóstico de qué sigue amarrado a Claude Code (comandos, agentes, hooks) y plan por fases para que otras herramientas reciban lo mismo. Plan sin aprobar; F1 a F3 implementadas, F5 (prueba manual por herramienta) pendiente.
 
 ## Comunidad y gobierno
 

@@ -12,7 +12,7 @@
     {
       "name": "forge",
       "source": "./",
-      "description": "Fábrica de software agnóstica al stack: de la idea al despliegue. 39 comandos, 14 agentes especializados, 31 skills, hooks de seguridad (JS+Bash), motor LLM agnóstico (Anthropic/OpenAI/Ollama), memoria compartida entre agentes, dashboard SSE tiempo real, aprobación humana obligatoria antes de planificar, observabilidad completa. Pipeline completo: Idea → IR → Spec → Plan → Tareas → Implementación → Verificación → Deploy.",
+      "description": "Desarrollo guiado por especificaciones en español, de la idea al código verificado: ciclo aislado en Docker sin red, aprobación humana antes de planificar y 39 comandos, 14 agentes y 31 skills. Motor con proveedores Anthropic, OpenAI y Ollama. En otras herramientas de código recibe skills y roles; el guardián por hooks es opcional y está sin probar.",
       "version": "5.0.0-beta.1",
       "author": {
         "name": "Danilo Angarita",

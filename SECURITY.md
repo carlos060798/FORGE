@@ -28,7 +28,7 @@ El proyecto está en **pre-beta** y lo mantiene **una persona**. No hay plazo ga
 
 **Dentro del alcance** (un fallo aquí es una vulnerabilidad):
 
-- El guardián (`claude-hooks/pre-tool-guard.js`) y su registro propio, cuando un bypass permite algo que su documentación dice que bloquea.
+- El guardián (`claude-hooks/pre-tool-guard.js`) y su registro propio, cuando un bypass permite algo que su documentación dice que bloquea. Incluye `fragua guardian evaluar` y la traducción de eventos de otras herramientas (`core/instalacion/hooks-anfitrion.js`): un evento que se evalúa como «permitir» siendo peligroso, o un caso de error que no falle cerrado, es una vulnerabilidad. Fuera de alcance: que Gemini CLI y Codex fallen abierto ante un error del hook, que es comportamiento de la herramienta y está declarado en `docs/ANFITRIONES.md`.
 - El aislamiento del ciclo verificado (`core/sandbox/`): escape del contenedor, red, escalada de privilegios, escritura fuera de la carpeta permitida.
 - Confinamiento de rutas: escrituras de una salida de modelo fuera del directorio del proyecto, o en `.git/`, `.sdd/` o `.env*`.
 - Fuga de secretos hacia registros, estados guardados, copias de trabajo o destinos de red no autorizados (por ejemplo, que un repositorio ajeno reciba la clave del usuario).
