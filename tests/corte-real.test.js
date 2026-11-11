@@ -127,10 +127,13 @@ describe("proveedor de pruebas — guion por reglas para `complete`", () => {
 // ─── Lo que deja un proceso cortado, y quién lo recoge ────────────────────────────────────────
 
 describe("restos de un ciclo cortado — barridos al empezar el siguiente", () => {
-  /** Un proceso que ya terminó: su pid no existe. */
+  /** Un proceso que ya terminó: su pid no existe. Se comprueba al pedirlo, porque los pid se reutilizan (en Windows, casi de inmediato). */
   function pidMuerto() {
-    const r = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
-    return Number(r.stdout);
+    for (let i = 0; i < 8; i++) {
+      const pid = Number(spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" }).stdout);
+      try { process.kill(pid, 0); } catch (e) { if (e?.code === "ESRCH") return pid; }
+    }
+    throw new Error("no se pudo obtener un pid de un proceso muerto");
   }
   /** Carpeta como las que crea la medición por mutación: nombre, marca con el pid y una copia dentro. */
   /** La marca real que escribe la medición: JSON con la clave de FORGE, un nonce y el pid (N4-01). */

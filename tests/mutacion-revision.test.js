@@ -54,8 +54,19 @@ const proyecto = (extra = {}) => escribir(tmp("forge-mrev-"), { "package.json": 
 /** Marca que escribe `escribirMarcaCopia`: la clave de FORGE, un nonce de 32 hexadecimales y el pid. */
 const marcaDe = (pid) => JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
 /** Un pid que acaba de terminar: el proceso hijo ya no existe. */
-const PID_MUERTO = Number(spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" }).stdout);
-const MARCA_VALIDA = marcaDe(PID_MUERTO);
+/**
+ * Un pid de un proceso que acaba de terminar, COMPROBADO al pedirlo. Los pid se reutilizan (en Windows, casi de
+ * inmediato): uno tomado al cargar el archivo puede ser de otro proceso vivo cuando llega la aserción, sobre todo con la
+ * suite entera lanzando procesos a la vez. Visto en la pasada completa del 2026-11-11: el barrido no borró la «huérfana».
+ */
+function pidMuertoFresco() {
+  for (let i = 0; i < 8; i++) {
+    const pid = Number(spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" }).stdout);
+    try { process.kill(pid, 0); } catch (e) { if (/** @type {any} */ (e)?.code === "ESRCH") return pid; }
+  }
+  throw new Error("no se pudo obtener un pid de un proceso muerto");
+}
+const MARCA_VALIDA = marcaDe(pidMuertoFresco());
 const MARCA_VIVA = marcaDe(process.pid);
 
 // ── H-02: un fallo al cargar el módulo no es una detección ───────────────────
@@ -414,7 +425,7 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
     const dir = join(base, nombre);
     mkdirSync(join(dir, "copia"), { recursive: true });
     writeFileSync(join(dir, "copia", "a.js"), "x");
-    if (marca) writeFileSync(join(dir, ".forge-mutacion"), viva ? MARCA_VIVA : MARCA_VALIDA);
+    if (marca) writeFileSync(join(dir, ".forge-mutacion"), viva ? MARCA_VIVA : marcaDe(pidMuertoFresco()));
     if (antigua) utimesSync(dir, HACE_UN_DIA(), HACE_UN_DIA());
     return dir;
   }
@@ -441,8 +452,7 @@ describe("H-06 — copia privada y barrido de huérfanas", () => {
     const { spawnSync } = await import("node:child_process");
     const base = tmp("forge-mrev-barrer-");
     // Un pid que acaba de terminar: el proceso hijo ya no existe
-    const muerto = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
-    const pidMuerto = Number(muerto.stdout);
+    const pidMuerto = pidMuertoFresco();
     assert.ok(Number.isInteger(pidMuerto) && pidMuerto > 0);
 
     const marcaDe = (pid) => JSON.stringify({ forge: "mutacion", nonce: "0123456789abcdef0123456789abcdef", pid, creada: "2026-10-10T00:00:00.000Z" }) + "\n";
