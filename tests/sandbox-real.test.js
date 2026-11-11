@@ -5,7 +5,7 @@
  * Cubre CA-003-01 a CA-003-06 y CA-003-09 contra un contenedor de verdad.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, before } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,6 +15,7 @@ import { DockerCli } from "../core/sandbox/docker-cli.js";
 import { ETIQUETA } from "../core/sandbox/politica.js";
 import { SandboxRunner } from "../core/sandbox/sandbox-runner.js";
 import { clasificar } from "../core/ciclo/router.js";
+import { asegurarImagenesBase } from "./fixtures/docker-imagenes.mjs";
 
 const cli = new DockerCli();
 const activo = process.env.FORGE_TEST_DOCKER === "1" && (await cli.disponible()).ok;
@@ -41,6 +42,9 @@ const runner = (cwd, extra = {}) => new SandboxRunner({
 });
 
 describe("aislamiento con Docker real", { skip: !activo && "requiere FORGE_TEST_DOCKER=1 y Docker en marcha" }, () => {
+  // El ejecutor usa --pull never: la imagen base tiene que estar en el equipo (ver tests/fixtures/docker-imagenes.mjs)
+  before(async () => { if (activo) await asegurarImagenesBase(cli, ["javascript"]); });
+
   test("unas pruebas que pasan dan código 0 y categoría pass", async () => {
     const cwd = proyecto("test('suma', () => assert.equal(1 + 1, 2));");
     const r = await runner(cwd).test(cwd);
