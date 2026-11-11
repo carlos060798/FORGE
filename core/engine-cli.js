@@ -28,6 +28,7 @@ import { detectStack } from './stack-detector.js';
 import { runnerForStack } from './runners/index.js';
 import { parseSpecMd, validateSpec, checkCoverage } from './spec.js';
 import { sessionBudget } from './session-budget.js';
+import { crearProvider } from './llm-providers/index.js';
 import { lineaRevision } from './precios.js';
 import { circuitBreaker } from './execution-context.js';
 import { cargarTareas, specActiva } from './tareas.js';
@@ -82,6 +83,30 @@ export function parseArgs(argv) {
 }
 
 // ── Fábrica de dependencias ───────────────────────────────────────────────────
+
+/** Variable de entorno de la clave de cada proveedor que la necesita (Ollama y el de pruebas no usan). */
+const VARIABLE_DE_CLAVE = { anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY' };
+
+/**
+ * La clave y el aviso según el proveedor que de verdad se usará (el de `FORGE_LLM_PROVIDER`, el de
+ * `llm.provider` de sdd.config.yaml o el detectado), no según Anthropic. Solo Anthropic recibe `apiKey` por
+ * parámetro (comportamiento de siempre); los demás leen la suya de su propia variable.
+ * @param {string} cwd
+ * @returns {{ apiKey: string|undefined, aviso: string|null }}
+ */
+export function resolverClave(cwd) {
+  let proveedor;
+  try { proveedor = crearProvider({ cwd }); } catch {
+    // Configuración ilegible: se conserva el comportamiento anterior y los agentes darán el error claro
+    const clave = process.env['ANTHROPIC_API_KEY'];
+    return { apiKey: clave, aviso: clave ? null : 'ANTHROPIC_API_KEY no está definida — el engine correrá en modo stub.' };
+  }
+  const nombre = proveedor.nombre;
+  const apiKey = nombre === 'anthropic' ? (process.env['ANTHROPIC_API_KEY'] || undefined) : undefined;
+  const variable = VARIABLE_DE_CLAVE[nombre];
+  const sinClave = variable !== undefined && !(/** @type {any} */ (proveedor).apiKey);
+  return { apiKey, aviso: sinClave ? `${variable} no está definida — el engine correrá en modo stub.` : null };
+}
 
 function buildDeps(cwd) {
   const forgeRoot = path.resolve(__dirname, '..');
@@ -259,7 +284,7 @@ async function cmdStatus(cwd) {
 async function cmdResume(cwd, flags = {}, opciones = {}) {
   const deps = buildDeps(cwd);
   const { log, fsm, store, registry, runner } = deps;
-  const apiKey = process.env['ANTHROPIC_API_KEY'];
+  const { apiKey } = resolverClave(cwd);
 
   if (!log.exists()) {
     warn('No hay event log — nada que retomar. Usa "forge run" para iniciar.');
@@ -374,9 +399,9 @@ async function cmdResume(cwd, flags = {}, opciones = {}) {
 async function cmdRun(cwd, flags, opciones = {}) {
   const deps = buildDeps(cwd);
   const { store, log, registry, fsm, runner } = deps;
-  const apiKey = process.env['ANTHROPIC_API_KEY'];
+  const { apiKey, aviso } = resolverClave(cwd);
 
-  if (!apiKey) warn('ANTHROPIC_API_KEY no está definida — el engine correrá en modo stub.');
+  if (aviso) warn(aviso);
 
   let tasks = [];
   if (flags['tasks']) {

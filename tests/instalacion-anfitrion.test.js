@@ -5,11 +5,11 @@
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { PREFIJO_INVOCACION, adaptarCuerpo, adaptarSkill, agenteARol, nivelDeModelo } from "../core/instalacion/adaptar-anfitrion.js";
+import { PREFIJO_INVOCACION, adaptarCuerpo, adaptarSkill, agenteARol, nivelDeModelo, notaDeAnfitrion } from "../core/instalacion/adaptar-anfitrion.js";
 import { CLAVES } from "../core/instalacion/herramientas-destino.js";
 import { separarCabecera, validarSkill } from "../core/instalacion/skills-de-comandos.js";
 import { ROOT, forge } from "./instalacion-ayudas.js";
@@ -165,5 +165,71 @@ describe("instalación real", () => {
     const r2 = forge(cwd, home, "init", "--integracion", "cursor");
     assert.equal(r2.status, 0, r2.salida);
     assert.ok(!/no se pisa/.test(r2.salida), r2.salida);
+  });
+});
+
+describe("pseudocódigo de Claude Code fuera de Claude (paquete I)", () => {
+  test("Task, TodoWrite y /effort se reescriben sin cambiar cómo se ejecuta un bloque bash", () => {
+    const entrada = [
+      "Usa `TodoWrite` para mostrar el avance.",
+      "```js",
+      'revisores.map(r => Task(r.agente, r.prompt))',
+      "```",
+      "```bash",
+      "/effort high    # más razonamiento",
+      "echo hecho",
+      "```",
+      "Escribe `/effort xhigh` en Claude Code antes de seguir. Ruta docs/effort-router intacta.",
+    ].join("\n");
+    const t = adaptarCuerpo(entrada, { prefijo: "$", comandos });
+    assert.ok(!/Task\(|TodoWrite|\/effort/.test(t.replace("docs/effort-router", "")), t);
+    assert.match(t, /delegar_a_rol\(r\.agente, r\.prompt\)/);
+    assert.match(t, /mostrar_lista_de_tareas/);
+    assert.match(t, /^# esfuerzo «high»: ajústalo en tu herramienta/m);
+    assert.match(t, /^echo hecho$/m, "las demás líneas del bloque no cambian");
+    assert.match(t, /el esfuerzo «xhigh» de tu herramienta/);
+    assert.match(t, /docs\/effort-router/);
+  });
+  test("las skills adaptadas de todos los comandos no conservan Task(/TodoWrite// effort fuera de la nota", () => {
+    const { skills } = require_generar();
+    for (const [nombre, md] of skills) {
+      const r = adaptarSkill(md, { prefijo: "$", comandos }).replace(NOTA, "");
+      assert.ok(!/\bTask\(|\bTodoWrite\b|(?<![\w./-])\/effort\s/.test(r), `${nombre}: queda pseudocódigo de Claude Code`);
+    }
+  });
+  test("Claude Code no cambia: la adaptación solo se aplica a otras herramientas (el instalador no la usa para claude)", () => {
+    const md = readFileSync(join(ROOT, "commands", "sdd.implementar.md"), "utf8");
+    assert.match(md, /Task\(/);
+    assert.match(md, /TodoWrite/);
+  });
+  test("la nota de anfitrión explica el pseudocódigo y los scripts claude-hooks", () => {
+    const nota = notaDeAnfitrion("$");
+    assert.match(nota, /delegar_a_rol/);
+    assert.match(nota, /mostrar_lista_de_tareas/);
+    assert.match(nota, /claude-hooks/);
+  });
+});
+
+describe("resumen de la instalación y .claudeignore (paquete I)", () => {
+  test("sin --con-hooks dice que no hay hooks; con --con-hooks dice cuál se registró y no afirma que falten", () => {
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-"))), home = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-h-")));
+    const sin = forge(cwd, home, "init", "--integracion", "cursor");
+    assert.equal(sin.status, 0, sin.salida);
+    assert.match(sin.salida, /No instalado: hooks \(guardián, memoria de agentes\)/);
+    const cwd2 = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-"))), home2 = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-h-")));
+    const con = forge(cwd2, home2, "init", "--integracion", "cursor", "--con-hooks");
+    assert.equal(con.status, 0, con.salida);
+    assert.match(con.salida, /Hooks registrados en \.cursor\/hooks\.json/);
+    assert.ok(!/No instalado: hooks \(guardián/.test(con.salida), con.salida);
+    assert.match(con.salida, /context-manager/);
+  });
+  test(".claudeignore solo se crea con la integración claude; el README de hooks se crea siempre", () => {
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-"))), home = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-h-")));
+    assert.equal(forge(cwd, home, "init", "--integracion", "codex").status, 0);
+    assert.ok(!existsSync(join(cwd, ".claudeignore")), "codex no recibe .claudeignore");
+    assert.ok(existsSync(join(cwd, ".sdd", "hooks", "README.md")));
+    const cwd2 = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-"))), home2 = realpathSync(mkdtempSync(join(tmpdir(), "forge-i-h-")));
+    assert.equal(forge(cwd2, home2, "init").status, 0);
+    assert.ok(existsSync(join(cwd2, ".claudeignore")), "claude sí");
   });
 });

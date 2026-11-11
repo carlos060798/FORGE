@@ -21,6 +21,7 @@
     "init": "echo 'Instala con: fragua init  (tras clonar el repositorio: npm install -g .)'",
     "doctor": "node cli/index.js doctor",
     "generar-skills": "node scripts/generar-skills.mjs",
+    "emular": "node scripts/emular-instalacion.mjs",
     "prepublishOnly": "node scripts/generar-skills.mjs && npm test"
   },
   "engines": {

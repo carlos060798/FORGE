@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpath
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { CLAVES_CON_AGENTE_NATIVO, FORMATOS_NATIVOS, agenteANativo, herramientasDe } from "../core/instalacion/agentes-nativos.js";
+import { CLAVES_CON_AGENTE_NATIVO, FORMATOS_NATIVOS, SOLO_LECTURA_CON_SHELL, agenteANativo, cuerpoSinShell, herramientasDe } from "../core/instalacion/agentes-nativos.js";
 import { INTEGRACIONES } from "../core/instalacion/herramientas-destino.js";
 import { AGENTES_SOLO_LECTURA } from "../core/evidencia/guardian-reglas.js";
 import { separarCabecera } from "../core/instalacion/skills-de-comandos.js";
@@ -79,17 +79,25 @@ describe("agenteANativo", () => {
       assert.ok(!/"edit"/.test(c), `copilot ${a}`);
     }
   });
-  test("Gemini: solo genera agentes sin escritura, con herramientas confirmadas; el resto se omite con motivo", () => {
+  test("Gemini: genera los 14 con herramientas de la lista confirmada el 2026-11-11 (geminicli.com/docs/tools)", () => {
+    const CONFIRMADAS = ["read_file", "write_file", "replace", "glob", "grep_search", "run_shell_command", "web_fetch", "google_web_search"];
     for (const a of agentes) {
       const r = /** @type {any} */ (agenteANativo("gemini", a, texto(a), opciones));
-      if (herramientasDe(separarCabecera(texto(a)).campos.get("tools")).some((h) => ["Write", "Edit", "MultiEdit"].includes(h))) {
-        assert.match(r.omitido, /no están confirmados/, a);
-      } else {
-        assert.equal(r.ruta, `.gemini/agents/${a}.md`);
-        const tools = [...r.contenido.matchAll(/^ {2}- (\S+)$/gm)].map((/** @type {RegExpMatchArray} */ m) => m[1]);
-        assert.ok(tools.length > 0 && tools.every((t) => ["read_file", "grep_search", "run_shell_command"].includes(t)), a);
-        assert.match(r.contenido, /^kind: local$/m);
-      }
+      assert.equal(r.ruta, `.gemini/agents/${a}.md`, a);
+      const tools = [...r.contenido.matchAll(/^ {2}- (\S+)$/gm)].map((/** @type {RegExpMatchArray} */ m) => m[1]);
+      assert.ok(tools.length > 0 && tools.every((t) => CONFIRMADAS.includes(t)), `${a}: ${tools}`);
+      assert.match(r.contenido, /^kind: local$/m);
+    }
+  });
+  test("Gemini: un agente que escribe recibe write_file, y replace si declara Edit; uno de solo lectura, ninguna", () => {
+    const tester = /** @type {any} */ (agenteANativo("gemini", "tester", texto("tester"), opciones)).contenido;
+    assert.match(tester, /^ {2}- write_file$/m);
+    assert.ok(!/^ {2}- replace$/m.test(tester), "tester declara Write pero no Edit: no recibe replace");
+    const conEdit = "---\nname: x\ndescription: d\ntools: [\"Read\", \"Edit\"]\n---\ncuerpo\n";
+    assert.match(/** @type {any} */ (agenteANativo("gemini", "x", conEdit, opciones)).contenido, /^ {2}- replace$/m);
+    for (const a of SOLO_LECTURA) {
+      const c = /** @type {any} */ (agenteANativo("gemini", a, texto(a), opciones)).contenido;
+      assert.ok(!/^ {2}- (write_file|replace)$/m.test(c), a);
     }
   });
   test("Codex: TOML con los tres campos obligatorios; solo lectura va como instrucción", () => {
@@ -119,11 +127,94 @@ describe("agenteANativo", () => {
   });
 });
 
+describe("agentes de solo lectura sin terminal (fuera de Claude Code no hay guardián)", () => {
+  const conShell = Object.keys(SOLO_LECTURA_CON_SHELL);
+  const sinShell = SOLO_LECTURA.filter((a) => !conShell.includes(a));
+
+  test("la lista de excepciones es exactamente revisor e investigador, son de solo lectura y cada una trae su motivo", () => {
+    assert.deepEqual([...conShell].sort(), ["investigador", "revisor"]);
+    for (const a of conShell) {
+      assert.ok(SOLO_LECTURA.includes(a), a);
+      assert.ok(SOLO_LECTURA_CON_SHELL[a].length > 20, `${a}: motivo`);
+    }
+  });
+  test("los motivos son ciertos: esos agentes ejecutan de verdad lo que dice su motivo", () => {
+    assert.match(texto("revisor"), /npx jest|pytest/);
+    assert.match(texto("investigador"), /node --version/);
+  });
+  test("los demás agentes de solo lectura solo usaban el shell para leer o anexar a la memoria compartida", () => {
+    const EJECUTA = /\b(npx|npm|pytest|jest|git|node --version|python --version)\b/;
+    for (const a of sinShell) {
+      const bloques = [...texto(a).matchAll(/```bash\r?\n([\s\S]*?)```/g)].map((m) => m[1]).join("\n");
+      const comandos = bloques.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("#"));
+      assert.ok(!comandos.some((l) => EJECUTA.test(l)), `${a} ejecuta algo más que lectura`);
+    }
+  });
+  test("en ningún formato nativo reciben shell ni escritura", () => {
+    for (const a of sinShell) {
+      const kiro = JSON.parse(/** @type {any} */ (agenteANativo("kiro", a, texto(a), opciones)).contenido);
+      assert.ok(!kiro.tools.includes("shell") && !kiro.tools.includes("write"), `kiro ${a}`);
+      const copilot = /** @type {any} */ (agenteANativo("copilot", a, texto(a), opciones)).contenido;
+      assert.ok(!/"execute"|"edit"/.test(copilot), `copilot ${a}`);
+      const gemini = /** @type {any} */ (agenteANativo("gemini", a, texto(a), opciones)).contenido;
+      assert.ok(!/run_shell_command|write_file|^ {2}- replace$/m.test(gemini), `gemini ${a}`);
+      const opencode = /** @type {any} */ (agenteANativo("opencode", a, texto(a), opciones)).contenido;
+      assert.match(opencode, /action: shell\n\s+resource: "\*"\n\s+effect: deny/, `opencode ${a}`);
+    }
+  });
+  test("los que conservan el shell lo mantienen (y siguen sin poder escribir archivos)", () => {
+    for (const a of conShell) {
+      assert.match(/** @type {any} */ (agenteANativo("copilot", a, texto(a), opciones)).contenido, /"execute"/, a);
+      assert.match(/** @type {any} */ (agenteANativo("gemini", a, texto(a), opciones)).contenido, /run_shell_command/, a);
+      assert.ok(!/action: shell/.test(/** @type {any} */ (agenteANativo("opencode", a, texto(a), opciones)).contenido), a);
+      assert.ok(/```bash/.test(/** @type {any} */ (agenteANativo("cursor", a, texto(a), opciones)).contenido), `${a}: conserva sus bloques bash`);
+    }
+  });
+  test("el cuerpo nativo sin terminal no tiene bloques bash ni escrituras por heredoc, y no dice 'anota en memoria'", () => {
+    for (const a of sinShell) {
+      for (const c of CLAVES_CON_AGENTE_NATIVO) {
+        const cuerpo = /** @type {any} */ (agenteANativo(c, a, texto(a), opciones)).contenido;
+        assert.ok(!/```bash/.test(cuerpo), `${c}/${a}: bloque bash`);
+        assert.ok(!/cat\s*>>/.test(cuerpo), `${c}/${a}: escribe por la terminal`);
+        assert.ok(!/anota tus decisiones en `\.sdd\/memoria/.test(cuerpo), `${c}/${a}`);
+      }
+    }
+  });
+  test("arquitecto y critico devuelven sus decisiones en la respuesta en vez de anexarlas por la terminal", () => {
+    for (const a of ["arquitecto", "critico"]) {
+      const cuerpo = /** @type {any} */ (agenteANativo("cursor", a, texto(a), opciones)).contenido;
+      assert.match(cuerpo, /incluye al final de tu respuesta este bloque/);
+      assert.match(cuerpo, /decisiones-clave\.md/);
+      assert.ok(!/\$\(date/.test(cuerpo), a);
+    }
+  });
+
+  describe("cuerpoSinShell", () => {
+    test("un bloque de lectura pasa a lista de archivos; las rutas con ${SPEC_ID} se nombran de forma neutral", () => {
+      const r = cuerpoSinShell("Antes:\n```bash\n# cabecera\nSPEC_ID=$(grep x)\ncat .sdd/estado.json 2>/dev/null\n[ -n \"$SPEC_ID\" ] && cat \".sdd/especificaciones/${SPEC_ID}/spec.md\" 2>/dev/null | head -5\nfind src -maxdepth 2 -type d 2>/dev/null | head -20\n```\nDespués");
+      assert.ok(!/```bash/.test(r));
+      assert.match(r, /- `\.sdd\/estado\.json`/);
+      assert.match(r, /- `\.sdd\/especificaciones\/<id-spec-activa>\/spec\.md`/);
+      assert.match(r, /- buscar o listar: `find src -maxdepth 2 -type d`/);
+      assert.match(r, /^Después$/m);
+    });
+    test("un texto sin bloques bash no cambia", () => {
+      assert.equal(cuerpoSinShell("Solo prosa.\n```js\nx\n```\n"), "Solo prosa.\n```js\nx\n```\n");
+    });
+    test("el heredoc de anexo se convierte en plantilla sin fecha del sistema", () => {
+      const r = cuerpoSinShell("```bash\nmkdir -p a\ncat >> a/b.md << EOF\n\n## $(date -u +%Y) — x\n- Decisión: d\nEOF\n```");
+      assert.match(r, /registre en `a\/b\.md`/);
+      assert.match(r, /## <fecha UTC> — x/);
+      assert.ok(!/EOF|cat >>/.test(r));
+    });
+  });
+});
+
 describe("forge init escribe los agentes nativos", () => {
   /** @type {Record<string, [string, string, number]>} */
   const esperado = {
     copilot: [".github/agents", ".agent.md", 14], cursor: [".cursor/agents", ".md", 14], codex: [".codex/agents", ".toml", 14],
-    opencode: [".opencode/agents", ".md", 14], kiro: [".kiro/agents", ".json", 14], gemini: [".gemini/agents", ".md", 7],
+    opencode: [".opencode/agents", ".md", 14], kiro: [".kiro/agents", ".json", 14], gemini: [".gemini/agents", ".md", 14],
   };
   for (const [clave, [carpeta, ext, n]] of Object.entries(esperado)) {
     test(`${clave}: ${n} agentes en ${carpeta}; una segunda pasada no avisa; un archivo ajeno no se pisa`, () => {

@@ -11,7 +11,10 @@ const TABLA_POR_TOKEN = tablaPorToken();
 const PRECIOS = TABLA_POR_TOKEN.anthropic;
 
 function precioParaModelo(modelo) {
-  return PRECIOS[modelo] ?? PRECIOS['claude-sonnet-4-6'];
+  // Primero la tabla de Anthropic (como siempre); si el modelo es de otro proveedor, su propia tabla
+  if (PRECIOS[modelo]) return PRECIOS[modelo];
+  for (const tabla of Object.values(TABLA_POR_TOKEN)) if (Object.hasOwn(tabla, modelo)) return tabla[modelo];
+  return PRECIOS['claude-sonnet-4-6'];
 }
 
 /**

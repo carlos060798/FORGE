@@ -6,7 +6,8 @@
  * instala FORGE. Añadir una herramienta es añadir una fila: nada de código por herramienta.
  *
  * Solo entran herramientas con carpeta de skills CONFIRMADA en su documentación oficial
- * (spikes/carpetas-de-skills.md, consultado el 2026-10-13). Zed y Goose quedan fuera: sin confirmar.
+ * (spikes/carpetas-de-skills.md, consultado el 2026-10-13). Zed y Goose se confirmaron después, el 2026-11-11
+ * (spikes/zed-goose.md); ambas leen `.agents/skills/`.
  *
  * Funciones puras: no leen ni escriben archivos. La escritura segura es del instalador.
  */
@@ -26,6 +27,8 @@ import { isAbsolute, relative, resolve } from 'node:path';
  */
 
 const FECHA = '2026-10-13';
+/** Fecha de consulta de las filas añadidas después del spike S0.1 (Zed y Goose). */
+const FECHA_2 = '2026-11-11';
 
 /** @type {Readonly<Record<string, Integracion>>} */
 export const INTEGRACIONES = Object.freeze({
@@ -49,6 +52,17 @@ export const INTEGRACIONES = Object.freeze({
     clave: 'codex', nombre: 'Codex CLI', carpetaSkills: '.agents/skills', nativa: false,
     invocacion: '$<nombre> o /skills; implícita por descripción', ejemplo: '$forge',
     fuente: 'https://developers.openai.com/codex/skills', consultado: FECHA,
+  },
+  // Zed y Goose: carpeta confirmada el 2026-11-11 en su documentación oficial (ambas leen `.agents/skills/` del proyecto)
+  zed: {
+    clave: 'zed', nombre: 'Zed', carpetaSkills: '.agents/skills', nativa: false,
+    invocacion: '/<nombre> o @skill en el editor del mensaje; automática por descripción', ejemplo: '/forge',
+    fuente: 'https://zed.dev/docs/ai/skills', consultado: FECHA_2,
+  },
+  goose: {
+    clave: 'goose', nombre: 'Goose', carpetaSkills: '.agents/skills', nativa: false,
+    invocacion: 'por descripción o pidiendo «usa la skill <nombre>»; /skills <nombre> en la CLI', ejemplo: 'pide "usa la skill forge"',
+    fuente: 'https://goose-docs.ai/docs/guides/context-engineering/using-skills', consultado: FECHA_2,
   },
   copilot: {
     clave: 'copilot', nombre: 'GitHub Copilot', carpetaSkills: '.github/skills', nativa: false,

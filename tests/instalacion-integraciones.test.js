@@ -20,14 +20,16 @@ const proyecto = () => { const d = temporal("forge-int-"); writeFileSync(join(d,
 const lista = (d) => (existsSync(d) ? readdirSync(d).sort() : []);
 
 describe("F1.1 — tabla de integraciones", () => {
-  test("solo herramientas con carpeta confirmada; Zed y Goose no entran", () => {
-    assert.deepEqual([...CLAVES].sort(), ["agents", "claude", "codex", "copilot", "cursor", "gemini", "generica", "kiro", "opencode", "windsurf"]);
-    assert.ok(!CLAVES.includes("zed") && !CLAVES.includes("goose"));
+  test("solo herramientas con carpeta confirmada en su documentación oficial (Zed y Goose desde 2026-11-11)", () => {
+    assert.deepEqual([...CLAVES].sort(), ["agents", "claude", "codex", "copilot", "cursor", "gemini", "generica", "goose", "kiro", "opencode", "windsurf", "zed"]);
+    // Zed y Goose comparten carpeta con `agents`
+    assert.equal(INTEGRACIONES.zed.carpetaSkills, ".agents/skills");
+    assert.equal(INTEGRACIONES.goose.carpetaSkills, ".agents/skills");
   });
   test("cada fila cita su URL y su fecha de consulta", () => {
     for (const i of Object.values(INTEGRACIONES)) {
       assert.match(i.fuente, /^https:\/\//, i.clave);
-      assert.match(i.consultado, /^2026-10-1[34]$/, i.clave);
+      assert.match(i.consultado, /^2026-1[01]-\d\d$/, i.clave);
       assert.ok(i.invocacion && i.nombre);
     }
     assert.equal(INTEGRACIONES.windsurf.carpetaSkills, ".devin/skills");

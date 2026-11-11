@@ -47,7 +47,7 @@ Uso:
                  [--template api-rest|cli-tool|saas-mvp]
                                      Instala FORGE (proyecto actual o global)
   fragua update [--global]        Re-copia núcleo sin tocar tu .sdd/ ni settings
-  Opciones de init/update: --integracion <claude|generica|agents|codex|copilot|cursor|gemini|windsurf|opencode|kiro>
+  Opciones de init/update: --integracion <claude|generica|agents|codex|copilot|cursor|gemini|windsurf|opencode|kiro|zed|goose>
                            --perfil <esencial|completo>   --carpeta-skills <ruta> (solo generica)
                            --con-hooks   registra el guardián en los hooks de cursor, copilot, gemini, codex, windsurf u opencode (opcional;
                                          update lo recuerda). --sin-hooks lo desactiva y update lo respeta.

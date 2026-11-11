@@ -211,7 +211,11 @@ function copiarSkillsDeIntegracion(inst) {
   if (crearDir(destino) === undefined) return;
   const proteger = !inst.previa;
   const comandos = readdirSync(join(PLUGIN_DIR, "commands")).filter((x) => x.endsWith(".md")).map((x) => x.slice(0, -3));
-  const opciones = { prefijo: PREFIJO_INVOCACION[inst.integracion.clave] ?? "", comandos };
+  // Las rutas `.claude/skills/` y `.claude/agents/` del texto pasan a las carpetas de esta herramienta (solo si caen dentro del proyecto)
+  const relativa = (p) => { const r = relative(PROYECTO, p).replaceAll("\\", "/"); return r === "" || r.startsWith("..") ? null : r; };
+  const rutaSkills = relativa(destino);
+  const rutas = { skills: rutaSkills, agentes: FORMATOS_NATIVOS[inst.integracion.clave]?.carpeta ?? rutaSkills };
+  const opciones = { prefijo: PREFIJO_INVOCACION[inst.integracion.clave] ?? "", comandos, rutas };
   const adaptar = (md) => adaptarSkill(md, opciones);
   const propias = join(PLUGIN_DIR, "skills");
   for (const e of readdirSync(propias, { withFileTypes: true })) {
@@ -330,7 +334,12 @@ function resumenInstalacion(inst) {
     info("No instalado: nada omitido.");
   } else {
     info(`Instalado: ${instalado.skills} skills propias, ${instalado.generadas} skills de comandos y ${instalado.roles} roles (los agentes, como skills rol-*) en ${instalado.destino || destinoSkills(inst)}; AGENTS.md.`);
-    info("No instalado: hooks (guardián, memoria de agentes), settings.json ni CLAUDE.md, que son de Claude Code. Sin el guardián, las reglas de AGENTS.md se piden, no se imponen.");
+    if (instalado.hooks) {
+      info(`Hooks registrados en ${instalado.hooks}: guardián (y memoria de agentes donde esa herramienta lo permite). Sin probar en la herramienta real.`);
+      info("No instalado, porque es de Claude Code: context-manager, post-write-conventions, ast-indexer, settings.json ni CLAUDE.md.");
+    } else {
+      info("No instalado: hooks (guardián, memoria de agentes), settings.json ni CLAUDE.md, que son de Claude Code. Sin el guardián, las reglas de AGENTS.md se piden, no se imponen (--con-hooks lo registra donde la herramienta lo admite).");
+    }
     const fn = FORMATOS_NATIVOS[i.clave];
     if (fn) info(`Agentes nativos de ${fn.nombre}: ${instalado.nativos} en ${fn.carpeta}/ (${fn.nota}).`);
     else info("Agentes nativos: no se generan para esta herramienta (formato sin confirmar); los roles rol-* hacen el mismo trabajo.");
@@ -391,7 +400,8 @@ Recuerda dar permiso de ejecución a tus hooks en sistemas Unix:
 Ver más ejemplos en docs/EJEMPLOS.md del plugin.
 `;
 
-function configurarSdd(claudeDir, overrides = {}) {
+/** @param {string} claudeDir @param {object} [overrides] @param {boolean} [esClaude] false: otra herramienta, no se crea el `.claudeignore` de Claude Code */
+function configurarSdd(claudeDir, overrides = {}, esClaude = true) {
   titulo("Configurando estructura .sdd/ del proyecto...");
 
   const sub = [
@@ -437,9 +447,11 @@ function configurarSdd(claudeDir, overrides = {}) {
     if (escribirSeguro(configDest, yaml)) info("Configuración personalizada aplicada (wizard --guided)");
   }
 
-  // .claudeignore (no sobreescribe — respeta personalizaciones del usuario)
+  // .claudeignore es de Claude Code: otras herramientas no lo leen (no sobreescribe — respeta personalizaciones del usuario)
   const claudeignoreDest = join(PROYECTO, ".claudeignore");
-  if (!existsSync(claudeignoreDest)) {
+  if (!esClaude) {
+    // nada que crear
+  } else if (!existsSync(claudeignoreDest)) {
     if (copiarSeguro(join(PLUGIN_DIR, "configuracion-ejemplo", ".claudeignore"), claudeignoreDest)) info(".claudeignore creado — excluye node_modules, dist, observabilidad FORGE del contexto");
   } else {
     aviso(".claudeignore ya existe — no se sobreescribe");
@@ -654,7 +666,7 @@ export function cmdInit(global, guided = false, withUi = false, preset = null, t
 
   if (!global) {
     const overrides = guided ? wizardGuiado() : {};
-    paso("estructura .sdd/", () => configurarSdd(claudeDir, overrides));
+    paso("estructura .sdd/", () => configurarSdd(claudeDir, overrides, esClaude));
   }
 
   if (template) {

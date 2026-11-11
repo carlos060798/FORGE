@@ -7,6 +7,7 @@ import { leerVariable } from "../../core/entorno.js";
 import { PRODUCTO } from "../../core/nombres.js";
 import { INTEGRACION_POR_DEFECTO, resolverIntegracion } from "../../core/instalacion/herramientas-destino.js";
 import { PERFIL_POR_DEFECTO, resolverPerfil } from "../../core/instalacion/perfiles.js";
+import { esNivel } from "../../core/llm-providers/niveles.js";
 import { PLUGIN_DIR, c, info, aviso, titulo, error, pluginVersion, claudeEnPath } from "./comun.js";
 import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from "./instalar.js";
 
@@ -150,11 +151,11 @@ async function cmdDoctorLlm({ problemas }) {
     const modeloConfig = modeloMatch?.[1] ?? "sonnet";
     const modelosValidos = ["opus", "sonnet", "haiku",
       "claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"];
-    if (modelosValidos.includes(modeloConfig)) {
+    if (modelosValidos.includes(modeloConfig) || esNivel(modeloConfig)) {
       info(`Modelo configurado: "${modeloConfig}" ✓`);
     } else {
       aviso(`Modelo desconocido en sdd.config.yaml: "${modeloConfig}"`);
-      aviso("  Válidos: opus | sonnet | haiku");
+      aviso("  Válidos: alto | medio | economico (o sus alias opus | sonnet | haiku)");
       problemas(1);
     }
   }

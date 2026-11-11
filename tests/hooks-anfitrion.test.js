@@ -157,10 +157,13 @@ describe("memoria: eventos posteriores a la herramienta", () => {
       const t = PLANTILLAS_HOOKS[a].contenido(ordenDeGuardian(a));
       assert.ok(t.includes(`fragua memoria registrar --anfitrion ${a}`), a);
     }
-    // Windsurf y opencode: sin evento posterior confirmado, no registran memoria
-    for (const a of ["windsurf", "opencode"]) {
-      assert.ok(!PLANTILLAS_HOOKS[a].contenido(ordenDeGuardian(a)).includes("memoria registrar"), a);
-    }
+    // opencode: el evento posterior no está documentado, no registra memoria
+    assert.ok(!PLANTILLAS_HOOKS.opencode.contenido(ordenDeGuardian("opencode")).includes("memoria registrar"));
+    assert.ok(!ANFITRIONES_CON_MEMORIA.includes("opencode"));
+    // Windsurf/Devin: PostToolUse solo tras escribir o editar
+    const ws = JSON.parse(PLANTILLAS_HOOKS.windsurf.contenido(ordenDeGuardian("windsurf")));
+    assert.equal(ws.PostToolUse[0].matcher, "write|edit|apply_patch");
+    assert.ok(ws.PostToolUse[0].hooks[0].command.includes("memoria registrar --anfitrion windsurf"));
     const cursor = JSON.parse(PLANTILLAS_HOOKS.cursor.contenido("fragua guardian evaluar --anfitrion cursor"));
     assert.ok(!("failClosed" in cursor.hooks.afterFileEdit[0]), "la memoria de Cursor no falla cerrado");
     assert.ok("AfterTool" in JSON.parse(PLANTILLAS_HOOKS.gemini.contenido("x guardian evaluar")).hooks);
@@ -185,7 +188,43 @@ describe("Windsurf (Devin) y opencode", () => {
   test("Windsurf: `exec` es una orden de terminal; lo no confirmado pasa tal cual", () => {
     assert.deepEqual(traducirEvento("windsurf", { hook_event_name: "PreToolUse", tool_name: "exec", tool_input: { command: "rm -rf /" }, session_id: "s" }),
       [{ tool_name: "Bash", tool_input: { command: "rm -rf /" } }]);
-    assert.equal(traducirEvento("windsurf", { tool_name: "write", tool_input: { path: "a" } })[0].tool_name, "write", "nombre sin confirmar: sin traducir");
+  });
+  test("Windsurf: read, write y edit pasan al contrato; la ruta se busca por heurística si la clave no es conocida", () => {
+    assert.equal(traducirEvento("windsurf", { tool_name: "read", tool_input: { path: "/p/.env" } })[0].tool_name, "Read");
+    assert.equal(traducirEvento("windsurf", { tool_name: "write", tool_input: { file_path: "a.js", content: "x" } })[0].tool_name, "Write");
+    assert.equal(traducirEvento("windsurf", { tool_name: "edit", tool_input: { target_file: "a.js", new_string: "y" } })[0].tool_input.file_path, "a.js");
+    assert.equal(traducirEvento("windsurf", { tool_name: "read", tool_input: { contenido_largo: "una\nlinea", otra: "x" } })[0].tool_input.file_path, undefined, "sin clave de ruta: no se inventa");
+    assert.equal(traducirEvento("windsurf", { tool_name: "grep", tool_input: { pattern: "x" } })[0].tool_name, "grep", "herramienta no reconocida: pasa tal cual");
+  });
+  test("Windsurf: apply_patch da una escritura por archivo del parche y PostToolUse conserva tool_response", () => {
+    const parche = "*** Begin Patch\n*** Update File: .env\n+X=1\n*** Add File: b.js\n+1\n*** End Patch";
+    const ev = traducirEvento("windsurf", { hook_event_name: "PostToolUse", tool_name: "apply_patch", tool_input: { patch: parche }, tool_response: { success: true, output: "ok", error: null } });
+    assert.deepEqual(ev.map((e) => e.tool_input.file_path), [".env", "b.js"]);
+    assert.deepEqual(ev[0].tool_response, { success: true, output: "ok", error: null });
+    assert.ok(!("tool_response" in traducirEvento("windsurf", { tool_name: "exec", tool_input: { command: "ls" } })[0]));
+  });
+  test("opencode: read, edit, write, patch y shell pasan al contrato con los argumentos documentados", () => {
+    assert.deepEqual(traducirEvento("opencode", { tool_name: "write", tool_input: { path: "a.js", content: "x" } })[0], { tool_name: "Write", tool_input: { path: "a.js", content: "x", file_path: "a.js" } });
+    const ed = traducirEvento("opencode", { tool_name: "edit", tool_input: { path: "a.js", oldString: "a", newString: "b", replaceAll: false } })[0];
+    assert.equal(ed.tool_name, "Edit");
+    assert.equal(ed.tool_input.file_path, "a.js");
+    assert.equal(ed.tool_input.content, "b");
+    const pt = traducirEvento("opencode", { tool_name: "patch", tool_input: { patchText: "*** Begin Patch\n*** Delete File: .env\n*** End Patch" } });
+    assert.deepEqual(pt.map((e) => [e.tool_name, e.tool_input.file_path]), [["Write", ".env"]]);
+    assert.equal(traducirEvento("opencode", { tool_name: "shell", tool_input: { command: "ls", workdir: "." } })[0].tool_name, "Bash");
+    assert.equal(traducirEvento("opencode", { tool_name: "shell", tool_input: { cmd: "rm -rf /" } })[0].tool_input.command, "rm -rf /", "alias del comando, no confirmado en la doc");
+    assert.equal(traducirEvento("opencode", { tool_name: "webfetch", tool_input: { url: "x" } })[0].tool_name, "webfetch");
+  });
+  test("por la CLI: Windsurf bloquea escribir .env y opencode bloquea escribir, editar y parchear .env", () => {
+    assert.equal(evaluar("windsurf", { hook_event_name: "PreToolUse", tool_name: "write", tool_input: { file_path: ".env", content: "X=1" } }).codigo, 2);
+    assert.equal(evaluar("windsurf", { hook_event_name: "PreToolUse", tool_name: "read", tool_input: { path: ".env" } }).codigo, 2);
+    assert.equal(evaluar("windsurf", { hook_event_name: "PreToolUse", tool_name: "apply_patch", tool_input: { patch: "*** Begin Patch\n*** Update File: .env\n+X=1\n*** End Patch" } }).codigo, 2);
+    assert.equal(evaluar("windsurf", { hook_event_name: "PreToolUse", tool_name: "write", tool_input: { file_path: "src/a.js", content: "x" } }).codigo, 0);
+    assert.equal(evaluar("opencode", { tool_name: "write", tool_input: { path: ".env", content: "X=1" } }).codigo, 2);
+    assert.equal(evaluar("opencode", { tool_name: "edit", tool_input: { path: ".env", oldString: "a", newString: "b" } }).codigo, 2);
+    assert.equal(evaluar("opencode", { tool_name: "patch", tool_input: { patchText: "*** Begin Patch\n*** Update File: .env\n+X=1\n*** End Patch" } }).codigo, 2);
+    assert.equal(evaluar("opencode", { tool_name: "shell", tool_input: { command: "git push --force origin main" } }).codigo, 2);
+    assert.equal(evaluar("opencode", { tool_name: "write", tool_input: { path: "src/a.js", content: "x" } }).codigo, 0);
   });
   test("opencode: `read` con `filePath` pasa a lectura con file_path", () => {
     assert.deepEqual(traducirEvento("opencode", { tool_name: "read", tool_input: { filePath: "/p/.env" } }),
@@ -198,7 +237,7 @@ describe("Windsurf (Devin) y opencode", () => {
   });
   test("la plantilla de Windsurf es el objeto de hooks entero, sin clave `hooks`", () => {
     const o = JSON.parse(PLANTILLAS_HOOKS.windsurf.contenido("fragua guardian evaluar --anfitrion windsurf"));
-    assert.deepEqual(Object.keys(o), ["PreToolUse"]);
+    assert.deepEqual(Object.keys(o), ["PreToolUse", "PostToolUse"]);
     assert.equal(o.PreToolUse[0].hooks[0].type, "command");
     assert.equal(PLANTILLAS_HOOKS.windsurf.ruta, ".devin/hooks.v1.json");
     assert.match(PLANTILLAS_HOOKS.windsurf.nota, /ABIERTO/);
@@ -215,7 +254,7 @@ describe("Windsurf (Devin) y opencode", () => {
     const ok = await (await import(pathToFileURL(archivo).href + "?ok")).FraguaGuardian();
     await assert.doesNotReject(() => ok["tool.execute.before"]({ tool: "read" }, { args: { filePath: "x" } }));
     assert.match(PLANTILLAS_HOOKS.opencode.nota, /CERRADO/);
-    assert.match(PLANTILLAS_HOOKS.opencode.nota, /PARCIAL/);
+    assert.match(PLANTILLAS_HOOKS.opencode.nota, /NO CONFIRMADO/);
   });
   test("Kiro no tiene adaptador y --con-hooks lo avisa", () => {
     assert.ok(SIN_ADAPTADOR_POR_AHORA.includes("kiro"));

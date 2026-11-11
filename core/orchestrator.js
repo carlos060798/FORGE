@@ -165,7 +165,7 @@ export class Orchestrator {
       tokens_input: agentResult.inputTokens ?? 0, tokens_output: agentResult.outputTokens ?? 0,
       // Caché de prompts: tokens guardados y reutilizados, que tokens_input NO incluye
       tokens_cache_escritura: agentResult.cacheCreationTokens ?? 0, tokens_cache_lectura: agentResult.cacheReadTokens ?? 0,
-      modelo: agentResult.modelo ?? 'claude-sonnet-4-6', durationMs: agentResult.durationMs ?? 0,
+      modelo: agentResult.modelo ?? agent._provider?.resolveModelId?.(def.model ?? 'sonnet') ?? def.model ?? 'sonnet', durationMs: agentResult.durationMs ?? 0,
       ok: agentResult.ok,
     });
 

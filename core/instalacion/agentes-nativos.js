@@ -58,7 +58,7 @@ export const FORMATOS_NATIVOS = Object.freeze({
   gemini: {
     nombre: 'Gemini CLI', carpeta: '.gemini/agents', extension: '.md',
     fuente: 'https://geminicli.com/docs/core/subagents/', consultado: FECHA,
-    nota: 'solo se generan los agentes sin escritura (de las herramientas de Gemini solo se confirmaron read_file, grep_search y run_shell_command); la doc avisa de que Gemini CLI fue reemplazado por Antigravity CLI para el nivel gratuito',
+    nota: 'nombres de herramienta confirmados en geminicli.com/docs/tools (read_file, write_file, replace, glob, grep_search, run_shell_command, web_fetch, google_web_search); Task, TodoWrite y NotebookEdit no tienen equivalente y se omiten; la doc avisa de que Gemini CLI fue reemplazado por Antigravity CLI para el nivel gratuito',
   },
 });
 
@@ -66,6 +66,53 @@ export const FORMATOS_NATIVOS = Object.freeze({
 export const CLAVES_CON_AGENTE_NATIVO = Object.freeze(Object.keys(FORMATOS_NATIVOS));
 
 const ESCRIBE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
+const SHELL = new Set(['Bash', 'PowerShell']);
+
+/**
+ * Agentes de solo lectura que CONSERVAN el shell en los formatos nativos, con el motivo (comprobado leyendo `agents/`).
+ * Los demás agentes de solo lectura solo usaban el shell para `cat`, `ls` y `find` (lectura) y para anexar a la memoria
+ * compartida con un heredoc; fuera de Claude Code no hay guardián que impida escribir por la terminal, así que en el
+ * formato nativo se les quita el shell y sus bloques bash pasan a instrucciones de lectura.
+ * @type {Readonly<Record<string, string>>}
+ */
+export const SOLO_LECTURA_CON_SHELL = Object.freeze({
+  revisor: 'ejecuta las pruebas del proyecto (npx jest, python -m pytest) en la capa de cobertura',
+  investigador: 'consulta las versiones instaladas de node y python (node --version, python --version)',
+});
+
+/**
+ * Cuerpo para un agente SIN terminal: los bloques bash de lectura pasan a una lista de archivos que leer con las
+ * herramientas de lectura/búsqueda; el bloque que anexa a la memoria compartida pasa a «devuélvelo en tu respuesta».
+ * Función pura, solo para el formato nativo (lo que recibe Claude Code no cambia).
+ * @param {string} cuerpo
+ * @returns {string}
+ */
+export function cuerpoSinShell(cuerpo) {
+  // El hook de memoria registraba los cambios del agente; sin hook y sin escritura, lo devuelve en su respuesta
+  const sinHook = cuerpo.replace(/(^|[ \t])[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./gm, (_m, antes) => antes + 'Este agente no escribe archivos: devuelve en tu respuesta lo que habrías anotado en la memoria.');
+  return sinHook.replace(/```bash\r?\n([\s\S]*?)```/g, (_m, bloque) => {
+    const texto = String(bloque);
+    const anexo = /cat\s*>>\s*(\S+)\s*<<\s*['"]?(\w+)['"]?\r?\n([\s\S]*?)\r?\n\2\s*$/m.exec(texto);
+    if (anexo) {
+      const plantilla = anexo[3].replace(/\$\(date[^)]*\)/g, '<fecha UTC>').trim();
+      return 'Este agente no tiene terminal ni escribe archivos. Al terminar, incluye al final de tu respuesta este bloque para que quien te invocó lo registre en `' + anexo[1] + '`:\n\n```\n' + plantilla + '\n```';
+    }
+    const items = [];
+    for (const crudo of texto.split(/\r?\n/)) {
+      const linea = crudo.trim();
+      if (!linea || linea.startsWith('#') || /^(SPEC_ID=|mkdir\b|echo\b)/.test(linea)) continue;
+      const limpia = linea.replace(/\$\{SPEC_ID\}/g, '<id-spec-activa>').replace(/\s*2>\/dev\/null/g, '');
+      const cat = /\bcat\s+((?:[^\s|&;]+\s*)+)/.exec(limpia);
+      if (cat && !/\bfind\b|\bls\b/.test(limpia.slice(0, cat.index))) {
+        for (const ruta of cat[1].trim().split(/\s+/)) if (!ruta.startsWith('-')) items.push('`' + ruta.replace(/^"|"$/g, '') + '`');
+      } else {
+        items.push('buscar o listar: `' + limpia.replace(/\s*\|\s*(head|sort|tail)\b[^|]*/g, '').replace(/\s*\|\|\s*.*$/, '') + '`');
+      }
+    }
+    if (items.length === 0) return '';
+    return 'Este agente no tiene terminal: consulta con las herramientas de lectura y búsqueda de tu entorno (si un archivo no existe, sigue):\n\n' + [...new Set(items)].map((x) => '- ' + x).join('\n');
+  });
+}
 
 /** Herramientas de la cabecera `tools: ["Read", "Grep"]` como lista. */
 export function herramientasDe(valor) {
@@ -80,8 +127,16 @@ const unicos = (lista) => [...new Set(lista)];
 const COPILOT = { Read: 'read', NotebookRead: 'read', Grep: 'search', Glob: 'search', Write: 'edit', Edit: 'edit', MultiEdit: 'edit', NotebookEdit: 'edit', Bash: 'execute', PowerShell: 'execute', Task: 'agent', WebFetch: 'web', WebSearch: 'web', TodoWrite: 'todo' };
 /** Claude Code → herramientas de Kiro confirmadas por su ejemplo (read, write, shell). */
 const KIRO = { Read: 'read', Write: 'write', Edit: 'write', MultiEdit: 'write', Bash: 'shell' };
-/** Claude Code → herramientas de Gemini CLI confirmadas (read_file, grep_search, run_shell_command). */
-const GEMINI = { Read: 'read_file', Grep: 'grep_search', Bash: 'run_shell_command' };
+/**
+ * Claude Code → herramientas integradas de Gemini CLI, confirmadas el 2026-11-11 en geminicli.com/docs/tools/
+ * (file-system: read_file, write_file, replace, glob, grep_search, list_directory; shell: run_shell_command;
+ * web-fetch: web_fetch; web-search: google_web_search). Sin equivalente (se omiten, lista más estricta):
+ * Task, TodoWrite, NotebookEdit, NotebookRead.
+ */
+const GEMINI = {
+  Read: 'read_file', Grep: 'grep_search', Glob: 'glob', Write: 'write_file', Edit: 'replace', MultiEdit: 'replace',
+  Bash: 'run_shell_command', PowerShell: 'run_shell_command', WebFetch: 'web_fetch', WebSearch: 'google_web_search',
+};
 
 /**
  * @param {string} clave  clave de integración
@@ -99,10 +154,13 @@ export function agenteANativo(clave, archivo, texto, opciones) {
   if (!descripcion) return { omitido: `${archivo}: sin description` };
   // Fuente única de «solo lectura» (la del guardián): estos agentes nunca reciben herramientas de escritura
   const soloLectura = AGENTES_SOLO_LECTURA.includes(nombre) || AGENTES_SOLO_LECTURA.includes(archivo);
-  const herramientas = herramientasDe(campos.get('tools')).filter((h) => !(soloLectura && ESCRIBE.has(h)));
+  // Sin guardián fuera de Claude Code, un agente de solo lectura no conserva el shell salvo que lo necesite de verdad
+  const sinShell = soloLectura && !Object.hasOwn(SOLO_LECTURA_CON_SHELL, nombre) && !Object.hasOwn(SOLO_LECTURA_CON_SHELL, archivo);
+  const herramientas = herramientasDe(campos.get('tools')).filter((h) => !(soloLectura && ESCRIBE.has(h)) && !(sinShell && SHELL.has(h)));
   const escribe = herramientas.some((h) => ESCRIBE.has(h));
-  const usaShell = herramientas.includes('Bash') || herramientas.includes('PowerShell');
-  const instrucciones = adaptarCuerpo(cuerpo.replace(/^\n+/, ''), opciones).replace(/\s+$/, '') + '\n';
+  const usaShell = herramientas.some((h) => SHELL.has(h));
+  const base = sinShell ? cuerpoSinShell(cuerpo.replace(/^\n+/, '')) : cuerpo.replace(/^\n+/, '');
+  const instrucciones = adaptarCuerpo(base, opciones).replace(/\s+$/, '') + '\n';
   const ruta = `${formato.carpeta}/${nombre}${formato.extension}`;
 
   if (clave === 'copilot') {
@@ -140,8 +198,6 @@ export function agenteANativo(clave, archivo, texto, opciones) {
   }
 
   if (clave === 'gemini') {
-    // Escribir exige nombres de herramienta de Gemini que no están confirmados: ese agente no se genera
-    if (escribe) return { omitido: `${archivo}: escribe archivos y los nombres de las herramientas de escritura de Gemini no están confirmados` };
     const t = unicos(herramientas.map((h) => GEMINI[h]).filter(Boolean));
     if (t.length === 0) return { omitido: `${archivo}: ninguna de sus herramientas tiene equivalente confirmado en Gemini` };
     const lineas = ['---', `name: ${nombre.replace(/[^a-z0-9_-]/g, '-')}`, `description: ${yamlCadena(descripcion)}`, 'kind: local', 'tools:', ...t.map((x) => `  - ${x}`), '---', ''];

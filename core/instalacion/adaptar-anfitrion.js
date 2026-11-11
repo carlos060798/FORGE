@@ -21,7 +21,7 @@ import { nombreDeSkill, separarCabecera } from './skills-de-comandos.js';
  * @type {Readonly<Record<string, string>>}
  */
 export const PREFIJO_INVOCACION = Object.freeze({
-  claude: '/', agents: '$', codex: '$', copilot: '/', cursor: '/', gemini: '', windsurf: '@', opencode: '', kiro: '/', generica: '',
+  claude: '/', agents: '$', codex: '$', copilot: '/', cursor: '/', gemini: '', windsurf: '@', opencode: '', kiro: '/', zed: '/', goose: '', generica: '',
 });
 
 /** Nivel neutral (ADR-19) a partir del nombre de modelo de la cabecera de un agente. */
@@ -46,9 +46,10 @@ export function notaDeAnfitrion(prefijo) {
   return [
     '> **Nota de anfitrión (no es Claude Code).** Este texto se escribió para Claude Code; aquí se aplican estas equivalencias:',
     `> - Las órdenes \`/sdd.x\` son skills: se invocan ${como}, con el punto cambiado por guion (\`sdd.planificar\` → \`sdd-planificar\`).`,
-    '> - `Task("agente", prompt)` o «invocar al agente X»: carga la skill `rol-X` y haz ese trabajo en esta misma conversación, devolviendo solo el informe. Lo que el texto pida en paralelo se hace en secuencia.',
-    '> - `TodoWrite`: muestra el avance como una lista de tareas en tu respuesta.',
-    '> - `/effort`, `$CLAUDE_PLUGIN_ROOT` y los hooks de Claude Code no existen aquí: ignora esas líneas. Si un paso depende de un hook (guardián, memoria de agentes), hazlo tú: respeta las reglas de `AGENTS.md` y anota tus decisiones en `.sdd/memoria/`.',
+    '> - `delegar_a_rol("agente", prompt)` (o «invocar al agente X»): es pseudocódigo. Carga la skill `rol-X` y haz ese trabajo en esta misma conversación, devolviendo solo el informe. Lo que el texto pida en paralelo se hace en secuencia.',
+    '> - `mostrar_lista_de_tareas`: muestra el avance como una lista de tareas en tu respuesta.',
+    '> - El ajuste de esfuerzo (`/effort` en Claude Code) y `$CLAUDE_PLUGIN_ROOT` no existen aquí: usa el ajuste de tu herramienta o ignora esas líneas.',
+    '> - Los scripts `claude-hooks/*.js` (índice de símbolos, consulta de memoria, context-manager, model-registry) son de Claude Code y no se instalan: si un paso los pide y no existen, sáltalo. El guardián sí está disponible como `fragua guardian evaluar` si instalaste con `--con-hooks`; si no, respeta tú las reglas de `AGENTS.md` y anota tus decisiones en `.sdd/memoria/`.',
     '',
   ].join('\n');
 }
@@ -56,10 +57,15 @@ export function notaDeAnfitrion(prefijo) {
 /**
  * Reescribe el cuerpo para otra herramienta.
  * @param {string} cuerpo
- * @param {{ prefijo: string, comandos: readonly string[] }} opciones `comandos`: nombres de archivo sin `.md`
+ * @param {{ prefijo: string, comandos: readonly string[], rutas?: { skills?: string|null, agentes?: string|null } }} opciones
+ *   `comandos`: nombres de archivo sin `.md`. `rutas`: carpetas (relativas al proyecto, con `/`) donde esta herramienta
+ *   tiene las skills y los agentes; sustituyen a `.claude/skills/` y `.claude/agents/` del texto.
  */
-export function adaptarCuerpo(cuerpo, { prefijo, comandos }) {
+export function adaptarCuerpo(cuerpo, { prefijo, comandos, rutas }) {
   let t = cuerpo;
+  // Rutas de instalación de Claude Code: en otra herramienta esas carpetas no existen (hallazgo de scripts/emular-instalacion.mjs)
+  if (rutas?.skills) t = t.replace(/\.claude\/skills\//g, `${rutas.skills}/`);
+  if (rutas?.agentes) t = t.replace(/\.claude\/agents\//g, `${rutas.agentes}/`);
   if (comandos.length) {
     const alternativas = [...comandos].sort((a, b) => b.length - a.length).map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     // `/sdd.planificar` suelto: no `.sdd/…`, no rutas `a/sdd.config.yaml` ni `/forge/dir`, no `/sdd.planificar.md`
@@ -76,6 +82,13 @@ export function adaptarCuerpo(cuerpo, { prefijo, comandos }) {
       return trozo.startsWith('```') ? trozo.replace(r, (_, c) => enBloque(c)) : trozo.replace(r, (_, c) => enSpan(c));
     }).join('');
   }
+  // Pseudocódigo de Claude Code (solo en otras herramientas; Claude recibe los archivos sin tocar). Ninguna de
+  // estas sustituciones cambia cómo se ejecuta un bloque bash: `Task(` y `TodoWrite` son pseudocódigo, no órdenes.
+  t = t.replace(/\bTask\(/g, 'delegar_a_rol(');
+  t = t.replace(/\bTodoWrite\b/g, 'mostrar_lista_de_tareas');
+  // Una orden `/effort X` al inicio de línea (bloque de código) pasa a un comentario; en el texto, a una referencia neutral
+  t = t.replace(/^([ \t]*)\/effort[ \t]+(\S+)([^\n]*)$/gm, (_m, sangria, nivel, resto) => `${sangria}# esfuerzo «${nivel}»: ajústalo en tu herramienta (esa orden es de Claude Code)${resto}`);
+  t = t.replace(/(?<![\w./-])\/effort[ \t]+(\w+)/g, 'el esfuerzo «$1» de tu herramienta');
   t = t.replace(/(^|[ \t])[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./gm, (_m, antes) => antes + 'En esta herramienta no hay hook de memoria: al terminar, anota tus decisiones en `.sdd/memoria/`.');
   t = t.replace(/\bClaude Code\b/g, 'tu herramienta de código');
   return t;
@@ -88,7 +101,7 @@ const yamlCadena = (s) => JSON.stringify(s);
  * Adapta un `SKILL.md` (propio o generado de un comando) a una herramienta que no es Claude Code.
  * Quita `allowed-tools` (nombres de herramientas de Claude Code) y conserva el resto de la cabecera.
  * @param {string} skillMd
- * @param {{ prefijo: string, comandos: readonly string[] }} opciones
+ * @param {{ prefijo: string, comandos: readonly string[], rutas?: { skills?: string|null, agentes?: string|null } }} opciones
  * @returns {string}
  */
 export function adaptarSkill(skillMd, opciones) {
@@ -104,7 +117,7 @@ export function adaptarSkill(skillMd, opciones) {
  * Convierte un agente de `agents/` en una skill de rol `rol-<agente>`.
  * @param {string} archivo nombre sin `.md`
  * @param {string} texto contenido del agente
- * @param {{ prefijo: string, comandos: readonly string[] }} opciones
+ * @param {{ prefijo: string, comandos: readonly string[], rutas?: { skills?: string|null, agentes?: string|null } }} opciones
  * @returns {{ nombre: string, skillMd: string, errores: string[] }}
  */
 export function agenteARol(archivo, texto, opciones) {
