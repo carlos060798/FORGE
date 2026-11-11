@@ -1,668 +1,117 @@
-# Referencia de API
+# Referencia de interfaces
 
-Este documento es la referencia técnica completa de las interfaces programáticas de FORGE: la CLI, la clase `ProjectMemory`, los tipos TypeScript, los endpoints del servidor UI y las variables de entorno.
+> Tipo: Referencia
+> Última revisión: 2026-11-10 contra el commit 55a9dd9
 
----
+Qué expone Fragua para que otro programa o persona lo use, con qué garantía de estabilidad, y qué es interno. Si buscas los subcomandos de la CLI, están en [referencia-cli.md](referencia-cli.md).
 
-## CLI — forge / sdd-es
+## Qué es público y qué no
 
-FORGE expone dos comandos equivalentes: `forge` y `sdd-es` (alias de compatibilidad).
+El paquete **no declara `main` ni `exports`** en `package.json`: no ofrece una API de JavaScript soportada. Lo único que declara es el ejecutable (`fragua`, `forge`, `sdd-es`). La regla del repositorio ([AGENTS.md](../AGENTS.md)) define la interfaz pública como **los comandos y el formato de `.sdd/`**: cambiarlos sin una versión mayor está prohibido.
 
-### Entrypoint
+| Superficie | Estabilidad | Documento |
+|---|---|---|
+| Subcomandos de la CLI, opciones y códigos de salida | Pública | [referencia-cli.md](referencia-cli.md) |
+| Formatos de archivo con esquema versionado | Pública, con política de compatibilidad | [contrato/LEEME.md](contrato/LEEME.md) |
+| Servidor MCP | Pública, perfiles de herramientas | [servidor-mcp.md](servidor-mcp.md), [mcp-verificar.md](mcp-verificar.md) |
+| API HTTP local del ciclo | Pública, apagada por defecto | [api-http.md](api-http.md) |
+| Servidor del panel (`fragua ui`) | **Sin contrato**: lo usa el propio panel | Esta página, más abajo |
+| Archivos de registro `consumo.jsonl` y `mutaciones.jsonl` | **Sin contrato** | Esta página, más abajo |
+| Módulos de `core/`, `cli/` y `claude-hooks/` | **Internos**: pueden cambiar en cualquier versión | [mapa-de-modulos.md](mapa-de-modulos.md) |
 
-```
-forge <subcomando> [opciones]
-sdd-es <subcomando> [opciones]
-```
+Importar un módulo con una ruta profunda (por ejemplo `fragua/core/project-memory.js`) funciona porque no hay `exports` que lo impida, pero **no está soportado**.
 
----
+## Contratos versionados
 
-### `forge init`
+`fragua esquema` lista los esquemas (solo lectura) y `fragua esquema <nombre>` imprime uno. Los esquemas y su política (qué cambio sube la versión menor y cuál la mayor, qué campos son internos) están en [contrato/LEEME.md](contrato/LEEME.md).
 
-Instala FORGE en el directorio de trabajo actual.
+| Esquema | Describe |
+|---|---|
+| `resultado-verificar` | Salida de `fragua verificar --json` |
+| `veredicto` | Vocabulario del veredicto y su mapa a otros vocabularios |
+| `estado-ciclo` | Estado de una tarea del ciclo verificado |
+| `estado-pipeline` | `.sdd/estado.json` |
+| `tarea`, `tarea-entrada`, `tarea-sdd` | Los tres formatos de tarea |
+| `evento` | Una línea de `events.jsonl` |
 
-```bash
-forge init [opciones]
-```
+Una prueba (`tests/contrato-publico.test.js`) genera artefactos reales con el código y los valida contra estos esquemas; si el código y el esquema se separan, la suite falla.
 
-| Opción | Tipo | Descripción |
-|--------|------|-------------|
-| `--global` | flag | Instala en `$HOME/.claude` en lugar del proyecto actual |
-| `--guided` | flag | Activa el asistente interactivo de configuración |
-| `--preset <nombre>` | string | `lean` \| `startup` \| `enterprise` |
-| `--ui` | flag | Inicia el dashboard UI automáticamente tras la instalación |
-| `--template <nombre>` | string | Usa una plantilla personalizada de `plantillas/` |
+## Códigos de salida
 
-**Comportamiento:**
-1. Copia `commands/`, `agents/`, `skills/` a `.claude/`
-2. Copia `claude-hooks/` a `.claude/hooks/`
-3. Registra hooks en `.claude/settings.json`
-4. Crea `.sdd/` con `sdd.config.yaml` y `estado.json`
-5. Si `--guided`, ejecuta el wizard interactivo primero
-6. Muestra mensaje de bienvenida con ejemplo concreto de uso
+Los de `verificar` y `run` son contrato (tabla en [contrato/LEEME.md](contrato/LEEME.md)). El resto de órdenes: [referencia-cli.md](referencia-cli.md#códigos-de-salida).
 
-**Si la instalación ya existe:** Añade archivos faltantes sin sobreescribir los existentes.
+## Servidor del panel
 
----
+`fragua ui` arranca un servidor HTTP local (código en `ui/server.js`). **No es una API para terceros**: no tiene versión ni garantía, y puede cambiar con el panel.
 
-### `forge update`
+| Ruta | Devuelve |
+|---|---|
+| `GET /` y `GET /assets/*`, `/src/*` | El panel y sus archivos estáticos |
+| `GET /estado` | `.sdd/estado.json` |
+| `GET /tareas` | `.sdd/estado-tareas.json`, o vacío si no existe |
+| `GET /verificar` | `.sdd/verificacion.json`, o vacío |
+| `GET /consumo` | Las últimas 50 líneas de `consumo.jsonl` |
+| `GET /actividad` | Las últimas 50 entradas de `consumo.jsonl` en formato legible |
+| `GET /eventlog` | Las últimas 50 entradas de `.sdd/events.jsonl` |
+| `GET /agentes` | Agentes activos en los últimos 60 segundos |
+| `GET /agente/:nombre` | Cabecera, memoria y actividad reciente de un agente |
+| `GET /events` | Flujo de eventos del servidor (SSE) |
 
-Actualiza los archivos de comandos, agentes y skills sin tocar `.sdd/` ni la configuración.
+Seguridad, según la cabecera del código: escucha solo en `127.0.0.1`, valida la cabecera `Host`, rechaza peticiones con otro `Origin`, no abre CORS, valida el recorrido de rutas en los estáticos y se cierra solo tras 30 minutos sin peticiones. No tiene autenticación.
 
-```bash
-forge update
-```
+## Archivos de registro
 
-Útil cuando hay una nueva versión de FORGE disponible y quieres actualizar los artefactos sin reiniciar el proyecto.
+### `.sdd/observabilidad/consumo.jsonl`
 
----
+Lo escribe el hook `agent-memory.js` en cada escritura de un agente. **No mide el consumo real de tokens**: registra los bytes escritos y estima los tokens como bytes entre 3,5. Para el gasto real del ciclo verificado, ver `gasto.jsonl` en `.sdd/motor/<sesión>/` ([ciclo-verificado.md](ciclo-verificado.md)).
 
-### `forge doctor`
+| Campo | Contenido |
+|---|---|
+| `ts` | Fecha ISO |
+| `agente` | Nombre del agente, o `main` |
+| `tool` | Herramienta usada (`Write`, `Edit`…) |
+| `archivo` | Archivo modificado |
+| `bytes` | Bytes del contenido escrito |
+| `tokens_est` | `ceil(bytes / 3.5)`, una estimación |
+| `provider`, `effort_level` | Proveedor y nivel resueltos para ese agente |
 
-Verifica la instalación y reporta el estado de salud.
+Rota al superar un tamaño configurable, conservando tres copias anteriores. `fragua logs` lo lee.
 
-```bash
-forge doctor
-```
+### `.sdd/observabilidad/mutaciones.jsonl`
 
-**Verificaciones:**
-1. Variable de entorno `ANTHROPIC_API_KEY` presente
-2. Hooks registrados en `.claude/settings.json`
-3. Archivos de hook presentes en disco (`.claude/hooks/*.js`)
-4. Sintaxis de `sdd.config.yaml` válida
-5. Claves obligatorias presentes (`agentes`, `comportamiento`)
-6. `memoria.umbral_bytes` es número positivo (si está presente)
-7. Modelos declarados son valores válidos
-8. `estado.json` presente con `schemaVersion: "1.0"`
-9. Versión de Node ≥ 18.0.0
-10. Providers detectados (Anthropic siempre, OpenAI/Google si hay env vars)
-11. Backend SQLite disponible (si Node ≥ 22.5)
-12. Servidor UI: `forge ui` disponible
+Un registro por archivo modificado por un agente: `ts`, `agente`, `archivo`, `tool` y `tipo` (`partial` si fue `Edit`, `full` en otro caso). **No tiene relación** con la medición de pruebas por mutación del ciclo verificado.
 
-**Códigos de salida:**
-- `0` — todo correcto
-- `1` — advertencias (funcional pero mejorable)
-- `2` — errores críticos (FORGE no funcionará correctamente)
+## Módulos internos que se usan a menudo
 
----
+Se documentan porque aparecen en el código y en los hooks, **no porque sean API**.
 
-### `forge status`
+### `ProjectMemory` (`core/project-memory.js`)
 
-Muestra el estado del proyecto con presupuesto de sesión y nivel del circuit breaker.
+Lee y escribe `.sdd/estado.json` de forma atómica (archivo temporal y `rename`). `SCHEMA_VERSION` es `"1.0"`.
 
-```bash
-forge status
-```
+| Método | Qué hace |
+|---|---|
+| `new ProjectMemory(cwd?)` | Apunta a `<cwd>/.sdd/` (por defecto, el directorio actual) |
+| `read()` | Devuelve el estado, con caché por fecha y tamaño. Si el archivo no existe **o no es JSON válido, devuelve `{}`** sin avisar |
+| `update(campos)` | Mezcla los campos, fija `schemaVersion` y `ultima_actualizacion`, y escribe |
+| `validate()` | `{ valid, errors }`: solo comprueba que sea un objeto JSON y que `schemaVersion` sea `"1.0"` |
+| `migrate()` | Añade `schemaVersion` si falta |
+| `saveIR(ir)`, `loadIR()` | Guarda y lee `.sdd/ir.json` y marca `ir_generado` |
+| `saveProductDesign(pd)`, `loadProductDesign()` | Lo mismo con `.sdd/product-design.json` |
+| `setPipelineStep(paso, force = false)` | Cambia `pipeline_step`. Sin `force`, comprueba que la transición sea la siguiente de una tabla fija y lanza un error si no |
+| `getActiveDesignSystem()` | Ruta del sistema de diseño activo, o `design-systems/neutral-modern/DESIGN.md` |
+| `summary()` | Resumen de texto del estado |
 
-**Salida ejemplo:**
+**Límite importante.** `update()` y `setPipelineStep()` **no comprueban aprobaciones**: se puede escribir `spec_aprobado: true` o avanzar de `spec` a `plan` sin que nadie haya aprobado nada. La puerta de aprobación vive en `PipelineStateMachine.advance()` (`core/state-machine.js`), que usa `fragua step`, y exige el registro firmado de `fragua aprobar spec`. Quien escriba `estado.json` por otro camino se salta esa puerta: es el límite que declara [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md).
 
-```
-FORGE v4.0.0 — Estado del proyecto
+### Tipos
 
-  Pipeline:          implementar (etapa 6/10)
-  Spec activa:       2026-06-21-auth-jwt
-  Presupuesto:       $0.38 USD gastados esta sesión
-  Circuit breaker:   sandbox  (niveles: sandbox → local → confirmado)
-  Agentes activos:   6/14
-  Tests:             907/907 ✅
-```
-
-El campo **Presupuesto** acumula el costo USD de la sesión actual usando `SessionBudget` (lee `consumo.jsonl`). El campo **Circuit breaker** refleja el nivel de ejecución persistido en `.sdd/execution-level.json` — ver [Configuración: circuit_breaker](#sección-circuit_breaker).
-
----
-
-### `forge logs`
-
-Muestra el historial de consumo de la sesión actual o de sesiones anteriores.
-
-```bash
-forge logs [opciones]
-```
-
-| Opción | Tipo | Descripción |
-|--------|------|-------------|
-| `--last <N>` | integer | Muestra las últimas N entradas del log (predeterminado: 20) |
-
-**Fuente de datos:** Lee `.sdd/observabilidad/consumo.jsonl` — el ledger NDJSON que `agent-memory.js` actualiza tras cada llamada a herramienta. Cada línea contiene: `timestamp`, `agente`, `accion`, `tokens_in`, `tokens_out`, `costo_usd`.
-
-**Ejemplo:**
-
-```bash
-forge logs --last 5
-```
-
-```
-2026-06-25T14:32:01Z  arquitecto      write    in=1240 out=890   $0.021
-2026-06-25T14:32:45Z  desarrollador-backend  bash  in=320  out=50    $0.004
-2026-06-25T14:33:10Z  tester          bash     in=410  out=120   $0.006
-2026-06-25T14:33:55Z  revisor         read     in=890  out=340   $0.014
-2026-06-25T14:34:20Z  arquitecto      edit     in=560  out=230   $0.010
-```
-
----
-
-### `forge ui`
-
-Inicia el servidor del dashboard de observabilidad.
-
-```bash
-forge ui [opciones]
-```
-
-| Opción | Tipo | Descripción |
-|--------|------|-------------|
-| `--port <n>` | integer | Puerto del servidor (predeterminado: 3001) |
-| `--no-open` | flag | No abrir el navegador automáticamente |
-
-El servidor se cierra automáticamente tras 30 minutos sin peticiones.
-
----
-
-### `forge --version`
-
-Imprime la versión instalada de FORGE.
-
-```bash
-forge --version
-# → 4.0.0
-```
-
----
-
-## ProjectMemory
-
-`ProjectMemory` es la clase TypeScript principal para leer y escribir el estado del proyecto. Vive en `core/project-memory.ts`.
-
-### Constructor
-
-```typescript
-import { ProjectMemory } from './core/project-memory.js';
-
-const memory = new ProjectMemory(cwd?: string);
-```
-
-| Parámetro | Tipo | Descripción |
-|-----------|------|-------------|
-| `cwd` | string \| undefined | Directorio de trabajo. Si se omite, usa `process.cwd()` |
-
----
-
-### `memory.read()`
-
-Lee y devuelve el estado actual del proyecto.
-
-```typescript
-read(): ForgeEstado
-```
-
-**Cachéo:** Cachea el resultado intra-proceso basándose en el `mtime` del archivo. Invocaciones sucesivas en el mismo proceso no leen el disco si el archivo no ha cambiado.
-
-**Si `estado.json` no existe:** Devuelve un `ForgeEstado` vacío con `schemaVersion: "1.0"`.
-
----
-
-### `memory.update(fields)`
-
-Actualiza campos específicos del estado y persiste a disco.
-
-```typescript
-update(fields: Partial<ForgeEstado>): ForgeEstado
-```
-
-**Comportamiento:** Hace merge superficial — solo los campos especificados en `fields` se actualizan. Los campos no especificados se preservan.
-
-**Ejemplo:**
-```typescript
-memory.update({
-  pipeline_step: 'plan',
-  artefactos_sesion: {
-    complejidad_estimada: 'medium'
-  }
-});
-```
-
----
-
-### `memory.validate()`
-
-Valida que el estado actual tiene la estructura correcta.
-
-```typescript
-validate(): ValidationResult
-```
-
-```typescript
-interface ValidationResult {
-  valid: boolean;
-  errors: string[];  // mensajes de error si valid === false
-}
-```
-
----
-
-### `memory.migrate()`
-
-Migra estados de versiones anteriores al esquema actual (`"1.0"`).
-
-```typescript
-migrate(): ForgeEstado
-```
-
-**Comportamiento:** Si el estado no tiene `schemaVersion` (versión anterior), aplica las transformaciones necesarias y escribe el estado migrado a disco. Si ya tiene `schemaVersion: "1.0"`, devuelve el estado sin cambios.
-
----
-
-### `memory.saveIR(ir)`
-
-Guarda el IR a `.sdd/ir.json` y actualiza el estado.
-
-```typescript
-saveIR(ir: object): string  // devuelve la ruta del archivo guardado
-```
-
----
-
-### `memory.loadIR()`
-
-Carga el IR desde `.sdd/ir.json`.
-
-```typescript
-loadIR(): object | null  // null si no existe
-```
-
----
-
-### `memory.saveProductDesign(pd)`
-
-Guarda el ProductDesign a `.sdd/product-design.json`.
-
-```typescript
-saveProductDesign(pd: object): string
-```
-
----
-
-### `memory.loadProductDesign()`
-
-Carga el ProductDesign desde `.sdd/product-design.json`.
-
-```typescript
-loadProductDesign(): object | null
-```
-
----
-
-### `memory.setPipelineStep(step)`
-
-Actualiza `pipeline_step` en el estado.
-
-```typescript
-setPipelineStep(step: ForgeEstado['pipeline_step']): void
-```
-
----
-
-### `memory.getActiveDesignSystem()`
-
-Devuelve la ruta al design system activo del proyecto.
-
-```typescript
-getActiveDesignSystem(): string  // ruta relativa a design-systems/
-```
-
----
-
-### `memory.summary()`
-
-Devuelve un resumen legible del estado actual (usado por `/sdd.estado`).
-
-```typescript
-summary(): string
-```
-
----
-
-## Tipos TypeScript
-
-### `ForgeEstado`
-
-```typescript
-export interface ForgeEstado {
-  schemaVersion?: "1.0";
-
-  // Estado del pipeline
-  pipeline_step?: 'idea' | 'discovery' | 'ir' | 'design' | 'spec' |
-                  'plan' | 'tasks' | 'code' | 'done';
-
-  // Artefactos activos
-  spec_activa?: string;
-  plan_activo?: string;
-
-  // IR
-  ir_generado?: boolean;
-  ir_path?: string;
-
-  // ProductDesign
-  product_design_generado?: boolean;
-  product_design_aprobado?: boolean;
-  product_design_path?: string;
-  design_direction?: string;
-  design_system_path?: string;
-
-  // Spec en borrador
-  spec_draft_path?: string;
-
-  // Timestamps
-  ultima_actualizacion?: string;
-
-  // Datos de la sesión actual
-  artefactos_sesion?: {
-    ir_confidence?: number | null;
-    stack_decidido?: string | null;
-    complejidad_estimada?: 'low' | 'medium' | 'high' | null;
-    agentes_activos_ultimo_plan?: string[];
-  };
-
-  // Extensible — otros campos son permitidos
-  [key: string]: unknown;
-}
-```
-
----
-
-### `IR`
-
-```typescript
-export interface IR {
-  id: string;
-  created_at: string;        // ISO 8601
-  raw_input: string;
-  confidence: number;        // 0.0–1.0; ≥0.7 = listo para proceder
-
-  product: {
-    name: string;
-    type: 'saas' | 'mobile' | 'web' | 'api' | 'cli' | 'other';
-    tagline: string;
-    value_proposition: string;
-    target_users: string;
-  };
-
-  features: {
-    core: string[];           // 2–5 items para el MVP
-    nice_to_have?: string[];
-  };
-
-  constraints: {
-    budget?: string;
-    timeline?: string;
-    team_size?: string;
-    tech_preference?: string;
-  };
-
-  assumptions: string[];
-
-  ambiguities: Array<{
-    field: string;
-    question: string;
-  }>;
-
-  requires_clarification: boolean;
-  questions_for_user?: string[];
-}
-```
-
----
-
-### `ProductDesign`
-
-```typescript
-export interface Screen {
-  id: string;
-  name: string;
-  priority: 'P0' | 'P1' | 'P2';  // P0 = crítico MVP
-  description: string;
-  components: string[];
-}
-
-export interface ProductDesign {
-  id: string;
-  created_at: string;
-  ir_id: string;
-
-  product: {
-    name: string;
-    tagline: string;
-    value_proposition: string;
-  };
-
-  user_flow: string[];           // pasos del flujo principal
-  core_screens: Screen[];
-  mvp_scope: string[];           // qué está EN el MVP
-
-  design_direction: 'minimal' | 'bold' | 'warm' | 'editorial' | 'brutalist';
-  design_system_ref: string;     // ruta al design system
-
-  architecture?: {
-    frontend: string;
-    backend: string;
-    database: string;
-    deployment: string;
-    rationale: string;
-    estimated_complexity: 'low' | 'medium' | 'high';
-  };
-}
-```
-
----
-
-### `ValidationResult`
-
-```typescript
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-```
-
----
-
-## Endpoints del servidor UI
-
-El servidor en `localhost:3001` (o el puerto configurado) expone los siguientes endpoints de solo lectura:
-
-### `GET /`
-
-Devuelve el HTML del dashboard.
-
-**Content-Type:** `text/html`
-
----
-
-### `GET /assets/:ruta`
-
-Devuelve archivos estáticos del dashboard (JS, CSS, imágenes).
-
-**Protección:** Valida path traversal — no se puede acceder a archivos fuera de `ui/`.
-
----
-
-### `GET /estado`
-
-Devuelve el contenido de `.sdd/estado.json`.
-
-**Content-Type:** `application/json`
-
-**Respuesta:** `ForgeEstado` o `{}` si no existe el archivo.
-
----
-
-### `GET /tareas`
-
-Devuelve el contenido de `.sdd/especificaciones/{id}/.estado-tareas.json` de la spec activa.
-
-**Content-Type:** `application/json`
-
-**Respuesta:**
-```json
-{
-  "tareas": [
-    {
-      "id": "T-001",
-      "titulo": "string",
-      "estado": "completada | en_progreso | pendiente | fallida",
-      "agente": "string"
-    }
-  ]
-}
-```
-
-**Si no hay spec activa:** `{ "tareas": [] }`
-
----
-
-### `GET /verificar`
-
-Devuelve el resultado de verificación más reciente.
-
-**Content-Type:** `application/json`
-
-**Respuesta:** Objeto `verificacion.json` o `null`.
-
----
-
-### `GET /consumo`
-
-Devuelve las últimas 50 líneas de `consumo.jsonl`.
-
-**Content-Type:** `application/json`
-
-**Respuesta:**
-```json
-[
-  {
-    "timestamp": "2026-06-21T10:15:00Z",
-    "agente": "arquitecto",
-    "herramienta": "Write",
-    "archivo": "src/auth/jwt.service.ts",
-    "provider": "anthropic",
-    "effort_level": "high"
-  }
-]
-```
-
----
-
-### `GET /actividad`
-
-Devuelve las últimas 50 entradas de consumo en formato legible (sin campos internos).
-
-**Content-Type:** `application/json`
-
----
-
-### `GET /agentes`
-
-Devuelve los agentes que han tenido actividad en los últimos 60 segundos.
-
-**Content-Type:** `application/json`
-
-**Respuesta:**
-```json
-[
-  {
-    "nombre": "desarrollador-backend",
-    "ultima_actividad": "2026-06-21T10:14:55Z",
-    "archivo_reciente": "src/auth/jwt.service.ts"
-  }
-]
-```
-
----
-
-### `GET /agente/:nombre`
-
-Devuelve el perfil completo y actividad reciente de un agente específico.
-
-**Parámetros:** `:nombre` — nombre del agente (ej: `arquitecto`)
-
-**Content-Type:** `application/json`
-
-**Respuesta:**
-```json
-{
-  "nombre": "arquitecto",
-  "activo": true,
-  "modelo": "opus",
-  "memoria": "contenido de agente-arquitecto.md",
-  "actividad_reciente": [...]
-}
-```
-
----
+Los tipos están en comentarios JSDoc (`ForgeEstado` en `core/project-memory.js`; `IR`, `ProductDesign` y otros en `core/ir.types.js`) y los comprueba `npm run typecheck`. **No se distribuyen archivos `.d.ts`.** El tipo `ForgeEstado` está incompleto respecto al archivo real (por ejemplo no declara `spec_aprobado`); la forma de referencia de `estado.json` es el esquema `estado-pipeline`, no el tipo.
 
 ## Variables de entorno
 
-| Variable | Componente | Tipo | Descripción |
-|----------|-----------|------|-------------|
-| `CLAUDE_AGENT_NAME` | agent-memory.js | string | Nombre del agente activo en la sesión actual |
-| `OPENAI_API_KEY` | model-registry.js | string | Clave de API de OpenAI. Habilita el proveedor OpenAI |
-| `GOOGLE_API_KEY` | model-registry.js | string | Clave de API de Google. Habilita Gemini como proveedor |
-| `GEMINI_API_KEY` | model-registry.js | string | Alternativa a `GOOGLE_API_KEY` |
-| `FIGMA_PAT` | integración Figma | string | Personal Access Token de Figma |
-| `FORGE_UI_PORT` | ui/server.js | integer | Puerto del dashboard (predeterminado: `3001`) |
-| `SDD_AUTO` | cli/index.js | `"1"` | Si es `"1"`, salta confirmaciones interactivas |
-| `HOME` / `USERPROFILE` | cli/index.js | string | Directorio home del usuario (para `--global`) |
+Todas, con su valor por defecto y quién manda sobre quién: [referencia-cli.md](referencia-cli.md#variables-de-entorno).
 
----
+## Scripts de npm
 
-## Scripts npm
-
-```bash
-npm test              # Ejecuta todos los tests
-npm run test:verbose  # Tests con reporter detallado
-npm run coverage      # Tests con cobertura experimental
-npm run typecheck     # Verificación de tipos TypeScript sin compilar
-npm run doctor        # Equivalente a `forge doctor`
-```
-
----
-
-## Constantes exportadas
-
-```typescript
-// core/project-memory.ts
-export const SCHEMA_VERSION = "1.0" as const;
-```
-
----
-
-## Formato de consumo.jsonl
-
-Cada línea del ledger de observabilidad es un objeto JSON:
-
-```typescript
-interface EntradaConsumo {
-  timestamp: string;         // ISO 8601
-  agente: string;            // nombre del agente
-  herramienta: string;       // "Write" | "Edit" | "MultiEdit"
-  archivo: string;           // ruta absoluta del archivo afectado
-  provider: string;          // "anthropic" | "openai" | "google"
-  effort_level: string;      // "low" | "medium" | "high"
-  sesion_id?: string;        // ID único de sesión
-}
-```
-
----
-
-## Formato de mutaciones.jsonl
-
-```typescript
-interface EntradaMutacion {
-  timestamp: string;
-  agente: string;
-  archivo: string;
-  tipo: "creacion" | "modificacion";
-  hash_anterior?: string;   // SHA-256 del contenido anterior
-  hash_nuevo: string;       // SHA-256 del contenido nuevo
-}
-```
+Los que define `package.json`: `test`, `test:rapido`, `test:lento`, `test:cuarentena`, `test:verbose`, `coverage`, `test:cobertura`, `typecheck`, `doctor`, `generar-skills`, `init` y `build` (ambos son un `echo`: no hay compilación), y `prepublishOnly`. Para qué sirve cada uno de pruebas: [CONTRIBUTING.md](../CONTRIBUTING.md).

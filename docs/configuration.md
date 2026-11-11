@@ -137,8 +137,8 @@ La aprobación de la spec no depende de esta sección: `fragua aprobar spec` y l
 
 | Clave | Defecto | Lectura |
 |---|---|---|
-| `cobertura_tests_minima` | `80` | hook (`claude-hooks/post-write-conventions.js`) |
-| `longitud_funcion_maxima` | `50` | hook (mismo archivo) |
+| `cobertura_tests_minima` | `80` | El hook (`claude-hooks/post-write-conventions.js`) la lee, pero **ningún código la aplica**: hoy no impide ni avisa de nada. Para exigir un umbral, usa una puerta (`puertas.cobertura`) |
+| `longitud_funcion_maxima` | `50` | Hook (mismo archivo): **solo avisa** al escribir una función más larga; no bloquea |
 | `permitir_warnings_lint`, `permitir_codigo_comentado`, `longitud_archivo_maxima` | `false`, `false`, `400` | declarativas |
 
 Para exigir comprobaciones en el ciclo existe la sección `puertas:` (más abajo), que es la que sí ejecuta código.
