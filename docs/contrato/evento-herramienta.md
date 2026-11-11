@@ -37,11 +37,15 @@ Los nombres de herramienta son los de Claude Code. Una herramienta con otros nom
 
 ## Otras herramientas (`--anfitrion`)
 
-`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Dentro de un anfitrión conocido, una *herramienta* que no se reconoce pasa tal cual y el guardián no tiene reglas para ella (hueco conocido). Un *anfitrión* que no se reconoce no se evalúa «sin reglas»: falla cerrado (código 2). Si el evento no es JSON, falla cerrado (código 2).
+`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex|windsurf|opencode` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Dentro de un anfitrión conocido, una *herramienta* que no se reconoce pasa tal cual y el guardián no tiene reglas para ella (hueco conocido). Un *anfitrión* que no se reconoce no se evalúa «sin reglas»: falla cerrado (código 2). Si el evento no es JSON, falla cerrado (código 2).
+
+## Memoria y MCP
+
+`fragua memoria registrar --anfitrion <x>` traduce el evento posterior a la herramienta y sale siempre con 0, también si el evento está roto: la memoria nunca bloquea. El servidor MCP, con `--perfil guardian`, expone `guardian_evaluar` como herramienta consultiva (el modelo puede no llamarla).
 
 ## Alcance honesto
 
 - Es **la misma lógica** que los hooks de Claude Code: la orden ejecuta `claude-hooks/pre-tool-guard.js` y `agent-memory.js`. No hay reglas duplicadas.
 - Solo es **impuesto** si la herramienta llama a la orden en un hook que pueda bloquear. Llamada a mano o desde un modelo, es **consultivo**.
 - Requiere Node 20 o superior.
-- No existe herramienta MCP `guardian_evaluar`: el perfil `verificacion` del servidor MCP expone únicamente `verificar` y se mantiene así.
+- La herramienta MCP `guardian_evaluar` vive en un perfil aparte (`guardian`): el perfil `verificacion` expone únicamente `verificar` y se mantiene así.

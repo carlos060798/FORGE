@@ -36,14 +36,14 @@ Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 | Herramienta (clave) | Carpeta de skills | Skills, comandos adaptados y roles instalados | Agentes nativos | Guardián y memoria | Estado |
 |---|---|---|---|---|---|
 | Claude Code (`claude`) | `.claude/skills` | Sí (más comandos y agentes en formato nativo) | Sí | Sí, por hooks | Confirmado en doc (2026-10-14); es el camino de siempre |
-| Codex CLI (`codex`) | `.agents/skills` | Sí | No | Con `--con-hooks`: guardián en `.codex/hooks.json` (falla abierto; el proyecto debe ser de confianza). Memoria: no | Carpeta confirmada en doc; hook leído en doc, sin probar |
+| Codex CLI (`codex`) | `.agents/skills` | Sí | Sí (TOML) | Con `--con-hooks`: guardián y memoria en `.codex/hooks.json` (falla abierto; el proyecto debe ser de confianza) | Carpeta confirmada en doc; hook leído en doc, sin probar |
 | Carpeta común (`agents`) | `.agents/skills` | Sí | No | No | Carpeta confirmada en doc (Codex y otras la leen); sin probar |
-| GitHub Copilot (`copilot`) | `.github/skills` | Sí | No | Con `--con-hooks`: guardián en `.github/hooks/fragua-guardian.json` (falla cerrado ante error). Memoria: no | Carpeta y hook leídos en doc; sin probar |
-| Cursor (`cursor`) | `.cursor/skills` | Sí | No | Con `--con-hooks`: guardián en `.cursor/hooks.json` (`failClosed`). Memoria: no | Carpeta y hook leídos en doc; sin probar |
-| Gemini CLI (`gemini`) | `.gemini/skills` | Sí | No | Con `--con-hooks`: guardián en `.gemini/settings.json` (falla abierto; si el archivo existe no se toca). Memoria: no | Carpeta y hook leídos en doc; nombres de herramienta y de campos sin confirmar; sin probar |
-| Windsurf (`windsurf`) | `.devin/skills` | Sí | No | No | Confirmado en doc; sin probar |
-| opencode (`opencode`) | `.opencode/skills` | Sí | No | No | Confirmado en doc; sin probar |
-| Kiro (`kiro`) | `.kiro/skills` | Sí | No | No | Confirmado en doc; sin probar |
+| GitHub Copilot (`copilot`) | `.github/skills` | Sí | Sí | Con `--con-hooks`: guardián y memoria en `.github/hooks/fragua-guardian.json` (falla cerrado ante error; usa `bash`/`powershell`, no `command`) | Carpeta y hook leídos en doc; sin probar |
+| Cursor (`cursor`) | `.cursor/skills` | Sí | Sí | Con `--con-hooks`: guardián y memoria en `.cursor/hooks.json` (`failClosed` en el guardián) | Carpeta y hook leídos en doc; sin probar |
+| Gemini CLI (`gemini`) | `.gemini/skills` | Sí | Parcial (7 de 14) | Con `--con-hooks`: guardián y memoria en `.gemini/settings.json` (falla abierto; si el archivo existe no se toca) | Carpeta y hook leídos en doc; nombres de herramienta y de campos sin confirmar; sin probar |
+| Windsurf (`windsurf`) | `.devin/skills` | Sí | No | Con `--con-hooks`: guardián en `.devin/hooks.v1.json`, **falla abierto** y solo evalúa comandos de terminal (los nombres de herramientas de archivo no están en la documentación). Sin memoria | Carpeta y hook leídos en doc; sin probar |
+| opencode (`opencode`) | `.opencode/skills` | Sí | Sí | Con `--con-hooks`: plugin `.opencode/plugins/fragua-guardian.js` (falla cerrado); solo `read` está confirmado, bash/write/edit pasan sin evaluar. Sin memoria | Carpeta y plugin leídos en doc; que el plugin pueda ejecutar un proceso externo no está confirmado; sin probar |
+| Kiro (`kiro`) | `.kiro/skills` | Sí | Sí (JSON) | **Sin adaptador**: la documentación no da los nombres de herramienta ni las claves de entrada, y un guardián ahí dejaría pasar todo sin avisar | Confirmado en doc; sin probar |
 | Genérica (`generica`) | la que pases con `--carpeta-skills` | Sí | No | No | Sin probar |
 
 Codex tiene clave propia (`codex`) y comparte carpeta con `agents`. Zed y Goose no tienen clave: su carpeta no se pudo confirmar.
@@ -63,9 +63,9 @@ En Claude Code los comandos conservan su nombre con punto (`/sdd.planificar`).
 
 ## Lo que está en curso
 
-- **Guardián fuera de los hooks de Claude Code** (fase F3): hecho el contrato de evento ([contrato/evento-herramienta.md](contrato/evento-herramienta.md)), la orden `fragua guardian evaluar --anfitrion <x>` y el registro opcional con `forge init --integracion <x> --con-hooks` para Cursor, Copilot, Gemini y Codex. **Sin probar en una instalación real de ninguna.** Límites: Gemini y Codex dejan pasar la acción si el hook se rompe; el guardián solo conoce las herramientas que traduce (lo desconocido pasa); la **memoria** de agentes no tiene adaptador; la vía MCP consultiva no se hizo porque el perfil `verificacion` expone solo `verificar`.
+- **Guardián fuera de los hooks de Claude Code** (fase F3): hecho el contrato de evento ([contrato/evento-herramienta.md](contrato/evento-herramienta.md)), la orden `fragua guardian evaluar --anfitrion <x>` y el registro opcional con `forge init --integracion <x> --con-hooks` para Cursor, Copilot, Gemini y Codex. **Sin probar en una instalación real de ninguna.** Límites: Gemini y Codex dejan pasar la acción si el hook se rompe; el guardián solo conoce las herramientas que traduce (lo desconocido pasa); la memoria de agentes se registra con el mismo `--con-hooks` y nunca bloquea; la vía MCP consultiva existe como perfil `guardian` del servidor MCP (`fragua mcp --perfil guardian`, herramienta `guardian_evaluar`), pero el modelo puede no llamarla. **Windsurf, opencode y Kiro** admiten un guardián según su documentación (Windsurf/Devin falla abierto; opencode solo como plugin de código; Kiro con esquema de entrada sin documentar), pero **no tienen adaptador**: ver `.sdd/especificaciones/2026-11-10-metodologia-agnostica/spikes/hooks-windsurf-opencode-kiro.md`.
 - **Vocabulario neutral de modelos, `doctor` por proveedor y metadatos** (fase F4): **en curso.**
-- **Agentes en el formato nativo de cada herramienta** (spike S0.1 del plan): sin confirmar, no se genera nada.
+- **Agentes en el formato nativo de cada herramienta:** hechos para Copilot, Cursor, Codex, opencode y Kiro (14 agentes) y de forma parcial para Gemini (7 de 14, solo los sin escritura; el resto sigue como `rol-*`). Windsurf, la carpeta común y la genérica no generan agentes: formato sin confirmar. **Sin probar en la herramienta real.** Detalle en `core/instalacion/agentes-nativos.js`.
 - **Prueba manual por herramienta** (fase F5): pendiente; hasta entonces ninguna fila de la matriz dirá «probado».
 
 ## Dónde mirar

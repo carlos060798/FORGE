@@ -119,7 +119,7 @@ Pasos que las pruebas exigen:
 4. Menciónalo en [commands/sdd.ayuda.md](commands/sdd.ayuda.md).
 5. Si el agente cita `skills/<x>.md`, esa skill debe existir: la prueba falla si no.
 6. Actualiza las cifras («N agentes») en `README.md`, `package.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `docs/introduction.md`, `docs/GLOSARIO.md`, `docs-site/assets/data.js` y `docs-site/index.html`: `tests/consistencia-cifras.test.js` las compara con el disco. (`docs/0-INDICE.md` también se comprueba.)
-7. Si el agente es de solo lectura, añádelo a `READ_ONLY_AGENTS` en `claude-hooks/pre-tool-guard.js`; si necesita memoria, a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El reparto entre solo lectura y escritura también lo comprueba la prueba de cifras.
+7. Si el agente es de solo lectura, añádelo a `AGENTES_SOLO_LECTURA` en `core/evidencia/guardian-reglas.js`; si necesita memoria, a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El reparto entre solo lectura y escritura también lo comprueba la prueba de cifras.
 8. Escribe las pruebas de lo que añada comportamiento. Los criterios del rol no solapado con agentes existentes los revisa la persona que mantiene el proyecto.
 
 Para proponer un agente sin implementarlo, usa la plantilla de incidencia «Propuesta de agente».

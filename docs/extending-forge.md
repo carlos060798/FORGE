@@ -49,7 +49,7 @@ Lo que comprueban las pruebas de catálogo (`tests/catalogo.test.js`, `tests/age
 
 `goal` y `backstory` son campos propios de Fragua. No existe un campo `phases`.
 
-**Solo lectura frente a escritura.** Si el agente no debe modificar archivos, añádelo a `READ_ONLY_AGENTS` en `claude-hooks/pre-tool-guard.js`: el guardián le bloquea las escrituras. Para que tenga memoria, añádelo a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El guardián reconoce al agente por la variable `CLAUDE_AGENT_NAME`; si Claude Code no la fija, esos bloqueos no actúan ([SECURITY.md](../SECURITY.md)).
+**Solo lectura frente a escritura.** Si el agente no debe modificar archivos, añádelo a `AGENTES_SOLO_LECTURA` en `core/evidencia/guardian-reglas.js`: el guardián le bloquea las escrituras. Para que tenga memoria, añádelo a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El guardián reconoce al agente por la variable `CLAUDE_AGENT_NAME`; si Claude Code no la fija, esos bloqueos no actúan ([SECURITY.md](../SECURITY.md)).
 
 **Asistente.** `/sdd.crear-agente` es un comando que guía la creación con preguntas (nombre, rol, tipo, herramientas) y escribe el archivo. Es un texto que sigue el modelo, no un generador determinista: ejecuta después `npm test` para ver qué se le olvidó registrar.
 

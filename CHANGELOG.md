@@ -12,7 +12,17 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 - **Roles `rol-*`.** Con `--integracion` distinta de `claude`, `init` instala cada uno de los 14 agentes como una skill `rol-<agente>` (nivel neutral `alto`/`medio`/`economico` en `metadata`), porque esas herramientas no tienen los subagentes de Claude Code.
 - **Adaptación de comandos y skills a otras herramientas.** Al instalar en una integración que no es Claude Code, las órdenes `/sdd.x` se reescriben a la forma de invocar de esa herramienta, se quita `allowed-tools` y «Claude Code» del texto, y se antepone una nota con las equivalencias de `Task`, `TodoWrite`, `/effort` y los hooks. Módulo nuevo: `core/instalacion/adaptar-anfitrion.js`. Las fuentes de `commands/`, `agents/` y `skills/` y lo que recibe Claude Code no cambian.
 - **Guardián en otras herramientas.** `fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex` traduce el evento de cada herramienta al contrato y aplica el mismo guardián. `forge init --integracion <x> --con-hooks` registra la orden en el hook de esa herramienta (nunca pisa un archivo existente). Nueva clave de integración `codex`. Sin probar en una instalación real; Gemini y Codex fallan abiertos.
-- **Documentación.** `docs/ANFITRIONES.md` (qué recibe cada herramienta; reemplaza a `RELACION-CON-CLAUDE-CODE.md`) y `docs/PLAN-AGNOSTICO.md`.
+- **Agentes nativos.** `init --integracion <x>` instala los 14 agentes en el formato de Copilot, Cursor, Codex, opencode y Kiro, y 6 en el de Gemini, además de los roles `rol-*`. La lista de herramientas traducida nunca es más permisiva que la original. Sin probar en las herramientas reales.
+- **`update` recuerda los hooks.** `init --con-hooks` guarda `con_hooks: true`; `update` lo reaplica sin pisar archivos ajenos y `--sin-hooks` lo desactiva.
+- **Guardián en Windsurf y opencode.** `--con-hooks` crea `.devin/hooks.v1.json` (falla abierto, solo terminal) y un plugin `.opencode/plugins/fragua-guardian.js` (falla cerrado, cobertura parcial). Kiro sin adaptador: documentación insuficiente.
+- **Una sola lista de agentes de solo lectura** (`AGENTES_SOLO_LECTURA` en `core/evidencia/guardian-reglas.js`), usada por el guardián y por los agentes nativos; `disenador-api` ya no declara `Write`.
+- **Memoria de agentes por hooks.** `fragua memoria registrar --anfitrion <x>` y el evento posterior en el mismo archivo que crea `--con-hooks`. No bloquea nunca (código 0).
+- **Guardián consultivo por MCP.** Perfil `guardian` de `fragua mcp` con la herramienta `guardian_evaluar`. `verificacion` y `completo` no cambian.
+- **Documentación.** `docs/USO-EN-OTRAS-HERRAMIENTAS.md` y `docs/ANFITRIONES.md` (qué recibe cada herramienta; reemplaza a `RELACION-CON-CLAUDE-CODE.md`) y `docs/PLAN-AGNOSTICO.md`.
+
+### Añadido (equipos, fase 1: identidad del actor)
+
+- **`quien` en los registros.** Nuevo `core/actor.js`: `actorActual()` devuelve `{ tipo: 'persona'|'agente'|'ci', id }` según el entorno (`FRAGUA_AGENTE`/`FORGE_AGENTE`, `GITHUB_ACTIONS`/`CI`, o el usuario del sistema). `EventLog.append`, `LibroDeGasto.anotar` y la decisión de revisión humana (`ciclo:revision_decidida` y el estado de la revisión) lo anotan. **Es lo que el entorno declara, no una identidad verificada**: no sustituye a la firma de las aprobaciones ni decide permisos. Las líneas antiguas sin `quien` se siguen leyendo igual. **Contrato público:** `evento.schema.json` pasa a 1.1 con `quien` como campo opcional (cambio compatible; copia congelada en `tests/fixtures/contrato/v1.1/`). La CI se detecta solo con `CI`, sin leer variables de GitHub; el identificador de la ejecución llegará con `run --ci`. Una línea del libro de gasto gana el campo `quien`: lo lee igual el código de Fragua, pero un lector externo que compare la forma exacta de `gasto.jsonl` debe tolerarlo. Spec `2026-11-10-equipos-y-ciclo-en-ci` (borrador, sin aprobar): esto es solo el primer paso; firma SSH, aprobaciones versionadas y ciclo en CI siguen sin implementar.
 
 ### Corregido
 
@@ -21,7 +31,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ### Límites
 
-- Ninguna herramienta distinta de Claude Code está probada en real. La memoria por hooks solo existe en Claude Code; el guardián en otras herramientas es opcional (`--con-hooks`).
+- Ninguna herramienta distinta de Claude Code está probada en real. El guardián y la memoria en otras herramientas son opcionales (`--con-hooks`) y no se han probado en una herramienta real.
 
 ---
 

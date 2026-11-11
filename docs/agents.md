@@ -12,7 +12,7 @@ Catálogo de los 14 agentes de `agents/`. Cada agente es un archivo Markdown con
 | `arquitecto` | opus | Read, Grep, Glob, Bash | sí | sí |
 | `architecture-designer` | sonnet | Read, Write | no | no |
 | `product-designer` | opus | Read, Write | no | sí |
-| `disenador-api` | sonnet | Read, Write, Grep, Glob, Bash | sí | no |
+| `disenador-api` | sonnet | Read, Grep, Glob, Bash | sí | no |
 | `asesor-datos` | opus | Read, Grep, Glob, Bash | sí | sí |
 | `desarrollador-backend` | sonnet | Read, Write, Grep, Glob, Bash | no | no |
 | `desarrollador-frontend` | sonnet | Read, Write, Grep, Glob, Bash | no | no |
@@ -27,7 +27,7 @@ Catálogo de los 14 agentes de `agents/`. Cada agente es un archivo Markdown con
 Fuentes de cada columna:
 
 - `model` y `tools`: cabecera de `agents/<nombre>.md`.
-- Solo lectura: lista `READ_ONLY_AGENTS` de `claude-hooks/pre-tool-guard.js`. Con `CLAUDE_AGENT_NAME` igual a uno de esos nombres, el guardia detiene las herramientas de escritura con código 2. Solo aplica dentro de Claude Code, que es quien fija esa variable. Ojo: `disenador-api` figura como solo lectura aunque su cabecera declare `Write`; dentro de Claude Code manda el guardia.
+- Solo lectura: lista `AGENTES_SOLO_LECTURA` de `core/evidencia/guardian-reglas.js`. Con `CLAUDE_AGENT_NAME` igual a uno de esos nombres, el guardia detiene las herramientas de escritura con código 2. Solo aplica dentro de Claude Code, que es quien fija esa variable. Ojo: `disenador-api` figura como solo lectura aunque su cabecera declare `Write`; dentro de Claude Code manda el guardia.
 - Proveedor fijo: lista `ANTHROPIC_ONLY_AGENTS` de `claude-hooks/model-registry.js` (el hook que elige proveedor para el registro de consumo). Es un criterio del hook; **no** se verificó que el motor (`core/llm-providers/`) imponga la misma restricción.
 - Ningún agente declara `Edit`.
 

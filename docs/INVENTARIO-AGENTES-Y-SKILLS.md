@@ -56,7 +56,7 @@ Recalculados el 2026-11-10 con el script (`--json`) y leyendo las cabeceras. Los
 | critico | opus | Read, Grep, Glob, Bash | sí | 191 | Abogado del diablo del equipo. Identifica riesgos, asunciones implícitas y puntos ciegos … |
 | desarrollador-backend | sonnet | Read, Write, Grep, Glob, Bash | sí | 244 | Implementador senior de lógica de servidor. Escribe código de producción agnóstico al sta… |
 | desarrollador-frontend | sonnet | Read, Write, Grep, Glob, Bash | sí | 109 | Implementador senior de interfaces de usuario. Componentes, estado del cliente, accesibil… |
-| disenador-api | sonnet | Read, Write, Grep, Glob, Bash | sí | 114 | Especialista en diseño de contratos de API. Crea OpenAPI, GraphQL, gRPC o eventos según e… |
+| disenador-api | sonnet | Read, Grep, Glob, Bash | sí | 114 | Especialista en diseño de contratos de API. Crea OpenAPI, GraphQL, gRPC o eventos según e… |
 | documentador | sonnet | Read, Write, Grep, Glob, Bash | sí | 173 | Generador de documentación técnica útil. Solo documenta lo no obvio. Desactivado por defe… |
 | investigador | sonnet | Read, Grep, Glob, Bash | sí | 170 | Agente de investigación y recopilación de contexto. Analiza el proyecto existente, depend… |
 | operaciones | sonnet | Read, Write, Grep, Glob, Bash | sí | 101 | Especialista en CI/CD, infraestructura y despliegues. Configuración, secrets, observabili… |
