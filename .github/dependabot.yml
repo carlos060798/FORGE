@@ -1,4 +1,4 @@
-# Actualizaciones semanales de las acciones de CI (fijadas por etiqueta, no por SHA) y de npm
+# Actualizaciones semanales de las acciones de CI (fijadas por SHA con el comentario de versión) y de npm
 version: 2
 updates:
   - package-ecosystem: github-actions

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Vulnerabilidad de seguridad (privado, no abras una incidencia)
+    url: https://github.com/carlos060798/FORGE/security/advisories/new
+    about: Reporta vulnerabilidades por el aviso privado de GitHub. Lee SECURITY.md antes.
+  - name: Preguntas y soporte
+    url: https://github.com/carlos060798/FORGE/blob/main/SUPPORT.md
+    about: Dónde preguntar, qué incluir en un reporte y qué soporte puedes esperar de un proyecto con un solo mantenedor.

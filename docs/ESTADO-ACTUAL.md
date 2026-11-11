@@ -97,7 +97,7 @@ Se actualiza cuando terminen; si lees esto y no hay una fecha posterior, no est�
 4. **Aprobar formalmente las especificaciones.** Hasta ahora se ha avanzado por delegación, anotado en cada carpeta.
 5. **Comprobar marca registrada y dominio de «Fragua»**, y decidir el nombre exacto del paquete.
 6. **Cuentas reales** de GitHub, GitLab y Jira para probar las integraciones.
-7. **Decidir la publicación**: `5.0.0-beta.1` con la etiqueta `next`, y cuándo.
+7. **Decidir la publicación**: `5.0.0-beta.1` con la etiqueta `beta`, y cuándo.
 
 ## Documentos relacionados
 
