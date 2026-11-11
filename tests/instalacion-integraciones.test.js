@@ -21,7 +21,7 @@ const lista = (d) => (existsSync(d) ? readdirSync(d).sort() : []);
 
 describe("F1.1 — tabla de integraciones", () => {
   test("solo herramientas con carpeta confirmada; Zed y Goose no entran", () => {
-    assert.deepEqual([...CLAVES].sort(), ["agents", "claude", "copilot", "cursor", "gemini", "generica", "kiro", "opencode", "windsurf"]);
+    assert.deepEqual([...CLAVES].sort(), ["agents", "claude", "codex", "copilot", "cursor", "gemini", "generica", "kiro", "opencode", "windsurf"]);
     assert.ok(!CLAVES.includes("zed") && !CLAVES.includes("goose"));
   });
   test("cada fila cita su URL y su fecha de consulta", () => {
@@ -98,9 +98,9 @@ describe("F1.3 — forge init --integracion", () => {
       const r = forge(cwd, home, "init", "--integracion", clave);
       assert.equal(r.status, 0, r.salida);
       assert.ok(existsSync(join(cwd, ...carpeta.split("/"), "forge", "SKILL.md")), "skill forge");
-      // Perfil por defecto esencial (ADR-24): 31 skills propias + 6 generadas (CA-001-03)
+      // Perfil por defecto esencial (ADR-24): 31 skills propias + 6 generadas + un rol por agente (CA-001-03)
       const skillsPropias = readdirSync(join(ROOT, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() || e.name.endsWith(".md")).length;
-      assert.equal(readdirSync(join(cwd, ...carpeta.split("/"))).length, skillsPropias + /** @type {readonly string[]} */ (PERFILES.esencial.comandos).length);
+      assert.equal(readdirSync(join(cwd, ...carpeta.split("/"))).length, skillsPropias + /** @type {readonly string[]} */ (PERFILES.esencial.comandos).length + readdirSync(join(ROOT, "agents")).filter((n) => n.endsWith(".md")).length);
       assert.ok(!existsSync(join(cwd, ".claude")));
     });
   }

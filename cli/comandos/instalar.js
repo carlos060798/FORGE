@@ -9,6 +9,8 @@ import { copiarArbol, crearArchivo, ErrorEnlace, escribirArchivo } from "../../c
 import { INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../../core/instalacion/herramientas-destino.js";
 import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../../core/instalacion/perfiles.js";
 import { nombreDeSkill } from "../../core/instalacion/skills-de-comandos.js";
+import { PREFIJO_INVOCACION, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
+import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
 import { PLUGIN_DIR, c, info, aviso, titulo, error, raices, PROYECTO, sinEscribir, CARPETAS_GLOBALES_ENLAZABLES, fijarRaices, raizPara, protegido, paso, cerrarSiFalto, crearDir, crearNuevo, escribirSeguro, leerSeguro, copyMd, copyDir, copiarSeguro, pluginVersion, claudeEnPath } from "./comun.js";
 import { yamlGet } from "./config.js";
 
@@ -106,10 +108,10 @@ function copiarNucleo(claudeDir, inst = null, { actualizar = false } = {}) {
 // ─── Integración por herramienta y perfil (spec 2026-10-13-instalacion-agnostica) ────
 
 /** Opciones de la línea de comandos: `--integracion`, `--perfil`, `--carpeta-skills` (las fija `main`). */
-export const OPCIONES_INSTALACION = { integracion: /** @type {string|null} */ (null), perfil: /** @type {string|null} */ (null), carpetaSkills: /** @type {string|null} */ (null) };
+export const OPCIONES_INSTALACION = { integracion: /** @type {string|null} */ (null), perfil: /** @type {string|null} */ (null), carpetaSkills: /** @type {string|null} */ (null), conHooks: false };
 
 /** Lo que dejó la instalación en esta ejecución, para el resumen final. */
-export const instalado = { skills: 0, generadas: 0, omitidas: /** @type {string[]} */ ([]), destino: "" };
+export const instalado = { skills: 0, generadas: 0, roles: 0, hooks: "", omitidas: /** @type {string[]} */ ([]), destino: "" };
 
 /** Integración, perfil y carpeta guardados en `.sdd/sdd.config.yaml` (sección `instalacion`). */
 export function leerInstalacionGuardada() {
@@ -175,21 +177,23 @@ function destinoSkills(inst) {
 }
 
 /** Copia una carpeta de skill archivo a archivo. Un archivo ajeno distinto no se pisa sin avisar. */
-function copiarCarpetaSkill(src, dest, proteger) {
+function copiarCarpetaSkill(src, dest, proteger, transformar = null) {
   for (const e of readdirSync(src, { withFileTypes: true })) {
     const o = join(src, e.name), d = join(dest, e.name);
-    if (e.isDirectory()) { copiarCarpetaSkill(o, d, proteger); continue; }
+    if (e.isDirectory()) { copiarCarpetaSkill(o, d, proteger, transformar); continue; }
+    // `transformar` adapta el SKILL.md a la herramienta de destino (adaptar-anfitrion.js)
+    const texto = transformar && e.name === "SKILL.md" ? transformar(readFileSync(o, "utf8")) : null;
     if (proteger) {
       let existe = false;
       try { lstatSync(d); existe = true; } catch { /* no existe */ }
       if (existe) {
         let igual = false;
-        try { igual = readFileSync(d).equals(readFileSync(o)); } catch { /* ilegible: no se pisa */ }
+        try { igual = texto === null ? readFileSync(d).equals(readFileSync(o)) : readFileSync(d, "utf8") === texto; } catch { /* ilegible: no se pisa */ }
         if (!igual) { aviso(`Ya existe y no es de FORGE, no se pisa: ${d}`); instalado.omitidas.push(d); continue; }
       }
     }
     if (crearDir(dirname(d)) === undefined) continue;
-    copiarSeguro(o, d);
+    if (texto === null) copiarSeguro(o, d); else escribirSeguro(d, texto);
   }
 }
 
@@ -200,10 +204,13 @@ function copiarSkillsDeIntegracion(inst) {
   titulo(`Copiando skills para ${inst.integracion.nombre}...`);
   if (crearDir(destino) === undefined) return;
   const proteger = !inst.previa;
+  const comandos = readdirSync(join(PLUGIN_DIR, "commands")).filter((x) => x.endsWith(".md")).map((x) => x.slice(0, -3));
+  const opciones = { prefijo: PREFIJO_INVOCACION[inst.integracion.clave] ?? "", comandos };
+  const adaptar = (md) => adaptarSkill(md, opciones);
   const propias = join(PLUGIN_DIR, "skills");
   for (const e of readdirSync(propias, { withFileTypes: true })) {
     if (!e.isDirectory() || !existsSync(join(propias, e.name, "SKILL.md"))) continue;
-    copiarCarpetaSkill(join(propias, e.name), join(destino, e.name), proteger);
+    copiarCarpetaSkill(join(propias, e.name), join(destino, e.name), proteger, adaptar);
     instalado.skills++;
   }
   const generadas = join(PLUGIN_DIR, "skills-generadas");
@@ -216,10 +223,46 @@ function copiarSkillsDeIntegracion(inst) {
       sinEscribir.push(join(generadas, nombre));
       continue;
     }
-    copiarCarpetaSkill(join(generadas, nombre), join(destino, nombre), proteger);
+    copiarCarpetaSkill(join(generadas, nombre), join(destino, nombre), proteger, adaptar);
     instalado.generadas++;
   }
-  info(`Skills instaladas en ${destino}: ${instalado.skills} propias + ${instalado.generadas} de comandos`);
+  // Agentes como roles: una skill `rol-<agente>` por agente (la herramienta no tiene los subagentes de Claude Code)
+  const agentes = join(PLUGIN_DIR, "agents");
+  for (const f of readdirSync(agentes).filter((x) => x.endsWith(".md")).sort()) {
+    const rol = agenteARol(f.slice(0, -3), readFileSync(join(agentes, f), "utf8"), opciones);
+    if (rol.errores.length) { aviso(`Rol omitido (${f}): ${rol.errores.join("; ")}`); continue; }
+    const d = join(destino, rol.nombre, "SKILL.md");
+    if (proteger && existsSync(d)) {
+      let igual = false;
+      try { igual = readFileSync(d, "utf8") === rol.skillMd; } catch { /* ilegible: no se pisa */ }
+      if (!igual) { aviso(`Ya existe y no es de FORGE, no se pisa: ${d}`); instalado.omitidas.push(d); continue; }
+    }
+    if (crearDir(dirname(d)) === undefined) continue;
+    escribirSeguro(d, rol.skillMd);
+    instalado.roles++;
+  }
+  info(`Skills instaladas en ${destino}: ${instalado.skills} propias + ${instalado.generadas} de comandos + ${instalado.roles} roles`);
+  if (OPCIONES_INSTALACION.conHooks) instalarHookDeGuardian(inst);
+}
+
+/** Registra `fragua guardian evaluar` en el hook «antes de usar una herramienta» de la herramienta, si tiene adaptador. Nunca pisa un archivo existente. */
+function instalarHookDeGuardian(inst) {
+  const clave = inst.integracion.clave;
+  const plantilla = PLANTILLAS_HOOKS[clave];
+  if (!plantilla) { aviso(`--con-hooks: ${inst.integracion.nombre} no tiene adaptador de hook; el guardián no queda registrado (ver docs/ANFITRIONES.md).`); return; }
+  const orden = ordenDeGuardian(clave);
+  const contenido = plantilla.contenido(orden);
+  const destino = join(PROYECTO, ...plantilla.ruta.split("/"));
+  if (existsSync(destino)) {
+    aviso(`--con-hooks: ya existe ${plantilla.ruta} y no se modifica. Añade tú esta orden al hook de ${plantilla.nombre} antes de usar una herramienta: ${orden}`);
+    return;
+  }
+  if (crearDir(dirname(destino)) === undefined) return;
+  if (crearNuevo(destino, contenido)) {
+    instalado.hooks = plantilla.ruta;
+    info(`Guardián registrado en ${plantilla.ruta} (${plantilla.nombre}). ${plantilla.nota}`);
+    aviso("Requiere que la orden `fragua` esté instalada y en el PATH. Sin probar en una instalación real de la herramienta.");
+  }
 }
 
 /** Guarda integración y perfil en `.sdd/sdd.config.yaml` (sección `instalacion`). */
@@ -250,8 +293,9 @@ function resumenInstalacion(inst) {
     info(`Instalado: ${lista}, agentes, skills, hooks, settings.json y CLAUDE.md en .claude/`);
     info("No instalado: nada omitido.");
   } else {
-    info(`Instalado: ${instalado.skills} skills propias y ${instalado.generadas} skills de comandos en ${instalado.destino || destinoSkills(inst)}; AGENTS.md.`);
-    info("No instalado: comandos, agentes, hooks, settings.json ni CLAUDE.md (son de Claude Code).");
+    info(`Instalado: ${instalado.skills} skills propias, ${instalado.generadas} skills de comandos y ${instalado.roles} roles (los agentes, como skills rol-*) en ${instalado.destino || destinoSkills(inst)}; AGENTS.md.`);
+    info("No instalado: hooks (guardián, memoria de agentes), settings.json ni CLAUDE.md, que son de Claude Code. Sin el guardián, las reglas de AGENTS.md se piden, no se imponen.");
+    info("Delegación entre agentes: sin subagentes, un rol se carga y se ejecuta en la misma conversación; lo paralelo pasa a secuencial.");
     if (instalado.omitidas.length) aviso(`${instalado.omitidas.length} archivo(s) ya existían y no se pisaron.`);
   }
   info(`Cómo invocar: ${i.invocacion}. Ejemplo: ${i.ejemplo}`);

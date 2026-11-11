@@ -2,9 +2,9 @@
 id: 2026-10-13-instalacion-agnostica
 titulo: "Instalación agnóstica de herramienta: integraciones por clave y comandos como skills"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: en_implementacion  # borrador | en_revision | aprobada | en_implementacion | completada
 creada: 2026-10-13
-actualizada: 2026-10-13
+actualizada: 2026-11-11
 autor: humano  # humano | importado
 constitucion_version: 1.1.0
 etiquetas: [instalacion, agnostico, skills, agents-md]
@@ -12,7 +12,7 @@ etiquetas: [instalacion, agnostico, skills, agents-md]
 
 # Especificación: Instalación agnóstica de herramienta
 
-> **Estado: borrador.** Redactada por un agente por encargo del dueño (2026-10-13); **no está aprobada** y no se implementa hasta que el dueño la apruebe (Principio II). Corresponde a los incrementos I1 e I2 de `PLAN-INCREMENTAL.md`.
+> **Estado: en implementación.** Redactada por un agente por encargo del dueño (2026-10-13); **aprobada por delegación del dueño el 2026-11-11** («tú haz el 3»), pendiente de su ratificación (Principio II). Corresponde a los incrementos I1 e I2 de `PLAN-INCREMENTAL.md`.
 
 ## 1. Contexto y Motivación
 
@@ -177,3 +177,4 @@ Un proyecto instalado para Claude Code ejecuta `forge update` con la versión nu
 ## 15. Historial de Aclaraciones
 
 - 2026-10-13: creada en borrador a partir de la investigación de herramientas parecidas.
+- 2026-11-11: aprobada por delegación del dueño (pendiente de ratificación); implementada en su mayor parte desde 2026-10-14.

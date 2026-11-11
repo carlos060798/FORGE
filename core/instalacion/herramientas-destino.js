@@ -45,6 +45,11 @@ export const INTEGRACIONES = Object.freeze({
     invocacion: 'según la herramienta (Codex: $nombre; Gemini, Cursor, opencode, Copilot, Windsurf leen esta carpeta)', ejemplo: '$forge',
     fuente: 'https://developers.openai.com/codex/skills', consultado: FECHA,
   },
+  codex: {
+    clave: 'codex', nombre: 'Codex CLI', carpetaSkills: '.agents/skills', nativa: false,
+    invocacion: '$<nombre> o /skills; implícita por descripción', ejemplo: '$forge',
+    fuente: 'https://developers.openai.com/codex/skills', consultado: FECHA,
+  },
   copilot: {
     clave: 'copilot', nombre: 'GitHub Copilot', carpetaSkills: '.github/skills', nativa: false,
     invocacion: 'automática por descripción; /<nombre> en el chat', ejemplo: '/forge',
