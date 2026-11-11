@@ -50,14 +50,29 @@ describe("Guard spec→plan — requiere spec_aprobado", () => {
 
   test("spec→plan permitido con spec_activa + spec_aprobado: true", () => {
     const fsm = buildFSM({ pipeline_step: "spec", spec_activa: "spec-001", spec_aprobado: true });
-    const r = fsm.advance("plan");
+    const r = fsm.advance("plan", false, { verificarSpec: () => null });
     assert.ok(r.ok, `debe avanzar con spec_aprobado=true: ${r.error}`);
     assert.equal(r.to, "plan");
   });
 
+  test("spec→plan SIN verificador falla cerrada aunque spec_aprobado sea true (CA-006-01)", () => {
+    const fsm = buildFSM({ pipeline_step: "spec", spec_activa: "spec-001", spec_aprobado: true });
+    const r = fsm.advance("plan");
+    assert.ok(!r.ok, "sin verificador no se llega a plan");
+    assert.match(r.error, /verificarSpec|registro firmado/);
+    assert.equal(fsm.currentStep(), "spec", "el paso no cambia");
+  });
+
+  test("spec→plan con un verificador que rechaza: bloquea con su motivo (CA-006-01)", () => {
+    const fsm = buildFSM({ pipeline_step: "spec", spec_activa: "spec-001", spec_aprobado: true });
+    const r = fsm.advance("plan", false, { verificarSpec: () => "no consta la aprobación" });
+    assert.ok(!r.ok);
+    assert.match(r.error, /no consta la aprobación/);
+  });
+
   test("spec→plan permitido con spec_draft_path + spec_aprobado: true", () => {
     const fsm = buildFSM({ pipeline_step: "spec", spec_draft_path: ".sdd/spec.md", spec_aprobado: true });
-    const r = fsm.advance("plan");
+    const r = fsm.advance("plan", false, { verificarSpec: () => null });
     assert.ok(r.ok, `spec_draft_path + spec_aprobado debe desbloquear: ${r.error}`);
   });
 

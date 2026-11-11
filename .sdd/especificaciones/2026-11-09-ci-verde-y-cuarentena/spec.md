@@ -36,7 +36,7 @@ Que exista una forma honesta y acotada de apartar una prueba inestable sin ocult
 
 ### Windows en la CI
 - **CA-002-01** La CI tiene un job `test-windows` (`windows-latest`, Node 22) que ejecuta `npm test` completo sin Docker real (`FORGE_TEST_DOCKER=0`), con `timeout-minutes` de al menos 40 (los runners de Windows son más lentos).
-- **CA-002-02** Las pruebas que se saltan en Windows por no poder crear enlaces (`t.skip` por EPERM) siguen saltándose; esta spec no las cambia, solo lo anota.
+- **CA-002-02** Las pruebas que se saltan por no poder crear enlaces (`t.skip` por EPERM; en la pasada del 2026-11-10 en Windows, 3 de las 46 omitidas) siguen saltándose; esta spec no las cambia, solo lo anota.
 
 ### Documentación
 - **CA-003-01** `AGENTS.md` explica la cuarentena en «Cómo ejecutar las pruebas»: cómo entra una prueba (incidencia abierta + fecha), cómo sale (tres pasadas verdes seguidas en el job `cuarentena`) y que caduca a los 30 días.

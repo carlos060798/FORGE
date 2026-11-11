@@ -70,6 +70,17 @@ export function parsearCuarentena(texto, hoy = new Date()) {
 }
 
 /**
+ * Código de salida cuando la lista a ejecutar queda vacía. Solo la cuarentena puede estar vacía (hoy lo está).
+ * En los demás modos una lista vacía significa que el descubrimiento falló (carpeta renombrada, directorio de
+ * trabajo distinto): salir con 0 dejaría `npm test` y la CI en verde sin ejecutar nada.
+ * @param {string} modo
+ * @returns {0|1}
+ */
+export function codigoSiNadaQueEjecutar(modo) {
+  return modo === 'cuarentena' ? 0 : 1;
+}
+
+/**
  * @param {string} raiz
  * @param {Date} [hoy]
  * @returns {{ todos: string[], lentos: string[], rapidos: string[], cuarentena: string[], sobrantes: string[], sobrantesCuarentena: string[], erroresCuarentena: string[] }}
@@ -130,8 +141,9 @@ function main() {
   const archivos = modo === 'rapido' ? rapidos : modo === 'lento' ? lentos : modo === 'cuarentena' ? cuarentena : todos;
   console.log(`[pruebas] modo ${modo}: ${archivos.length} archivos (${rapidos.length} rápidos, ${lentos.length} lentos, ${cuarentena.length} en cuarentena)`);
   if (archivos.length === 0) {
-    console.log(`[pruebas] nada que ejecutar en el modo ${modo}.`);
-    process.exit(0);
+    const codigo = codigoSiNadaQueEjecutar(modo);
+    (codigo === 0 ? console.log : console.error)(`[pruebas] nada que ejecutar en el modo ${modo}${codigo === 0 ? '.' : ': el descubrimiento no encontró ningún archivo de prueba (¿carpeta renombrada o directorio de trabajo distinto?)'}`);
+    process.exit(codigo);
   }
   const r = spawnSync(process.execPath, ['--test', ...extra, ...archivos], { cwd: raiz, stdio: 'inherit' });
   process.exit(r.status ?? 1);

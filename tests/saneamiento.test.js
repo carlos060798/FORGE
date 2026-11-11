@@ -126,7 +126,7 @@ describe("S0 — la máquina de estados acepta especificacion_activa", () => {
   test("spec → plan avanza con especificacion_activa y spec_aprobado", () => {
     const store = new InMemoryStateStore();
     store.write({ pipeline_step: "spec", especificacion_activa: "x", spec_aprobado: true });
-    const r = new PipelineStateMachine(store, /** @type {any} */ (log)).advance("plan");
+    const r = new PipelineStateMachine(store, /** @type {any} */ (log)).advance("plan", false, { verificarSpec: () => null });
     assert.equal(r.ok, true, r.error);
   });
 

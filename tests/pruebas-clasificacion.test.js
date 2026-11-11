@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { clasificar, parsearCuarentena, DIAS_CADUCIDAD, MAX_CUARENTENA, MODOS } from "../scripts/pruebas.mjs";
+import { clasificar, parsearCuarentena, codigoSiNadaQueEjecutar, DIAS_CADUCIDAD, MAX_CUARENTENA, MODOS } from "../scripts/pruebas.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -56,6 +56,13 @@ describe("scripts/pruebas.mjs", () => {
     assert.deepEqual([...MODOS].sort(), ["cuarentena", "lento", "rapido", "todo"]);
     assert.equal(DIAS_CADUCIDAD, 30);
     assert.equal(MAX_CUARENTENA, 5);
+  });
+});
+
+describe("lista vacía: solo la cuarentena puede no tener nada que ejecutar", () => {
+  test("todo, rapido y lento con cero archivos fallan (código 1); cuarentena vacía es éxito (código 0)", () => {
+    for (const modo of ["todo", "rapido", "lento"]) assert.equal(codigoSiNadaQueEjecutar(modo), 1, modo);
+    assert.equal(codigoSiNadaQueEjecutar("cuarentena"), 0);
   });
 });
 

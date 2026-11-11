@@ -119,7 +119,7 @@ export class PipelineStateMachine {
   /**
    * @param {PipelineStep} to
    * @param {boolean} [force]  salta los guards; exige `opciones.motivo` y deja un evento firmado
-   * @param {{ motivo?: string, quien?: Record<string, unknown>, firmar?: (payload: Record<string, unknown>) => string, verificarSpec?: (estado: Record<string, any>) => string|null }} [opciones]
+   * @param {{ motivo?: string, quien?: Record<string, unknown>, firmar?: (payload: Record<string, unknown>) => string, verificarSpec?: (estado: Record<string, any>) => string|null }} [opciones]  `verificarSpec`: obligatorio para spec → plan sin `force`
    * @returns {TransitionResult}
    */
   advance(to, force = false, opciones = {}) {
@@ -143,8 +143,13 @@ export class PipelineStateMachine {
       if (guardError) {
         return { ok: false, from, to, error: `Guard bloqueó la transición: ${guardError}` };
       }
-      // spec → plan: además del booleano, el registro firmado de la aprobación (lo aporta quien llama, con su cwd)
-      if (from === 'spec' && to === 'plan' && typeof opciones.verificarSpec === 'function') {
+      // spec → plan: además del booleano, el registro firmado de la aprobación. Lo aporta quien llama (con su cwd) y es
+      // OBLIGATORIO: sin verificador la transición falla cerrada, para que ningún llamador futuro llegue a `plan` solo con
+      // el booleano de estado.json (revisión independiente 2026-11-10, hallazgo 2; spec aprobaciones-con-identidad, CA-006-01).
+      if (from === 'spec' && to === 'plan') {
+        if (typeof opciones.verificarSpec !== 'function') {
+          return { ok: false, from, to, error: 'Guard bloqueó la transición: spec → plan exige comprobar el registro firmado de la aprobación y quien llama no aportó el verificador (opciones.verificarSpec). Usa `forge step plan`.' };
+        }
         const motivoSpec = opciones.verificarSpec(estado);
         if (motivoSpec) return { ok: false, from, to, error: `Guard bloqueó la transición: ${motivoSpec}` };
       }

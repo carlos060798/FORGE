@@ -357,7 +357,8 @@ describe('E2E validate — detecta falta de spec_activa en el estado', { skip: S
       { ...e, spec_draft_path: '.sdd/especificaciones/draft/spec.md', spec_aprobado: true }, null, 2
     ));
     const { fsm } = buildFSM(core, dir);
-    const r = fsm.advance('plan');
+    // El registro firmado lo comprueba quien llama (aquí, un verificador que lo da por bueno); su rigor se prueba en tests/aprobaciones-identidad.test.js
+    const r = fsm.advance('plan', false, { verificarSpec: () => null });
     assert.ok(r.ok, `spec_draft_path + spec_aprobado debe desbloquear spec→plan: ${r.error}`);
   });
 });
