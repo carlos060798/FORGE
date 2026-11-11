@@ -165,9 +165,9 @@ Dejaron de afirmarse en la documentación, pero **siguen en el código**. Cada u
 |---|---|---|
 | 1 | `calidad.cobertura_tests_minima` se lee pero ningún código la aplica; los presets la fijan en 60, 75 y 85 sin efecto | `claude-hooks/post-write-conventions.js` |
 | 2 | Los hooks de `.sdd/hooks/` los ejecuta el modelo al seguir el comando, no el motor; no cancelan por código de salida y no reciben variables | `commands/*.md` |
-| 3 | `fragua export` estampa «FORGE v4.0.0» fijo en los artefactos | `cli/export.js:21` |
-| 4 | `consumo.jsonl` estima los tokens como bytes entre 3,5 y `fragua logs` lo presenta como consumo de tokens; el gasto real está en `gasto.jsonl` | `claude-hooks/agent-memory.js` |
+| 3 | ~~`fragua export` estampa «FORGE v4.0.0» fijo en los artefactos~~ **Corregido el 2026-11-11** (spec `2026-11-11-correcciones-de-precision`) | `cli/export.js` |
+| 4 | `consumo.jsonl` lo escriben dos hooks con campos distintos: uno estima tokens como bytes entre 3,5 y el otro registra tokens y coste solo si el evento trae `usage` (no verificado que Claude Code lo envíe). `fragua logs` lo presenta como «consumo de tokens»; el gasto real del ciclo está en `gasto.jsonl` | `claude-hooks/agent-memory.js`, `claude-hooks/context-manager.js` |
 | 5 | `ProjectMemory.update()` y `setPipelineStep()` no comprueban aprobaciones | `core/project-memory.js` |
-| 6 | El tipo `ForgeEstado` no declara `spec_aprobado` ni otros campos del archivo real | `core/project-memory.js` |
+| 6 | ~~El tipo `ForgeEstado` no declara `spec_aprobado` ni otros campos del archivo real~~ **Corregido el 2026-11-11** | `core/project-memory.js` |
 | 7 | `fragua doctor` termina con código 0 aunque detecte problemas, así que no sirve como puerta en una integración continua | `cli/comandos/doctor.js`, según `docs/referencia-cli.md`; **no ejecutado en esta revisión** |
 | 8 | Hay un runner de Rust pero ninguna imagen base para Rust | `core/runners/rust-runner.js`, `core/sandbox/preparar-imagen.js` |

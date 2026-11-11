@@ -5,10 +5,10 @@
 > Registro de todas las especificaciones del proyecto, ordenado cronológicamente.
 
 ## Estadísticas
-- Total: 28
+- Total: 29
 - Completadas: 0
 - En progreso: 16
-- En borrador: 12
+- En borrador: 13
 
 ## Especificaciones
 
@@ -40,6 +40,7 @@
 | 2026-11-09-ci-verde-y-cuarentena | CI verde en Linux y Windows: cuarentena honesta de pruebas inestables y pata de Windows en la matriz | borrador (implementada dentro del plan MVP; sin aprobación del dueño; ADR-23 propuesta; T8 a T10 del dueño) | pequeño | ✅ | — | ✅ | — | 2026-11-09 |
 | 2026-11-09-puerta-de-entrada-solo-dev | Puerta de entrada para el desarrollador individual: perfil esencial y preset lean por defecto, doctor con siguiente paso, catálogo sin duplicados | borrador (implementada en la rama `fase-2-puerta-de-entrada`; sin aprobación del dueño; ADR-24 propuesta; no se fusiona hasta que la CI esté verde) | pequeño | ✅ | — | ✅ | — | 2026-11-09 |
 | 2026-11-10-enlaces-verificados-en-windows | Pruebas de enlaces que se ejecutan en Windows y omisiones honestas («NO VERIFICADO») | borrador (redactada por un agente; sin aprobar; pruebas ya migradas) | pequeño | ✅ | — | ✅ | ✅ | 2026-11-10 |
+| 2026-11-11-correcciones-de-precision | Correcciones de precisión halladas al documentar: versión que estampa export y tipo del estado | borrador (implementada; la aprueba el dueño; micro) | micro | ✅ | — | ✅ | — | 2026-11-11 |
 | 2026-11-10-equipos-y-ciclo-en-ci | Equipos pequeños: aprobaciones atribuibles, estado compartible y ciclo verificado en CI | borrador (solo especificación, Fase 4 del plan MVP; cinco decisiones abiertas del dueño; nada implementado) | grande | ✅ | — | — | — | 2026-11-10 |
 | 2026-10-14-despliegue-con-aprobacion | Despliegue con aprobación: puerto de despliegue con un adaptador de AWS; el modelo propone, una persona aprueb | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |
 | 2026-10-14-perfiles-de-agente | Perfiles de agente: herramientas, rutas, contexto y pasos por rol, impuestos por el motor | borrador (fila añadida al revisar el índice; el estado es el de su spec.md) | grande | ✅ | — | — | — | 2026-10-14 |

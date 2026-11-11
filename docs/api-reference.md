@@ -63,19 +63,16 @@ Seguridad, según la cabecera del código: escucha solo en `127.0.0.1`, valida l
 
 ### `.sdd/observabilidad/consumo.jsonl`
 
-Lo escribe el hook `agent-memory.js` en cada escritura de un agente. **No mide el consumo real de tokens**: registra los bytes escritos y estima los tokens como bytes entre 3,5. Para el gasto real del ciclo verificado, ver `gasto.jsonl` en `.sdd/motor/<sesión>/` ([ciclo-verificado.md](ciclo-verificado.md)).
+Lo escriben **dos hooks distintos, con campos distintos, en el mismo archivo**. No mide el gasto real del ciclo verificado: ese está en `gasto.jsonl`, dentro de `.sdd/motor/<sesión>/` ([ciclo-verificado.md](ciclo-verificado.md)).
 
-| Campo | Contenido |
-|---|---|
-| `ts` | Fecha ISO |
-| `agente` | Nombre del agente, o `main` |
-| `tool` | Herramienta usada (`Write`, `Edit`…) |
-| `archivo` | Archivo modificado |
-| `bytes` | Bytes del contenido escrito |
-| `tokens_est` | `ceil(bytes / 3.5)`, una estimación |
-| `provider`, `effort_level` | Proveedor y nivel resueltos para ese agente |
+| Quién | Cuándo | Campos | Qué mide |
+|---|---|---|---|
+| `agent-memory.js` | En cada escritura de un agente | `ts`, `agente` (o `main`), `tool`, `archivo`, `bytes`, `tokens_est`, `provider`, `effort_level` | Bytes escritos. `tokens_est` es `ceil(bytes / 3.5)`: **una estimación, no un recuento** |
+| `context-manager.js` | Tras cada herramienta, **solo si el evento trae tokens** | `ts`, `agente`, `tool`, `modelo`, `tokens_input`, `tokens_output`, `costo_usd`, `bytes` | Lee `usage.input_tokens` y `usage.output_tokens` del evento y calcula el coste con una tabla de precios |
 
-Rota al superar un tamaño configurable, conservando tres copias anteriores. `fragua logs` lo lee.
+**No verificado:** que Claude Code incluya `usage` en los eventos de herramienta. Si no lo hace, el segundo hook no escribe nada y el archivo solo contiene estimaciones de bytes. Tampoco se ha comparado `costo_usd` con una factura ([ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
+
+`fragua logs` acepta los nombres de campo de los dos hooks y muestra las columnas que encuentre, así que las de entrada, salida y USD salen vacías con las líneas del primero. Cada hook rota su archivo al superar un tamaño; `agent-memory.js` conserva tres copias anteriores.
 
 ### `.sdd/observabilidad/mutaciones.jsonl`
 
@@ -106,7 +103,7 @@ Lee y escribe `.sdd/estado.json` de forma atómica (archivo temporal y `rename`)
 
 ### Tipos
 
-Los tipos están en comentarios JSDoc (`ForgeEstado` en `core/project-memory.js`; `IR`, `ProductDesign` y otros en `core/ir.types.js`) y los comprueba `npm run typecheck`. **No se distribuyen archivos `.d.ts`.** El tipo `ForgeEstado` está incompleto respecto al archivo real (por ejemplo no declara `spec_aprobado`); la forma de referencia de `estado.json` es el esquema `estado-pipeline`, no el tipo.
+Los tipos están en comentarios JSDoc (`ForgeEstado` en `core/project-memory.js`; `IR`, `ProductDesign` y otros en `core/ir.types.js`) y los comprueba `npm run typecheck`. **No se distribuyen archivos `.d.ts`.** El tipo `ForgeEstado` declara las mismas propiedades que el esquema `estado-pipeline` (lo comprueba `tests/correcciones-precision.test.js`), pero un tipo de JSDoc no valida nada en ejecución: la forma de referencia de `estado.json` es el esquema.
 
 ## Variables de entorno
 

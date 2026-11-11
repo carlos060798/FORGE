@@ -35,6 +35,17 @@ const PIPELINE_TRANSITIONS = {
  * @property {string} [spec_draft_path]
  * @property {'idea'|'discovery'|'ir'|'design'|'spec'|'plan'|'tasks'|'code'|'done'} [pipeline_step]
  * @property {string} [ultima_actualizacion]
+ * @property {string} [version_plugin]
+ * @property {string} [version_constitucion]
+ * @property {boolean} [inicializado]
+ * @property {string} [perfil]
+ * @property {string} [fase_actual]
+ * @property {string|null} [especificacion_activa]  alias que escriben los comandos /sdd.*; el motor escribe `spec_activa`
+ * @property {boolean} [spec_aprobado]  la puerta de spec a plan comprueba además el registro firmado (core/aprobaciones-identidad.js)
+ * @property {boolean} [plan_aprobado]
+ * @property {boolean} [tareas_generadas]
+ * @property {Array<Record<string, unknown>>} [historial]
+ * (La forma de referencia del archivo es docs/contrato/estado-pipeline.schema.json; `spec_activa` también admite null.)
  */
 
 export class ProjectMemory {

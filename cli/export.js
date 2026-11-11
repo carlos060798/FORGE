@@ -18,7 +18,11 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { validateArtefacto } from '../core/schemas/index.js';
 import { crearDirectorio, escribirArchivo } from '../core/escritura-segura.js';
 
-const FORGE_VERSION = '4.0.0';
+/** Versión del paquete: se lee de package.json para que lo exportado no declare una versión antigua (spec 2026-11-11-correcciones-de-precision). */
+const FORGE_VERSION = (() => {
+  try { return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version || 'desconocida'; }
+  catch { return 'desconocida'; }
+})();
 
 // ── Leer artefactos .sdd/ ─────────────────────────────────────────────────────
 

@@ -18,7 +18,6 @@ import { join, resolve } from 'node:path';
 import { validateArtefacto } from '../core/schemas/index.js';
 import { crearDirectorio, escribirArchivo } from '../core/escritura-segura.js';
 
-const FORGE_VERSION = '4.0.0';
 
 // ── Parsers de Spec Kit ────────────────────────────────────────────────────────
 
