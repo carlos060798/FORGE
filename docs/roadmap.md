@@ -63,11 +63,10 @@ Spec `2026-11-09-puerta-de-entrada-solo-dev` y ADR-24 (propuesta).
 
 ## Agnosticismo del anfitrión: **en curso**
 
-Plan en [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md); spec `2026-11-10-metodologia-agnostica` (borrador, por instrucción del dueño). Estado real en [ANFITRIONES.md](ANFITRIONES.md).
+Plan en [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md); spec `2026-11-10-metodologia-agnostica` (en implementación; figura «aprobada por delegación» por un agente y espera la ratificación del dueño) y `2026-11-11-guardian-fuera-de-claude-code` (borrador). Estado real en [ANFITRIONES.md](ANFITRIONES.md).
 
-- Hecho: comandos y skills adaptados y agentes como roles `rol-*` en las integraciones que no son Claude Code (fases F1 y F2 en su versión por adaptación al instalar).
-- En curso: guardián y memoria fuera de los hooks de Claude Code (F3); niveles de modelo neutrales, `doctor` por proveedor y metadatos (F4).
-- Pendiente: spikes de agentes nativos y hooks por herramienta (F0) y prueba manual en cada herramienta (F5); hasta entonces ninguna se declara probada.
+- Hecho, **sin probar en ninguna herramienta real**: los spikes (F0, leídos de resúmenes de la documentación, no de copias literales); comandos y skills adaptados y agentes como roles `rol-*` y como agentes nativos (F1 y F2, en su versión por adaptación al instalar); guardián y memoria por hooks con `--con-hooks` en Cursor, Copilot, Gemini, Codex, Windsurf y opencode (F3), con perfil MCP `guardian`, y una herramienta que el traductor no reconoce se evalúa por su entrada (ADR-26, propuesta); `doctor` por proveedor y metadatos (F4); documentación y matriz impuesto/consultivo (F6). Kiro no tiene adaptador de hook: su documentación no da los nombres de herramienta.
+- Pendiente: la prueba manual en cada herramienta (F5), con el guion en el `verificacion.md` de la spec; hasta entonces ninguna se declara probada.
 
 ---
 
