@@ -105,6 +105,37 @@ La batería (`tests/fixtures/integraciones/hostiles-proyecto.json`, 13 casos, y 
 | Perfiles: el perfil limita dónde y con qué se escribe, no qué se escribe | Lo que el rol escribe dentro de su perfil lo cubren las pruebas y la revisión humana |
 | Perfiles: la regresión (G39) es con el ejecutor de pruebas falso y el proveedor guionizado, no con Docker real ni con un modelo real | Los valores esperados se tomaron del código previo a los perfiles; no hay revisión independiente (F7.2 no se ha hecho) |
 
+## Guardián y memoria fuera de Claude Code: impuesto, consultivo o no disponible
+
+El guardián es una red de seguridad, no un límite. Fuera de Claude Code solo existe si se instala con `--con-hooks` y su fuerza depende de la herramienta. Los datos de esta tabla salen de la documentación de cada herramienta (leída vía resúmenes, no copia literal) y de `core/instalacion/hooks-anfitrion.js`. **Ninguna fila está probada en una instalación real de la herramienta.**
+
+- **Impuesto:** la herramienta ejecuta la orden antes de cada llamada, un código de salida 2 la detiene y, si el hook falla, también se detiene.
+- **Consultivo:** si el hook falla, no está instalado `fragua` o se agota el tiempo, la acción continúa; o lo decide el modelo (perfil MCP `guardian`). Es una ayuda, no una garantía.
+- **No disponible:** no hay adaptador.
+
+| Herramienta | Guardián | Memoria de agentes | Si el hook falla |
+|---|---|---|---|
+| Claude Code | Impuesto: hook `PreToolUse` del plugin; falla cerrado si no puede evaluar | Sí, `PostToolUse` | Bloquea |
+| Cursor | Impuesto según su documentación (`failClosed`) | Sí (`afterFileEdit`); nunca bloquea | Bloquea |
+| GitHub Copilot | Impuesto ante un error del hook; **un tiempo agotado deja pasar** | Sí (`postToolUse`); nunca bloquea | Error: bloquea. Tiempo agotado: deja pasar |
+| Gemini CLI | Consultivo: falla abierto | Sí (`AfterTool`); la orden sale siempre con 0 | Deja pasar |
+| Codex CLI | Consultivo: falla abierto; el proyecto debe ser de confianza y el hook, aprobado en Codex | Sí (`PostToolUse`); nunca bloquea | Deja pasar |
+| Windsurf | Consultivo: falla abierto; solo la terminal tiene claves de entrada documentadas, en las herramientas de archivo la ruta se busca por heurística | Sí (`PostToolUse`); nunca bloquea | Deja pasar |
+| opencode | Consultivo hasta probarlo: el plugin falla cerrado, pero no está confirmada la forma del evento ni que un plugin pueda lanzar un proceso; si fallan, bloquea toda herramienta | No disponible | Bloquea (si funciona) |
+| Kiro | No disponible: su documentación no da los nombres de herramienta ni qué código bloquea | No disponible | No aplica |
+| Zed, Goose, carpeta común (`agents`), genérica | No disponible: sin adaptador de hook | No disponible | No aplica |
+| Cualquier herramienta con cliente MCP | Consultivo: `fragua mcp --perfil guardian` expone `guardian_evaluar`; el modelo puede no llamarla | No disponible | No aplica |
+
+Límites que valen en todas las herramientas distintas de Claude Code:
+
+- **Cobertura:** el guardián solo evalúa las herramientas cuyo evento sabe traducir. Una herramienta que la tabla del adaptador no conoce se clasifica por su entrada (con una orden, como terminal; con ruta y contenido, como escritura; solo con ruta, como lectura). Una sin nada de eso pasa sin evaluar. Esta clasificación es la del ADR-26, en estado de propuesta.
+- **`fragua` en el PATH:** los hooks llaman a la orden por nombre. Si falta, Cursor bloquea toda herramienta y Codex, Gemini y Windsurf dejan pasar todo sin aviso. `forge doctor` lo avisa cuando la instalación guardó `con_hooks`.
+- **Agentes de solo lectura:** ninguna herramienta define `FRAGUA_AGENTE`, así que las guardas por agente quedan desactivadas. En los formatos nativos, `revisor` e `investigador` conservan el shell y nada les impide escribir por ahí; los roles `rol-*` corren en la conversación principal y no tienen esa restricción.
+- **Node 20:** los hooks y la CLI lo exigen aunque el proyecto sea de otro lenguaje.
+- **Sin subagentes:** donde un comando delega a un agente, un rol se carga y se ejecuta en la misma conversación; no hay aislamiento de contexto.
+
+Qué hace cada herramienta, instalación y estado de verificación: [ANFITRIONES.md](ANFITRIONES.md).
+
 ## Cómo se usa
 
 - `FRAGUA_DESTINOS_PERMITIDOS=api.miservicio.net,*.github.com` (entorno del usuario) declara los destinos que el código del agente puede usar sin revisión. Dominios exactos o `*.dominio` (subdominios, no el dominio solo). El repositorio no puede declararlos.

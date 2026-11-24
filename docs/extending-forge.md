@@ -49,7 +49,7 @@ Lo que comprueban las pruebas de catálogo (`tests/catalogo.test.js`, `tests/age
 
 `goal` y `backstory` son campos propios de Fragua. No existe un campo `phases`.
 
-**Solo lectura frente a escritura.** Si el agente no debe modificar archivos, añádelo a `AGENTES_SOLO_LECTURA` en `core/evidencia/guardian-reglas.js`: el guardián le bloquea las escrituras. Para que tenga memoria, añádelo a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El guardián reconoce al agente por la variable `CLAUDE_AGENT_NAME`; si Claude Code no la fija, esos bloqueos no actúan ([SECURITY.md](../SECURITY.md)).
+**Solo lectura frente a escritura.** Si el agente no debe modificar archivos, añádelo a `AGENTES_SOLO_LECTURA` en `core/evidencia/guardian-reglas.js`: el guardián le bloquea las escrituras. Para que tenga memoria, añádelo a `AGENTES_CON_MEMORIA` en `claude-hooks/agent-memory.js`. El guardián reconoce al agente por `FRAGUA_AGENTE` (o `FORGE_AGENTE`) y, si no está, por `CLAUDE_AGENT_NAME`; si ninguna está definida, esos bloqueos no actúan (hoy solo Claude Code fija `CLAUDE_AGENT_NAME`) ([SECURITY.md](../SECURITY.md)).
 
 **Asistente.** `/sdd.crear-agente` es un comando que guía la creación con preguntas (nombre, rol, tipo, herramientas) y escribe el archivo. Es un texto que sigue el modelo, no un generador determinista: ejecuta después `npm test` para ver qué se le olvidó registrar.
 
@@ -93,7 +93,7 @@ Instalación en otras herramientas: `fragua init --integracion <clave>` copia la
 
 Son scripts de shell que se ejecutan antes o después de un comando. Esto es lo que hacen y lo que **no** hacen, comprobado en el código:
 
-- El texto del comando contiene una línea como `[ -f ".sdd/hooks/antes_implementar.sh" ] && bash .sdd/hooks/antes_implementar.sh`. **Quien lo ejecuta es Claude Code al seguir el comando.** El motor (`fragua run`, `core/`) no ejecuta estos hooks.
+- El texto del comando contiene una línea como `[ -f ".sdd/hooks/antes_implementar.sh" ] && bash .sdd/hooks/antes_implementar.sh`. **Quien lo ejecuta es la herramienta de código, porque el modelo sigue el comando.** El motor (`fragua run`, `core/`) no ejecuta estos hooks.
 - **No cancelan nada.** La línea no mira el código de salida: un hook que termina con error no detiene el comando.
 - **No reciben variables.** `FORGE_VERSION`, `SDD_SPEC_ACTIVA` o `SDD_PIPELINE_STEP` no se definen en ningún sitio. Si tu hook necesita el estado, léelo de `.sdd/estado.json`. Solo `antes_cada_tarea.sh` y `despues_cada_tarea.sh` reciben un argumento: el identificador de la tarea.
 - Nombres que los comandos buscan: `antes_` y `despues_` de `constitucion`, `descubrir`, `especificar`, `planificar`, `tareas`, `implementar`, `cada_tarea` y `desplegar`; solo `antes_`: `importar`; solo `despues_`: `aclarar`, `analizar`, `canary`, `crear_app`, `crear_mcp`, `qa` y `retro`.
