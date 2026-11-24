@@ -32,15 +32,23 @@
 ### Antes de empezar (una vez)
 
 1. Tener **Node 20 o superior** y la herramienta instalada. Anota la versión de la herramienta (la ves en su menú «Acerca de» o con su opción `--version`).
-2. Poner `fragua` en el PATH. Desde un clon del repositorio:
+2. Poner `fragua` en el PATH **desde la rama que lleva todas las correcciones**: `feature/cierre-auditoria`, commit `fd436d1` o posterior (en este equipo, la carpeta `forge/wt-cierre`). **No instales desde `forge/FORGE` mientras esa rama no esté fusionada en `feature/anfitriones`**: esa carpeta tiene el guardián anterior, que deja pasar `shell rm -rf /` en Codex, y probarías algo que ya está corregido.
 
    ```
+   cd forge/wt-cierre
+   git log --oneline -1
    npm install
    npm install -g .
    fragua --version
    ```
 
    Los hooks llaman a `fragua` por nombre: sin esto el guardián no corre (y Cursor, que falla cerrado, bloquearía toda herramienta).
+
+   **Comprobación de que instalaste el código correcto** (debe imprimir `2`; si imprime `0`, es el guardián anterior y hay que reinstalar):
+
+   ```
+   echo '{"tool_name":"shell","tool_input":{"command":"rm -rf /"}}' | fragua guardian evaluar --anfitrion codex; echo $?
+   ```
 3. Crear una carpeta de prueba **fuera** del repositorio de Fragua. No pruebes dentro de un proyecto con datos reales.
 
 ### Cursor
@@ -120,6 +128,23 @@
 9. **Importante, Codex falla abierto:** si `fragua` falta del PATH o el hook se rompe, la acción **continúa**. Si quieres comprobarlo, quita `fragua` del PATH y repite el paso 8: lo esperado según la documentación es que el archivo se muestre. Anótalo como límite, no como fallo.
 10. Limpiar.
 
+### Captura del evento real (lo más valioso de toda la prueba)
+
+Hasta hoy los traductores del guardián se probaron con eventos **escritos a mano** a partir de la documentación (CA-002-04 de `2026-11-11-guardian-fuera-de-claude-code`, pendiente). Con esta captura se sabe, por primera vez, cómo se llaman de verdad las herramientas de Cursor y de Codex y qué campos traen. Haz esto **en Cursor y en Codex**, después de los pasos del guardián y antes de limpiar:
+
+1. En el archivo de hooks que creó `init` (`.cursor/hooks.json` o `.codex/hooks.json`), apunta la orden actual (`fragua guardian evaluar --anfitrion <clave>`) y **sustitúyela temporalmente** por:
+
+   ```
+   sh -c 'mkdir -p capturas && tee "capturas/$(date +%s%N).json" | fragua guardian evaluar --anfitrion <clave>'
+   ```
+
+   (`<clave>` es `cursor` o `codex`.) `tee` guarda el evento tal como llega y lo pasa al guardián; el código de salida es el del guardián, así que el bloqueo sigue funcionando. En Windows, si la herramienta no encuentra `sh`, usa Git Bash o WSL y anótalo.
+2. Repite en la herramienta estas cuatro peticiones, una tras otra: «ejecuta `ls`», «ejecuta `git push --force origin main`» (el repositorio de prueba no tiene remoto: si el guardián fallara, `git` solo daría error), «crea el archivo `src/a.js` con `console.log(1)`» y «lee el archivo `.env`».
+3. Guarda la carpeta `capturas/` entera **sin editarla** y anota cuántos archivos salieron. Si no sale ninguno, el hook no se ejecutó: es un hallazgo, anótalo.
+4. **Restaura la orden original** en el archivo de hooks.
+
+Con esos archivos se añaden pruebas con eventos reales en `tests/fixtures/` y se ajustan las tablas de nombres de `core/instalacion/hooks-anfitrion.js`. Si una petición peligrosa **pasó** (la acción se ejecutó), anótalo tal cual con su captura: es un fallo de seguridad del guardián en esa herramienta, no un detalle.
+
 ### Las demás herramientas (misma receta)
 
 Para Copilot, Gemini CLI, Windsurf, opencode, Kiro, Zed, Goose, la carpeta común y la genérica: `fragua init --integracion <clave> [--con-hooks]`, comprobar la carpeta de skills de la tabla de `core/instalacion/herramientas-destino.js`, invocar `forge` con la sintaxis de esa fila, probar un rol y, si la herramienta tiene adaptador de hook (Copilot, Gemini, Windsurf, opencode), repetir el paso del `.env`. Kiro, Zed, Goose, `agents` y `generica` no tienen adaptador de hook: allí solo se prueban skills, roles y agentes.
@@ -128,17 +153,17 @@ Para Copilot, Gemini CLI, Windsurf, opencode, Kiro, Zed, Goose, la carpeta comú
 
 Rellena una fila por herramienta y por intento. Usa `OK`, `FALLA` o `NO APLICA`, y en «Notas» lo que viste, aunque sea raro.
 
-| Herramienta | Versión de la herramienta | Fecha | Instalación | Skill cargada | Rol | Agente nativo | Guardián bloquea | Falla abierto/cerrado observado | Notas |
-|---|---|---|---|---|---|---|---|---|---|
-| Cursor | | | | | | | | | |
-| Codex CLI | | | | | | | | | |
-| GitHub Copilot | | | | | | | | | |
-| Gemini CLI | | | | | | | | | |
-| Windsurf | | | | | | | | | |
-| opencode | | | | | | | | | |
-| Kiro | | | | | | | | | |
-| Zed | | | | | | | | | |
-| Goose | | | | | | | | | |
+| Herramienta | Versión de la herramienta | Fecha | Commit de `fragua` instalado | Instalación | Skill cargada | Rol | Agente nativo | Guardián bloquea | Falla abierto/cerrado observado | Capturas (n.º de archivos) | Notas |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Cursor | | | | | | | | | | | |
+| Codex CLI | | | | | | | | | | | |
+| GitHub Copilot | | | | | | | | | | | |
+| Gemini CLI | | | | | | | | | | | |
+| Windsurf | | | | | | | | | | | |
+| opencode | | | | | | | | | | | |
+| Kiro | | | | | | | | | | | |
+| Zed | | | | | | | | | | | |
+| Goose | | | | | | | | | | | |
 
 Con al menos dos filas rellenadas se cumple el criterio de éxito de esta spec («al menos dos herramientas con registro de prueba manual»). Lo que falle va a su propia spec, no se maquilla aquí.
 
