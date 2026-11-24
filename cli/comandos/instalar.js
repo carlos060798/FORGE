@@ -22,7 +22,8 @@ export function banner() {
   console.log("");
   console.log("  ╔══════════════════════════════════════════════════════╗");
   console.log("  ║                                                      ║");
-  const rotulo = `${PRODUCTO} — Tu equipo técnico en Claude Code`;
+  // Neutro: lo ve quien instala para Codex, Cursor o cualquier otra herramienta, no solo quien usa Claude Code
+  const rotulo = `${PRODUCTO} — Desarrollo guiado por especificaciones`;
   console.log(`  ║${rotulo.padStart(Math.floor((54 + rotulo.length) / 2)).padEnd(54)}║`);
   console.log("  ║                                                      ║");
   console.log("  ╚══════════════════════════════════════════════════════╝");
@@ -666,12 +667,14 @@ export function cmdInit(global, guided = false, withUi = false, preset = null, t
   // Se valida antes de escribir nada: una clave o carpeta inválida no deja rastro.
   const inst = resolverInstalacion(global);
   const esClaude = !inst || inst.integracion.nativa;
-  console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${claudeDir})`);
+  // La carpeta `.claude` solo existe para Claude Code: para otra herramienta se dice cuál es, no una carpeta que no se crea
+  console.log(`  Modo: ${global ? "GLOBAL" : "PROYECTO"} (${esClaude ? claudeDir : inst.integracion.nombre})`);
   if (global) paso("crear ~/.claude", () => mkdirSync(claudeDir, { recursive: true }));
   if (template) console.log(`  Template: ${template}`);
   console.log("");
 
-  if (!claudeEnPath()) {
+  // La CLI de Claude solo importa si se instala para Claude Code
+  if (esClaude && !claudeEnPath()) {
     aviso("Claude Code CLI no detectado en PATH. Los archivos se instalarán de todos modos.");
   }
   if (global) avisarEnlacesGlobales(claudeDir);

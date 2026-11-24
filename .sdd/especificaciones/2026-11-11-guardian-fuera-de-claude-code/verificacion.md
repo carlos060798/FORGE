@@ -21,6 +21,8 @@
 | CA-003-04 sin `--con-hooks` nada | «sin la opción no se escribe ningún hook» | **Con prueba** |
 | CA-003-05 `doctor` avisa si `fragua` no está en el PATH | `tests/doctor-instalacion.test.js` (3 pruebas: sin PATH, con PATH, sin hooks) | **Con prueba** |
 | CA-003-06 el archivo de hooks de cada herramienta es ruta crítica | `tests/guardian-reglas.test.js` (rutas críticas y no críticas, con mayúsculas, barras invertidas, flujos NTFS y `..`); `tests/hooks-anfitrion.test.js` («el guardián protege el archivo de hooks de cada herramienta»: consistencia con `PLANTILLAS_HOOKS`, las 6 herramientas por la CLI, `apply_patch`, terminal, atajo del dueño) | **Con prueba** (con eventos construidos, no capturas reales; ver CA-002-04) |
+| CA-003-07 `doctor` comprueba el archivo de hooks y dice que las guardias de solo lectura no corren fuera de Claude Code | `tests/doctor-agnostico.test.js` («doctor comprueba el archivo de hooks…»: archivo con la orden, ausente, sin la orden, sin hooks, kiro sin adaptador; y el aviso de `FRAGUA_AGENTE` en otra herramienta) | **Con prueba** (comprueba el texto del archivo, no que la herramienta lo cargue) |
+| CA-003-08 el instalador y la ayuda no hablan de Claude Code para otras herramientas | `tests/instalador-sin-claude.test.js` (codex, cursor, gemini, kiro; con Claude se conserva `.claude`; la ayuda) y `tests/doctor-banner-mcp.test.js` | **Con prueba** (la presencia del aviso «CLI de Claude no detectada» con Claude no se afirma: depende de si `claude` está en el `PATH` de quien ejecuta) |
 | CA-004-01 memoria por hook | `tests/hooks-anfitrion.test.js` («memoria: eventos posteriores…») | **Con prueba** (la spec aún lo marca «no implementado»: desfasada) |
 
 ## Qué quedó a medias o sin hacer

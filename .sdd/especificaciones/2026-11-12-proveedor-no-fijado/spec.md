@@ -57,6 +57,8 @@ Que quien use otro proveedor, o uno local, no encuentre nombres de modelos ajeno
 - [ ] **CA-002-01**: Un nivel neutral, un alias heredado o un identificador presente en alguna tabla de precios no genera aviso. (P1)
 - [ ] **CA-002-02**: Un valor que no es ninguno de los anteriores sigue generando el aviso y cuenta como problema. (P1)
 - [ ] **CA-002-03**: `doctor` no contiene una lista propia de identificadores de modelo. (P1)
+- [x] **CA-002-04**: `doctor` valida cada línea `modelo:` del `sdd.config.yaml` con esa misma regla, solo en la clave exacta `modelo:` (`embeddings_modelo:`, `modelos:` y los comentarios no cuentan), admite comillas y comentarios al final y lista todos los inválidos. La configuración de ejemplo que instala `init` no produce ningún aviso. (P1) — Añadido el 2026-11-24 (informe de agnosticismo, MEDIO-3): `doctor` conservaba una segunda comprobación contra `opus|sonnet|haiku` que marcaba `nomic-embed-text`, los niveles neutrales y los modelos de OpenAI. Pruebas en `tests/doctor-agnostico.test.js`.
+- [x] **CA-002-05**: El proveedor que `doctor` muestra y para el que comprueba la clave sale de la misma detección que usa el motor (el fijado y, si no, la clave de Anthropic, la de OpenAI o `OLLAMA_BASE_URL`); sin ninguna señal, Anthropic como siempre. (P1) — Añadido el 2026-11-24; pruebas en `tests/doctor-agnostico.test.js` (con Ollama en un puerto local cerrado, sin red).
 
 ### HU-003: El asistente guiado no ofrece un solo proveedor
 **Como** usuario del asistente de `init --guided`

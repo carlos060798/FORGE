@@ -158,7 +158,7 @@ Diagnostica la instalación: integridad del plugin, instalación en el proyecto,
 fragua doctor [--integraciones-red]
 ```
 
-`--integraciones-red` (no está en la ayuda) añade la comprobación de red de las integraciones. Con `ANTHROPIC_API_KEY` definida hace una llamada mínima (`max_tokens` 32) al modelo para comprobar la conexión (`cli/comandos/doctor.js`, apartado «Ping al LLM»). Informa de los problemas en pantalla pero **no fija un código de salida distinto de 0** por ellos.
+`--integraciones-red` (no está en la ayuda) añade la comprobación de red de las integraciones. El proveedor activo es el fijado con `FRAGUA_LLM_PROVIDER` y, si no, el que sugieren las credenciales: la clave de Anthropic, la de OpenAI o `OLLAMA_BASE_URL`, por ese orden (sin ninguna, Anthropic). Con la clave de ese proveedor definida hace una llamada mínima (`max_tokens` 32) al modelo para comprobar la conexión (`cli/comandos/doctor.js`, apartado «Ping al LLM»). Valida cada `modelo:` de `sdd.config.yaml` (un nivel, un alias o un modelo de la tabla de precios de cualquier proveedor; `embeddings_modelo` no cuenta). Si la instalación registró hooks para otra herramienta, comprueba que `fragua` esté en el `PATH` y que el archivo de hooks exista y lleve la orden del guardián; y fuera de Claude Code avisa de que las guardias de agentes de solo lectura no corren. Informa de los problemas en pantalla pero **no fija un código de salida distinto de 0** por ellos.
 
 ```bash
 npx fragua doctor

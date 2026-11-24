@@ -100,8 +100,10 @@ Uso:
 
   (La orden antigua "forge" sigue funcionando para quien ya la usa. No uses "npx forge" ni "npx sdd-es": son paquetes ajenos.)
 
-Tras instalar, abre Claude Code y escribe:
-  /forge "describe tu idea aquí"
+Tras instalar, abre tu herramienta de código y pide el flujo:
+  Claude Code:       /forge "describe tu idea aquí"
+  Otra herramienta:  la skill forge, con la sintaxis de esa herramienta (por ejemplo /forge en Cursor,
+                     $forge en Codex); detalle por herramienta en docs/USO-EN-OTRAS-HERRAMIENTAS.md
 `);
 }
 

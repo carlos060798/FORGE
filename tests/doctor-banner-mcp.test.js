@@ -24,7 +24,8 @@ function ejecutar(args, env = {}) {
 describe('fragua doctor y ayuda con el nombre nuevo', () => {
   test('el banner y el título dicen Fragua, no FORGE ni SDD-ES', () => {
     const s = ejecutar(['doctor']);
-    assert.match(s, /Fragua — Tu equipo técnico en Claude Code/);
+    assert.match(s, /Fragua — Desarrollo guiado por especificaciones/);
+    assert.doesNotMatch(s, /Tu equipo técnico en Claude Code/);
     assert.match(s, /Diagnóstico de Fragua/);
     assert.doesNotMatch(s, /FORGE — Tu equipo|Diagnóstico de SDD-ES/);
   });

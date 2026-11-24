@@ -9,6 +9,7 @@ import { INTEGRACION_POR_DEFECTO, resolverIntegracion } from "../../core/instala
 import { PERFIL_POR_DEFECTO, resolverPerfil } from "../../core/instalacion/perfiles.js";
 import { esNivel } from "../../core/llm-providers/niveles.js";
 import { tablaPorToken } from "../../core/precios.js";
+import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
 
 /**
  * ¿Es un valor de `modelo:` aceptable? Un nivel neutral (alto, medio, economico), un alias heredado
@@ -21,6 +22,31 @@ export function modeloValido(valor) {
   if (v === "") return false;
   if (esNivel(v)) return true;
   return Object.values(tablaPorToken()).some((tabla) => Object.hasOwn(tabla, v));
+}
+
+/** El valor de una línea `modelo:` sin el comentario del final ni las comillas. */
+function valorDeModelo(/** @type {unknown} */ crudo) {
+  let v = String(crudo ?? "").trim();
+  if (v.startsWith("#")) return "";
+  v = v.replace(/\s+#.*$/, "").trim();
+  if (/^(["']).*\1$/.test(v)) v = v.slice(1, -1).trim();
+  return v;
+}
+
+/**
+ * Los `modelo:` de un sdd.config.yaml que no son un nivel ni un modelo de la tabla de precios, sin repetidos y en orden.
+ * Solo cuenta la clave exacta `modelo:`: `embeddings_modelo:` (un modelo de vectores, no de lenguaje), `modelos:` y los
+ * comentarios no. Es la comprobación de la configuración del proyecto, sin red.
+ * @param {string} yaml
+ * @returns {string[]}
+ */
+export function modelosInvalidos(yaml) {
+  /** @type {Set<string>} */ const invalidos = new Set();
+  for (const m of String(yaml).matchAll(/^[ \t]*modelo:[ \t]*(.*)$/gm)) {
+    const v = valorDeModelo(m[1]);
+    if (v !== "" && !modeloValido(v)) invalidos.add(v);
+  }
+  return [...invalidos];
 }
 import { PLUGIN_DIR, c, info, aviso, titulo, error, pluginVersion, claudeEnPath } from "./comun.js";
 import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from "./instalar.js";
@@ -62,7 +88,9 @@ function detectarAnfitrion(guardada) {
 
 async function cmdDoctorLlm({ problemas }) {
   // 0. Provider activo
-  const providerActivo = leerVariable('LLM_PROVIDER') ?? 'anthropic (default)';
+  // La misma detección que usa el motor: el fijado y, si no, la clave de Anthropic, la de OpenAI o la URL de Ollama
+  const { proveedorPorCredenciales } = await import("../../core/llm-providers/index.js");
+  const providerActivo = leerVariable('LLM_PROVIDER') ?? proveedorPorCredenciales(process.env) ?? 'anthropic (default)';
   info(`Provider LLM activo: ${providerActivo}`);
   info("  Cambiar: FORGE_LLM_PROVIDER=anthropic|openai|ollama|stub  o  llm.provider en sdd.config.yaml");
   const { lineaRevision } = await import("../../core/precios.js");
@@ -234,7 +262,8 @@ export async function cmdDoctor() {
   }
 
   // Clave del proveedor activo (el detalle y el ping están en el diagnóstico del LLM, más abajo)
-  const proveedorActivo = (leerVariable("LLM_PROVIDER") ?? "anthropic").toLowerCase();
+  const { proveedorPorCredenciales } = await import("../../core/llm-providers/index.js");
+  const proveedorActivo = (leerVariable("LLM_PROVIDER") ?? proveedorPorCredenciales(process.env) ?? "anthropic").toLowerCase();
   const variablesClave = VARIABLES_DE_CLAVE[proveedorActivo === "claude" ? "anthropic" : proveedorActivo === "gpt" ? "openai" : proveedorActivo] ?? [];
   if (variablesClave.length) {
     const apiKey = variablesClave.map((v) => process.env[v]).find(Boolean);
@@ -331,9 +360,10 @@ export async function cmdDoctor() {
         aviso(`sdd.config.yaml: memoria.umbral_bytes debe ser un número positivo`);
         problemas++;
       }
-      const modeloInvalido = yaml.match(/modelo:\s*((?!opus|sonnet|haiku)\S+)/);
-      if (modeloInvalido) {
-        aviso(`sdd.config.yaml: modelo desconocido "${modeloInvalido[1]}" (válidos: opus, sonnet, haiku)`);
+      // Un nivel (alto|medio|economico y sus alias) o un modelo de la tabla de precios de cualquier proveedor; no una lista de Claude
+      const invalidos = modelosInvalidos(yaml);
+      if (invalidos.length > 0) {
+        aviso(`sdd.config.yaml: modelo desconocido ${invalidos.map((v) => `"${v}"`).join(", ")} (válidos: alto | medio | economico, sus alias opus | sonnet | haiku, o un modelo de la tabla de precios de un proveedor)`);
         problemas++;
       } else {
         info("sdd.config.yaml: modelos válidos ✓");
@@ -361,6 +391,23 @@ export async function cmdDoctor() {
         else {
           aviso(`Hooks registrados pero \`fragua\` no está en el PATH: en ${ri.integracion.nombre} el guardián no se ejecutará (bloquea todo si la herramienta falla cerrado; deja pasar todo si falla abierto). Instala la orden: npm install -g fragua (o npm install -g . desde el repositorio).`);
           problemas++;
+        }
+        // El archivo donde esa herramienta registra el guardián: que exista y que lleve la orden (init no pisa uno ajeno)
+        const plantilla = PLANTILLAS_HOOKS[ri.integracion.clave];
+        if (plantilla) {
+          const archivo = join(process.cwd(), plantilla.ruta);
+          const orden = ordenDeGuardian(ri.integracion.clave);
+          let texto = null;
+          try { texto = readFileSync(archivo, "utf8"); } catch { /* no existe o no se puede leer */ }
+          if (texto === null) {
+            aviso(`Hooks registrados en la instalación, pero falta ${plantilla.ruta}: el guardián no está activo en ${ri.integracion.nombre}. Repite: fragua init --integracion ${ri.integracion.clave} --con-hooks`);
+            problemas++;
+          } else if (!texto.includes(orden)) {
+            aviso(`${plantilla.ruta} existe pero no contiene la orden del guardián (fragua no pisa un archivo de hooks que ya existe): añade a mano \`${orden}\` al hook de ${ri.integracion.nombre}.`);
+            problemas++;
+          } else {
+            info(`${plantilla.ruta}: contiene la orden del guardián ✓`);
+          }
         }
       }
     }
@@ -478,7 +525,14 @@ export async function cmdDoctor() {
   // Esta variable la inyecta Claude Code en cada hook — determina qué agente ejecuta cada tool.
   // Si no está disponible, los guardias read-only y la memoria por agente quedan desactivados.
   const agentNameEnv = process.env.CLAUDE_AGENT_NAME;
-  if (agentNameEnv !== undefined) {
+  if (!integracionEsClaude) {
+    // CLAUDE_AGENT_NAME es de Claude Code: otra herramienta no la inyecta, y ninguna define FRAGUA_AGENTE
+    aviso(
+      "Fuera de Claude Code, las guardias de agentes de solo lectura y la memoria por agente están desactivadas:\n" +
+      "   ninguna herramienta define FRAGUA_AGENTE (CLAUDE_AGENT_NAME es de Claude Code). El guardián evalúa cada\n" +
+      "   acción, no el rol de quien la pide: los agentes «de solo lectura» lo son por su instrucción, no por una barrera."
+    );
+  } else if (agentNameEnv !== undefined) {
     info(`CLAUDE_AGENT_NAME disponible ✓ (valor actual: "${agentNameEnv || '<vacío en contexto doctor>'}")`);
   } else {
     aviso(
