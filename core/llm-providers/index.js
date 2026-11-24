@@ -185,11 +185,20 @@ export function leerTimeoutLlmMs(cwd = process.cwd()) {
 function detectarProvider() {
   const delEntorno = leerVariable('LLM_PROVIDER');
   if (delEntorno) return delEntorno;
-  if (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY) return 'anthropic';
-  if (process.env.OPENAI_API_KEY)    return 'openai';
-  if (process.env.OLLAMA_BASE_URL)   return 'ollama';
-  // Intentar Ollama local silenciosamente (común en entornos de desarrollo)
-  return 'anthropic'; // fallback histórico
+  return proveedorPorCredenciales(process.env) ?? 'anthropic'; // fallback histórico
+}
+
+/**
+ * Proveedor que sugieren las credenciales del entorno, o `null` si no hay ninguna. Una sola fuente para quien
+ * necesita saber si hay un proveedor real (crearProvider, probar-modelo).
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {'anthropic'|'openai'|'ollama'|null}
+ */
+export function proveedorPorCredenciales(env = process.env) {
+  if (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY) return 'anthropic';
+  if (env.OPENAI_API_KEY) return 'openai';
+  if (env.OLLAMA_BASE_URL) return 'ollama';
+  return null;
 }
 
 /**

@@ -10,6 +10,7 @@ import { INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } fr
 import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../../core/instalacion/perfiles.js";
 import { nombreDeSkill } from "../../core/instalacion/skills-de-comandos.js";
 import { PREFIJO_INVOCACION, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
+import { esNivel, limitarNivel } from "../../core/llm-providers/niveles.js";
 import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
 import { FORMATOS_NATIVOS, agenteANativo } from "../../core/instalacion/agentes-nativos.js";
 import { PLUGIN_DIR, c, info, aviso, titulo, error, raices, PROYECTO, sinEscribir, CARPETAS_GLOBALES_ENLAZABLES, fijarRaices, raizPara, protegido, paso, cerrarSiFalto, crearDir, crearNuevo, escribirSeguro, leerSeguro, copyMd, copyDir, copiarSeguro, pluginVersion, claudeEnPath } from "./comun.js";
@@ -400,6 +401,23 @@ Recuerda dar permiso de ejecución a tus hooks en sistemas Unix:
 Ver más ejemplos en docs/EJEMPLOS.md del plugin.
 `;
 
+/**
+ * Niveles que ofrece el asistente guiado, de más a menos calidad. Son neutrales: cada proveedor los traduce
+ * a su modelo (core/llm-providers/niveles.js), así que ninguno nombra un modelo concreto.
+ */
+export const NIVELES_DEL_ASISTENTE = Object.freeze(["alto", "medio", "economico"]);
+
+/**
+ * Limita al nivel elegido el `modelo:` de cada agente de `sdd.config.yaml`: `alto` no cambia nada; `medio` y
+ * `economico` bajan los que estén por encima, conservando el juego de nombres que usa cada línea (`opus` baja a
+ * `sonnet`, `alto` a `medio`). Un identificador directo de modelo o un nivel desconocido no se tocan.
+ * @param {string} yaml @param {string} nivel
+ */
+export function aplicarNivelAlYaml(yaml, nivel) {
+  if (!NIVELES_DEL_ASISTENTE.includes(nivel) || nivel === "alto") return yaml;
+  return yaml.replace(/^(\s*modelo:\s*)([\w.-]+)/gm, (todo, antes, valor) => (esNivel(valor) ? antes + limitarNivel(valor, nivel) : todo));
+}
+
 /** @param {string} claudeDir @param {object} [overrides] @param {boolean} [esClaude] false: otra herramienta, no se crea el `.claudeignore` de Claude Code */
 function configurarSdd(claudeDir, overrides = {}, esClaude = true) {
   titulo("Configurando estructura .sdd/ del proyecto...");
@@ -438,9 +456,7 @@ function configurarSdd(claudeDir, overrides = {}, esClaude = true) {
     if (overrides.perfil) {
       yaml = yaml.replace(/^(\s*perfil_default:\s*).*$/m, `$1"${overrides.perfil}"`);
     }
-    if (overrides.modelo) {
-      yaml = yaml.replace(/^(\s*modelo:\s*claude-)[^\s"#]*/gm, `$1${overrides.modelo.replace("claude-", "")}`);
-    }
+    if (overrides.modelo) yaml = aplicarNivelAlYaml(yaml, overrides.modelo);
     if (overrides.sesionModo) {
       yaml = yaml.replace(/^(\s*modo:\s*).*$/m, `$1"${overrides.sesionModo}"`);
     }
@@ -888,16 +904,15 @@ function wizardGuiado() {
   const perfil = perfilIdx === 1 ? "guiado" : "experto";
 
   const modeloIdx = preguntar(
-    "¿Qué balance calidad/costo prefieres para los agentes de decisión?",
+    "¿Qué balance calidad/costo prefieres para los agentes?",
     [
-      "calidad alta — opus para arquitecto, crítico, seguridad",
-      "balanceado — sonnet para todos",
-      "económico — haiku para todos"
+      "calidad alta — el nivel más capaz de tu proveedor donde la configuración lo pide (no cambia nada)",
+      "balanceado — nivel medio como máximo para todos",
+      "económico — nivel económico para todos"
     ],
     0
   );
-  const modeloMap = ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"];
-  const modelo = modeloMap[modeloIdx];
+  const modelo = NIVELES_DEL_ASISTENTE[modeloIdx];
 
   const modoIdx = preguntar(
     "¿Modo de sesión por defecto?",

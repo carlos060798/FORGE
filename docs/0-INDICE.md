@@ -77,6 +77,7 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 - 📏 [COBERTURA.md](COBERTURA.md): cobertura de pruebas por archivo.
 - 🗺️ [roadmap.md](roadmap.md): hacia dónde va.
 - [USO-EN-OTRAS-HERRAMIENTAS.md](USO-EN-OTRAS-HERRAMIENTAS.md): cómo instalar y usar Fragua desde Codex, Cursor, Copilot, Gemini y otras, con lo que recibe y lo que no.
+- [informes/DECISIONES-PENDIENTES-2026-11.md](informes/DECISIONES-PENDIENTES-2026-11.md): lo que solo puede decidir o hacer el dueño (specs, ADR, publicación, licencia, CI), con la recomendación de cada spec.
 - [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md): diagnóstico de qué sigue amarrado a Claude Code (comandos, agentes, hooks) y plan por fases para que otras herramientas reciban lo mismo. Plan sin aprobar; F1 a F3 implementadas, F5 (prueba manual por herramienta) pendiente.
 
 ## Comunidad y gobierno

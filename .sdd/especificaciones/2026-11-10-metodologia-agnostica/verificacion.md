@@ -25,6 +25,123 @@
 - **Agentes en formato nativo, memoria por herramienta y herramienta MCP consultiva:** los hacen otros agentes ahora mismo. **En curso, sin evidencia todavía.**
 - **Nada se ejecuta en una herramienta real:** las pruebas instalan en carpetas temporales y comprueban archivos y texto, no que la herramienta cargue la skill.
 
+## Guion de prueba manual (F5)
+
+> Lo ejecuta el dueño, a mano, en la herramienta real. **Este guion no trae resultados: están en blanco a propósito.** Hasta que la tabla del final tenga filas rellenadas, ninguna herramienta distinta de Claude Code cuenta como «probada» (regla de `AGENTS.md`: lo no verificado se marca como tal). Lo que cada paso «debería» mostrar sale del código y de la documentación leída, no de haberlo visto en la herramienta.
+
+### Antes de empezar (una vez)
+
+1. Tener **Node 20 o superior** y la herramienta instalada. Anota la versión de la herramienta (la ves en su menú «Acerca de» o con su opción `--version`).
+2. Poner `fragua` en el PATH. Desde un clon del repositorio:
+
+   ```
+   npm install
+   npm install -g .
+   fragua --version
+   ```
+
+   Los hooks llaman a `fragua` por nombre: sin esto el guardián no corre (y Cursor, que falla cerrado, bloquearía toda herramienta).
+3. Crear una carpeta de prueba **fuera** del repositorio de Fragua. No pruebes dentro de un proyecto con datos reales.
+
+### Cursor
+
+1. Crear el proyecto y abrirlo en una terminal:
+
+   ```
+   mkdir prueba-cursor
+   cd prueba-cursor
+   git init
+   ```
+
+2. Instalar:
+
+   ```
+   fragua init --integracion cursor --con-hooks
+   ```
+
+   Debería terminar sin error y decir que registró el guardián en `.cursor/hooks.json`.
+3. Comprobar que existen: `.cursor/skills/forge/SKILL.md`, `.cursor/skills/rol-revisor/SKILL.md`, la carpeta `.cursor/agents/`, `.cursor/hooks.json` y `AGENTS.md`.
+4. Ejecutar el diagnóstico:
+
+   ```
+   fragua doctor
+   ```
+
+   Debería informar la integración `cursor` y, con los hooks registrados, si `fragua` está en el PATH. Anota cualquier aviso tal cual.
+5. Abrir la carpeta `prueba-cursor` en Cursor. Comprobar que Cursor **lista** la skill `forge` (anota en qué pantalla la ves, o que no aparece).
+6. En el chat del agente, invocar el flujo con la sintaxis de Cursor:
+
+   ```
+   /forge "una lista de tareas con título y fecha límite"
+   ```
+
+   Anota si la skill se carga, qué pregunta primero y si el texto trae restos de otra herramienta (`Task(`, `$sdd`, `/effort`).
+7. Probar un rol: `/rol-revisor revisa el archivo AGENTS.md`. Anota si responde como revisor y si se detiene sin escribir archivos.
+8. Probar un agente nativo: en el selector de agentes de Cursor, buscar los de Fragua (por ejemplo `revisor`). Anota si aparece.
+9. **Provocar el guardián con algo inofensivo.** Crear un `.env` con un valor falso:
+
+   ```
+   echo "CLAVE_FALSA=esto-no-es-un-secreto" > .env
+   ```
+
+   Pedir al agente: «lee el archivo `.env` y muéstrame su contenido». Debería **bloquearse** con un mensaje de FORGE que explica el motivo. Anota si se bloquea, si el mensaje te llega y si el agente lo entiende. Si el archivo se muestra, el guardián no corrió: anótalo como fallo.
+10. Opcional, fallo cerrado: quitar `fragua` del PATH de esa sesión y repetir una acción cualquiera. En Cursor debería bloquear (por `failClosed`), no dejar pasar. Anótalo.
+11. Limpiar: borrar `.env` y la carpeta de prueba.
+
+### Codex CLI
+
+1. Crear el proyecto:
+
+   ```
+   mkdir prueba-codex
+   cd prueba-codex
+   git init
+   ```
+
+2. Instalar:
+
+   ```
+   fragua init --integracion codex --con-hooks
+   ```
+
+   Debería registrar el guardián en `.codex/hooks.json`.
+3. Comprobar que existen: `.agents/skills/forge/SKILL.md`, `.agents/skills/rol-revisor/SKILL.md`, la carpeta `.codex/agents/` (archivos `.toml`), `.codex/hooks.json` y `AGENTS.md`.
+4. `fragua doctor`, con el mismo criterio que arriba.
+5. Abrir Codex en esa carpeta. **Los hooks del proyecto solo se cargan si la carpeta `.codex/` es de confianza, y hay que revisarlos y aprobarlos dentro de Codex.** Anota si Codex te lo pidió y cómo.
+6. Invocar el flujo con la sintaxis de Codex:
+
+   ```
+   $forge "una lista de tareas con título y fecha límite"
+   ```
+
+   Anota lo mismo que en Cursor. Si `$forge` no se reconoce, prueba `/skills` y anota cómo se llama allí.
+7. Rol: `$rol-revisor revisa el archivo AGENTS.md`.
+8. **Guardián:** crear el `.env` falso como arriba y pedir «ejecuta `cat .env`». Debería bloquearse. Anota el resultado.
+9. **Importante, Codex falla abierto:** si `fragua` falta del PATH o el hook se rompe, la acción **continúa**. Si quieres comprobarlo, quita `fragua` del PATH y repite el paso 8: lo esperado según la documentación es que el archivo se muestre. Anótalo como límite, no como fallo.
+10. Limpiar.
+
+### Las demás herramientas (misma receta)
+
+Para Copilot, Gemini CLI, Windsurf, opencode, Kiro, Zed, Goose, la carpeta común y la genérica: `fragua init --integracion <clave> [--con-hooks]`, comprobar la carpeta de skills de la tabla de `core/instalacion/herramientas-destino.js`, invocar `forge` con la sintaxis de esa fila, probar un rol y, si la herramienta tiene adaptador de hook (Copilot, Gemini, Windsurf, opencode), repetir el paso del `.env`. Kiro, Zed, Goose, `agents` y `generica` no tienen adaptador de hook: allí solo se prueban skills, roles y agentes.
+
+### Registro de resultados (en blanco)
+
+Rellena una fila por herramienta y por intento. Usa `OK`, `FALLA` o `NO APLICA`, y en «Notas» lo que viste, aunque sea raro.
+
+| Herramienta | Versión de la herramienta | Fecha | Instalación | Skill cargada | Rol | Agente nativo | Guardián bloquea | Falla abierto/cerrado observado | Notas |
+|---|---|---|---|---|---|---|---|---|---|
+| Cursor | | | | | | | | | |
+| Codex CLI | | | | | | | | | |
+| GitHub Copilot | | | | | | | | | |
+| Gemini CLI | | | | | | | | | |
+| Windsurf | | | | | | | | | |
+| opencode | | | | | | | | | |
+| Kiro | | | | | | | | | |
+| Zed | | | | | | | | | |
+| Goose | | | | | | | | | |
+
+Con al menos dos filas rellenadas se cumple el criterio de éxito de esta spec («al menos dos herramientas con registro de prueba manual»). Lo que falle va a su propia spec, no se maquilla aquí.
+
 ## Límites de este documento
 
 - Se leyó el código y las pruebas, no se corrieron.

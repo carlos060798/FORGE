@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { CicloVerificado, sesionActual } from './ciclo/index.js';
 import { cola } from './ciclo/redactar.js';
 import { leerVariable, sinVariable } from './entorno.js';
+import { proveedorPorCredenciales } from './llm-providers/index.js';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'cli', 'index.js');
 
@@ -33,9 +34,9 @@ const TAREA = {
 export async function probarModelo(opciones = {}) {
   const env = { ...process.env, ...opciones.env };
   const tope = opciones.tope ?? 0.5;
-  const proveedor = leerVariable('LLM_PROVIDER', env) || (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY ? 'anthropic' : 'stub');
+  const proveedor = leerVariable('LLM_PROVIDER', env) || proveedorPorCredenciales(env) || 'stub';
   if (proveedor === 'stub' && !opciones.permitirStub) {
-    return { ok: false, motivoNoEjecutada: 'No hay ningún proveedor de modelos real: define ANTHROPIC_API_KEY (o FORGE_LLM_PROVIDER). Con el proveedor de pruebas no se demuestra nada.' };
+    return { ok: false, motivoNoEjecutada: 'No hay ningún proveedor de modelos real: define la clave de tu proveedor (ANTHROPIC_API_KEY, OPENAI_API_KEY u OLLAMA_BASE_URL) o FORGE_LLM_PROVIDER. Con el proveedor de pruebas no se demuestra nada.' };
   }
   if (!Number.isFinite(tope) || tope <= 0 || tope > 20) {
     return { ok: false, motivoNoEjecutada: 'El tope debe ser un número de dólares entre 0 y 20.' };

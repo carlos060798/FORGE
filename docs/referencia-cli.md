@@ -123,7 +123,7 @@ fragua init [--global] [--preset lean|startup|enterprise] [--ui]
 | `--preset <nombre>` | Aplica `presets/<nombre>.yaml` a `.sdd/sdd.config.yaml` (conserva los bloques `rutas`, `protecciones`, `figma`, `mapeos`, `memoria`, `compresion` y `control_versiones`). Un nombre desconocido avisa y no aplica nada |
 | `--template <nombre>` | Aplica `presets/templates/<nombre>/` (IR, spec y configuración de partida). Uno de `api-rest`, `cli-tool`, `saas-mvp`; otro valor aborta con error |
 | `--ui` | Copia el dashboard a `.forge-ui/` |
-| `--guided` | Asistente interactivo (perfil de conducción, modelo, modo de sesión); no está en la ayuda |
+| `--guided` | Asistente interactivo (perfil de conducción, nivel de modelo neutral alto/medio/economico que limita el de cada agente, modo de sesión); no está en la ayuda |
 | `--integracion <clave>` | Herramienta de destino: `claude` (por defecto), `generica`, `agents`, `copilot`, `cursor`, `gemini`, `windsurf`, `opencode`, `kiro`, `codex`, `zed`, `goose` |
 | `--perfil <nombre>` | Perfil de instalación: `esencial` (por defecto, 6 comandos) o `completo` (todos). Ver [configuration.md](configuration.md#perfil-de-instalación-y-preset-lean-por-defecto) |
 | `--carpeta-skills <ruta>` | Solo con `--integracion generica`: carpeta de destino de las skills |
