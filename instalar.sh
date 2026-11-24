@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SDD-ES — Atajo de instalación para Unix (macOS / Linux / Git Bash).
+# Fragua — Atajo de instalación para Unix (macOS / Linux / Git Bash).
 #
 # Delega en el CLI Node multiplataforma (cli/index.js), que es la fuente
 # de verdad única de la lógica de instalación. Si no hay Node, avisa.
@@ -13,13 +13,13 @@ PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if ! command -v node &> /dev/null; then
   echo "✗ Node.js no está instalado." >&2
-  echo "  SDD-ES necesita Node >=20 para instalarse." >&2
+  echo "  Fragua necesita Node >=20 para instalarse." >&2
   echo "  Instala Node desde https://nodejs.org y reintenta." >&2
   exit 1
 fi
 
 if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)'; then
-  echo "✗ Tu Node.js es $(node -v) y SDD-ES necesita Node >=20 (desde la versión 5.0.0)." >&2
+  echo "✗ Tu Node.js es $(node -v) y Fragua necesita Node >=20 (desde la versión 5.0.0)." >&2
   echo "  Actualiza Node desde https://nodejs.org y reintenta." >&2
   exit 1
 fi

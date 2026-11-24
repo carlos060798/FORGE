@@ -1,4 +1,4 @@
-# SDD-ES — Atajo de instalación para Windows (PowerShell).
+# Fragua — Atajo de instalación para Windows (PowerShell).
 #
 # Delega en el CLI Node multiplataforma (cli\index.js), que es la fuente
 # de verdad única de la lógica de instalación. Si no hay Node, avisa.
@@ -23,14 +23,14 @@ $PluginDir = $PSScriptRoot
 $node = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $node) {
     Write-Host "✗ Node.js no está instalado." -ForegroundColor Red
-    Write-Host "  SDD-ES necesita Node >=20 para instalarse."
+    Write-Host "  Fragua necesita Node >=20 para instalarse."
     Write-Host "  Instala Node desde https://nodejs.org y reintenta."
     exit 1
 }
 
 $nodeMajor = [int](& node -e "process.stdout.write(process.versions.node.split('.')[0])")
 if ($nodeMajor -lt 20) {
-    Write-Host "✗ Tu Node.js es $(& node -v) y SDD-ES necesita Node >=20 (desde la versión 5.0.0)." -ForegroundColor Red
+    Write-Host "✗ Tu Node.js es $(& node -v) y Fragua necesita Node >=20 (desde la versión 5.0.0)." -ForegroundColor Red
     Write-Host "  Actualiza Node desde https://nodejs.org y reintenta."
     exit 1
 }
