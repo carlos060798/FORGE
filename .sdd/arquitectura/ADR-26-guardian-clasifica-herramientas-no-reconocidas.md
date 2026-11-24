@@ -21,6 +21,14 @@ Una herramienta cuyo nombre no está en la tabla **se clasifica por lo que trae 
 
 La tabla de nombres confirmados sigue mandando cuando existe; la clasificación solo entra para lo que no está en ella.
 
+Tres precisiones añadidas el 2026-11-24 tras revisar esta decisión con casos límite (el hueco de los dos primeros ya existía antes del ADR):
+
+- **La orden puede venir como lista de textos** (`["bash", "-lc", "rm -rf /"]`): se une con espacios, con nombre conocido o desconocido. Una lista que no es solo de textos no es una orden.
+- **Solo cuentan las claves propias de la tabla de nombres.** `toString`, `constructor` o `__proto__` no son herramientas conocidas: antes devolvían una función de `Object` y `tool_name` desaparecía del evento, con lo que el guardián dejaba pasar. Un servidor MCP de terceros puede registrar una herramienta con ese nombre.
+- **En una herramienta desconocida, la orden o la ruta se buscan hasta dos niveles más adentro** (`{ action: { command: [...] } }`). En una herramienta con nombre conocido no: su forma está documentada y se traduce como siempre.
+
+Límite que sigue: una herramienta que nombre la orden o la ruta con otra clave, o la anide más hondo, pasa sin evaluar. Solo capturas reales (F5) lo cierran.
+
 ## Alternativas consideradas
 
 - **A. Dejar pasar lo desconocido (lo de antes)**: rechazada. Convierte cada nombre sin confirmar en un hueco, y lo documentado como «hueco conocido» era en la práctica la mayor parte de Codex.

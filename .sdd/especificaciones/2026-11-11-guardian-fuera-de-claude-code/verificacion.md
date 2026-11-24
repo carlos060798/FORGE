@@ -14,7 +14,7 @@
 | CA-002-02 `apply_patch` por archivo | «Codex: apply_patch da un evento de escritura por archivo del parche» | **Con prueba** |
 | CA-002-03 anfitrión desconocido → 2 | `tests/guardian-cli.test.js`, `tests/hooks-anfitrion.test.js` | **Con prueba** |
 | CA-002-04 capturas reales | — | **No hecho** (F5, lo hace una persona) |
-| CA-002-05 herramienta no reconocida se clasifica por su entrada | «herramienta no traducida: se clasifica por su entrada…» (5 pruebas, incluida la CLI con los eventos de la auditoría) | **Con prueba** |
+| CA-002-05 herramienta no reconocida se clasifica por su entrada | «herramienta no traducida: se clasifica por su entrada…» (5 pruebas, incluida la CLI con los eventos de la auditoría) | **Con prueba**. Ampliado el 2026-11-24: «la orden como lista y los nombres heredados de Object no abren un hueco» (5 pruebas, incluida la CLI en Codex, Gemini y Copilot) |
 | CA-003-01 `--con-hooks` no pisa | `tests/instalacion-con-hooks.test.js` | **Con prueba** |
 | CA-003-02 modo de fallo declarado en plantilla, `init`, `doctor`, GARANTIAS y SECURITY | Plantillas: «Cursor falla cerrado; Gemini y Codex declaran que fallan abierto». `init` lo imprime. `doctor`, GARANTIAS y SECURITY: **sin matriz** | **Parcial** |
 | CA-003-03 «consultivo» donde falla abierto | Solo documento | **Sin prueba** |

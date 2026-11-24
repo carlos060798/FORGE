@@ -101,6 +101,46 @@ describe("fragua guardian evaluar --anfitrion", () => {
   });
 });
 
+// Hallazgos de la revisión del 2026-11-24 sobre el propio ADR-26: la orden como lista y los nombres heredados de Object.
+describe("la orden como lista y los nombres heredados de Object no abren un hueco (revisión 2026-11-24)", () => {
+  test("una orden en lista se une en un texto, con nombre conocido o desconocido", () => {
+    assert.equal(traducirEvento("codex", { tool_name: "Bash", tool_input: { command: ["bash", "-lc", "rm -rf /"] } })[0].tool_input.command, "bash -lc rm -rf /");
+    assert.equal(traducirEvento("codex", { tool_name: "shell", tool_input: { command: ["bash", "-lc", "rm -rf /"] } })[0].tool_name, "Bash");
+    assert.equal(traducirEvento("gemini", { tool_name: "run_shell_command", tool_input: { command: ["rm", "-rf", "/"] } })[0].tool_input.command, "rm -rf /");
+    assert.equal(traducirEvento("copilot", { toolName: "bash", toolArgs: { command: ["rm", "-rf", "/"] } })[0].tool_input.command, "rm -rf /");
+  });
+  test("una lista que no es de textos no se convierte en orden", () => {
+    const e = traducirEvento("codex", { tool_name: "shell", tool_input: { command: [1, { x: 2 }] } })[0];
+    assert.equal(e.tool_name, "shell", "sin orden ni ruta reconocibles pasa tal cual");
+  });
+  test("una herramienta desconocida cuya orden o ruta va un nivel más adentro se clasifica por ella", () => {
+    const e = traducirEvento("codex", { tool_name: "local_shell", tool_input: { action: { command: ["rm", "-rf", "/"] } } })[0];
+    assert.equal(e.tool_name, "Bash");
+    assert.equal(e.tool_input.command, "rm -rf /");
+    const w = traducirEvento("gemini", { tool_name: "edit_file", tool_input: { args: { path: ".env", content: "x" } } })[0];
+    assert.equal(w.tool_name, "Write");
+    assert.equal(w.tool_input.file_path, ".env");
+  });
+  test("un nombre que es una propiedad heredada de Object se trata como desconocido, y tool_name sigue siendo un texto", () => {
+    for (const n of ["toString", "constructor", "hasOwnProperty", "__proto__", "valueOf"]) {
+      const e = traducirEvento("codex", { tool_name: n, tool_input: { command: "rm -rf /" } })[0];
+      assert.equal(typeof e.tool_name, "string", n);
+      assert.equal(e.tool_name, "Bash", n);
+    }
+    assert.equal(traducirEvento("codex", { tool_name: "toString", tool_input: { query: "x" } })[0].tool_name, "toString", "sin orden ni ruta pasa tal cual, como texto");
+  });
+  test("por la CLI: todo eso se bloquea y lo inocente pasa", () => {
+    assert.equal(evaluar("codex", { tool_name: "shell", tool_input: { command: ["bash", "-lc", "rm -rf /"] } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "Bash", tool_input: { command: ["bash", "-lc", "git push --force origin main"] } }).codigo, 2);
+    assert.equal(evaluar("gemini", { tool_name: "run_shell_command", tool_input: { command: ["rm", "-rf", "/"] } }).codigo, 2);
+    assert.equal(evaluar("copilot", { toolName: "bash", toolArgs: { command: ["rm", "-rf", "/"] } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "local_shell", tool_input: { action: { command: ["rm", "-rf", "/"] } } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "toString", tool_input: { command: "rm -rf /" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "shell", tool_input: { command: ["ls", "-la"] } }).codigo, 0);
+    assert.equal(evaluar("codex", { tool_name: "local_shell", tool_input: { action: { command: ["ls"] } } }).codigo, 0);
+  });
+});
+
 describe("herramienta no traducida: se clasifica por su entrada, no pasa sin reglas (auditoría 2026-11-11)", () => {
   test("un nombre desconocido con `command` se evalúa como orden de terminal", () => {
     assert.deepEqual(traducirEvento("codex", { tool_name: "shell", tool_input: { command: "rm -rf /" } }), [{ tool_name: "Bash", tool_input: { command: "rm -rf /" } }]);

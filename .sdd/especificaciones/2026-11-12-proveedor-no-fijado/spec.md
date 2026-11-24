@@ -3,8 +3,8 @@ id: 2026-11-12-proveedor-no-fijado
 titulo: "Proveedor no fijado: ningún módulo del motor ni de la CLI decide con el nombre de un modelo concreto"
 tamano: pequeño  # micro | pequeño | mediano | grande
 estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
-creada: 2026-11-12
-actualizada: 2026-11-12
+creada: 2026-11-24  # el identificador conserva 2026-11-12, la fecha prevista en el plan; se redactó el 2026-11-24
+actualizada: 2026-11-24
 autor: humano  # humano | importado
 constitucion_version: 1.1.0
 etiquetas: [agnostico, proveedor, modelos, niveles, paso-3]

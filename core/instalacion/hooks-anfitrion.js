@@ -81,10 +81,31 @@ function rutaPorHeuristica(e) {
   return undefined;
 }
 
+/** Claves donde una herramienta puede llevar la orden de terminal. */
+const CLAVES_DE_ORDEN = Object.freeze(['command', 'cmd', 'script', 'commandLine']);
+
+/**
+ * La orden como texto: un texto tal cual, o una lista de textos (`["bash", "-lc", "rm -rf /"]`, la forma habitual de
+ * un shell) unida con espacios. Cualquier otra cosa no es una orden. Sin esto, una orden en lista llegaba al guardián
+ * como lista y pasaba sin evaluar (revisión del 2026-11-24).
+ * @param {unknown} v
+ * @returns {string|undefined}
+ */
+function ordenComoTexto(v) {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string')) return v.join(' ');
+  return undefined;
+}
+
 /** Campos de entrada con nombres alternativos → los del contrato. */
 function normalizarEntrada(entrada) {
   const e = comoObjeto(entrada);
   const out = { ...e };
+  // Una orden en lista pasa a texto, en la clave en que venga (la que lee el guardián es `command`)
+  for (const k of CLAVES_DE_ORDEN) {
+    const t = ordenComoTexto(e[k]);
+    if (t !== undefined && Array.isArray(e[k])) out[k] = t;
+  }
   const ruta = e.file_path ?? e.path ?? e.filePath ?? e.absolute_path ?? e.filepath ?? rutaPorHeuristica(e);
   if (ruta !== undefined) out.file_path = ruta;
   const contenido = e.content ?? e.file_text ?? e.new_string ?? e.newString;
@@ -105,18 +126,44 @@ function normalizarEntrada(entrada) {
  * @returns {{ tool_name: string, tool_input: Record<string, any> }}
  */
 export function clasificarDesconocida(nombre, entrada) {
-  const orden = [entrada.command, entrada.cmd, entrada.script, entrada.commandLine].find((v) => typeof v === 'string');
-  if (orden !== undefined) return { tool_name: 'Bash', tool_input: { ...entrada, command: orden } };
-  if (typeof entrada.file_path === 'string' && entrada.file_path !== '') {
-    return { tool_name: entrada.content !== undefined ? 'Write' : 'Read', tool_input: entrada };
+  // Si la orden o la ruta no están en el primer nivel, se baja hasta dos niveles (`{ action: { command: [...] } }`)
+  const e = subirAlNivelConOrdenOCamino(entrada, 2);
+  const orden = CLAVES_DE_ORDEN.map((k) => ordenComoTexto(e[k])).find((v) => v !== undefined);
+  if (orden !== undefined) return { tool_name: 'Bash', tool_input: { ...e, command: orden } };
+  if (typeof e.file_path === 'string' && e.file_path !== '') {
+    return { tool_name: e.content !== undefined ? 'Write' : 'Read', tool_input: e };
   }
   return { tool_name: nombre, tool_input: entrada };
 }
 
-/** Nombre del contrato para `n` en el anfitrión, o la clasificación por entrada si no está en la tabla. */
+/** ¿Trae esta entrada una orden o una ruta que el guardián pueda evaluar? */
+const traeOrdenOCamino = (/** @type {Record<string, any>} */ e) =>
+  CLAVES_DE_ORDEN.some((k) => ordenComoTexto(e[k]) !== undefined) || (typeof e.file_path === 'string' && e.file_path !== '');
+
+/**
+ * La entrada misma si ya trae orden o ruta; si no, la de un objeto anidado (normalizada) que la traiga, hasta `niveles`
+ * niveles de profundidad. Si no hay ninguna, la entrada original.
+ * @param {Record<string, any>} entrada @param {number} niveles
+ * @returns {Record<string, any>}
+ */
+function subirAlNivelConOrdenOCamino(entrada, niveles) {
+  if (traeOrdenOCamino(entrada) || niveles === 0) return entrada;
+  for (const v of Object.values(entrada)) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    const interna = subirAlNivelConOrdenOCamino(normalizarEntrada(v), niveles - 1);
+    if (traeOrdenOCamino(interna)) return interna;
+  }
+  return entrada;
+}
+
+/**
+ * Nombre del contrato para `n` en el anfitrión, o la clasificación por entrada si no está en la tabla.
+ * Solo cuentan las claves propias de la tabla: `toString`, `constructor` o `__proto__` no son herramientas conocidas
+ * (heredadas de Object, devolvían una función y `tool_name` desaparecía del evento, con lo que el guardián dejaba pasar).
+ */
 function traducirNombre(anfitrion, n, entrada) {
-  const conocido = NOMBRES[anfitrion]?.[n];
-  if (conocido !== undefined) return { tool_name: conocido, tool_input: entrada };
+  const tabla = NOMBRES[anfitrion];
+  if (tabla !== undefined && Object.hasOwn(tabla, n)) return { tool_name: tabla[n], tool_input: entrada };
   return clasificarDesconocida(n, entrada);
 }
 
