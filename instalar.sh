@@ -6,6 +6,7 @@
 #
 # Uso: bash instalar.sh [--global]
 #   El camino canónico recomendado es:  fragua init [--global]
+#   --global instala en ~/.claude y solo vale para Claude Code; para otras herramientas: fragua init --integracion <clave>
 
 set -e
 

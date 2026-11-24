@@ -15,7 +15,7 @@ Esta página describe solo lo que el código hace hoy. Dos palabras de estado:
 
 | Pieza | `claude` (nativa) | Resto de claves |
 |---|---|---|
-| Skills propias (31) | Sí, en `.claude/skills` | Sí, adaptadas (sin `allowed-tools`, sin «Claude Code» en el texto, con nota de equivalencias) |
+| Skills propias (31) | Sí, en `.claude/skills` | Sí, adaptadas (sin `allowed-tools`, sin «Claude Code» en el cuerpo, con una nota de equivalencias al principio que sí nombra a Claude Code para explicar qué cambia) |
 | Comandos | Sí, `.claude/commands` (formato de Claude Code) | Como skills `sdd-*`, con las órdenes `/sdd.x` reescritas a la forma de invocar de esa herramienta; solo los del perfil elegido |
 | Agentes | Sí, `.claude/agents` (subagentes) | Como **roles**: una skill `rol-<agente>` por agente (14), que se carga y se ejecuta en la misma conversación |
 | Agentes nativos del anfitrión | No aplica | Sí, en el formato de Copilot, Cursor, Codex, Gemini CLI, opencode y Kiro (14 agentes). No en Windsurf, Zed, Goose, la carpeta común ni la genérica: su formato no está confirmado. Los de solo lectura, salvo `revisor` e `investigador`, no reciben terminal. **Sin probar en la herramienta real** |
@@ -30,6 +30,7 @@ Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 - **La delegación entre agentes pierde el subagente.** Donde un comando dice `Task("agente", …)`, la nota de anfitrión pide cargar la skill del rol y trabajar en la misma conversación; lo paralelo pasa a secuencial. No hay aislamiento de contexto entre roles.
 - **La memoria por agente solo se registra sola con `--con-hooks`** (Cursor, Copilot, Gemini, Codex, Windsurf). En los roles se sustituyó la frase del hook por una instrucción de anotar decisiones en `.sdd/memoria/`.
 - **Un agente de solo lectura puede escribir por la terminal si conserva el shell y la herramienta no tiene hook.** En los formatos nativos solo `revisor` e `investigador` lo conservan (ejecutan pruebas y consultan versiones); los roles `rol-*` corren en la conversación principal y no tienen esa restricción. Nada de esto es un límite impuesto sin el guardián.
+- **`.mcp.json` es configuración del plugin de Claude Code.** El del paquete declara los servidores `playwright` y `github` y lo referencia `.claude-plugin/plugin.json`; el instalador no lo copia a ninguna otra herramienta. El servidor MCP de Fragua se arranca con `fragua mcp` (perfil `completo`, `verificacion` o `guardian`) y se registra a mano en el cliente MCP de cada herramienta; cómo lo consume cada una **no está verificado**.
 - **La adaptación es textual** (`core/instalacion/adaptar-anfitrion.js`, aplicada al instalar). Las fuentes de `commands/`, `agents/` y `skills/` no cambian, y lo que recibe Claude Code tampoco.
 
 ## Matriz por herramienta

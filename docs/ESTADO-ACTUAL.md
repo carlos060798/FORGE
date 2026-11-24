@@ -68,8 +68,8 @@ La mayor parte de la revisión consistió en un patrón: **un archivo del proyec
 
 ## Límites conocidos (sin cerrar)
 
-- **Ningún contenedor real está medido en este equipo.** No hay Docker aquí. Las cifras de tiempo, consumo y comportamiento en contenedor son de pruebas con un Docker falso.
-- **La integración continua en Linux nunca ha corrido.** Está escrita (`tipos`, `pruebas-docker`, `aislamiento`) pero no se ha ejecutado. Requiere abrir la PR a `main`.
+- **Docker real solo está medido en Windows 11** (Docker Desktop, 2026-11-10: 597 pruebas de 17 archivos y 11 de 11 de aislamiento, ver arriba). **En Linux y macOS no**: el aislamiento, los tiempos y el consumo en contenedor allí no se han medido.
+- **La integración continua en Linux no ha estado verde.** El último run documentado de `main` (2026-11-09, commit `8cc2e58`) falló en `Tests (Node 22)`, `Aislamiento con Docker real` y `Pruebas con Docker real`; clasificar por qué exige leer los logs, que requiere `gh auth login` del dueño (tarea T8 de `2026-11-09-ci-verde-y-cuarentena`). **Hoy no se ha comprobado.**
 - **El modelo real no se ha usado con las funciones nuevas.** El delimitador de datos ajenos, las puertas en el ciclo y los perfiles de agente no se han probado con un modelo de verdad.
 - **Gasto calculado frente a factura:** no comparado. Las tarifas son una lista interna.
 - **Integraciones GitHub, GitLab y Jira:** probadas solo contra servidores falsos.

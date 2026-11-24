@@ -5,7 +5,8 @@
 #
 # Uso:
 #   .\instalar.ps1            Instala en el proyecto actual
-#   .\instalar.ps1 -Global    Instala para todos tus proyectos ($HOME\.claude)
+#   .\instalar.ps1 -Global    Instala para todos tus proyectos de Claude Code ($HOME\.claude)
+#                             (-Global solo vale para Claude Code; otras herramientas: fragua init --integracion <clave>)
 #
 # El camino canónico recomendado es:  fragua init [--global]
 #
