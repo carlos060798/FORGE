@@ -32,10 +32,10 @@
 ### Antes de empezar (una vez)
 
 1. Tener **Node 20 o superior** y la herramienta instalada. Anota la versión de la herramienta (la ves en su menú «Acerca de» o con su opción `--version`).
-2. Poner `fragua` en el PATH **desde la rama que lleva todas las correcciones**: `feature/cierre-auditoria`, commit `fd436d1` o posterior (en este equipo, la carpeta `forge/wt-cierre`). **No instales desde `forge/FORGE` mientras esa rama no esté fusionada en `feature/anfitriones`**: esa carpeta tiene el guardián anterior, que deja pasar `shell rm -rf /` en Codex, y probarías algo que ya está corregido.
+2. Poner `fragua` en el PATH **desde una rama que lleve todas las correcciones**: `feature/anfitriones` (en este equipo, la carpeta `forge/FORGE`) o `feature/cierre-auditoria`, ambas en el commit `39e7b64` o posterior desde el 2026-11-24. **No instales desde un commit anterior a `fd436d1`**: tiene el guardián anterior, que deja pasar `shell rm -rf /` en Codex, y probarías algo que ya está corregido.
 
    ```
-   cd forge/wt-cierre
+   cd forge/FORGE
    git log --oneline -1
    npm install
    npm install -g .
