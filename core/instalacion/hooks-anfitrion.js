@@ -93,6 +93,34 @@ function normalizarEntrada(entrada) {
 }
 
 /**
+ * Herramienta cuyo nombre no está en la tabla del anfitrión: se clasifica por lo que trae su entrada, para que una
+ * orden de terminal o una escritura no pasen sin reglas solo porque la herramienta se llame de otra forma
+ * (auditoría del 2026-11-11: en Codex, `shell rm -rf /` y `write_file .env` salían con 0).
+ *  - trae una orden (`command`, `cmd`, `script`, `commandLine`) → `Bash`, con `command` normalizado;
+ *  - trae ruta y contenido → `Write`;
+ *  - trae solo ruta → `Read`;
+ *  - no trae ni orden ni ruta (búsquedas, web, MCP) → pasa tal cual: no hay regla que aplicar.
+ * @param {string} nombre
+ * @param {Record<string, any>} entrada ya normalizada
+ * @returns {{ tool_name: string, tool_input: Record<string, any> }}
+ */
+export function clasificarDesconocida(nombre, entrada) {
+  const orden = [entrada.command, entrada.cmd, entrada.script, entrada.commandLine].find((v) => typeof v === 'string');
+  if (orden !== undefined) return { tool_name: 'Bash', tool_input: { ...entrada, command: orden } };
+  if (typeof entrada.file_path === 'string' && entrada.file_path !== '') {
+    return { tool_name: entrada.content !== undefined ? 'Write' : 'Read', tool_input: entrada };
+  }
+  return { tool_name: nombre, tool_input: entrada };
+}
+
+/** Nombre del contrato para `n` en el anfitrión, o la clasificación por entrada si no está en la tabla. */
+function traducirNombre(anfitrion, n, entrada) {
+  const conocido = NOMBRES[anfitrion]?.[n];
+  if (conocido !== undefined) return { tool_name: conocido, tool_input: entrada };
+  return clasificarDesconocida(n, entrada);
+}
+
+/**
  * Texto de un parche dentro de la entrada de una herramienta: las claves que se conocen (`command` en Codex,
  * `patchText` en opencode) y, si no, la primera cadena con cabeceras de parche (`*** Update File: x`).
  * @param {Record<string, any>} entrada
@@ -127,8 +155,9 @@ function respuestaDe(ev) {
 
 /**
  * Traduce el evento de un anfitrión a eventos del contrato. Una *herramienta* que no se reconoce dentro de un
- * anfitrión conocido pasa tal cual (el guardián no tiene reglas para ella: hueco conocido, ver docs/ANFITRIONES.md).
- * Un *anfitrión* que no se reconoce lanza error: quien llama debe fallar cerrado (CA-002-03).
+ * anfitrión conocido se clasifica por su entrada (`clasificarDesconocida`): orden → `Bash`, ruta y contenido →
+ * `Write`, ruta → `Read`; sin nada de eso pasa tal cual. Un *anfitrión* que no se reconoce lanza error: quien llama
+ * debe fallar cerrado (CA-002-03).
  * @param {string} anfitrion  `cursor`, `copilot`, `gemini`, `codex` o `claude` (sin cambios)
  * @param {unknown} evento    JSON ya analizado
  * @returns {{ tool_name: string, tool_input: Record<string, any>, tool_response?: unknown }[]}
@@ -153,19 +182,19 @@ export function traducirEvento(anfitrion, evento) {
     if (nombre === 'afterShellExecution') return [{ tool_name: 'Bash', tool_input: { command: String(ev.command ?? '') }, ...(ev.output === undefined ? {} : { tool_response: ev.output }) }];
     // preToolUse y postToolUse: nombre y entrada genéricos
     const n = String(ev.tool_name ?? '');
-    return [{ tool_name: NOMBRES.cursor[n] ?? n, tool_input: normalizarEntrada(ev.tool_input), ...respuestaDe(ev) }];
+    return [{ ...traducirNombre('cursor', n, normalizarEntrada(ev.tool_input)), ...respuestaDe(ev) }];
   }
 
   if (anfitrion === 'copilot') {
     // Dos formas documentadas: camelCase (toolName/toolArgs) y PascalCase compatible (tool_name/tool_input)
     const n = String(ev.tool_name ?? ev.toolName ?? '');
     const entrada = ev.tool_input ?? ev.toolArgs;
-    return [{ tool_name: NOMBRES.copilot[n.toLowerCase()] ?? n, tool_input: normalizarEntrada(entrada), ...respuestaDe(ev) }];
+    return [{ ...traducirNombre('copilot', n.toLowerCase(), normalizarEntrada(entrada)), ...respuestaDe(ev) }];
   }
 
   if (anfitrion === 'gemini') {
     const n = String(ev.tool_name ?? '');
-    return [{ tool_name: NOMBRES.gemini[n] ?? n, tool_input: normalizarEntrada(ev.tool_input), ...respuestaDe(ev) }];
+    return [{ ...traducirNombre('gemini', n, normalizarEntrada(ev.tool_input)), ...respuestaDe(ev) }];
   }
 
   // Windsurf/Devin: {hook_event_name:"PreToolUse"|"PostToolUse", tool_name, tool_input, tool_response?}; el plugin
@@ -184,7 +213,7 @@ export function traducirEvento(anfitrion, evento) {
     const comando = entrada.cmd ?? entrada.script;
     if (typeof comando === 'string') entrada.command = comando;
   }
-  return [{ tool_name: NOMBRES[anfitrion][n] ?? n, tool_input: entrada, ...respuestaDe(ev) }];
+  return [{ ...traducirNombre(anfitrion, n, entrada), ...respuestaDe(ev) }];
 }
 
 /**

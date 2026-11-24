@@ -101,6 +101,40 @@ describe("fragua guardian evaluar --anfitrion", () => {
   });
 });
 
+describe("herramienta no traducida: se clasifica por su entrada, no pasa sin reglas (auditoría 2026-11-11)", () => {
+  test("un nombre desconocido con `command` se evalúa como orden de terminal", () => {
+    assert.deepEqual(traducirEvento("codex", { tool_name: "shell", tool_input: { command: "rm -rf /" } }), [{ tool_name: "Bash", tool_input: { command: "rm -rf /" } }]);
+    assert.equal(traducirEvento("codex", { tool_name: "local_shell", tool_input: { cmd: "cat .env" } })[0].tool_name, "Bash");
+    assert.equal(traducirEvento("codex", { tool_name: "local_shell", tool_input: { cmd: "cat .env" } })[0].tool_input.command, "cat .env");
+    assert.equal(traducirEvento("cursor", { hook_event_name: "preToolUse", tool_name: "Terminal", tool_input: { script: "git push --force" } })[0].tool_name, "Bash");
+    assert.equal(traducirEvento("copilot", { tool_name: "run_in_terminal", tool_input: { command: "ls" } })[0].tool_name, "Bash");
+  });
+  test("un nombre desconocido con ruta y contenido se evalúa como escritura; solo con ruta, como lectura", () => {
+    const w = traducirEvento("codex", { tool_name: "write_file", tool_input: { path: ".env", content: "X=1" } })[0];
+    assert.equal(w.tool_name, "Write");
+    assert.equal(w.tool_input.file_path, ".env");
+    assert.equal(traducirEvento("gemini", { tool_name: "create_file", tool_input: { file_path: "a.js", content: "x" } })[0].tool_name, "Write");
+    assert.equal(traducirEvento("codex", { tool_name: "open_file", tool_input: { path: ".env" } })[0].tool_name, "Read");
+    assert.equal(traducirEvento("windsurf", { tool_name: "view_file", tool_input: { target_file: "a.js" } })[0].tool_name, "Read");
+  });
+  test("un nombre desconocido sin comando ni ruta pasa tal cual (grep, web, MCP): no hay regla que aplicar", () => {
+    assert.equal(traducirEvento("codex", { tool_name: "web_search", tool_input: { query: "x" } })[0].tool_name, "web_search");
+    assert.equal(traducirEvento("gemini", { tool_name: "mcp_x_y", tool_input: {} })[0].tool_name, "mcp_x_y");
+  });
+  test("las herramientas con nombre confirmado no cambian de traducción", () => {
+    assert.equal(traducirEvento("gemini", { tool_name: "replace", tool_input: { file_path: "a", content: "b" } })[0].tool_name, "Edit");
+    assert.equal(traducirEvento("copilot", { tool_name: "view", tool_input: { path: "a", content: "b" } })[0].tool_name, "Read");
+  });
+  test("por la CLI: los eventos que la auditoría vio pasar en Codex ahora se bloquean", () => {
+    assert.equal(evaluar("codex", { tool_name: "shell", tool_input: { command: "rm -rf /" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "shell", tool_input: { command: "cat .env" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "local_shell", tool_input: { command: "cat .env" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "write_file", tool_input: { path: ".env", content: "x" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "shell", tool_input: { command: "ls" } }).codigo, 0);
+    assert.equal(evaluar("codex", { tool_name: "write_file", tool_input: { path: "src/a.js", content: "x" } }).codigo, 0);
+  });
+});
+
 describe("forge init --con-hooks", () => {
   test("sin la opción no se escribe ningún hook", () => {
     const cwd = temporal("forge-hk-"), home = temporal("forge-hk-h-");
@@ -194,7 +228,7 @@ describe("Windsurf (Devin) y opencode", () => {
     assert.equal(traducirEvento("windsurf", { tool_name: "write", tool_input: { file_path: "a.js", content: "x" } })[0].tool_name, "Write");
     assert.equal(traducirEvento("windsurf", { tool_name: "edit", tool_input: { target_file: "a.js", new_string: "y" } })[0].tool_input.file_path, "a.js");
     assert.equal(traducirEvento("windsurf", { tool_name: "read", tool_input: { contenido_largo: "una\nlinea", otra: "x" } })[0].tool_input.file_path, undefined, "sin clave de ruta: no se inventa");
-    assert.equal(traducirEvento("windsurf", { tool_name: "grep", tool_input: { pattern: "x" } })[0].tool_name, "grep", "herramienta no reconocida: pasa tal cual");
+    assert.equal(traducirEvento("windsurf", { tool_name: "grep", tool_input: { pattern: "x" } })[0].tool_name, "grep", "herramienta no reconocida sin comando ni ruta: pasa tal cual");
   });
   test("Windsurf: apply_patch da una escritura por archivo del parche y PostToolUse conserva tool_response", () => {
     const parche = "*** Begin Patch\n*** Update File: .env\n+X=1\n*** Add File: b.js\n+1\n*** End Patch";

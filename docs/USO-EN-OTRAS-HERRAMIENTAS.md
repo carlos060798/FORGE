@@ -155,7 +155,8 @@ Lo que significa en la práctica:
 - En **Gemini, Codex y Windsurf**, si `fragua` no está instalado o el hook se rompe, la acción continúa sin aviso de bloqueo. Trátalo como una ayuda, no como una garantía.
 - En Codex, los hooks del proyecto solo se cargan si la carpeta `.codex/` es de confianza, y hay que revisarlos y aprobarlos dentro de Codex.
 - El hook llama a la orden `fragua`: debe estar instalada y en el `PATH`.
-- El guardián solo conoce las herramientas cuyo evento sabe traducir. Una herramienta que no reconoce **pasa sin evaluar**.
+- Una herramienta cuyo nombre el guardián no conoce **se clasifica por su entrada**: si trae una orden se evalúa como terminal; si trae ruta y contenido, como escritura; si trae solo ruta, como lectura. Solo pasa sin evaluar la que no trae ni orden ni ruta (búsquedas, web, MCP). Si tu herramienta usa otra clave para la orden o la ruta, esa acción pasa: repórtalo con el evento.
+- `fragua doctor` avisa si instalaste con `--con-hooks` y `fragua` no está en el `PATH`.
 - Los nombres de herramienta y de campos de Gemini y Copilot están **sin confirmar** en la documentación leída.
 - Windsurf evalúa terminal, lectura, escritura, edición y parches, pero solo la terminal tiene claves de entrada documentadas. opencode evalúa `read`, `edit`, `write`, `patch` y `shell`; la forma exacta del evento y que un plugin pueda lanzar un proceso externo **no están confirmadas**: si fallan, el plugin bloquea toda herramienta.
 - Kiro, Zed, Goose, `agents` y `generica` no tienen adaptador de hook: `--con-hooks` avisa y no escribe nada. Kiro, porque su documentación no da los nombres de herramienta ni qué código bloquea.

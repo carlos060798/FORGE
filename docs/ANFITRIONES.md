@@ -66,7 +66,7 @@ En Claude Code los comandos conservan su nombre con punto (`/sdd.planificar`).
 
 ## Lo que está en curso
 
-- **Guardián y memoria fuera de Claude Code:** hechos con `--con-hooks` ([contrato](contrato/evento-herramienta.md), `fragua guardian evaluar --anfitrion <x>`, `fragua memoria registrar --anfitrion <x>`, perfil MCP `guardian`). **Sin probar en una instalación real de ninguna.** Pendiente por falta de documentación: Kiro, y la forma exacta del evento y el proceso externo en opencode.
+- **Guardián y memoria fuera de Claude Code:** hechos con `--con-hooks` ([contrato](contrato/evento-herramienta.md), `fragua guardian evaluar --anfitrion <x>`, `fragua memoria registrar --anfitrion <x>`, perfil MCP `guardian`). **Sin probar en una instalación real de ninguna.** Una herramienta cuyo nombre no está en la tabla del anfitrión se clasifica por su entrada (con orden → terminal; con ruta y contenido → escritura; con ruta → lectura) y se evalúa con las mismas reglas; solo pasa sin evaluar la que no trae ni orden ni ruta (búsquedas, web, MCP) o la que nombra la orden o la ruta con una clave que el traductor no conoce ([ADR-26](../.sdd/arquitectura/ADR-26-guardian-clasifica-herramientas-no-reconocidas.md)). `fragua doctor` avisa si instalaste con `--con-hooks` y `fragua` no está en el `PATH`. Pendiente por falta de documentación: Kiro, y la forma exacta del evento y el proceso externo en opencode.
 - **Evaluación independiente:** [informes/EVALUACION-AGNOSTICISMO.md](informes/EVALUACION-AGNOSTICISMO.md) (veredicto «parcialmente»). Es una fotografía de un momento: varios hallazgos se corrigieron después.
 - **Prueba manual por herramienta** (fase F5): pendiente; hasta entonces ninguna fila de la matriz dirá «probado».
 

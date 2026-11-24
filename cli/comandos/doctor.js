@@ -15,6 +15,21 @@ import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from ".
 const VARIABLES_DE_CLAVE = { anthropic: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], openai: ["OPENAI_API_KEY"] };
 
 /**
+ * ¿Hay una orden `fragua` en alguna carpeta del PATH? Se mira el sistema de archivos, sin ejecutar nada:
+ * en Windows valen `fragua.cmd`, `fragua.exe` y `fragua.ps1` (los que crea npm); en el resto, `fragua` a secas.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function fraguaEnPath(env = process.env) {
+  const ruta = env.PATH ?? env.Path ?? "";
+  const nombres = process.platform === "win32" ? ["fragua.cmd", "fragua.exe", "fragua.ps1", "fragua"] : ["fragua"];
+  for (const dir of ruta.split(process.platform === "win32" ? ";" : ":")) {
+    if (!dir) continue;
+    for (const n of nombres) if (existsSync(join(dir, n))) return true;
+  }
+  return false;
+}
+
+/**
  * Herramienta de código desde la que se usa Fragua: la integración guardada si hay una, o las señales de Claude Code.
  * @param {string|undefined} guardada clave de `instalacion.integracion`
  * @returns {{ nombre: string, claude: boolean } | null}
@@ -327,6 +342,15 @@ export async function cmdDoctor() {
       if (g.carpeta) info(`Carpeta de skills: ${JSON.stringify(g.carpeta)}`);
       if (!ri.ok) { aviso(ri.error); problemas++; }
       if (!rp.ok) { aviso(rp.error); problemas++; }
+      // Los hooks de otras herramientas ejecutan `fragua` por el PATH (core/instalacion/hooks-anfitrion.js). Si falta,
+      // Cursor (failClosed) bloquea toda herramienta y Codex, Gemini y Windsurf dejan pasar todo sin avisar.
+      if (g.conHooks && ri.ok && !ri.integracion.nativa) {
+        if (fraguaEnPath()) info("Hooks registrados: `fragua` en el PATH ✓ (sin probar en la herramienta real)");
+        else {
+          aviso(`Hooks registrados pero \`fragua\` no está en el PATH: en ${ri.integracion.nombre} el guardián no se ejecutará (bloquea todo si la herramienta falla cerrado; deja pasar todo si falla abierto). Instala la orden: npm install -g fragua (o npm install -g . desde el repositorio).`);
+          problemas++;
+        }
+      }
     }
   }
 

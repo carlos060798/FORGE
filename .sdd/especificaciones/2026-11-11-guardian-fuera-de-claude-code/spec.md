@@ -53,6 +53,7 @@ Que las mismas reglas del guardián (`core/evidencia/guardian-reglas.js`, fuente
 - [ ] **CA-002-02**: Un `apply_patch` de Codex que toca N archivos produce N evaluaciones de escritura, y basta una bloqueada para bloquear. (P1)
 - [x] **CA-002-03**: Un anfitrión desconocido en `--anfitrion` termina con 2, no pasa sin reglas. (P1) — Corregido el 2026-11-11 por instrucción del dueño (antes devolvía 1 y `traducirEvento` lo evaluaba sin reglas); pruebas en `tests/guardian-cli.test.js` y `tests/hooks-anfitrion.test.js`.
 - [ ] **CA-002-04**: Los traductores se prueban con al menos una captura real del evento de cada herramienta (no solo eventos sintéticos sacados de la documentación), con versión y fecha de la herramienta. (P1) — **Pendiente** (F5).
+- [x] **CA-002-05**: Una herramienta cuyo nombre no está en la tabla del anfitrión no pasa sin reglas: si su entrada trae una orden se evalúa como terminal; si trae ruta y contenido, como escritura; si trae solo ruta, como lectura. Solo pasa la que no trae ni orden ni ruta. (P1) — Añadido el 2026-11-11 tras la auditoría interna (en Codex, `shell rm -rf /` y `write_file .env` salían con 0); pruebas en `tests/hooks-anfitrion.test.js` («herramienta no traducida…»); ADR-26.
 
 ### HU-003: Registrar el hook al instalar, con honestidad sobre el modo de fallo
 **Como** usuario de otra herramienta
@@ -64,6 +65,7 @@ Que las mismas reglas del guardián (`core/evidencia/guardian-reglas.js`, fuente
 - [ ] **CA-003-02**: Cada plantilla declara si la herramienta falla cerrado o abierto ante un error o un tiempo agotado del hook; `init` y `doctor` lo dicen al usuario y `docs/ANFITRIONES.md`, `docs/GARANTIAS-Y-LIMITES.md` y `SECURITY.md` lo recogen en la misma matriz. (P1) — **Parcial**: las plantillas lo declaran; `doctor`, GARANTIAS y SECURITY no lo dicen.
 - [ ] **CA-003-03**: En una herramienta que falla abierto, ningún documento usa la palabra «protegido»; se usa «consultivo». (P1)
 - [ ] **CA-003-04**: Sin `--con-hooks`, `init` no toca ningún archivo de hooks (comportamiento de hoy). (P1)
+- [x] **CA-003-05**: Si la instalación guardó `con_hooks` en una herramienta que no es la nativa y la orden `fragua` no está en el `PATH`, `doctor` lo avisa como problema y dice cómo instalarla; sin hooks no comprueba nada. (P1) — Añadido el 2026-11-11; pruebas en `tests/doctor-instalacion.test.js`.
 
 ### HU-004: Memoria por hook fuera de Claude Code
 **Como** usuario de otra herramienta

@@ -37,7 +37,7 @@ Los nombres de herramienta son los de Claude Code. Una herramienta con otros nom
 
 ## Otras herramientas (`--anfitrion`)
 
-`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex|windsurf|opencode` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Dentro de un anfitrión conocido, una *herramienta* que no se reconoce pasa tal cual y el guardián no tiene reglas para ella (hueco conocido). Un *anfitrión* que no se reconoce no se evalúa «sin reglas»: falla cerrado (código 2). Si el evento no es JSON, falla cerrado (código 2).
+`fragua guardian evaluar --anfitrion cursor|copilot|gemini|codex|windsurf|opencode` recibe el evento propio de la herramienta y lo traduce a este contrato (`core/instalacion/hooks-anfitrion.js`). Un parche `apply_patch` de Codex se evalúa como una escritura por cada archivo que toca. Dentro de un anfitrión conocido, una *herramienta* cuyo nombre no está en la tabla se clasifica por su entrada: con `command`, `cmd`, `script` o `commandLine` se evalúa como `Bash`; con ruta (`file_path`, `path`, `filePath`, `absolute_path` o una clave que hable de ruta o archivo) y contenido, como `Write`; con solo ruta, como `Read`. La que no trae ni orden ni ruta pasa tal cual: no hay regla que aplicarle (desde el 2026-11-11; antes toda herramienta no reconocida pasaba). Un *anfitrión* que no se reconoce no se evalúa «sin reglas»: falla cerrado (código 2). Si el evento no es JSON, falla cerrado (código 2).
 
 ## Memoria y MCP
 
