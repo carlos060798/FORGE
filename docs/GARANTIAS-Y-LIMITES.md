@@ -126,6 +126,8 @@ El guardián es una red de seguridad, no un límite. Fuera de Claude Code solo e
 | Zed, Goose, carpeta común (`agents`), genérica | No disponible: sin adaptador de hook | No disponible | No aplica |
 | Cualquier herramienta con cliente MCP | Consultivo: `fragua mcp --perfil guardian` expone `guardian_evaluar`; el modelo puede no llamarla | No disponible | No aplica |
 
+Lo que sí se impone en todas las herramientas con hook: el agente no puede reescribir el archivo donde su herramienta registra el guardián (`.codex/hooks.json`, `.cursor/hooks.json`, `.github/hooks/fragua-guardian.json`, `.gemini/settings*`, `.devin/hooks*`, `.opencode/plugins/fragua-guardian*`), ni por una herramienta de archivo ni por la terminal. El dueño lo edita a mano o con `FORGE_EDITAR_GUARDIAN=1`. Vale mientras el hook se ejecute; con el hook apagado por la propia herramienta (Gemini, Codex y Windsurf fallan abiertos) no hay nadie que lo aplique.
+
 Límites que valen en todas las herramientas distintas de Claude Code:
 
 - **Cobertura:** el guardián solo evalúa las herramientas cuyo evento sabe traducir. Una herramienta que la tabla del adaptador no conoce se clasifica por su entrada (con una orden, como terminal; con ruta y contenido, como escritura; solo con ruta, como lectura). Una sin nada de eso pasa sin evaluar. Esta clasificación es la del ADR-26, en estado de propuesta.

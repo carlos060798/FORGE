@@ -93,6 +93,28 @@ describe("guardián — rutas y secretos", () => {
       ".sdd/execution-level.json", ".sdd/aprobaciones.jsonl", ".SDD/Aprobaciones.JSONL", ".git/config", "./.CLAUDE/Settings.json", ".claude\\settings.json", "claude-hooks.", ".git/hooks/pre-commit"]) assert.equal(esRutaCriticaDelGuardian(r), true, r);
     for (const r of ["src/a.js", ".claude/agents/x.md", ".github/workflows/ci.yml", ".sdd/estado.json", ".sdd/aprobaciones.md", "docs/claude-hooks.md"]) assert.equal(esRutaCriticaDelGuardian(r), false, r);
   });
+  // Revisión del 2026-11-24 (informe de agnosticismo, ALTO-1): fuera de Claude Code, el agente podía reescribir el archivo
+  // que registra su propio guardián y apagarlo. Rutas exactas, no carpetas: lo demás de esas carpetas sigue editable.
+  test("rutas críticas del guardián en otras herramientas: su archivo de hooks", () => {
+    for (const r of [".codex/hooks.json", ".CODEX/Hooks.JSON", "./.codex/hooks.json", ".codex\\hooks.json",
+      ".cursor/hooks.json", ".Cursor/HOOKS.json", ".cursor\\hooks.json",
+      ".github/hooks/fragua-guardian.json", ".GITHUB/hooks/Fragua-Guardian.json",
+      ".gemini/settings.json", ".gemini/settings.local.json", ".Gemini\\Settings.json",
+      ".devin/hooks.v1.json", ".devin/hooks.json", ".DEVIN/Hooks.V1.json",
+      ".opencode/plugins/fragua-guardian.js", ".opencode/plugins/fragua-guardian.ts", ".OpenCode\\Plugins\\Fragua-Guardian.js",
+      // con flujos alternativos de NTFS y puntos o espacios finales, como las rutas de Claude
+      ".codex/hooks.json::$DATA", ".cursor/hooks.json.", ".gemini/settings.json ", "sub/../.codex/hooks.json"]) {
+      assert.equal(esRutaCriticaDelGuardian(r), true, r);
+    }
+  });
+  test("lo demás de esas carpetas sigue siendo editable por el agente", () => {
+    for (const r of [".codex/agents/revisor.toml", ".codex/config.toml.bak", ".cursor/skills/forge/SKILL.md", ".cursor/agents/revisor.md", ".cursor/rules/x.mdc",
+      ".github/workflows/ci.yml", ".github/hooks/otro.json", ".github/agents/x.agent.md", ".gemini/agents/x.md", ".gemini/skills/x/SKILL.md",
+      ".devin/skills/x/SKILL.md", ".devin/other.json", ".opencode/plugins/otro.js", ".opencode/agents/x.md", ".opencode/skills/x/SKILL.md",
+      "src/hooks.json", "docs/.codex/hooks.json.md", "codex/hooks.json", ".codexhooks.json"]) {
+      assert.equal(esRutaCriticaDelGuardian(r), false, r);
+    }
+  });
   test("esSecreto", () => {
     for (const r of [".env", "a/.env.local", ".ENV", ".env.production", ".env."]) assert.equal(esSecreto(r), true, r);
     for (const r of [".env.example", ".env.template", ".env.sample", "env.js", "src/.envrc.md"]) assert.equal(esSecreto(r), false, r);

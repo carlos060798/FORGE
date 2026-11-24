@@ -126,17 +126,46 @@ export function esSecreto(ruta) {
 }
 
 /**
- * Rutas que, si el agente las reescribe, apagan el propio guardián: su registro, sus archivos, su nivel y .git.
+ * Archivos donde otras herramientas de código registran el guardián (`fragua init --con-hooks`; las rutas de
+ * `PLANTILLAS_HOOKS` en core/instalacion/hooks-anfitrion.js, y una prueba comprueba que no falte ninguna). Reescribirlos
+ * apaga el guardián igual que reescribir `.claude/settings.json` (informe de agnosticismo del 2026-11-24, ALTO-1).
+ * Rutas EXACTAS por segmentos, en minúsculas, no carpetas enteras: el agente sigue pudiendo editar `.codex/agents/*.toml`
+ * o `.github/workflows/`. Un segmento que termina en `*` coincide por prefijo.
+ */
+const ARCHIVOS_DE_HOOKS_AJENOS = Object.freeze([
+  ['.codex', 'hooks.json'],
+  ['.cursor', 'hooks.json'],
+  ['.github', 'hooks', 'fragua-guardian.json'],
+  ['.gemini', 'settings*'],
+  ['.devin', 'hooks*'],
+  ['.opencode', 'plugins', 'fragua-guardian*'],
+]);
+
+/** ¿Coinciden los segmentos con el patrón (misma longitud; `x*` por prefijo)? */
+const coincideConPatron = (/** @type {string[]} */ segs, /** @type {readonly string[]} */ patron) =>
+  segs.length === patron.length && patron.every((p, i) => (p.endsWith('*') ? segs[i].startsWith(p.slice(0, -1)) : segs[i] === p));
+
+/**
+ * Rutas que, si el agente las reescribe, apagan el propio guardián: su registro (en Claude Code y en las demás
+ * herramientas), sus archivos, su nivel y .git.
  * @param {string} rutaRelativa  relativa al proyecto
  */
 export function esRutaCriticaDelGuardian(rutaRelativa) {
-  const segs = posix(rutaRelativa).toLowerCase().split('/')
+  const sueltos = posix(rutaRelativa).toLowerCase().split('/')
     .map((s) => s.replace(/:.*$/s, '').replace(/[ .]+$/, '') || s)
     .filter((s) => s !== '' && s !== '.');
+  // `a/../.codex/hooks.json` es `.codex/hooks.json`: se resuelven los `..` antes de comparar
+  /** @type {string[]} */ const segs = [];
+  for (const s of sueltos) {
+    if (s !== '..') segs.push(s);
+    else if (segs.length > 0 && segs[segs.length - 1] !== '..') segs.pop();
+    else segs.push('..');
+  }
   if (segs.length === 0) return false;
   if (segs.includes('.git')) return true;
   if (segs[0] === 'claude-hooks') return true;
   if (segs[0] === '.claude' && segs[1] !== undefined && (segs[1].startsWith('settings') || segs[1] === 'hooks')) return true;
+  if (ARCHIVOS_DE_HOOKS_AJENOS.some((p) => coincideConPatron(segs, p))) return true;
   // El nivel del CircuitBreaker y el registro firmado de aprobaciones: un agente no tiene motivo para escribirlos
   if (segs.length === 2 && segs[0] === '.sdd' && (segs[1] === 'execution-level.json' || segs[1] === 'aprobaciones.jsonl')) return true;
   return false;

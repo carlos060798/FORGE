@@ -13,6 +13,7 @@ import { pathToFileURL } from "node:url";
 
 import { ANFITRIONES_CON_HOOK, ANFITRIONES_CON_MEMORIA, PLANTILLAS_HOOKS, SIN_ADAPTADOR_POR_AHORA, ordenDeGuardian, rutasDeParche, traducirEvento } from "../core/instalacion/hooks-anfitrion.js";
 import { INTEGRACIONES } from "../core/instalacion/herramientas-destino.js";
+import { esRutaCriticaDelGuardian } from "../core/evidencia/guardian-reglas.js";
 import { CLI, ROOT, forge } from "./instalacion-ayudas.js";
 
 const temporal = (p) => realpathSync(mkdtempSync(join(tmpdir(), p)));
@@ -98,6 +99,51 @@ describe("fragua guardian evaluar --anfitrion", () => {
   });
   test("traducirEvento lanza error ante un anfitrión desconocido (quien llama debe fallar cerrado)", () => {
     assert.throws(() => traducirEvento("nada", { tool_name: "Bash", tool_input: { command: "ls" } }), /desconocido/);
+  });
+});
+
+// Informe de agnosticismo del 2026-11-24 (ALTO-1): el agente podía reescribir el archivo que registra su propio guardián.
+describe("el guardián protege el archivo de hooks de cada herramienta (CA-003-06)", () => {
+  test("toda plantilla de hook apunta a una ruta crítica: un anfitrión nuevo no puede quedar sin proteger", () => {
+    for (const [clave, p] of Object.entries(PLANTILLAS_HOOKS)) assert.equal(esRutaCriticaDelGuardian(p.ruta), true, `${clave}: ${p.ruta}`);
+  });
+
+  // Un evento de escritura a ese archivo, con la forma propia de cada herramienta
+  const ESCRITURAS = {
+    codex: (ruta) => ({ tool_name: "write_file", tool_input: { path: ruta, content: "{}" } }),
+    cursor: (ruta) => ({ hook_event_name: "preToolUse", tool_name: "Write", tool_input: { file_path: ruta, content: "{}" } }),
+    copilot: (ruta) => ({ toolName: "create", toolArgs: { path: ruta, content: "{}" } }),
+    gemini: (ruta) => ({ tool_name: "write_file", tool_input: { file_path: ruta, content: "{}" } }),
+    windsurf: (ruta) => ({ hook_event_name: "PreToolUse", tool_name: "write", tool_input: { file_path: ruta, content: "{}" } }),
+    opencode: (ruta) => ({ tool_name: "write", tool_input: { path: ruta, content: "x" } }),
+  };
+  /** Otro archivo de la misma herramienta, que el agente sí puede tocar. */
+  const OTRO = { codex: ".codex/agents/revisor.toml", cursor: ".cursor/skills/x/SKILL.md", copilot: ".github/agents/x.agent.md", gemini: ".gemini/agents/x.md", windsurf: ".devin/skills/x/SKILL.md", opencode: ".opencode/skills/x/SKILL.md" };
+
+  for (const clave of Object.keys(ESCRITURAS)) {
+    test(`${clave}: escribir ${PLANTILLAS_HOOKS[clave].ruta} se bloquea y otro archivo de la herramienta pasa`, () => {
+      const r = evaluar(clave, ESCRITURAS[clave](PLANTILLAS_HOOKS[clave].ruta));
+      assert.equal(r.codigo, 2, r.salida);
+      assert.match(r.salida, /guardi[aá]n/i, "el mensaje dice que es parte del guardián");
+      assert.equal(evaluar(clave, ESCRITURAS[clave](OTRO[clave])).codigo, 0, OTRO[clave]);
+    });
+  }
+
+  test("Codex: un parche apply_patch que actualiza .codex/hooks.json se bloquea", () => {
+    const parche = "*** Begin Patch\n*** Update File: .codex/hooks.json\n+{}\n*** End Patch";
+    assert.equal(evaluar("codex", { tool_name: "apply_patch", tool_input: { command: parche } }).codigo, 2);
+  });
+  test("por la terminal también: redirigir, copiar o mover sobre el archivo de hooks se bloquea", () => {
+    assert.equal(evaluar("codex", { tool_name: "Bash", tool_input: { command: "echo {} > .codex/hooks.json" } }).codigo, 2);
+    assert.equal(evaluar("cursor", { hook_event_name: "beforeShellExecution", command: "cp /tmp/x .cursor/hooks.json", cwd: "." }).codigo, 2);
+    assert.equal(evaluar("gemini", { tool_name: "run_shell_command", tool_input: { command: "mv /tmp/x .gemini/settings.json" } }).codigo, 2);
+    assert.equal(evaluar("codex", { tool_name: "Bash", tool_input: { command: "echo {} > .codex/agents/x.toml" } }).codigo, 0, "otro archivo de la carpeta pasa");
+  });
+  test("el dueño puede editarlo: FORGE_EDITAR_GUARDIAN=1 lo permite, como ya hace con .claude/settings.json", () => {
+    const ev = ESCRITURAS.codex(PLANTILLAS_HOOKS.codex.ruta);
+    const env = { ...process.env, FORGE_LLM_PROVIDER: "stub", FRAGUA_AGENTE: "", FORGE_AGENTE: "", CLAUDE_AGENT_NAME: "", FORGE_EDITAR_GUARDIAN: "1" };
+    const r = spawnSync(process.execPath, [CLI, "guardian", "evaluar", "--anfitrion", "codex"], { cwd: temporal("forge-hk-"), env, input: JSON.stringify(ev), encoding: "utf8", timeout: 60_000 });
+    assert.equal(r.status, 0, (r.stdout ?? "") + (r.stderr ?? ""));
   });
 });
 

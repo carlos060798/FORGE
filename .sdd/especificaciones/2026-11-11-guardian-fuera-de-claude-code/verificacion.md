@@ -20,6 +20,7 @@
 | CA-003-03 «consultivo» donde falla abierto | Solo documento | **Sin prueba** |
 | CA-003-04 sin `--con-hooks` nada | «sin la opción no se escribe ningún hook» | **Con prueba** |
 | CA-003-05 `doctor` avisa si `fragua` no está en el PATH | `tests/doctor-instalacion.test.js` (3 pruebas: sin PATH, con PATH, sin hooks) | **Con prueba** |
+| CA-003-06 el archivo de hooks de cada herramienta es ruta crítica | `tests/guardian-reglas.test.js` (rutas críticas y no críticas, con mayúsculas, barras invertidas, flujos NTFS y `..`); `tests/hooks-anfitrion.test.js` («el guardián protege el archivo de hooks de cada herramienta»: consistencia con `PLANTILLAS_HOOKS`, las 6 herramientas por la CLI, `apply_patch`, terminal, atajo del dueño) | **Con prueba** (con eventos construidos, no capturas reales; ver CA-002-04) |
 | CA-004-01 memoria por hook | `tests/hooks-anfitrion.test.js` («memoria: eventos posteriores…») | **Con prueba** (la spec aún lo marca «no implementado»: desfasada) |
 
 ## Qué quedó a medias o sin hacer
