@@ -28,7 +28,7 @@ import { detectStack } from './stack-detector.js';
 import { runnerForStack } from './runners/index.js';
 import { parseSpecMd, validateSpec, checkCoverage } from './spec.js';
 import { sessionBudget } from './session-budget.js';
-import { crearProvider } from './llm-providers/index.js';
+import { ErrorProveedorDesconocido, crearProvider } from './llm-providers/index.js';
 import { lineaRevision } from './precios.js';
 import { circuitBreaker } from './execution-context.js';
 import { cargarTareas, specActiva } from './tareas.js';
@@ -106,6 +106,18 @@ export function resolverClave(cwd) {
   const variable = VARIABLE_DE_CLAVE[nombre];
   const sinClave = variable !== undefined && !(/** @type {any} */ (proveedor).apiKey);
   return { apiKey, aviso: sinClave ? `${variable} no está definida — el engine correrá en modo stub.` : null };
+}
+
+/**
+ * Un nombre de proveedor que no se reconoce detiene `run` y `resume` antes de nada, con un mensaje claro. Sin esto el error
+ * saldría del interior del ciclo verificado como un volcado de pila y, sin Docker, después del aviso de Docker. Se decide
+ * por la clase del error, no por su texto. Cualquier otro fallo de configuración conserva el desenlace de siempre.
+ * @param {string} cwd
+ */
+function exigirProveedorConocido(cwd) {
+  try { crearProvider({ cwd }); } catch (e) {
+    if (e instanceof ErrorProveedorDesconocido) err(e.message);
+  }
 }
 
 function buildDeps(cwd) {
@@ -282,6 +294,7 @@ async function cmdStatus(cwd) {
 }
 
 async function cmdResume(cwd, flags = {}, opciones = {}) {
+  exigirProveedorConocido(cwd);
   const deps = buildDeps(cwd);
   const { log, fsm, store, registry, runner } = deps;
   const { apiKey } = resolverClave(cwd);
@@ -397,6 +410,7 @@ async function cmdResume(cwd, flags = {}, opciones = {}) {
 }
 
 async function cmdRun(cwd, flags, opciones = {}) {
+  exigirProveedorConocido(cwd);
   const deps = buildDeps(cwd);
   const { store, log, registry, fsm, runner } = deps;
   const { apiKey, aviso } = resolverClave(cwd);

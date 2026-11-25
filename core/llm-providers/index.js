@@ -202,6 +202,25 @@ export function proveedorPorCredenciales(env = process.env) {
 }
 
 /**
+ * El nombre de proveedor no se reconoce (un error tipográfico, o uno sin soporte como Gemini). Quien llama decide por la
+ * clase o por `code`, no buscando texto en el mensaje.
+ */
+export class ErrorProveedorDesconocido extends Error {
+  /** @param {string} nombre el nombre recibido */
+  constructor(nombre) {
+    super(
+      `Proveedor de modelos desconocido: "${nombre}". Válidos: anthropic, openai, ollama, stub ` +
+      '(alias: claude, gpt, codex, azure, github-models, cursor, local, deepseek, llama, test) o una URL http(s) de Ollama. ' +
+      'Se detiene en vez de usar otro proveedor: un nombre mal escrito enviaría tu código y tus prompts a uno que no elegiste. ' +
+      'Corrige FRAGUA_LLM_PROVIDER (o FORGE_LLM_PROVIDER) o `llm.provider` en .sdd/sdd.config.yaml.',
+    );
+    this.name = 'ErrorProveedorDesconocido';
+    this.code = 'proveedor_desconocido';
+    this.nombre = nombre;
+  }
+}
+
+/**
  * Crea y devuelve el provider configurado.
  * @param {{ cwd?: string, config?: object }} opts
  * @returns {import('./provider-interface.js').LlmProvider}
@@ -257,8 +276,10 @@ export function crearProvider(opts = {}) {
         // archivo del proyecto ya no puede traer una dirección sin permiso (sanearConfigDelProyecto)
         return new OllamaProvider({ base_url: nombreProvider, ...config });
       }
-      console.warn(`[FORGE] Provider desconocido: "${nombreProvider}". Usando anthropic.`);
-      return new AnthropicProvider(config);
+      // Nombre que no se reconoce (un error tipográfico, o un proveedor sin soporte como Gemini): se detiene. Antes avisaba y
+      // seguía con Anthropic, y enviaba el código y los prompts del usuario a un proveedor que no eligió (constitución:
+      // «NO degradar en silencio»; «NO fijar un proveedor»).
+      throw new ErrorProveedorDesconocido(nombreProvider);
   }
 }
 

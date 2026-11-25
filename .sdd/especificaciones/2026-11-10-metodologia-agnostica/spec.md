@@ -55,6 +55,8 @@ Que quien instale Fragua en una herramienta que no es Claude Code reciba la meto
 - [ ] **CA-002-03**: El cuerpo del rol no cita el hook de memoria de Claude Code; indica anotar las decisiones en `.sdd/memoria/`. (P2)
 - [ ] **CA-002-04**: La escritura de roles usa escritura segura y no pisa un archivo ajeno distinto sin avisar. (P1)
 - [ ] **CA-002-05**: El mensaje final de `init` dice cuántos roles se instalaron y qué no recibe la herramienta (hooks, guardián, memoria por hooks, `settings.json`). (P1)
+- [x] **CA-002-06**: Con una integración que no es `claude`, el `AGENTS.md` que deja `init` lleva las órdenes `/sdd.x` en la sintaxis de la herramienta y un bloque «Flujo Fragua en esta herramienta» con cómo se empieza, los roles, la aprobación y la verificación. (P2) — Añadido el 2026-11-24 (informe de agnosticismo, BAJO-1 / H10): el `AGENTS.md` de un proyecto de Codex decía «`/sdd.constitucion`» y no explicaba el flujo. Pruebas en `tests/agents-md-anfitrion.test.js`.
+- [x] **CA-002-07**: Ese bloque dice lo que no está activo: el guardián (no instalado, registrado en el archivo de hooks, o sin adaptador de hook en esa herramienta), las guardias de agentes de solo lectura y la memoria por agente, y que la instalación no está probada en esa herramienta. Es determinista (repetir `init` dice «ya está al día»). Con Claude Code el archivo no cambia. (P2)
 
 ### HU-003: Honestidad sobre lo que no se recibe
 **Como** usuario de otra herramienta
@@ -75,6 +77,15 @@ Que quien instale Fragua en una herramienta que no es Claude Code reciba la meto
 - [x] **CA-004-02**: `validarSkill` tiene un modo estricto: solo admite `name`, `description`, `license`, `compatibility`, `metadata` y `allowed-tools` (separado por espacios), `compatibility` de hasta 500 caracteres y `metadata` solo con valores de texto. Sin ese modo admite los campos propios de las fuentes de Claude Code. (P1)
 - [x] **CA-004-03**: Una prueba comprueba, para cada una de las 11 integraciones que no son Claude Code, que las 31 skills propias, las 39 de los comandos y los 14 roles salen con una cabecera válida en modo estricto, y el emulador de instalación (`npm run emular`) valida en modo estricto lo realmente instalado. (P1) — Hasta ahora el lint solo recorría `skills-generadas/`, no las 31 skills propias de `skills/`, que son las que llevaban `model:`.
 - [x] **CA-004-04**: `avisosDeSkill` avisa de un cuerpo de más de 500 líneas (recomendación del estándar); es un aviso, no un error. Las 31 skills propias no lo superan. (P2) — **4 skills generadas de comandos sí lo superan** (`sdd-implementar` 678, `sdd-planificar` 547, `sdd-compliance` 517, `sdd-constitucion` 507); la prueba fija esa lista y falla si aparece una quinta. Partir esos comandos no se hace aquí.
+
+### HU-005: Las fuentes de la tabla de integraciones son las vigentes
+**Como** mantenedor
+**Quiero** que cada integración cite la página vigente de su herramienta, con la fecha en que se leyó
+**Para** que una URL que ya redirige no dé por confirmado lo que nadie ha releído
+
+**Criterios de aceptación:**
+- [x] **CA-005-01**: Ninguna fuente de la tabla apunta a una URL que se sabe que redirige. Codex y la carpeta común citan `learn.chatgpt.com/docs/build-skills` (releída el 2026-11-24: `.agents/skills`, `$nombre` o `/skills`, `name` y `description` obligatorios) y Windsurf cita `docs.devin.ai/desktop/cascade/skills`. (P2) — Pruebas en `tests/fuentes-integraciones.test.js`.
+- [x] **CA-005-02**: Lo que la documentación vigente no confirma se dice como no confirmado: la invocación `@nombre` de Windsurf (la página vigente documenta `/nombre` y describe «Devin Desktop», no Cascade). Fragua sigue generando `@nombre` hasta que la prueba manual (F5) decida. (P2)
 
 ## 5. Fuera de Alcance
 

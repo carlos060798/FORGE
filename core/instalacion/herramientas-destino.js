@@ -29,6 +29,11 @@ import { isAbsolute, relative, resolve } from 'node:path';
 const FECHA = '2026-10-13';
 /** Fecha de consulta de las filas añadidas después del spike S0.1 (Zed y Goose). */
 const FECHA_2 = '2026-11-11';
+/**
+ * Fecha en que se releyeron las fuentes que habían cambiado de sitio (Codex: developers.openai.com/codex/skills redirige a
+ * learn.chatgpt.com; Windsurf: docs.windsurf.com redirige a docs.devin.ai). Ver tests/fuentes-integraciones.test.js.
+ */
+const FECHA_3 = '2026-11-24';
 
 /** @type {Readonly<Record<string, Integracion>>} */
 export const INTEGRACIONES = Object.freeze({
@@ -46,12 +51,12 @@ export const INTEGRACIONES = Object.freeze({
   agents: {
     clave: 'agents', nombre: 'Carpeta común .agents/skills', carpetaSkills: '.agents/skills', nativa: false,
     invocacion: 'según la herramienta (Codex: $nombre; Gemini, Cursor, opencode, Copilot, Windsurf leen esta carpeta)', ejemplo: '$forge',
-    fuente: 'https://developers.openai.com/codex/skills', consultado: FECHA,
+    fuente: 'https://learn.chatgpt.com/docs/build-skills', consultado: FECHA_3,
   },
   codex: {
     clave: 'codex', nombre: 'Codex CLI', carpetaSkills: '.agents/skills', nativa: false,
     invocacion: '$<nombre> o /skills; implícita por descripción', ejemplo: '$forge',
-    fuente: 'https://developers.openai.com/codex/skills', consultado: FECHA,
+    fuente: 'https://learn.chatgpt.com/docs/build-skills', consultado: FECHA_3,
   },
   // Zed y Goose: carpeta confirmada el 2026-11-11 en su documentación oficial (ambas leen `.agents/skills/` del proyecto)
   zed: {
@@ -81,8 +86,10 @@ export const INTEGRACIONES = Object.freeze({
   },
   windsurf: {
     clave: 'windsurf', nombre: 'Windsurf', carpetaSkills: '.devin/skills', nativa: false,
-    invocacion: '@<nombre> en Cascade; automática', ejemplo: '@forge',
-    fuente: 'https://docs.windsurf.com/windsurf/cascade/skills', consultado: FECHA,
+    // `@<nombre>` es lo que Fragua genera, pero NO está confirmado: la documentación vigente (docs.devin.ai, leída el 2026-11-24)
+    // documenta `/<nombre>` y no menciona Cascade. Decisión pendiente del dueño hasta la prueba manual (F5).
+    invocacion: '@<nombre> en Cascade (sin confirmar: la documentación vigente muestra /<nombre>); automática', ejemplo: '@forge',
+    fuente: 'https://docs.devin.ai/desktop/cascade/skills', consultado: FECHA_3,
   },
   opencode: {
     clave: 'opencode', nombre: 'opencode', carpetaSkills: '.opencode/skills', nativa: false,

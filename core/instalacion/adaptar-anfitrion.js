@@ -14,6 +14,7 @@
  */
 
 import { nombreDeSkill, separarCabecera } from './skills-de-comandos.js';
+import { PLANTILLAS_HOOKS } from './hooks-anfitrion.js';
 
 /**
  * Prefijo con el que cada herramienta invoca una skill por nombre (spike S0.1).
@@ -143,4 +144,44 @@ export function agenteARol(archivo, texto, opciones) {
   const aviso = '> Este es un **rol**: carga estas instrucciones y trabaja como este agente en la conversación actual. Respeta las herramientas y los límites que indica (los agentes de solo lectura no escriben).';
   const cuerpoAdaptado = adaptarCuerpo(cuerpo.replace(/^\n+/, ''), opciones);
   return { nombre, skillMd: lineas.join('\n') + aviso + '\n\n' + (meta.length ? meta.join('\n\n') + '\n\n' : '') + cuerpoAdaptado, errores };
+}
+
+/**
+ * Adapta el `AGENTS.md` generado para un proyecto instalado en una herramienta que no es Claude Code: las órdenes `/sdd.x`
+ * del texto pasan a la forma de invocar de esa herramienta y se añade un bloque «Flujo Fragua en esta herramienta» con
+ * cómo se usa Fragua allí y qué NO está activo (guardián, guardias de solo lectura, prueba en la herramienta real).
+ * Es determinista: `init` compara el resultado con el archivo existente para decir «ya está al día».
+ * Con Claude Code no se llama: ese archivo no cambia.
+ * @param {string} texto el `AGENTS.md` ya generado (constitución o plantilla mínima)
+ * @param {{ integracion: { clave: string, nombre: string }, prefijo: string, comandos: readonly string[], conHooks: boolean }} opciones
+ * @returns {string}
+ */
+export function adaptarAgentsMd(texto, { integracion, prefijo, comandos, conHooks }) {
+  const { clave, nombre } = integracion;
+  const ref = (/** @type {string} */ skill) => referencia(prefijo, skill);
+  const cuerpo = adaptarCuerpo(texto.replace(/\r\n/g, '\n'), { prefijo, comandos }).replace(/\n+$/, '\n');
+  const plantilla = PLANTILLAS_HOOKS[clave];
+  const guardian = !plantilla
+    ? `${nombre} no tiene adaptador de hook en Fragua: el guardián no está instalado, así que las reglas de este archivo se piden al modelo y nada las hace cumplir.`
+    : conHooks
+      ? `El guardián de Fragua está registrado en \`${plantilla.ruta}\`. Es una red de seguridad, no un límite: donde la herramienta falla abierto (Gemini CLI, Codex y Windsurf) es consultivo. Un agente no puede reescribir ese archivo.`
+      : `El guardián de Fragua (el que bloquea comandos destructivos y escrituras de secretos) **no está instalado** en esta herramienta: las reglas de este archivo se piden al modelo y nada las hace cumplir. \`fragua init --integracion ${clave} --con-hooks\` lo registra.`;
+  const bloque = [
+    `## Flujo Fragua en esta herramienta (${nombre})`,
+    '',
+    `Este proyecto usa Fragua, una metodología de desarrollo guiado por especificaciones. Así se usa en ${nombre}:`,
+    '',
+    `- **Empezar:** pide ${ref('forge')} con tu idea y sigue con ${ref('sdd-especificar')}, ${ref('sdd-planificar')}, ${ref('sdd-tareas')} y ${ref('sdd-implementar')}; ${ref('sdd-estado')} dice en qué punto estás. Son los comandos del perfil esencial; el resto se instala con \`fragua init --integracion ${clave} --perfil completo\`.`,
+    '- **Roles:** los agentes de Fragua son skills `rol-<agente>` (por ejemplo `rol-revisor`). Se cargan y trabajan en esta misma conversación, sin contexto aislado.',
+    '- **Aprobar:** la especificación y el plan los aprueba una persona con `fragua aprobar spec` en una terminal real. Ningún agente marca una aprobación.',
+    '- **Verificar:** `fragua run` (el ciclo verificado, que necesita Docker) y `fragua verificar` funcionan igual en cualquier herramienta.',
+    '',
+    '### Qué no está activo en esta herramienta',
+    '',
+    `- ${guardian}`,
+    '- Las guardias de agentes de solo lectura y la memoria por agente no corren fuera de Claude Code: ninguna herramienta define `FRAGUA_AGENTE`. Un rol «de solo lectura» lo es por su instrucción, no por una barrera.',
+    `- Esta instalación **no está probada** en ${nombre}: lo que se instala sale de la documentación de la herramienta, no de haberlo visto funcionar. Detalle en \`.sdd/docs/ANFITRIONES.md\`.`,
+    '',
+  ].join('\n');
+  return `${cuerpo}\n${bloque}`;
 }

@@ -9,7 +9,7 @@ import { copiarArbol, crearArchivo, ErrorEnlace, escribirArchivo } from "../../c
 import { INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../../core/instalacion/herramientas-destino.js";
 import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../../core/instalacion/perfiles.js";
 import { nombreDeSkill } from "../../core/instalacion/skills-de-comandos.js";
-import { PREFIJO_INVOCACION, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
+import { PREFIJO_INVOCACION, adaptarAgentsMd, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
 import { esNivel, limitarNivel } from "../../core/llm-providers/niveles.js";
 import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
 import { FORMATOS_NATIVOS, agenteANativo } from "../../core/instalacion/agentes-nativos.js";
@@ -597,7 +597,7 @@ function integrarClaudeMd(cwd) {
  * @param {string} cwd
  * @returns {"creado"|"propuesto"|"al_dia"}
  */
-function integrarAgentsMd(cwd) {
+function integrarAgentsMd(cwd, inst = null) {
   const destino = join(cwd, "AGENTS.md");
   const rutaConstitucion = join(cwd, ".sdd", "memoria", "constitucion.md");
   // Las lecturas de insumos pasan por la misma política que las escrituras: el contenido de un archivo enlazado a fuera no entra en AGENTS.md (N-07)
@@ -610,7 +610,15 @@ function integrarAgentsMd(cwd) {
   let pruebas;
   try { pruebas = detectStack(cwd).test_cmd || undefined; } catch { /* sin stack reconocible */ }
 
-  const { contenido, origen } = generarAgentsMd({ constitucion, plantilla, nombre: typeof nombre === "string" ? nombre : undefined, pruebas });
+  const generado = generarAgentsMd({ constitucion, plantilla, nombre: typeof nombre === "string" ? nombre : undefined, pruebas });
+  const origen = generado.origen;
+  let contenido = generado.contenido;
+  // Para otra herramienta: las órdenes /sdd.x a su sintaxis y el flujo de Fragua en ella, con lo que no está activo.
+  // Con Claude Code (o sin opciones) el archivo es el de siempre.
+  if (inst && !inst.integracion.nativa) {
+    const comandos = readdirSync(join(PLUGIN_DIR, "commands")).filter((x) => x.endsWith(".md")).map((x) => x.slice(0, -3));
+    contenido = adaptarAgentsMd(contenido, { integracion: inst.integracion, prefijo: PREFIJO_INVOCACION[inst.integracion.clave] ?? "", comandos, conHooks: Boolean(inst.conHooks) });
+  }
   const de = origen === "constitucion" ? "la constitución del proyecto" : "la plantilla mínima (el proyecto aún no tiene constitución)";
 
   // Un enlace (también colgante) no se sigue: `existsSync` lo vería «no existe» y se escribiría al otro lado
@@ -700,7 +708,7 @@ export function cmdInit(global, guided = false, withUi = false, preset = null, t
 
   if (!global) {
     if (esClaude) paso("CLAUDE.md", () => integrarClaudeMd(PROYECTO));
-    paso("AGENTS.md", () => integrarAgentsMd(PROYECTO));
+    paso("AGENTS.md", () => integrarAgentsMd(PROYECTO, inst));
   }
 
   if (withUi) {

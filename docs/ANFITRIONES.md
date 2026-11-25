@@ -22,7 +22,7 @@ Esta página describe solo lo que el código hace hoy. Dos palabras de estado:
 | Hooks: guardián | Sí, `PreToolUse` | **Solo con `--con-hooks`**, en Cursor, Copilot, Gemini CLI, Codex, Windsurf y opencode (ver la matriz). **Consultivo, no impuesto, mientras la herramienta falle abierto (Gemini, Codex, Windsurf) o no se haya probado en real.** Kiro, Zed, Goose y las demás: sin adaptador. Sin `--con-hooks`, no instalado |
 | Hooks: memoria de agentes y convenciones | Sí, `PostToolUse` | **Solo con `--con-hooks`**, y solo la memoria (no las convenciones), en Cursor, Copilot, Gemini, Codex y Windsurf. opencode no tiene. Nunca bloquea |
 | `settings.json`, `CLAUDE.md` | Sí | No |
-| `AGENTS.md` | Sí | Sí |
+| `AGENTS.md` | Sí | Sí, adaptado a la herramienta: las órdenes `/sdd.x` con su sintaxis y un bloque «Flujo Fragua en esta herramienta» que dice cómo se usa Fragua allí y qué no está activo |
 
 Consecuencias en un anfitrión que no es Claude Code, dichas sin adornos:
 
@@ -60,7 +60,7 @@ La forma de invocar sale de la tabla de integraciones y se usa al reescribir las
 |---|---|---|
 | Cursor, Copilot, Kiro | `/` | `/sdd-planificar` |
 | Carpeta común (Codex) | `$` | `$sdd-planificar` |
-| Windsurf | `@` | `@sdd-planificar` |
+| Windsurf | `@` (**sin confirmar**: la documentación vigente, `docs.devin.ai`, leída el 2026-11-24, muestra `/nombre` y no menciona Cascade) | `@sdd-planificar` |
 | Gemini CLI, opencode, genérica | sin prefijo | «la skill `sdd-planificar`» |
 
 En Claude Code los comandos conservan su nombre con punto (`/sdd.planificar`).
