@@ -199,7 +199,8 @@ function comprobarSkills(clave, proyecto, nAgentes) {
       if (!m || !nombre || !/^description:\s*\S/m.test(m[1])) errores.push(`${c}: falta name o description`);
       else if (nombre !== c) errores.push(`${c}: name «${nombre}» ≠ carpeta`);
     } else {
-      for (const e of validarSkill(c, md)) errores.push(`${c}: ${e}`);
+      // Estricto: lo instalado fuera de Claude Code solo lleva campos del estándar de skills
+      for (const e of validarSkill(c, md, { estricto: true })) errores.push(`${c}: ${e}`);
     }
   }
   if (clave !== 'claude') {

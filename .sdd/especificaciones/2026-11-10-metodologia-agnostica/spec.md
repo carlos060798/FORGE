@@ -65,6 +65,17 @@ Que quien instale Fragua en una herramienta que no es Claude Code reciba la meto
 - [ ] **CA-003-01**: `docs/ANFITRIONES.md` tiene una matriz herramienta × capacidad en la que ninguna herramienta figura como «probada» sin su registro de prueba manual. (P1)
 - [ ] **CA-003-02**: README, estado actual y hoja de ruta describen la diferencia entre Claude Code y el resto en los mismos términos que la matriz. (P2)
 
+### HU-004: Las skills instaladas cumplen el estándar abierto
+**Como** usuario de cualquier herramienta que lee Agent Skills (agentskills.io)
+**Quiero** que lo que Fragua instala lleve en la cabecera solo campos del estándar
+**Para** que ninguna herramienta lo rechace ni lo ignore a medias
+
+**Criterios de aceptación:**
+- [x] **CA-004-01**: Al instalar en una herramienta que no es Claude Code se quita `model` de la cabecera, igual que ya se quita `allowed-tools` (solo los campos de primer nivel; una clave `model` dentro de `metadata` no se toca). Las fuentes de `skills/` y lo que recibe `claude` no cambian. (P1) — Añadido el 2026-11-24 (investigación web: el nombre de un modelo de Claude no es un campo del estándar, otras herramientas lo ignoran y la API de Skills de Claude lo rechaza).
+- [x] **CA-004-02**: `validarSkill` tiene un modo estricto: solo admite `name`, `description`, `license`, `compatibility`, `metadata` y `allowed-tools` (separado por espacios), `compatibility` de hasta 500 caracteres y `metadata` solo con valores de texto. Sin ese modo admite los campos propios de las fuentes de Claude Code. (P1)
+- [x] **CA-004-03**: Una prueba comprueba, para cada una de las 11 integraciones que no son Claude Code, que las 31 skills propias, las 39 de los comandos y los 14 roles salen con una cabecera válida en modo estricto, y el emulador de instalación (`npm run emular`) valida en modo estricto lo realmente instalado. (P1) — Hasta ahora el lint solo recorría `skills-generadas/`, no las 31 skills propias de `skills/`, que son las que llevaban `model:`.
+- [x] **CA-004-04**: `avisosDeSkill` avisa de un cuerpo de más de 500 líneas (recomendación del estándar); es un aviso, no un error. Las 31 skills propias no lo superan. (P2) — **4 skills generadas de comandos sí lo superan** (`sdd-implementar` 678, `sdd-planificar` 547, `sdd-compliance` 517, `sdd-constitucion` 507); la prueba fija esa lista y falla si aparece una quinta. Partir esos comandos no se hace aquí.
+
 ## 5. Fuera de Alcance
 
 - Guardián y memoria fuera de los hooks de Claude Code (F3): especificación propia.

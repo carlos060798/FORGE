@@ -15,7 +15,7 @@ Esta página describe solo lo que el código hace hoy. Dos palabras de estado:
 
 | Pieza | `claude` (nativa) | Resto de claves |
 |---|---|---|
-| Skills propias (31) | Sí, en `.claude/skills` | Sí, adaptadas (sin `allowed-tools`, sin «Claude Code» en el cuerpo, con una nota de equivalencias al principio que sí nombra a Claude Code para explicar qué cambia) |
+| Skills propias (31) | Sí, en `.claude/skills` | Sí, adaptadas (sin `allowed-tools` ni `model`, que no son del estándar abierto de skills; sin «Claude Code» en el cuerpo, con una nota de equivalencias al principio que sí nombra a Claude Code para explicar qué cambia) |
 | Comandos | Sí, `.claude/commands` (formato de Claude Code) | Como skills `sdd-*`, con las órdenes `/sdd.x` reescritas a la forma de invocar de esa herramienta; solo los del perfil elegido |
 | Agentes | Sí, `.claude/agents` (subagentes) | Como **roles**: una skill `rol-<agente>` por agente (14), que se carga y se ejecuta en la misma conversación |
 | Agentes nativos del anfitrión | No aplica | Sí, en el formato de Copilot, Cursor, Codex, Gemini CLI, opencode y Kiro (14 agentes). No en Windsurf, Zed, Goose, la carpeta común ni la genérica: su formato no está confirmado. Los de solo lectura, salvo `revisor` e `investigador`, no reciben terminal. **Sin probar en la herramienta real** |

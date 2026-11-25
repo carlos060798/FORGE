@@ -126,15 +126,27 @@ export function comandoASkill(comando, texto) {
   return { nombre, skillMd: lineas.join('\n') + cuerpo.replace(/^\n+/, '\n'), avisos, errores };
 }
 
+/** Campos de primer nivel de la cabecera que define la especificación abierta (`allowed-tools` es experimental). */
+export const CAMPOS_ESTANDAR = Object.freeze(['name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools']);
+export const MAX_COMPATIBILIDAD = 500;
+export const MAX_LINEAS_CUERPO = 500;
+
 /**
  * Valida un `SKILL.md` ya generado contra la especificación abierta.
+ *
+ * Con `estricto` (lo que se instala FUERA de Claude Code) exige además que la cabecera lleve solo campos del estándar
+ * (`CAMPOS_ESTANDAR`), que `compatibility` no pase de 500 caracteres y que cada valor de `metadata` sea un texto (no un
+ * número, un booleano, una lista ni un valor vacío). Sin `estricto`, que es el modo de las fuentes de Claude Code, se
+ * admiten sus campos propios (`model:`…): Claude Code los usa y otras herramientas los ignoran, pero la API de Skills
+ * de Claude los rechaza y algunas herramientas son estrictas.
  * @param {string} nombreCarpeta
  * @param {string} skillMd
+ * @param {{ estricto?: boolean }} [opciones]
  * @returns {string[]} errores (vacío si es válido)
  */
-export function validarSkill(nombreCarpeta, skillMd) {
+export function validarSkill(nombreCarpeta, skillMd, { estricto = false } = {}) {
   const errores = [];
-  const { campos } = separarCabecera(skillMd);
+  const { campos, bloques } = separarCabecera(skillMd);
   const nombre = sinComillas(campos.get('name') ?? '');
   if (!NOMBRE_VALIDO.test(nombre) || nombre.length > MAX_NOMBRE) errores.push(`name inválido: "${nombre}"`);
   if (nombre !== nombreCarpeta) errores.push(`name "${nombre}" no coincide con la carpeta "${nombreCarpeta}"`);
@@ -143,7 +155,33 @@ export function validarSkill(nombreCarpeta, skillMd) {
   if (!d || String(d).length > MAX_DESCRIPCION) errores.push('description vacía o de más de 1024 caracteres');
   const tools = campos.get('allowed-tools');
   if (tools !== undefined && /,/.test(tools)) errores.push('allowed-tools debe separarse por espacios');
+  if (estricto) {
+    for (const k of [...campos.keys(), ...bloques.keys()]) {
+      if (!CAMPOS_ESTANDAR.includes(k)) errores.push(`campo fuera de estándar: "${k}"`);
+    }
+    const compatibilidad = campos.get('compatibility');
+    if (compatibilidad !== undefined && sinComillas(compatibilidad).length > MAX_COMPATIBILIDAD) {
+      errores.push(`compatibility de más de ${MAX_COMPATIBILIDAD} caracteres`);
+    }
+    for (const linea of bloques.get('metadata') ?? []) {
+      const m = /^\s+([^\s:]+):\s*(.*)$/.exec(linea);
+      if (!m) { errores.push(`metadata: línea que no es «clave: valor»: "${linea.trim()}"`); continue; }
+      const v = m[2].trim();
+      const sinTexto = v === '' || /^[[{]/.test(v) || (!/^["']/.test(v) && /^(true|false|null|~|-?\d+(\.\d+)?)$/i.test(v));
+      if (sinTexto) errores.push(`metadata.${m[1]} no es un texto: "${v}"`);
+    }
+  }
   return errores;
+}
+
+/**
+ * Avisos (no errores) de un `SKILL.md`: la especificación recomienda un cuerpo de menos de 500 líneas.
+ * @param {string} skillMd
+ * @returns {string[]}
+ */
+export function avisosDeSkill(skillMd) {
+  const lineas = separarCabecera(skillMd).cuerpo.replace(/\n$/, '').split('\n').length;
+  return lineas > MAX_LINEAS_CUERPO ? [`el cuerpo tiene ${lineas} líneas (la especificación recomienda menos de ${MAX_LINEAS_CUERPO})`] : [];
 }
 
 /**

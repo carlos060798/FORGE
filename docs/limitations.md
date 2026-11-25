@@ -45,6 +45,7 @@ Qué recibe cada herramienta: [ANFITRIONES.md](ANFITRIONES.md). Cómo se usa: [U
 | opencode, Kiro, Zed y Goose no tienen memoria de agentes por hooks; Zed, Goose, Windsurf y la carpeta común no reciben agentes nativos (solo roles) | [ANFITRIONES.md](ANFITRIONES.md) | Usa los roles `rol-*` |
 | Sin subagentes, un rol se ejecuta en la misma conversación: pierde el contexto aislado y lo paralelo pasa a secuencial | `core/instalacion/adaptar-anfitrion.js` (nota de anfitrión) | Es el comportamiento esperado de la adaptación |
 | Los hooks necesitan Node ≥ 20 y la orden `fragua` en el PATH; sin ella, Cursor y Copilot bloquean y Gemini, Codex y Windsurf dejan pasar | [runtime.md](runtime.md), [referencia-cli.md](referencia-cli.md) | Instala `fragua` globalmente antes de usar `--con-hooks` |
+| Cuatro skills de comandos pasan de las 500 líneas que el estándar de skills recomienda (`sdd-implementar` 678, `sdd-planificar` 547, `sdd-compliance` 517, `sdd-constitucion` 507): la carga progresiva de algunas herramientas las lee enteras | `tests/skills-estandar.test.js` (lista fija de excepciones) | Es una recomendación, no un error; partir esos comandos no está hecho |
 | `--con-hooks` nunca pisa un archivo de hooks existente: si ya tienes uno, hay que añadir la orden a mano | `tests/instalacion-con-hooks.test.js` | Sigue el aviso que imprime la instalación |
 
 ## Quitado de la versión anterior de este documento

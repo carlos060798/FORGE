@@ -18,6 +18,10 @@
 | CA-002-05 mensaje final con roles y lo no recibido | La instalación real comprueba `14 roles` en la salida | **A medias.** El texto de hooks/guardián/memoria no tiene aserción |
 | CA-003-01 matriz sin herramienta «probada» sin registro | `docs/ANFITRIONES.md` | **Solo documento; sin prueba.** Ninguna herramienta figura como probada |
 | CA-003-02 README, estado y hoja de ruta coherentes con la matriz | `README.md`, `docs/ESTADO-ACTUAL.md`, `docs/roadmap.md` | **Solo documento; sin prueba** |
+| CA-004-01 se quita `model` al instalar fuera de Claude Code; las fuentes y `claude` no cambian | `tests/skills-estandar.test.js` («adaptarSkill quita también `model:`», «las 14 skills propias con `model:` salen sin él»); `tests/instalacion-equivalencia.test.js` (lo de `claude` no cambia) | **Con prueba** |
+| CA-004-02 `validarSkill` estricto | `tests/skills-estandar.test.js` («validarSkill en modo estricto», 7 pruebas: cabecera estándar, campos fuera de estándar, `compatibility`, `metadata`, `allowed-tools`, modo permisivo, reglas de siempre) | **Con prueba** |
+| CA-004-03 lint estricto de skills propias, de comandos y roles en las 11 integraciones; el emulador valida lo instalado | `tests/skills-estandar.test.js` («lo instalado para cada herramienta…», 11 + 1 pruebas); `npm run emular` (24 de 24 con el modo estricto, 2026-11-24) | **Con prueba** (cabeceras y textos; no que la herramienta cargue la skill) |
+| CA-004-04 aviso de cuerpo largo | `tests/skills-estandar.test.js` («avisosDeSkill…», 3 pruebas) | **Con prueba.** Hay 4 skills de comandos por encima de 500 líneas (lista fija en la prueba): **sin resolver** |
 
 ## Qué quedó a medias o sin hacer
 

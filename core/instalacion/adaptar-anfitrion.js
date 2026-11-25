@@ -99,7 +99,9 @@ const yamlCadena = (s) => JSON.stringify(s);
 
 /**
  * Adapta un `SKILL.md` (propio o generado de un comando) a una herramienta que no es Claude Code.
- * Quita `allowed-tools` (nombres de herramientas de Claude Code) y conserva el resto de la cabecera.
+ * Quita `allowed-tools` (nombres de herramientas de Claude Code) y `model` (el nombre de un modelo de Claude: no es un campo del
+ * estándar, otras herramientas lo ignoran y la API de Skills de Claude lo rechaza) y conserva el resto de la cabecera.
+ * Solo se quitan los campos de primer nivel: una clave `model` dentro de `metadata` no se toca. Las fuentes no cambian.
  * @param {string} skillMd
  * @param {{ prefijo: string, comandos: readonly string[], rutas?: { skills?: string|null, agentes?: string|null } }} opciones
  * @returns {string}
@@ -108,7 +110,7 @@ export function adaptarSkill(skillMd, opciones) {
   const t = skillMd.replace(/^﻿/, '').replace(/\r\n/g, '\n');
   const m = /^---\n([\s\S]*?)\n---\n?/.exec(t);
   if (!m) return notaDeAnfitrion(opciones.prefijo) + '\n' + adaptarCuerpo(t, opciones);
-  const cabecera = adaptarCuerpo(m[1].split('\n').filter((l) => !/^allowed-tools:/.test(l)).join('\n'), opciones);
+  const cabecera = adaptarCuerpo(m[1].split('\n').filter((l) => !/^(?:allowed-tools|model):/.test(l)).join('\n'), opciones);
   const cuerpo = adaptarCuerpo(t.slice(m[0].length).replace(/^\n+/, ''), opciones);
   return `---\n${cabecera}\n---\n\n${notaDeAnfitrion(opciones.prefijo)}\n${cuerpo}`;
 }
