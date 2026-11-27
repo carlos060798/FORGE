@@ -52,7 +52,7 @@ import { PLUGIN_DIR, c, info, aviso, titulo, error, pluginVersion, claudeEnPath 
 import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from "./instalar.js";
 
 /** Variables de entorno con la clave de cada proveedor (los que no figuran no usan clave). */
-const VARIABLES_DE_CLAVE = { anthropic: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], openai: ["OPENAI_API_KEY"] };
+const VARIABLES_DE_CLAVE = { anthropic: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], openai: ["OPENAI_API_KEY"], gemini: ["GEMINI_API_KEY", "GOOGLE_API_KEY"] };
 
 /**
  * ¿Hay una orden `fragua` en alguna carpeta del PATH? Se mira el sistema de archivos, sin ejecutar nada:
@@ -92,16 +92,16 @@ async function cmdDoctorLlm({ problemas }) {
   const { proveedorPorCredenciales } = await import("../../core/llm-providers/index.js");
   const providerActivo = leerVariable('LLM_PROVIDER') ?? proveedorPorCredenciales(process.env) ?? 'anthropic (default)';
   info(`Provider LLM activo: ${providerActivo}`);
-  info("  Cambiar: FORGE_LLM_PROVIDER=anthropic|openai|ollama|stub  o  llm.provider en sdd.config.yaml");
+  info("  Cambiar: FORGE_LLM_PROVIDER=anthropic|openai|ollama|gemini|stub  o  llm.provider en sdd.config.yaml");
   const { lineaRevision } = await import("../../core/precios.js");
   info(lineaRevision());
   try {
     const { lineasDeNiveles } = await import("../../core/llm-providers/niveles.js");
-    const { AnthropicProvider, OpenAIProvider, OllamaProvider } = await import("../../core/llm-providers/index.js");
+    const { AnthropicProvider, OpenAIProvider, OllamaProvider, GeminiProvider } = await import("../../core/llm-providers/index.js");
     const { leerModelosDe } = await import("../../core/ciclo/config.js");
     const modelos = leerModelosDe(process.cwd());
     info("Modelo de cada nivel por proveedor (modelos: del proyecto manda sobre los de la tabla):");
-    for (const l of lineasDeNiveles([new AnthropicProvider({ modelos }), new OpenAIProvider({ modelos }), new OllamaProvider({ modelos })])) info(l);
+    for (const l of lineasDeNiveles([new AnthropicProvider({ modelos }), new OpenAIProvider({ modelos }), new OllamaProvider({ modelos }), new GeminiProvider({ modelos, api_key: "" })])) info(l);
   } catch (e) {
     aviso(`No se pudieron leer los niveles de modelo: ${e?.message ?? e}`);
   }
@@ -264,7 +264,7 @@ export async function cmdDoctor() {
   // Clave del proveedor activo (el detalle y el ping están en el diagnóstico del LLM, más abajo)
   const { proveedorPorCredenciales } = await import("../../core/llm-providers/index.js");
   const proveedorActivo = (leerVariable("LLM_PROVIDER") ?? proveedorPorCredenciales(process.env) ?? "anthropic").toLowerCase();
-  const variablesClave = VARIABLES_DE_CLAVE[proveedorActivo === "claude" ? "anthropic" : proveedorActivo === "gpt" ? "openai" : proveedorActivo] ?? [];
+  const variablesClave = VARIABLES_DE_CLAVE[proveedorActivo === "claude" ? "anthropic" : proveedorActivo === "gpt" ? "openai" : proveedorActivo === "google" ? "gemini" : proveedorActivo] ?? [];
   if (variablesClave.length) {
     const apiKey = variablesClave.map((v) => process.env[v]).find(Boolean);
     if (!apiKey) {

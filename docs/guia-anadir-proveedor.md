@@ -1,20 +1,21 @@
 # Cómo añadir un proveedor de modelos
 
 > Tipo: Guía
-> Última revisión: 2026-11-10 contra el commit 55a9dd9
+> Última revisión: 2026-11-26 (proveedor Gemini añadido; el resto, contra el commit 55a9dd9)
 
 ## Proveedores que existen
 
-`crearProvider` (`core/llm-providers/index.js:200-252`) elige por `FORGE_LLM_PROVIDER`, luego `provider:` de la configuración y, si no hay, por claves de entorno (`ANTHROPIC_API_KEY`/`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_BASE_URL`; si no, `anthropic`). Cuatro implementaciones, con alias:
+`crearProvider` (`core/llm-providers/index.js`) elige por `FORGE_LLM_PROVIDER`, luego `provider:` de la configuración y, si no hay, por claves de entorno, en este orden (`proveedorPorCredenciales`): `ANTHROPIC_API_KEY`/`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_BASE_URL` y `GEMINI_API_KEY`/`GOOGLE_API_KEY`; si no hay ninguna, `anthropic`. Cinco implementaciones, con alias:
 
 | Implementación | Nombres que la seleccionan |
 |---|---|
 | `AnthropicProvider` | `anthropic`, `claude` |
 | `OpenAIProvider` | `openai`, `gpt`, `codex`, `azure`, `github-models`, `cursor` |
 | `OllamaProvider` | `ollama`, `local`, `deepseek`, `llama`; un nombre que empiece por `http` se toma como `base_url` de Ollama |
+| `GeminiProvider` | `gemini`, `google` (HTTP directo a `generateContent`, sin SDK; ADR-27; **sin probar con la API real**) |
 | `StubProvider` | `stub`, `test` (pruebas y CI, sin modelo) |
 
-Un nombre desconocido avisa y usa `anthropic`. **No hay proveedor de Gemini.** Los alias (`azure`, `github-models`, `cursor`, `codex`) no son implementaciones distintas: son `OpenAIProvider` con otra `base_url`; qué servicios concretos funcionan con ella no está verificado (la batería usa servidores falsos). La dirección de un servidor puesta por el proyecto la filtra `sanearConfigDelProyecto`; el usuario permite destinos con `FORGE_LLM_HOSTS`.
+Un nombre desconocido lanza `ErrorProveedorDesconocido` y detiene la orden (no cae en otro proveedor). Los alias (`azure`, `github-models`, `cursor`, `codex`) no son implementaciones distintas: son `OpenAIProvider` con otra `base_url`; qué servicios concretos funcionan con ella no está verificado (la batería usa servidores falsos). La dirección de un servidor puesta por el proyecto la filtra `sanearConfigDelProyecto`; el usuario permite destinos con `FORGE_LLM_HOSTS`.
 
 ## Pasos para añadir uno nuevo
 
@@ -42,7 +43,8 @@ Un proveedor está listo para FORGE cuando pasa la batería común de conformida
 ## 2. Pasar la batería
 
 1. Si el proveedor habla HTTP, añade su formato a `tests/fixtures/proveedores/servidor-falso.js`
-   (los escenarios son neutros: texto, usos de herramienta, parada, error HTTP, «colgar»).
+   (los escenarios son neutros: texto, usos de herramienta, parada, error HTTP, «colgar»; `crudo` sirve una respuesta tal cual).
+   Ejemplo reciente: `'gemini'`, con su adaptador en la batería y sus casos propios en `tests/gemini-provider.test.js`.
 2. Añade un adaptador a `ADAPTADORES` en `tests/proveedores-conformidad.test.js`: cómo montar el proveedor
    contra el servidor falso y cómo leer los resultados de herramienta que recibió.
 3. Declara sus capacidades (`declara`, `argumentosComoTexto`, `opaco`, ...). Quien declara `admiteHerramientas`
@@ -52,7 +54,7 @@ Un proveedor está listo para FORGE cuando pasa la batería común de conformida
 
 ## 3. Gasto
 
-Los precios viven en `core/precios.js` (solo lo contrastado con la tarifa oficial, con fecha). Un modelo sin
+Los precios viven en `core/precios.js` (solo lo contrastado con la tarifa oficial, con fecha y URL de fuente: `REVISADA_OPENAI`, `REVISADA_GEMINI`). Un modelo sin
 precio se cuenta al más caro conocido y el ciclo avisa una vez por sesión de qué clave de `precios:` falta.
 Para un modelo sin coste real, declara cero de forma explícita en `precios:` de `.sdd/sdd.config.yaml`
 (`<modelo>_entrada: 0` y `<modelo>_salida: 0`).
@@ -60,7 +62,7 @@ Para un modelo sin coste real, declara cero de forma explícita en `precios:` de
 ## 4. Validación real
 
 Pasar la batería no prueba el proveedor con un modelo real. Hasta que se ejecute el kit de pruebas
-independientes con él, la documentación debe seguir diciendo «sin probar con modelo real».
+independientes con él, la documentación debe seguir diciendo «sin probar con modelo real». Hoy es el caso de OpenAI, Ollama y Gemini (para Gemini, además, `scripts/pruebas-independientes.mjs` aún no acepta `--proveedor gemini`).
 
 ## Límites
 

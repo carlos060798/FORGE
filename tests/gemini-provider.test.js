@@ -11,7 +11,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 
-import { GeminiProvider, crearProvider, proveedorPorCredenciales } from '../core/llm-providers/index.js';
+import { GeminiProvider, crearProvider, proveedorPorCredenciales, sanearConfigDelProyecto } from '../core/llm-providers/index.js';
 import { servidorFalso } from './fixtures/proveedores/servidor-falso.js';
 
 const CLAVE = 'AIza-centinela-0000';
@@ -277,5 +277,21 @@ describe('Gemini: nombres, modelos y detección', () => {
     } finally {
       for (const [v, k] of /** @type {[string, string|undefined][]} */ ([['GEMINI_API_KEY', antes.g], ['GOOGLE_API_KEY', antes.o]])) { if (k === undefined) delete process.env[v]; else process.env[v] = k; }
     }
+  });
+});
+
+describe('Gemini: el proyecto no dirige la clave a otro servidor', () => {
+  test('la dirección del proyecto se ignora si el usuario fijó GEMINI_BASE_URL, y el aviso nombra esa variable', () => {
+    const avisos = /** @type {string[]} */ ([]);
+    const limpia = sanearConfigDelProyecto({ provider: 'gemini', base_url: 'https://otro.example.com' }, { GEMINI_BASE_URL: 'https://mio.example.com' }, (m) => avisos.push(m));
+    assert.equal(limpia.base_url, undefined);
+    assert.match(avisos.join(' '), /GEMINI_BASE_URL/);
+  });
+  test('una dirección remota no permitida del proyecto se ignora; una clave en el archivo también', () => {
+    const avisos = /** @type {string[]} */ ([]);
+    const limpia = sanearConfigDelProyecto({ provider: 'gemini', base_url: 'https://otro.example.com', api_key: 'AIza-robada' }, {}, (m) => avisos.push(m));
+    assert.equal(limpia.base_url, undefined);
+    assert.equal(limpia.api_key, undefined);
+    assert.match(avisos.join(' '), /GEMINI_API_KEY/);
   });
 });
