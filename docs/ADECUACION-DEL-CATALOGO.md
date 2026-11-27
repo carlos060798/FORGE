@@ -8,7 +8,7 @@
 
 1. **Fragua no tiene un problema de roles: tiene un problema de higiene del catálogo y de contención.** Los 14 agentes cubren casi todos los roles que usa la industria; lo que falla son cabeceras incompletas, solapamientos, permisos de más y controles que solo existen como texto del prompt.
 2. **La corrección más rentable es mecánica:** completar `name` y `description` en 25 skills y poner una prueba que impida que vuelva a pasar.
-3. **Fusionar y borrar es más caro de lo que parece:** el catálogo está referenciado desde el motor (`core/evaluator-optimizer.js`), los tres presets, el manifiesto y varios comandos. Cada fusión es una pequeña migración con prueba, no un borrado.
+3. **Fusionar y borrar es más caro de lo que parece:** el catálogo está referenciado desde el motor (se citaba `core/evaluator-optimizer.js`, que no existe en el repositorio; qué módulo lo referencia hoy: no verificado), los tres presets, el manifiesto y varios comandos. Cada fusión es una pequeña migración con prueba, no un borrado.
 4. **No añadir agentes por añadir.** La evidencia consultada (Anthropic, Cognition) es que un sistema multiagente cuesta del orden de 15 veces los tokens de un chat y rinde peor en código con contexto compartido. Un rol nuevo solo entra si cierra un hueco medido.
 5. **Lo que más separa a Fragua del resto sigue siendo lo que no es un agente:** el veredicto determinista, el aislamiento, el tope de gasto y la aprobación humana. El catálogo debe reforzarlo, no diluirlo.
 

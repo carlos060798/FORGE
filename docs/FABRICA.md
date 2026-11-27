@@ -1,5 +1,7 @@
 # La Fábrica de Software: De la Idea al Producto en Vivo
 
+> Tipo: Explicación · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 ¿Te has despertado alguna vez con una idea brillante para una app, un sitio web o una herramienta que resolvería un problema? ¿Y luego pensaste "pero... yo no sé programar"? Bueno, esa barrera acaba de desaparecer. SDD-ES (Sistema de Diseño y Desarrollo Especializado) es tu fábrica de software: describes qué quieres, y el sistema lo construye, lo verifica y lo publica en internet. Todo sin escribir una sola línea de código.
 
 Este documento te explica cómo funciona, sin tecnicismos, para que entiendas exactamente qué pasa detrás de escenas desde que tienes una idea hasta que está viva en la web.

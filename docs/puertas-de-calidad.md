@@ -1,4 +1,5 @@
 # Puertas de calidad en `fragua verificar`
+
 > Tipo: Referencia
 > Última revisión: 2026-11-10 contra el commit 55a9dd9
 

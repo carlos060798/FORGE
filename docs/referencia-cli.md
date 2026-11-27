@@ -206,7 +206,7 @@ Arranca el dashboard local.
 fragua ui [--port N] [--no-open]
 ```
 
-Busca `.forge-ui/server.js` en el proyecto y, si no, `ui/server.js` del paquete; si no hay ninguno, sale con 1. Escucha en `127.0.0.1`, puerto 3001 por defecto, y se cierra tras 30 minutos sin peticiones. Solo atiende peticiones `GET`. Acepta `--port N` y `--port=N`. Rutas: ver [api-reference.md](api-reference.md#servidor-del-dashboard).
+Busca `.forge-ui/server.js` en el proyecto y, si no, `ui/server.js` del paquete; si no hay ninguno, sale con 1. Escucha en `127.0.0.1`, puerto 3001 por defecto, y se cierra tras 30 minutos sin peticiones. Solo atiende peticiones `GET`. Acepta `--port N` y `--port=N`. Rutas: ver [api-reference.md](api-reference.md#servidor-del-panel).
 
 ```bash
 npx fragua ui --port 3005 --no-open

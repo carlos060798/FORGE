@@ -1,5 +1,7 @@
 # Caso completo: API REST con autenticación
 
+> Tipo: Tutorial · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 Este ejemplo muestra un flujo FORGE para un proyecto mediano con backend real, base de datos y autenticación JWT. Está orientado a desarrolladores que quieren entender qué produce cada agente en detalle.
 
 Para un primer recorrido más corto, ver [getting-started.md](getting-started.md).
@@ -19,7 +21,7 @@ Para un primer recorrido más corto, ver [getting-started.md](getting-started.md
 ## Paso 1 — Inicializar y configurar
 
 ```bash
-npx sdd-es init
+npx fragua init
 ```
 
 Esto copia los archivos de FORGE al proyecto. Luego configura la constitución:

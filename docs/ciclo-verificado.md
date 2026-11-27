@@ -333,7 +333,7 @@ Si una tarea tiene puntos de guardado del ciclo, `forge resume` la reanuda con e
 
 ```bash
 export ANTHROPIC_API_KEY=...
-npx forge probar-modelo [--tope 0.50] [--conservar]
+npx fragua probar-modelo [--tope 0.50] [--conservar]
 ```
 
 Crea un proyecto desechable con una tarea trivial (una función `suma` y sus pruebas), lanza el ciclo con un tope de gasto bajo y resume: resultado, iteraciones, gasto y llamadas, y si el modelo devolvió el formato de archivos que el ciclo espera (`salida_invalida` indica que no). Gasta dinero real: como máximo el tope (0,50 USD por defecto). Sale con 0 si la tarea terminó con éxito, 1 si no, 2 si no se pudo ejecutar (sin clave, tope no válido). Es la prueba que falta en la verificación del ciclo.

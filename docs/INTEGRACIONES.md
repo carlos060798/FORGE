@@ -1,5 +1,7 @@
 # Integraciones de FORGE con MCPs y servicios externos
 
+> Tipo: Referencia · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 FORGE es extensible via **Model Context Protocol (MCP)**. Cada integración añade capacidades que FORGE puede invocar desde skills o comandos.
 
 ## Estado de integraciones

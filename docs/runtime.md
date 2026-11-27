@@ -280,4 +280,4 @@ sequenceDiagram
     CC->>U: resultado
 ```
 
-Es el flujo de la superficie Claude Code. `forge run` sigue otro camino —el grafo de [mapa-de-modulos.md](mapa-de-modulos.md#el-ciclo-verificado-nodos-y-transiciones)— y no pasa por estos hooks.
+Es el flujo de la superficie Claude Code. `forge run` sigue otro camino —el grafo de [mapa-de-modulos.md](mapa-de-modulos.md#core-el-ciclo-verificado)— y no pasa por estos hooks.

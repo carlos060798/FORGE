@@ -8,7 +8,7 @@ Una API para que un programa de tu equipo lance el ciclo verificado, consulte su
 ## Arrancar
 
 ```bash
-npx forge api [--port 3002] [--cwd <proyecto>]
+npx fragua api [--port 3002] [--cwd <proyecto>]
 ```
 
 Escribe **una línea JSON** por la salida estándar con la dirección y el secreto, y el resto por la de errores:
