@@ -10,11 +10,11 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSyn
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { SKILLS_SOLO_CLAUDE, adaptarCuerpo } from "../core/instalacion/adaptar-anfitrion.js";
+import { SKILLS_SOLO_CLAUDE, adaptarCuerpo, notaDeAnfitrion } from "../core/instalacion/adaptar-anfitrion.js";
 import { ROOT, forge } from "./instalacion-ayudas.js";
 
 const temporal = (p) => realpathSync(mkdtempSync(join(tmpdir(), p)));
-const LISTA = ["cache-audit", "compresion-tokens", "deploy-vercel", "effort-router", "indexar-proyecto", "sdd-crear-agente"];
+const LISTA = ["cache-audit", "compresion-tokens", "effort-router", "indexar-proyecto", "sdd-crear-agente"];
 
 describe("SKILLS_SOLO_CLAUDE", () => {
   test("es exactamente la lista conocida", () => assert.deepEqual([...SKILLS_SOLO_CLAUDE].sort(), LISTA));
@@ -58,5 +58,20 @@ describe("adaptarCuerpo: identificadores de modelo", () => {
     assert.equal(ad("claude-sonnet-4-6"), "«medio»");
     assert.equal(ad("claude-haiku-4-5-20251001"), "«economico»");
   });
+  test("no se come la puntuación que sigue al id", () => {
+    assert.equal(ad("usa claude-sonnet-4-5. Luego sigue"), "usa «medio». Luego sigue");
+    assert.equal(ad("(claude-opus-4-8), y más"), "(«alto»), y más");
+  });
   test("texto sin ids no cambia", () => assert.equal(ad("modelo medio"), "modelo medio"));
+});
+
+describe("referencias a skills que no se instalan", () => {
+  test("deploy-vercel es neutral (usa el MCP de la herramienta) y sigue instalándose", () => {
+    assert.ok(!SKILLS_SOLO_CLAUDE.includes("deploy-vercel"));
+  });
+  test("la nota de anfitrión nombra las skills ausentes y dice que se salten", () => {
+    const n = notaDeAnfitrion("$");
+    for (const x of SKILLS_SOLO_CLAUDE) assert.ok(n.includes(x), x);
+    assert.match(n, /no se instalan/i);
+  });
 });

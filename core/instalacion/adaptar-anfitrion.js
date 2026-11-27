@@ -50,7 +50,7 @@ export function notaDeAnfitrion(prefijo) {
     '> - `delegar_a_rol("agente", prompt)` (o «invocar al agente X»): es pseudocódigo. Carga la skill `rol-X` y haz ese trabajo en esta misma conversación, devolviendo solo el informe. Lo que el texto pida en paralelo se hace en secuencia.',
     '> - `mostrar_lista_de_tareas`: muestra el avance como una lista de tareas en tu respuesta.',
     '> - El ajuste de esfuerzo (`/effort` en Claude Code) y `$CLAUDE_PLUGIN_ROOT` no existen aquí: usa el ajuste de tu herramienta o ignora esas líneas.',
-    '> - Los scripts `claude-hooks/*.js` (índice de símbolos, consulta de memoria, context-manager, model-registry) son de Claude Code y no se instalan: si un paso los pide y no existen, sáltalo. El guardián sí está disponible como `fragua guardian evaluar` si instalaste con `--con-hooks`; si no, respeta tú las reglas de `AGENTS.md` y anota tus decisiones en `.sdd/memoria/`.',
+    '> - Los scripts `claude-hooks/*.js` (índice de símbolos, consulta de memoria, context-manager, model-registry) son de Claude Code y no se instalan. Tampoco se instalan las skills `' + SKILLS_SOLO_CLAUDE.join('`, `') + '` (dependen de esos scripts o del esfuerzo de Claude): si un paso las nombra o pide un script que no existe, sáltalo. El guardián sí está disponible como `fragua guardian evaluar` si instalaste con `--con-hooks`; si no, respeta tú las reglas de `AGENTS.md` y anota tus decisiones en `.sdd/memoria/`.',
     '',
   ].join('\n');
 }
@@ -59,7 +59,7 @@ export function notaDeAnfitrion(prefijo) {
  * Skills cuyo núcleo es un script de Claude Code (`claude-hooks/`) o una función de esfuerzo de Claude: no se instalan en otras
  * herramientas. Las fuentes no cambian (informe de agnosticismo del 2026-11-24, H-B3 y H-B4).
  */
-export const SKILLS_SOLO_CLAUDE = Object.freeze(["indexar-proyecto", "compresion-tokens", "cache-audit", "deploy-vercel", "effort-router", "sdd-crear-agente"]);
+export const SKILLS_SOLO_CLAUDE = Object.freeze(["indexar-proyecto", "compresion-tokens", "cache-audit", "effort-router", "sdd-crear-agente"]);
 
 const NIVEL_DE_FAMILIA = { opus: "alto", sonnet: "medio", haiku: "economico" };
 
@@ -100,7 +100,7 @@ export function adaptarCuerpo(cuerpo, { prefijo, comandos, rutas }) {
   t = t.replace(/(?<![\w./-])\/effort[ \t]+(\w+)/g, 'el esfuerzo «$1» de tu herramienta');
   t = t.replace(/(^|[ \t])[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./gm, (_m, antes) => antes + 'En esta herramienta no hay hook de memoria: al terminar, anota tus decisiones en `.sdd/memoria/`.');
   // Identificadores de modelo de Claude: en otra herramienta se dice el nivel, no el modelo
-  t = t.replace(/\bclaude-(opus|sonnet|haiku)-\d[\w.-]*/g, (_m, f) => `«${NIVEL_DE_FAMILIA[f]}»`);
+  t = t.replace(/\bclaude-(opus|sonnet|haiku)-\d+(?:[-.]\w+)*/g, (_m, f) => `«${NIVEL_DE_FAMILIA[f]}»`);
   t = t.replace(/\bClaude Code\b/g, 'tu herramienta de código');
   return t;
 }
@@ -174,7 +174,7 @@ export function adaptarAgentsMd(texto, { integracion, prefijo, comandos, conHook
   const guardian = !plantilla
     ? `${nombre} no tiene adaptador de hook en Fragua: el guardián no está instalado, así que las reglas de este archivo se piden al modelo y nada las hace cumplir.`
     : conHooks
-      ? `El guardián de Fragua está registrado en \`${plantilla.ruta}\`. Es una red de seguridad, no un límite: donde la herramienta falla abierto (Gemini CLI, Codex y Windsurf) es consultivo. Un agente no puede reescribir ese archivo.`
+      ? `El guardián de Fragua está registrado en \`${plantilla.ruta}\`. Es una red de seguridad, no un límite: donde la herramienta falla abierto (Gemini CLI, Codex y Windsurf) es consultivo. Las herramientas de archivo y las redirecciones directas de la terminal no pueden escribirlo; rodeos como \`cd\` antes de la ruta o borrar o mover la carpeta no se detectan.`
       : `El guardián de Fragua (el que bloquea comandos destructivos y escrituras de secretos) **no está instalado** en esta herramienta: las reglas de este archivo se piden al modelo y nada las hace cumplir. \`fragua init --integracion ${clave} --con-hooks\` lo registra.`;
   const bloque = [
     `## Flujo Fragua en esta herramienta (${nombre})`,

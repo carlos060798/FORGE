@@ -126,7 +126,7 @@ El guardián es una red de seguridad, no un límite. Fuera de Claude Code solo e
 | Zed, Goose, carpeta común (`agents`), genérica | No disponible: sin adaptador de hook | No disponible | No aplica |
 | Cualquier herramienta con cliente MCP | Consultivo: `fragua mcp --perfil guardian` expone `guardian_evaluar`; el modelo puede no llamarla | No disponible | No aplica |
 
-Lo que sí se impone en todas las herramientas con hook: el agente no puede reescribir el archivo donde su herramienta registra el guardián (`.codex/hooks.json`, `.cursor/hooks.json`, `.github/hooks/fragua-guardian.json`, `.gemini/settings*`, `.devin/hooks*`, `.opencode/plugins/fragua-guardian*`), ni por una herramienta de archivo ni por la terminal. El dueño lo edita a mano o con `FORGE_EDITAR_GUARDIAN=1`. Vale mientras el hook se ejecute; con el hook apagado por la propia herramienta (Gemini, Codex y Windsurf fallan abiertos) no hay nadie que lo aplique.
+Lo que sí se impone en todas las herramientas con hook: el agente no puede reescribir el archivo donde su herramienta registra el guardián (`.codex/hooks.json`, `.cursor/hooks.json`, `.github/hooks/fragua-guardian.json`, `.gemini/settings*`, `.devin/hooks*`, `.opencode/plugins/fragua-guardian*`), ni por una herramienta de archivo ni con una redirección directa desde la terminal. **Rodeos que no se detectan:** `cd` a la carpeta y escribir con ruta relativa, y borrar o mover la carpeta entera (pasa igual con `.claude`). El dueño lo edita a mano o con `FORGE_EDITAR_GUARDIAN=1`. Vale mientras el hook se ejecute; con el hook apagado por la propia herramienta (Gemini, Codex y Windsurf fallan abiertos) no hay nadie que lo aplique.
 
 Límites que valen en todas las herramientas distintas de Claude Code:
 
