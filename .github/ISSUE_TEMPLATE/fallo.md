@@ -20,7 +20,7 @@ Antes de enviar:
 
 | | |
 |---|---|
-| Versión de FORGE | <!-- npx forge --version --> |
+| Versión de FORGE | <!-- npx fragua --version --> |
 | Cómo lo instalaste | <!-- npm install -g fragua · npx -p fragua@beta · clon del repositorio (indica el commit) --> |
 | Sistema operativo | <!-- Windows 11 23H2 · Ubuntu 24.04 · macOS 15.1… --> |
 | Versión de Node | <!-- node --version --> |
@@ -31,7 +31,7 @@ Antes de enviar:
 ## Comando
 
 ```
-<!-- La orden exacta, con sus opciones. Por ejemplo: npx forge run --motor ciclo -->
+<!-- La orden exacta, con sus opciones. Por ejemplo: npx fragua run --motor ciclo -->
 ```
 
 Código de salida: <!-- 0, 1, 3 (espera una decisión), 4 (Docker no disponible) u otro -->
@@ -75,9 +75,9 @@ cualquier dato de clientes. Sustitúyelos por [BORRADO]. Si dudas de una línea,
 
 ## Otros datos, si ayudan
 
-- Salida de `npx forge doctor`:
-- Salida de `npx forge status`:
-- Motivo que muestra `npx forge resume` (no gasta nada):
+- Salida de `npx fragua doctor`:
+- Salida de `npx fragua status`:
+- Motivo que muestra `npx fragua resume` (no gasta nada):
 - ¿Se repite siempre o solo a veces?
 - ¿Pasa también con `--motor clasico`?
 

@@ -1,5 +1,7 @@
 # Pruebas de ejecución en proyectos independientes
 
+> Tipo: Guía · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 Esta guía explica cómo comprobar FORGE sobre proyectos que **no** son su repositorio, instalado como lo haría un usuario. Sirve para ver, antes de publicar, si el ciclo verificado funciona fuera del entorno donde se desarrolló.
 
 ## Qué comprueba y qué no

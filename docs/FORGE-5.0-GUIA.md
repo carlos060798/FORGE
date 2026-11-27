@@ -1,5 +1,7 @@
 # FORGE 5.0: para qué sirve y qué trae
 
+> Tipo: Explicación · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 > Estado: 5.0.0 **no está publicada en npm**. Describe la rama `feature/motor-agentico`. **Para el estado al día (cifras, qué está en curso y qué falta) ver [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md).** Cada dato sale de leer el código (`cli/index.js`, `cli/integraciones.js`, `core/ciclo/config.js`, `core/llm-providers/index.js`) o los documentos enlazados; no se ejecutó nada para escribir esta guía.
 
 ## Qué está verificado y qué no
@@ -217,7 +219,7 @@ La elección se guarda en la sección `instalacion:` de `.sdd/sdd.config.yaml` y
 
 - **Fragua** es el nombre del producto desde 2026-10-13; **FORGE** es el nombre anterior. El paquete de npm pasa a `fragua` (el paquete antiguo, `forja-mvp`, conserva las 4.x) y la orden principal es `fragua`.
 - Siguen funcionando `forge` y `sdd-es` (con un aviso en terminal), las variables `FORGE_*` (junto a `FRAGUA_*`; dos valores distintos son un error y nunca amplían permisos) y los nombres de comandos `sdd.*`, carpetas y skills.
-- Tabla completa de equivalencias en el [README](../README.md#forge--fragua-qué-cambia-y-qué-no).
+- Tabla completa de equivalencias en el [README](../README.md#instalación) (párrafo «Nombres»).
 
 ## 8. Integraciones GitHub, GitLab y Jira
 

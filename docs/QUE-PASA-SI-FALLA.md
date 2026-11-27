@@ -1,5 +1,7 @@
 # ¿Qué Pasa Si Algo Sale Mal? Guía de Recuperación
 
+> Tipo: Guía · Última revisión: sin registrar (este documento no lleva fecha ni commit de revisión)
+
 Este documento responde a las preguntas más comunes de usuarios no-técnicos cuando algo no sale como esperaban.
 
 ---

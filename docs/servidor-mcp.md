@@ -32,7 +32,7 @@ O con la ruta de una instalación concreta, sobre otro proyecto:
 }
 ```
 
-Con Claude Code: `claude mcp add forge -- npx forge mcp`.
+Con Claude Code: `claude mcp add forge -- npx fragua mcp`.
 
 No se añade al `.mcp.json` del propio plugin: lo activa quien lo quiera.
 

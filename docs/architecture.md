@@ -74,7 +74,7 @@ flowchart TB
 
 El diagrama sale de las importaciones reales entre directorios, calculadas el 2026-11-10 con un recorrido de los `import` relativos de `core/`, `cli/`, `claude-hooks/` y `ui/`. Las flechas son las principales, no todas.
 
-**No hay una arquitectura de capas estricta.** Versiones anteriores de este documento presentaban un «modelo de seis capas» (L0 a L5) como si fuera una regla. Nada en el código ni en las pruebas lo impone, y las importaciones reales lo contradicen (por ejemplo `core/ciclo/` importa de `core/llm-providers/`, y `core/llm-providers/` importa a su vez de `core/ciclo/config.js`). Lo que sí está acotado es un puñado de dependencias prohibidas, listadas en [mapa-de-modulos.md](mapa-de-modulos.md#dependencias-entre-directorios).
+**No hay una arquitectura de capas estricta.** Versiones anteriores de este documento presentaban un «modelo de seis capas» (L0 a L5) como si fuera una regla. Nada en el código ni en las pruebas lo impone, y las importaciones reales lo contradicen (por ejemplo `core/ciclo/` importa de `core/llm-providers/`, y `core/llm-providers/` importa a su vez de `core/ciclo/config.js`). Lo que sí está acotado es un puñado de dependencias prohibidas, listadas en [mapa-de-modulos.md](mapa-de-modulos.md#dependencias-entre-capas).
 
 ---
 
@@ -128,7 +128,7 @@ Dos piezas:
 
 **El motor de tareas**, [core/orchestrator.js](../core/orchestrator.js), recibe una lista de tareas con dependencias y las ejecuta por niveles topológicos. Sin ciclo verificado, ejecuta en paralelo cuando hay `parallelThreshold` (3) o más tareas pendientes en un nivel; con ciclo verificado las tareas de código se ejecutan en secuencia. Si el nivel de ejecución global es `sandbox` (véase «Circuit breaker»), omite la tarea con un error.
 
-**El ciclo verificado**, [core/ciclo/](../core/ciclo/), que el orquestador invoca para cada tarea de código. Sus nodos y transiciones, leídos de `grafo.js`, están en [mapa-de-modulos.md](mapa-de-modulos.md#el-ciclo-verificado-nodos-y-transiciones). Tres propiedades de diseño:
+**El ciclo verificado**, [core/ciclo/](../core/ciclo/), que el orquestador invoca para cada tarea de código. Sus nodos y transiciones, leídos de `grafo.js`, están en [mapa-de-modulos.md](mapa-de-modulos.md#core-el-ciclo-verificado). Tres propiedades de diseño:
 
 - **El grafo se decide con funciones puras.** `transicion` (en `grafo.js`) y `decidirRuta` / `decidirTrasMutacion` (en `router.js`) dependen del código de salida y del estado, nunca del texto de una salida ni de un modelo.
 - **Un solo motor, sin dependencias.** `motores/propio.js` recorre el grafo nodo a nodo y guarda un punto tras cada uno. LangGraph.js se retiró en 5.0.0 (ADR-18); una configuración antigua con `motor.grafo: langgraph` funciona con un aviso.

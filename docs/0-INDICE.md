@@ -89,6 +89,7 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 - [MERCADO-CLASIFICACION.md](MERCADO-CLASIFICACION.md): en qué categoría se sitúa.
 - [PUBLICO-OBJETIVO.md](PUBLICO-OBJETIVO.md): a quién va dirigido y con qué pruebas.
 - [ADECUACION-DEL-CATALOGO.md](ADECUACION-DEL-CATALOGO.md): plan para el catálogo de agentes y skills.
+- [investigacion/](investigacion/): investigaciones de la industria que respaldan el catálogo (estándares de ingeniería, fábricas multiagente, skills y estándares).
 - [FABRICA.md](FABRICA.md): narrativa para no técnicos (pendiente de revisar sus nombres antiguos).
 
 ---
@@ -102,6 +103,6 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 
 ---
 
-**Última actualización:** 2026-11-10 · **Versión:** 5.0.0-beta.1 (sin publicar) · **Historial:** [../CHANGELOG.md](../CHANGELOG.md)
+**Última actualización:** 2026-11-26 · **Versión:** 5.0.0-beta.1 (sin publicar) · **Historial:** [../CHANGELOG.md](../CHANGELOG.md)
 
 > FORGE pasa a llamarse **Fragua** (paquete `fragua`). Los documentos conservan el nombre con el que se escribieron; la equivalencia está en el README.

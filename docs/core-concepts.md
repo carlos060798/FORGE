@@ -177,7 +177,7 @@ Las ideas que lo definen:
 6. **Revisión humana explícita.** Un tope de iteraciones, el gasto agotado, un fallo del entorno o un «pase sospechoso» detienen el ciclo hasta que alguien decide `continuar`, `aceptar` o `abortar` (`forge resume --decision ...`). Mientras no hay decisión no se gasta nada.
 7. **Tope de gasto por sesión**, con los precios de una lista interna ([core/precios.js](../core/precios.js)). La comparación del gasto calculado con la factura real no se ha hecho ([ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)).
 
-El diagrama de nodos y transiciones, leído de [core/ciclo/grafo.js](../core/ciclo/grafo.js), está en [mapa-de-modulos.md](mapa-de-modulos.md#el-ciclo-verificado-nodos-y-transiciones). La descripción de uso, en [ciclo-verificado.md](ciclo-verificado.md). Lo que garantiza y lo que no, en [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md).
+El diagrama de nodos y transiciones, leído de [core/ciclo/grafo.js](../core/ciclo/grafo.js), está en [mapa-de-modulos.md](mapa-de-modulos.md#core-el-ciclo-verificado). La descripción de uso, en [ciclo-verificado.md](ciclo-verificado.md). Lo que garantiza y lo que no, en [GARANTIAS-Y-LIMITES.md](GARANTIAS-Y-LIMITES.md).
 
 ---
 
