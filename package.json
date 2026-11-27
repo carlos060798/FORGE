@@ -22,6 +22,7 @@
     "doctor": "node cli/index.js doctor",
     "generar-skills": "node scripts/generar-skills.mjs",
     "emular": "node scripts/emular-instalacion.mjs",
+    "probar:linux": "node scripts/probar-en-linux.mjs",
     "prepublishOnly": "node scripts/generar-skills.mjs && npm test"
   },
   "engines": {

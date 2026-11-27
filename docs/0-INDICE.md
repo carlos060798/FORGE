@@ -37,6 +37,7 @@ Si buscas algo que no está aquí, mira en [archivo/](archivo/): planes, informe
 | Migrar desde 4.2.0 | [MIGRACION-5.0.md](MIGRACION-5.0.md) |
 | Recuperarme de un fallo | [QUE-PASA-SI-FALLA.md](QUE-PASA-SI-FALLA.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Comprobar Fragua sobre proyectos independientes | [PRUEBAS-INDEPENDIENTES.md](PRUEBAS-INDEPENDIENTES.md) |
+| Probar la suite en Linux desde Windows (CI, Docker, WSL2) | [PRUEBAS-EN-LINUX.md](PRUEBAS-EN-LINUX.md) |
 | Contar un uso real | [uso-real/PLANTILLA.md](uso-real/PLANTILLA.md) |
 | Contribuir al proyecto | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 
