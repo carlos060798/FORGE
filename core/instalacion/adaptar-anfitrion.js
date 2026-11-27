@@ -56,6 +56,14 @@ export function notaDeAnfitrion(prefijo) {
 }
 
 /**
+ * Skills cuyo núcleo es un script de Claude Code (`claude-hooks/`) o una función de esfuerzo de Claude: no se instalan en otras
+ * herramientas. Las fuentes no cambian (informe de agnosticismo del 2026-11-24, H-B3 y H-B4).
+ */
+export const SKILLS_SOLO_CLAUDE = Object.freeze(["indexar-proyecto", "compresion-tokens", "cache-audit", "deploy-vercel", "effort-router", "sdd-crear-agente"]);
+
+const NIVEL_DE_FAMILIA = { opus: "alto", sonnet: "medio", haiku: "economico" };
+
+/**
  * Reescribe el cuerpo para otra herramienta.
  * @param {string} cuerpo
  * @param {{ prefijo: string, comandos: readonly string[], rutas?: { skills?: string|null, agentes?: string|null } }} opciones
@@ -91,6 +99,8 @@ export function adaptarCuerpo(cuerpo, { prefijo, comandos, rutas }) {
   t = t.replace(/^([ \t]*)\/effort[ \t]+(\S+)([^\n]*)$/gm, (_m, sangria, nivel, resto) => `${sangria}# esfuerzo «${nivel}»: ajústalo en tu herramienta (esa orden es de Claude Code)${resto}`);
   t = t.replace(/(?<![\w./-])\/effort[ \t]+(\w+)/g, 'el esfuerzo «$1» de tu herramienta');
   t = t.replace(/(^|[ \t])[^.\n]*\bhook `agent-memory\.js`[^.\n]*\./gm, (_m, antes) => antes + 'En esta herramienta no hay hook de memoria: al terminar, anota tus decisiones en `.sdd/memoria/`.');
+  // Identificadores de modelo de Claude: en otra herramienta se dice el nivel, no el modelo
+  t = t.replace(/\bclaude-(opus|sonnet|haiku)-\d[\w.-]*/g, (_m, f) => `«${NIVEL_DE_FAMILIA[f]}»`);
   t = t.replace(/\bClaude Code\b/g, 'tu herramienta de código');
   return t;
 }

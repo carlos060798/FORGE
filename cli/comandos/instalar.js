@@ -9,7 +9,7 @@ import { copiarArbol, crearArchivo, ErrorEnlace, escribirArchivo } from "../../c
 import { INTEGRACION_POR_DEFECTO, resolverIntegracion, validarCarpetaSkills } from "../../core/instalacion/herramientas-destino.js";
 import { PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../../core/instalacion/perfiles.js";
 import { nombreDeSkill } from "../../core/instalacion/skills-de-comandos.js";
-import { PREFIJO_INVOCACION, adaptarAgentsMd, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
+import { PREFIJO_INVOCACION, SKILLS_SOLO_CLAUDE, adaptarAgentsMd, adaptarSkill, agenteARol } from "../../core/instalacion/adaptar-anfitrion.js";
 import { esNivel, limitarNivel } from "../../core/llm-providers/niveles.js";
 import { PLANTILLAS_HOOKS, ordenDeGuardian } from "../../core/instalacion/hooks-anfitrion.js";
 import { FORMATOS_NATIVOS, agenteANativo } from "../../core/instalacion/agentes-nativos.js";
@@ -219,9 +219,11 @@ function copiarSkillsDeIntegracion(inst) {
   const rutas = { skills: rutaSkills, agentes: FORMATOS_NATIVOS[inst.integracion.clave]?.carpeta ?? rutaSkills };
   const opciones = { prefijo: PREFIJO_INVOCACION[inst.integracion.clave] ?? "", comandos, rutas };
   const adaptar = (md) => adaptarSkill(md, opciones);
+  const soloClaude = /** @type {string[]} */ ([]);
   const propias = join(PLUGIN_DIR, "skills");
   for (const e of readdirSync(propias, { withFileTypes: true })) {
     if (!e.isDirectory() || !existsSync(join(propias, e.name, "SKILL.md"))) continue;
+    if (SKILLS_SOLO_CLAUDE.includes(e.name)) { soloClaude.push(e.name); continue; }
     copiarCarpetaSkill(join(propias, e.name), join(destino, e.name), proteger, adaptar);
     instalado.skills++;
   }
@@ -230,6 +232,7 @@ function copiarSkillsDeIntegracion(inst) {
     const comando = f.slice(0, -3);
     if (!incluyeComando(inst.perfil, comando)) continue;
     const nombre = nombreDeSkill(comando);
+    if (SKILLS_SOLO_CLAUDE.includes(nombre)) { soloClaude.push(nombre); continue; }
     if (!existsSync(join(generadas, nombre, "SKILL.md"))) {
       aviso(`Falta la skill generada de ${comando}: ejecuta 'node scripts/generar-skills.mjs'`);
       sinEscribir.push(join(generadas, nombre));
@@ -253,6 +256,7 @@ function copiarSkillsDeIntegracion(inst) {
     escribirSeguro(d, rol.skillMd);
     instalado.roles++;
   }
+  if (soloClaude.length) info(`No se instalan, son solo de Claude Code (dependen de scripts de claude-hooks/ o de su esfuerzo): ${soloClaude.sort().join(", ")}`);
   info(`Skills instaladas en ${destino}: ${instalado.skills} propias + ${instalado.generadas} de comandos + ${instalado.roles} roles`);
   instalarAgentesNativos(inst, opciones, proteger);
   if (inst.conHooks) instalarHookDeGuardian(inst);

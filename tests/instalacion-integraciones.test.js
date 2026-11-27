@@ -13,6 +13,8 @@ import { fileURLToPath } from "node:url";
 
 import { CLAVES, INTEGRACIONES, resolverIntegracion, validarCarpetaSkills } from "../core/instalacion/herramientas-destino.js";
 import { PERFILES, PERFIL_POR_DEFECTO, incluyeComando, resolverPerfil } from "../core/instalacion/perfiles.js";
+import { SKILLS_SOLO_CLAUDE } from "../core/instalacion/adaptar-anfitrion.js";
+import { nombreDeSkill } from "../core/instalacion/skills-de-comandos.js";
 import { forge, ROOT } from "./instalacion-ayudas.js";
 
 const temporal = (p) => realpathSync(mkdtempSync(join(tmpdir(), p)));
@@ -101,8 +103,10 @@ describe("F1.3 — forge init --integracion", () => {
       assert.equal(r.status, 0, r.salida);
       assert.ok(existsSync(join(cwd, ...carpeta.split("/"), "forge", "SKILL.md")), "skill forge");
       // Perfil por defecto esencial (ADR-24): 31 skills propias + 6 generadas + un rol por agente (CA-001-03)
-      const skillsPropias = readdirSync(join(ROOT, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() || e.name.endsWith(".md")).length;
-      assert.equal(readdirSync(join(cwd, ...carpeta.split("/"))).length, skillsPropias + /** @type {readonly string[]} */ (PERFILES.esencial.comandos).length + readdirSync(join(ROOT, "agents")).filter((n) => n.endsWith(".md")).length);
+      // Menos las skills solo de Claude Code (CA-004-05), que no se instalan aquí
+      const skillsPropias = readdirSync(join(ROOT, "skills"), { withFileTypes: true }).filter((e) => (e.isDirectory() || e.name.endsWith(".md")) && !SKILLS_SOLO_CLAUDE.includes(e.name)).length;
+      const generadas = /** @type {readonly string[]} */ (PERFILES.esencial.comandos).filter((c) => !SKILLS_SOLO_CLAUDE.includes(nombreDeSkill(c))).length;
+      assert.equal(readdirSync(join(cwd, ...carpeta.split("/"))).length, skillsPropias + generadas + readdirSync(join(ROOT, "agents")).filter((n) => n.endsWith(".md")).length);
       assert.ok(!existsSync(join(cwd, ".claude")));
     });
   }
