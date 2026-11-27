@@ -159,6 +159,64 @@ Con esos archivos se añaden pruebas con eventos reales en `tests/fixtures/` y s
 
 Para Copilot, Gemini CLI, Windsurf, opencode, Kiro, Zed, Goose, la carpeta común y la genérica: `fragua init --integracion <clave> [--con-hooks]`, comprobar la carpeta de skills de la tabla de `core/instalacion/herramientas-destino.js`, invocar `forge` con la sintaxis de esa fila, probar un rol y, si la herramienta tiene adaptador de hook (Copilot, Gemini, Windsurf, opencode), repetir el paso del `.env`. Kiro, Zed, Goose, `agents` y `generica` no tienen adaptador de hook: allí solo se prueban skills, roles y agentes.
 
+### Comprobaciones añadidas el 2026-11-26 (en cada herramienta)
+
+> Se hacen en el mismo proyecto de prueba de cada herramienta, después de `fragua init --integracion <clave> --con-hooks`. Nada de lo de abajo está hecho: cada casilla `Observado:` queda vacía para que el dueño anote lo que vio. Lo «esperado» sale del código y de las pruebas con archivos temporales, no de haberlo visto en la herramienta.
+
+**(a) Las skills solo de Claude Code no se instalan.** Las cinco de `SKILLS_SOLO_CLAUDE` (`core/instalacion/adaptar-anfitrion.js`): `indexar-proyecto`, `compresion-tokens`, `cache-audit`, `effort-router`, `sdd-crear-agente`.
+
+```
+ls <carpeta de skills de la herramienta>      # la de la tabla de core/instalacion/herramientas-destino.js
+ls <carpeta de skills> | grep -E "indexar-proyecto|compresion-tokens|cache-audit|effort-router|sdd-crear-agente"
+```
+
+- Esperado: la segunda orden no imprime nada (con `grep`, código de salida 1). En Windows sin `grep`: `dir <carpeta>` y comprobar a ojo.
+- Observado: ______________________________________
+
+**(b) `AGENTS.md` con la sintaxis de la herramienta y el bloque del flujo.**
+
+```
+grep -n "Flujo Fragua en esta herramienta" AGENTS.md
+grep -n "/sdd\." AGENTS.md
+```
+
+- Esperado: la primera encuentra el bloque «Flujo Fragua en esta herramienta», que nombra la invocación de esa herramienta (`/forge` en Cursor, Copilot y otras; `$forge` en Codex; la forma propia de Gemini) y qué no está activo. La segunda no encuentra órdenes `/sdd.x` con punto (solo `claude` las conserva). El bloque también cita la nota de que las skills de (a) no se instalaron.
+- Observado: ______________________________________
+
+**(c) El guardián protege el archivo de hooks de la herramienta.** Archivo según la herramienta: Cursor `.cursor/hooks.json`; Copilot `.github/hooks/fragua-guardian.json`; Gemini `.gemini/settings.json`; Codex `.codex/hooks.json`; Windsurf `.devin/hooks.v1.json`; opencode `.opencode/plugins/fragua-guardian.js`.
+
+1. Con `--con-hooks` ya instalado, pedir al agente: «añade una línea en blanco al final de `<archivo de hooks>`».
+   - Esperado: el guardián **bloquea** la escritura con un mensaje de FORGE; el archivo no cambia (comprobar con `git diff` o la fecha).
+   - Observado: ______________________________________
+2. Cerrar la herramienta, relanzarla con `FORGE_EDITAR_GUARDIAN=1` en el entorno (bash: `FORGE_EDITAR_GUARDIAN=1 <herramienta>`; PowerShell: `$env:FORGE_EDITAR_GUARDIAN = "1"` y luego la herramienta) y repetir la petición.
+   - Esperado: ahora la escritura **se permite**. Quitar la variable y **restaurar** el archivo después (`git checkout -- <archivo>` o reinstalar).
+   - Observado: ______________________________________
+3. Límites ya conocidos, **no son fallos de esta prueba**: cambiar de directorio con `cd` y escribir con ruta relativa, y borrar la carpeta que contiene el archivo, **no se detectan** (declarado). Si quieres medirlo, anótalo aparte: «rodeo sin detectar: sí/no».
+   - Observado: ______________________________________
+
+**(d) Windsurf: `/nombre` frente a `@nombre`.** La sintaxis `@nombre` **no está confirmada** (CA-005-02). En Windsurf, tras `fragua init --integracion windsurf`:
+
+1. Escribir en el chat `/forge "una lista de tareas"` y anotar si carga la skill.
+2. Escribir `@forge "una lista de tareas"` y anotar si la carga.
+3. Probar lo mismo con un rol: `/rol-revisor ...` y `@rol-revisor ...`.
+
+- Esperado: no se sabe; por eso se prueba. Si solo funciona una de las dos, se corrige la tabla `core/instalacion/herramientas-destino.js` y `docs/ANFITRIONES.md` en otra tarea.
+- `/nombre` funciona: SÍ / NO · `@nombre` funciona: SÍ / NO · Observado: ______________________________________
+
+**(e) Gemini con clave real (API HTTP, ADR-27 en propuesta; hasta aquí solo probado con servidor falso).** Cuesta dinero: usa una clave con tope bajo.
+
+```
+export GEMINI_API_KEY="<tu clave>"        # PowerShell: $env:GEMINI_API_KEY = "<tu clave>"
+export FORGE_LLM_PROVIDER=gemini          # PowerShell: $env:FORGE_LLM_PROVIDER = "gemini"
+fragua probar-modelo --tope 0.50
+fragua doctor
+```
+
+- Esperado: `probar-modelo` completa la prueba mínima del ciclo sin superar el tope y sin imprimir la clave; `doctor` informa el proveedor `gemini`. Si no hay clave, debe detenerse con un mensaje claro, no caer en otro proveedor.
+- Después, una ejecución mínima con un proyecto vacío, por ejemplo `fragua run` con una especificación de una sola función pequeña y un tope bajo, o la ejecución mínima que pida `probar-modelo`.
+- Anotar: modelo usado (el que resuelve el nivel; está en la salida) · coste informado frente al panel de Google · errores HTTP y su texto (400, 403, 429, bloqueos de seguridad) · si hubo llamadas a herramientas con `thoughtSignature` y si la API aceptó el reenvío.
+- Observado: ______________________________________
+
 ### Registro de resultados (en blanco)
 
 Rellena una fila por herramienta y por intento. Usa `OK`, `FALLA` o `NO APLICA`, y en «Notas» lo que viste, aunque sea raro.

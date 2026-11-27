@@ -1,6 +1,6 @@
 # Hoja de ruta
 
-Estado a 2026-11-10. Versión del árbol: `5.0.0-beta.1`, **sin publicar** en npm. Proyecto en pre-beta con un solo mantenedor ([GOVERNANCE.md](../GOVERNANCE.md)).
+Estado a 2026-11-26. Remoto: solo `main` y `desarrollo`; `desarrollo` lo contiene todo y se integra en `main` con avance rápido. Suite del 2026-11-26: 4522 pruebas, 4488 pasan, 0 fallos, 34 saltadas. Versión del árbol: `5.0.0-beta.1`, **sin publicar** en npm. Proyecto en pre-beta con un solo mantenedor ([GOVERNANCE.md](../GOVERNANCE.md)).
 
 Esta hoja de ruta es una lista de intenciones ordenadas, **no una promesa de fechas**: no hay plazos garantizados. Las cifras y los límites detallados están en [ESTADO-ACTUAL.md](ESTADO-ACTUAL.md); si algo aquí contradice esa página, manda ella. Las fuentes de cada estado son las especificaciones de `.sdd/especificaciones/` ([.sdd/INDICE.md](../.sdd/INDICE.md)) y [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md).
 
@@ -65,8 +65,9 @@ Spec `2026-11-09-puerta-de-entrada-solo-dev` y ADR-24 (propuesta).
 
 Plan en [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md); spec `2026-11-10-metodologia-agnostica` (en implementación; figura «aprobada por delegación» por un agente y espera la ratificación del dueño) y `2026-11-11-guardian-fuera-de-claude-code` (borrador). Estado real en [ANFITRIONES.md](ANFITRIONES.md).
 
-- Hecho, **sin probar en ninguna herramienta real**: los spikes (F0, leídos de resúmenes de la documentación, no de copias literales); comandos y skills adaptados y agentes como roles `rol-*` y como agentes nativos (F1 y F2, en su versión por adaptación al instalar); guardián y memoria por hooks con `--con-hooks` en Cursor, Copilot, Gemini, Codex, Windsurf y opencode (F3), con perfil MCP `guardian`, y una herramienta que el traductor no reconoce se evalúa por su entrada (ADR-26, propuesta); `doctor` por proveedor y metadatos (F4); documentación y matriz impuesto/consultivo (F6). Kiro no tiene adaptador de hook: su documentación no da los nombres de herramienta.
-- Pendiente: la prueba manual en cada herramienta (F5), con el guion en el `verificacion.md` de la spec; hasta entonces ninguna se declara probada.
+- Hecho, **sin probar en ninguna herramienta real**: los spikes (F0, leídos de resúmenes de la documentación, no de copias literales); comandos y skills adaptados y agentes como roles `rol-*` y como agentes nativos (F1 y F2); guardián y memoria por hooks con `--con-hooks` en Cursor, Copilot, Gemini, Codex, Windsurf y opencode (F3), con perfil MCP `guardian` y con los archivos de hooks de esas seis herramientas protegidos contra escritura del agente (rodeos con `cd` o borrando la carpeta: declarados como **no detectados**); `doctor` e instalador neutros; skills sin `model:` fuera de Claude Code y validación estricta del estándar de skills; `AGENTS.md` por herramienta con el bloque «Flujo Fragua en esta herramienta»; skills solo de Claude Code que no se instalan fuera (`SKILLS_SOLO_CLAUDE`); proveedor desconocido que detiene la ejecución (`ErrorProveedorDesconocido`); documentación y matriz impuesto/consultivo (F6). Kiro no tiene adaptador de hook.
+- Hecho, **sin probar con la API real**: proveedor **Gemini** por HTTP (ADR-27, propuesta; HU-007), con servidor falso.
+- Pendiente: la prueba manual en cada herramienta (F5), con el guion en el `verificacion.md` de la spec; Gemini con clave real; el ciclo con Docker real en Linux. Hasta entonces nada de esto se declara probado.
 
 ---
 
@@ -79,7 +80,7 @@ Nada de esto empieza antes de cerrar el plan anterior, salvo que el dueño decid
 | **Equipos pequeños y ciclo en CI**: aprobaciones atribuibles a personas, estado compartible por git, ciclo verificado en la integración continua | `2026-11-10-equipos-y-ciclo-en-ci` | Planificado. Solo especificación (borrador), nada implementado. **Necesita decisión del dueño**: tiene cinco decisiones abiertas |
 | **Aislamiento opcional**: nivel base sin Docker y nivel aislado, con el nivel usado visible en cada veredicto | `2026-11-06-aislamiento-opcional` | **Necesita decisión del dueño**: cambia una garantía. Solo especificación, nada implementado |
 | **Ciclo desde otros hosts** (Cursor, Codex, etc.) por MCP | `2026-10-14-ciclo-por-mcp` | En curso: solo la fase 1 (`verificar` por MCP, sin gasto) está aprobada por delegación e implementada; las fases 2 y 3 están sin implementar |
-| **Multi-proveedor real**: Anthropic, OpenAI y Ollama con herramientas y niveles neutrales | `2026-10-13-proveedores-agnosticos` | En curso: hay batería de conformidad con servidores falsos ([guia-anadir-proveedor.md](guia-anadir-proveedor.md)); **sin probar con un modelo real** en OpenAI y Ollama; spec en borrador |
+| **Multi-proveedor real**: Anthropic, OpenAI, Ollama y Gemini (HU-007, por HTTP) con herramientas y niveles neutrales | `2026-10-13-proveedores-agnosticos` | En curso: hay batería de conformidad con servidores falsos ([guia-anadir-proveedor.md](guia-anadir-proveedor.md)); **sin probar con un modelo real** en OpenAI, Ollama y Gemini; spec en borrador |
 | **Integraciones con GitHub, GitLab y Jira** con mínimo privilegio | `2026-10-11-integraciones-externas` | En curso; no probado con cuentas reales |
 | **Despliegue con aprobación** (adaptador de AWS) | `2026-10-14-despliegue-con-aprobacion` | Planificado. Solo especificación |
 
@@ -108,7 +109,7 @@ Venían de un roadmap anterior y no se han vuelto a verificar contra el código 
 
 ## Lo que Fragua no hará
 
-- **Un proveedor de Google/Gemini propio**: los existentes cubren los casos previstos (un proveedor nuevo puede añadirse siguiendo [guia-anadir-proveedor.md](guia-anadir-proveedor.md) si cumple la batería de conformidad).
+- **Proveedores a medida sin pasar la batería de conformidad**: un proveedor nuevo se añade siguiendo [guia-anadir-proveedor.md](guia-anadir-proveedor.md) y solo si la cumple (Gemini entró así, sin probar aún con la API real).
 - **Una interfaz de terminal propia**: Claude Code es la interfaz.
 - **Un ORM o un cliente de base de datos propios**: Fragua genera código que usa las herramientas del proyecto.
 - **WebSockets en el panel**: el flujo es unidireccional y SSE basta.

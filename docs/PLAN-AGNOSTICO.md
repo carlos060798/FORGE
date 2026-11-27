@@ -1,6 +1,6 @@
 # Plan: volver Fragua agnóstica del anfitrión
 
-> Tipo: Plan · Fecha: 2026-11-10 · Árbol: `5.0.0-beta.1` (commit `05e74da`) · Estado: **propuesta sin aprobar por el dueño; F1, F2 y F3 ya implementadas por su instrucción (ver §8), F4 parcial, F0 y F5 pendientes**.
+> Tipo: Plan · Fecha: 2026-11-10 · Árbol: `5.0.0-beta.1` (commit `05e74da`) · Estado: **propuesta sin aprobar por el dueño; F0 a F4 y F6 implementadas (ver §8), F5 pendiente (prueba manual)**.
 > Convención del repositorio: nada de esto se implementa sin su especificación en `.sdd/especificaciones/` aprobada por el dueño (AGENTS.md, «Cómo se cambia algo»). Este documento es el diagnóstico y el orden de trabajo; cada fase se convierte en una spec.
 
 ## 1. Diagnóstico: qué está amarrado a Claude Code y qué no
@@ -140,7 +140,7 @@ Si solo cabe una cosa: **F1 + F2 para Codex y Cursor** (las dos de más uso prev
 2. Se redacta `.sdd/especificaciones/2026-11-10-metodologia-agnostica/spec.md` con las historias HU de F1 y F2 (F3 merece spec propia por tocar seguridad).
 3. Se ejecutan los spikes de F0 antes de escribir código.
 
-## 8. Estado de ejecución (2026-11-11)
+## 8. Estado de ejecución (2026-11-11; actualizado el 2026-11-26 al final de la sección)
 
 | Fase | Estado | Qué quedó |
 |---|---|---|
@@ -153,3 +153,17 @@ Si solo cabe una cosa: **F1 + F2 para Codex y Cursor** (las dos de más uso prev
 | F6 | Hecha | `docs/ANFITRIONES.md`, README, estado, roadmap, changelog, spec en borrador. |
 
 Fuera de alcance por riesgo: renombrar `claude-hooks/` (toca guardián, instalador y pruebas; ganancia solo de nombre).
+
+### Actualización 2026-11-26 (rama `desarrollo`)
+
+Suite: 4522 pruebas, 4488 pasan, 0 fallos, 34 saltadas (`npm test`, 2026-11-26). Remoto: solo `main` y `desarrollo`; `desarrollo` se integra en `main` con avance rápido.
+
+Hecho desde el 2026-11-11, todo **sin probar en una herramienta real**:
+
+- **Guardián:** protege los archivos de hooks de Cursor, Copilot, Gemini, Codex, Windsurf y opencode (además de `.claude/settings.json`); `FORGE_EDITAR_GUARDIAN=1` lo permite al dueño. Rodeos **declarados como NO detectados**: cambiar de directorio con `cd` y escribir con ruta relativa, y borrar la carpeta que contiene el archivo de hooks.
+- **`doctor` e instalador neutros** (F4): ya no suponen Anthropic ni Claude Code.
+- **Skills:** fuera de Claude Code salen sin `model:`; `validarSkill` estricto del estándar abierto sobre lo instalado; `SKILLS_SOLO_CLAUDE` (`indexar-proyecto`, `compresion-tokens`, `cache-audit`, `effort-router`, `sdd-crear-agente`) no se instalan en otras herramientas.
+- **`AGENTS.md` por herramienta:** sintaxis de invocación propia y bloque «Flujo Fragua en esta herramienta».
+- **Proveedores:** un nombre desconocido detiene con `ErrorProveedorDesconocido`; Gemini por HTTP (ADR-27, propuesta), probado solo con servidor falso.
+
+Sigue pendiente, y no verificado: **F5** (prueba manual por herramienta), el ciclo con Docker real en Linux, Gemini con la API real y la CI de Linux (nunca ha estado verde).
