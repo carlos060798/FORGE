@@ -5,11 +5,11 @@
  * recibe los argumentos y el entorno, y devuelve las opciones o un error con su mensaje.
  */
 
-export const PROVEEDORES = /** @type {const} */ (['anthropic', 'openai', 'ollama', 'stub']);
+export const PROVEEDORES = /** @type {const} */ (['anthropic', 'openai', 'gemini', 'ollama', 'stub']);
 
 /** Variable de entorno con la clave de cada proveedor de pago. Ollama (local) y stub no la necesitan. */
 export const CLAVE_DE = /** @type {Record<string, string | null>} */ ({
-  anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', ollama: null, stub: null,
+  anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY', ollama: null, stub: null,
 });
 
 const NIVELES_MODELO = /** @type {const} */ (['alto', 'medio', 'economico']);
@@ -29,7 +29,7 @@ const ID_MODELO = /^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$/;
  * @property {string|undefined} salida
  * @property {boolean} conservar
  * @property {boolean} desdeRepo
- * @property {'anthropic'|'openai'|'ollama'|'stub'} proveedor  el que se usa de verdad (en humo, siempre stub)
+ * @property {'anthropic'|'openai'|'gemini'|'ollama'|'stub'} proveedor  el que se usa de verdad (en humo, siempre stub)
  * @property {{ alto?: string, medio?: string, economico?: string }} modelos  identificador por nivel; vacío = el del proveedor
  */
 
@@ -59,7 +59,7 @@ export function analizarOpciones(args, env) {
   // Sin --proveedor se conserva el comportamiento de siempre: stub en humo, anthropic en real
   const proveedor = /** @type {OpcionesIndependientes['proveedor']} */ (pedido ?? (modelo === 'humo' ? 'stub' : 'anthropic'));
   if (modelo === 'humo' && proveedor !== 'stub') return { ok: false, error: 'El modo humo no gasta ni usa claves: su proveedor es stub. Para usar otro proveedor, --modelo real.' };
-  if (modelo === 'real' && proveedor === 'stub') return { ok: false, error: 'El proveedor stub no resuelve tareas: con --modelo real elige anthropic, openai u ollama.' };
+  if (modelo === 'real' && proveedor === 'stub') return { ok: false, error: 'El proveedor stub no resuelve tareas: con --modelo real elige anthropic, openai, gemini u ollama.' };
 
   /** @type {OpcionesIndependientes['modelos']} */
   const modelos = {};

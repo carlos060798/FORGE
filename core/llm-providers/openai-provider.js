@@ -201,7 +201,7 @@ export class OpenAIProvider extends LlmProvider {
         this._sinHerramientas = true;
         throw new Error(`El servidor de OpenAI (${this._redactar(this.baseUrl)}) no admite herramientas en chat completions (HTTP ${res.status}): ${this._redactar(texto).slice(0, 200)}. El ciclo usará el modo de bloque.`);
       }
-      throw new Error(`OpenAI error ${res.status}: ${this._redactar(texto).slice(0, 200)}`);
+      throw Object.assign(new Error(`OpenAI error ${res.status}: ${this._redactar(texto).slice(0, 200)}`), { status: res.status });
     }
 
     /** @type {any} */
@@ -262,7 +262,7 @@ export class OpenAIProvider extends LlmProvider {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       // El cuerpo del error puede repetir la clave: se redacta antes de lanzarlo
-      throw new Error(`OpenAI error ${res.status}: ${this._redactar(text).slice(0, 200)}`);
+      throw Object.assign(new Error(`OpenAI error ${res.status}: ${this._redactar(text).slice(0, 200)}`), { status: res.status });
     }
 
     /** @type {{ choices?: { message?: { content?: string } }[], usage?: { prompt_tokens?: number, completion_tokens?: number } }} */

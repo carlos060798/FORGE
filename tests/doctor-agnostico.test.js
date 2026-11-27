@@ -18,7 +18,7 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { modelosInvalidos } from "../cli/comandos/doctor.js";
+import { modelosInvalidos, diagnosticoDePing } from "../cli/comandos/doctor.js";
 import { ordenDeGuardian, PLANTILLAS_HOOKS } from "../core/instalacion/hooks-anfitrion.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -145,4 +145,31 @@ describe("doctor comprueba el archivo de hooks cuando la instalación los regist
     const s = doctor({ yaml: instalacion("kiro", true) });
     assert.doesNotMatch(s, /orden del guardián/);
   });
+});
+
+describe("diagnosticoDePing: el error del ping se explica igual para todos los proveedores", () => {
+  const d = (e) => diagnosticoDePing(e, { proveedor: "gemini", variable: "GEMINI_API_KEY" });
+  test("401, 429 y 5xx por `status`", () => {
+    assert.match(d(Object.assign(new Error("x"), { status: 401 })), /Clave rechazada.*GEMINI_API_KEY/);
+    assert.match(d(Object.assign(new Error("x"), { status: 429 })), /Rate limit/);
+    assert.match(d(Object.assign(new Error("x"), { status: 503 })), /servidor del proveedor gemini \(503\)/);
+  });
+  test("un GeminiProvider contra un servidor falso que responde 401 y 429 da esos diagnósticos", async () => {
+    const { GeminiProvider } = await import("../core/llm-providers/index.js");
+    const { servidorFalso } = await import("./fixtures/proveedores/servidor-falso.js");
+    const s = await servidorFalso("gemini", [{ http: 401, mensaje: "API key not valid" }, { http: 429, mensaje: "cuota" }]);
+    try {
+      const p = new GeminiProvider({ api_key: "AIza-centinela-0000", base_url: s.url });
+      const pedir = () => p.complete({ model: "medio", systemPrompt: "", userPrompt: "u", maxTokens: 32 }).catch((e) => e);
+      assert.match(d(await pedir()), /Clave rechazada \(401/);
+      assert.match(d(await pedir()), /Rate limit/);
+    } finally { await s.cerrar(); }
+  });
+  test("MAX_TOKENS sin texto: dice que se cortó por el tope de tokens y que no es un fallo de clave", () => {
+    const m = d(Object.assign(new Error("Gemini no devolvió texto (MAX_TOKENS)."), { motivoParada: "MAX_TOKENS" }));
+    assert.match(m, /tope de tokens/);
+    assert.match(m, /no es un fallo de la clave/);
+    assert.doesNotMatch(m, /JSON/);
+  });
+  test("lo demás sigue como error inesperado", () => assert.match(d(new Error("boom")), /Error inesperado al contactar el LLM: boom/));
 });

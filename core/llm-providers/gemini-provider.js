@@ -88,6 +88,11 @@ function traductorDeNombres() {
   };
 }
 
+/** Error de la API con el código HTTP en `status` (lo usan `doctor` y los reintentos). */
+function errorHttp(mensaje, status) {
+  return Object.assign(new Error(mensaje), { status });
+}
+
 /** Esquema de una herramienta sin las claves de JSON Schema que la API rechaza o malinterpreta. */
 function limpiarEsquema(valor) {
   if (Array.isArray(valor)) return valor.map(limpiarEsquema);
@@ -265,7 +270,7 @@ export class GeminiProvider extends LlmProvider {
         this._sinHerramientas = true;
         throw new Error(`El modelo de Gemini (${this._redactar(this.baseUrl)}) no admite herramientas (HTTP ${res.status}): ${detalle}. El ciclo usará el modo de bloque.`);
       }
-      throw new Error(`Gemini error ${res.status}: ${detalle}`);
+      throw errorHttp(`Gemini error ${res.status}: ${detalle}`, res.status);
     }
 
     /** @type {any} */
@@ -336,7 +341,7 @@ export class GeminiProvider extends LlmProvider {
       generationConfig: { maxOutputTokens: maxTokens },
     }, signal);
 
-    if (!res.ok) throw new Error(`Gemini error ${res.status}: ${await this._errorDe(res)}`);
+    if (!res.ok) throw errorHttp(`Gemini error ${res.status}: ${await this._errorDe(res)}`, res.status);
 
     /** @type {any} */
     const json = await res.json();
@@ -348,7 +353,7 @@ export class GeminiProvider extends LlmProvider {
     const output = Array.isArray(partes) ? textoDe(partes) : '';
     const parada = json?.candidates?.[0]?.finishReason;
     // Sin texto, una parada que no es normal (SAFETY, RECITATION, MAX_TOKENS…) es un error: una respuesta vacía no puede pasar por válida
-    if (output === '' && parada && parada !== 'STOP') throw new Error(`Gemini no devolvió texto (${parada}).`);
+    if (output === '' && parada && parada !== 'STOP') throw Object.assign(new Error(`Gemini no devolvió texto (${parada}).`), { motivoParada: parada });
     return { output, ...this._tokens(json?.usageMetadata) };
   }
 }
