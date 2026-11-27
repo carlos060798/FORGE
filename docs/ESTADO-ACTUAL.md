@@ -1,6 +1,6 @@
 # Estado actual de Fragua (5.0.0, sin publicar)
 
-> **Fecha:** 2026-11-24 · **Rama:** `feature/cierre-auditoria` (sobre `feature/anfitriones`) · **Última suite completa:** árbol posterior a `a90c928`, con los pasos 3 a 5 del plan de cierre (4344 de 4375 pasan, 0 fallos, 31 saltadas; Windows 11, Node 24, más de 600 s). El commit siguiente (`0e02afd`, guardián falla cerrado y CLI sin `npx forge`) se verificó con las 236 pruebas de los archivos afectados, no con la suite completa.
+> **Fecha:** 2026-11-26 · **Ramas:** en el remoto solo existen `main` y `desarrollo`. `desarrollo` contiene todo el trabajo y se integra en `main` sin conflicto (avance rápido). · **Última suite completa:** `npm test` el 2026-11-26, 4522 pruebas, 4488 pasan, 0 fallos, 34 saltadas (Windows 11, Node 24).
 > Este documento es el estado de referencia. Las guías (`FORGE-5.0-GUIA.md`, `README.md`) enlazan aquí en vez de repetir cifras. Si una cifra de otro documento no coincide con esta página, manda esta.
 
 ## Qué es, en una frase
@@ -11,16 +11,16 @@ Fragua es un marco de desarrollo guiado por especificaciones con un **ciclo veri
 
 | Medida | Valor | Cómo se midió |
 |---|---|---|
-| Pruebas | 4375 en total: 4344 pasan, 0 fallan, 31 saltadas | `npm test` el 2026-11-24 sobre el árbol posterior a `a90c928` (rama `feature/cierre-auditoria`), Windows 11, Node 24; más de 600 s |
+| Pruebas | 4522 en total: 4488 pasan, 0 fallan, 34 saltadas | `npm test` el 2026-11-26 sobre `desarrollo`, Windows 11, Node 24 |
 | Tipos | 0 errores | `npm run typecheck` el 2026-11-06, mismo árbol |
 | Agentes | 14 (en `agents/`) | Conteo de archivos |
 | Skills | 31 (en `skills/`) | Conteo de carpetas |
 | Comandos | 39, con una skill generada cada uno | Inventario, `scripts/inventario-agentes.mjs` |
 | Especificaciones | 24 en `.sdd/especificaciones/` (9 en borrador, 15 en implementación; ninguna completada) | `.sdd/INDICE.md`, recalculado el 2026-11-06 |
 
-Las pruebas saltadas son las que exigen Docker real (`FORGE_TEST_DOCKER=1`) y no se ejecutan en este equipo.
+Las pruebas saltadas son sobre todo las que exigen Docker real (`FORGE_TEST_DOCKER=1`), más las que dependen de enlaces simbólicos, proveedores sin herramientas o una cuenta real; no se ejecutan en este equipo.
 
-**La última pasada completa salió verde, pero no es estable en todas las máquinas.** Antes (`be747d6`) falló «5000 archivos pequeños» por lentitud del disco y, en otras pasadas, pruebas de tiempo límite bajo carga; aisladas, pasan. `tests/verificar-mutacion.test.js` tarda unos 42 s aislado y 74 s dentro de la suite; su tope por invocación ahora es de 600 s y está en `npm run test:lento`. La causa del agotamiento de tiempo que se vio antes no se confirmó. Las 31 saltadas son las de Docker real. **No hay una pasada verde en Linux ni en macOS**: el CI de GitHub corre desde el 2026-11-05 y su resultado no consta aquí.
+**La última pasada completa (2026-11-26) salió con 0 fallos, pero no es estable en todas las máquinas.** Antes (`be747d6`) falló «5000 archivos pequeños» por lentitud del disco y, en otras pasadas, pruebas de tiempo límite bajo carga; aisladas, pasan. `tests/verificar-mutacion.test.js` tarda unos 42 s aislado y 74 s dentro de la suite; su tope por invocación ahora es de 600 s y está en `npm run test:lento`. La causa del agotamiento de tiempo que se vio antes no se confirmó. Las 34 saltadas son las descritas arriba (Docker real y las que dependen del entorno). **No hay una pasada verde en Linux ni en macOS**: el CI de GitHub corre desde el 2026-11-05 y su resultado no consta aquí.
 
 **Pasadas anteriores con fallos intermitentes.** En `f195354` fallaron tres pruebas con la carga de la suite entera (memoria SQLite, batería hostil de 52 entradas y un límite de tiempo de `adfATexto`); aisladas pasan. En `03d4baa`, con otra suite corriendo en la misma máquina, fallaron pruebas de tiempo límite (`comoDato`, «una cadena enorme», «5000 archivos»). Todas las de tiempo límite pasan aisladas.
 
@@ -43,8 +43,13 @@ Probado con pruebas automáticas, y en parte con modelo real en la validación a
 - **`fragua verificar`**: veredicto aislado sobre un proyecto sin llamar a ningún modelo. Incluye mutación, `--desde` con git neutralizado, `--registrar` con cadena de evidencia firmada y `--comprobar-evidencia`.
 - **Perfiles de agente por rol** (planificador, QA, implementador): el proyecto solo puede apretar; lo que intente ampliar se ignora y se anota. Pruebas por capas, con mutaciones que las pruebas detectan. Faltan las tareas F6 y F7 de su especificación.
 - **Estado del ciclo sellado**: los puntos de guardado y la sesión llevan un sello con una clave del usuario, fuera del proyecto. Un repositorio no puede fabricar un estado que el ciclo acepte.
-- **Proveedores**: Anthropic, OpenAI y Ollama con herramientas (conformidad común), niveles neutrales `alto`, `medio` y `economico`.
-- **Instalación agnóstica**: `forge init --integracion <clave>` para 12 herramientas con carpeta confirmada en su documentación oficial. En las que no son Claude Code instala las skills propias adaptadas, los comandos del perfil como skills con las órdenes reescritas y los 14 agentes como skills `rol-*` (`core/instalacion/adaptar-anfitrion.js`). **Sin probar en ninguna herramienta real** (la prueba manual está pendiente); sin guardián ni memoria por hooks fuera de Claude Code. Detalle en [ANFITRIONES.md](ANFITRIONES.md); el plan completo, en [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md) (guardián fuera de los hooks y vocabulario neutral: en curso).
+- **Proveedores**: Anthropic, OpenAI y Ollama con herramientas (conformidad común), niveles neutrales `alto`, `medio` y `economico`. Un nombre de proveedor desconocido **detiene** la ejecución con `ErrorProveedorDesconocido`, en vez de caer en otro. **Gemini** (alias `google`) por HTTP, sin SDK: ADR-27 en **propuesta**, HU-007 de la spec de proveedores en borrador; probado solo con un servidor falso, **sin probar con la API real**.
+- **Instalación agnóstica**: `forge init --integracion <clave>` para 12 herramientas con carpeta confirmada en su documentación oficial. En las que no son Claude Code instala las skills propias adaptadas, los comandos del perfil como skills con las órdenes reescritas y los 14 agentes como skills `rol-*` (`core/instalacion/adaptar-anfitrion.js`). **Sin probar en ninguna herramienta real** (la prueba manual F5 está pendiente). Detalle en [ANFITRIONES.md](ANFITRIONES.md); el plan, en [PLAN-AGNOSTICO.md](PLAN-AGNOSTICO.md). Lo que ya existe en `desarrollo`:
+  - **Guardián fuera de Claude Code** (`--con-hooks`): registra hooks en Cursor, Copilot, Gemini, Codex, Windsurf y opencode, y **protege los archivos de hooks de esas seis herramientas** (`.cursor/hooks.json`, `.github/hooks/fragua-guardian.json`, `.gemini/settings.json`, `.codex/hooks.json`, `.devin/hooks.v1.json`, `.opencode/plugins/fragua-guardian.js`) además de `.claude/settings.json`; solo el dueño los edita, con `FORGE_EDITAR_GUARDIAN=1`. **Rodeos declarados como NO detectados:** cambiar de directorio con `cd` y escribir con una ruta relativa, y borrar la carpeta que contiene el archivo de hooks. El guardián es una red de seguridad, no un límite. Kiro no tiene adaptador de hook.
+  - **`doctor` e instalador neutros:** no suponen Anthropic ni Claude Code; el ping usa el proveedor configurado.
+  - **Skills sin `model:`** fuera de Claude Code (los niveles se traducen a `alto/medio/economico`) y **validación estricta del estándar de skills** (`validarSkill` estricto sobre lo instalado en cada herramienta).
+  - **`AGENTS.md` por herramienta:** usa la sintaxis de invocación de esa herramienta y trae el bloque «Flujo Fragua en esta herramienta».
+  - **Skills solo de Claude Code:** `indexar-proyecto`, `compresion-tokens`, `cache-audit`, `effort-router` y `sdd-crear-agente` (`SKILLS_SOLO_CLAUDE`, `core/instalacion/adaptar-anfitrion.js`) no se instalan en otras herramientas; el `AGENTS.md` lo avisa.
 - **Servidor MCP con perfil `verificacion`**: expone solo `verificar`, sin gasto, con límites del entorno del usuario.
 - **Contrato público**: esquemas versionados en `docs/contrato/` y una prueba que falla si el código se aparta de ellos.
 
@@ -67,6 +72,8 @@ La mayor parte de la revisión consistió en un patrón: **un archivo del proyec
 | Escribir la configuración de las herramientas de calidad (`tsconfig`, `biome`, etc.) desde el implementador |
 
 ## Límites conocidos (sin cerrar)
+
+- **Sin verificar, en una sola lista:** la prueba manual F5 en una herramienta real; el ciclo con Docker real en Linux; Gemini con la API real; y la CI de Linux, que nunca ha estado verde.
 
 - **Docker real solo está medido en Windows 11** (Docker Desktop, 2026-11-10: 597 pruebas de 17 archivos y 11 de 11 de aislamiento, ver arriba). **En Linux y macOS no**: el aislamiento, los tiempos y el consumo en contenedor allí no se han medido.
 - **La integración continua en Linux no ha estado verde.** El último run documentado de `main` (2026-11-09, commit `8cc2e58`) falló en `Tests (Node 22)`, `Aislamiento con Docker real` y `Pruebas con Docker real`; clasificar por qué exige leer los logs, que requiere `gh auth login` del dueño (tarea T8 de `2026-11-09-ci-verde-y-cuarentena`). **Hoy no se ha comprobado.**
@@ -91,7 +98,7 @@ Se actualiza cuando terminen; si lees esto y no hay una fecha posterior, no est�
 
 ## Lo que solo puede hacer la persona responsable
 
-1. **Abrir la PR a `main`** para que corra la integración continua en Linux: https://github.com/carlos060798/FORGE/compare/main...feature/motor-agentico
+1. **Integrar `desarrollo` en `main`** (avance rápido, sin conflicto) para que corra la integración continua en Linux: https://github.com/carlos060798/FORGE/compare/main...desarrollo
 2. **Rotar la clave de Anthropic** que apareció en la conversación, y poner una nueva en el entorno con un tope.
 3. **Tener Docker en el equipo** para medir contenedores reales (`fragua verificar`, mutación, puertas).
 4. **Aprobar formalmente las especificaciones.** Hasta ahora se ha avanzado por delegación, anotado en cada carpeta.

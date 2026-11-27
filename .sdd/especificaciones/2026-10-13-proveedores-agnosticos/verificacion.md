@@ -40,12 +40,26 @@ Un criterio figura como **con prueba citada** cuando algún archivo de prueba de
 | CA-006-01 | no | exacta | `tests/pruebas-independientes-opciones.test.js` |
 | CA-006-02 | no | **ninguna** | — |
 | CA-006-03 | no | **ninguna** | — |
+| CA-007-01 | no (borrador) | exacta por nombre de prueba, no por id | `tests/proveedores-conformidad.test.js` (entrada `gemini`: `complete` y `conversar` contra servidor falso), `tests/gemini-provider.test.js` («la petición»). **Con prueba (servidor falso). Sin probar con la API real** |
+| CA-007-02 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («gemini y google se reconocen y crean un GeminiProvider»); el nombre inválido lo cubren las pruebas de `ErrorProveedorDesconocido`. **Con prueba** |
+| CA-007-03 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («detección por credenciales: Gemini va al final...», «la clave se lee de GEMINI_API_KEY y, si no, de GOOGLE_API_KEY»). **Con prueba** |
+| CA-007-04 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («ids por llamada y resultados»), `tests/proveedores-conformidad.test.js` (`idsEnResultados`). **Con prueba (servidor falso)** |
+| CA-007-05 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («firma de pensamiento (thoughtSignature)», 4 pruebas), `tests/proveedores-conformidad.test.js` (`opaco: 'devuelve'`). **Con prueba (servidor falso)**; que la API real exija o acepte la firma así, **sin probar** |
+| CA-007-06 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («nombres de herramienta», 2 pruebas). **Con prueba (servidor falso)** |
+| CA-007-07 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («el error HTTP no deja la clave ni en el mensaje», «un error de red tampoco la deja», «paradas, tokens y bloqueos»), `tests/proveedores-conformidad.test.js` (`errorServidor`, `cancelacion`). **Con prueba (servidor falso)**; los códigos de error reales de Google, **sin probar** |
+| CA-007-08 | no (borrador) | sin id citado | `tests/gemini-provider.test.js` («los niveles resuelven a un modelo de Gemini...», «los modelos por defecto tienen precio en la tabla incluida»). **Con prueba.** Que los modelos fijados existan y que los precios coincidan con la factura: **sin probar con la API real** |
+| CA-007-09 | no (borrador) | **ninguna** | Solo documentación (`docs/ESTADO-ACTUAL.md`, `docs/configuration.md`, `docs/guia-anadir-proveedor.md`, `docs/limitations.md`, `docs/roadmap.md`). **Sin prueba automática; cumplido mientras el kit con clave real no se ejecute** |
+
+## HU-007 (Gemini, añadida el 2026-11-26)
+
+Las nueve filas CA-007 de la tabla se escribieron a mano el 2026-11-26 leyendo `spec.md`, `tests/gemini-provider.test.js` y `tests/proveedores-conformidad.test.js`; no están en el recuento del resumen de arriba, que es del 2026-10-24. **Ningún criterio de HU-007 se ha probado con la API real de Gemini**: el kit de pruebas independientes (`fragua probar-modelo` con `GEMINI_API_KEY`) está sin ejecutar y es una tarea del dueño. ADR-27 sigue en propuesta.
 
 ## Sin cerrar
 
 > Copiado de `tareas.md` el 2026-10-25: puede estar desactualizado; manda `tareas.md`.
 
 - **F6.2** **(Dueño)** Tres proyectos con un segundo proveedor real, con tope; evidencia en la carpeta. Cubre CA-006-02.
+- **HU-007 con la API real** **(Dueño)**: ejecutar `fragua probar-modelo` con una clave de Gemini y anotar modelo y errores (guion en `2026-11-10-metodologia-agnostica/verificacion.md`, apartado Gemini).
 - **F6.3** Documentación coherente con lo que se haya probado. Cubre CA-006-03.
 - **F7.1** Documentación: guía, `configuration.md`, `CHANGELOG.md`.
 - **F7.2** Suite completa en Windows y en el contenedor Linux; tipos en 0.
