@@ -3,7 +3,7 @@
  * Batería de conformidad de proveedores (spec 2026-10-13-proveedores-agnosticos, HU-001).
  *
  * Una sola batería, parametrizada por proveedor, contra servidores falsos locales (sin red ni
- * claves): Anthropic con su cliente inyectable, OpenAI y Ollama con `tests/fixtures/proveedores/`,
+ * claves): Anthropic con su cliente inyectable, OpenAI, Gemini y Ollama con `tests/fixtures/proveedores/`,
  * y el proveedor de pruebas. Dos partes:
  *   - `complete`: texto, tokens, error del servidor, tiempo agotado, cancelación, respuesta vacía.
  *   - `conversar`: solo para quien declara `admiteHerramientas`. Un proveedor que lo declara y no
@@ -15,7 +15,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AnthropicProvider, OllamaProvider, OpenAIProvider, StubProvider } from '../core/llm-providers/index.js';
+import { AnthropicProvider, GeminiProvider, OllamaProvider, OpenAIProvider, StubProvider } from '../core/llm-providers/index.js';
 import { servidorFalso } from './fixtures/proveedores/servidor-falso.js';
 import { clienteAnthropicFalso } from './fixtures/proveedores/cliente-anthropic-falso.js';
 
@@ -68,6 +68,19 @@ const ADAPTADORES = [
     },
     resultadosEnviados: (p) => p.messages.filter((m) => m.role === 'tool')
       .map((m) => ({ id: m.tool_call_id, contenido: String(m.content), esError: String(m.content).startsWith('ERROR: ') })),
+  },
+  {
+    // Gemini (ADR-27): `generateContent` por HTTP contra el servidor falso; los argumentos llegan como objeto y los
+    // resultados vuelven como `functionResponse` con el id de la llamada. Sin probar con la API real.
+    nombre: 'gemini', declara: true, errorServidor: true, cancelacion: true,
+    argumentosComoTexto: false, idsEnResultados: true, opaco: 'devuelve',
+    async montar(escenarios) {
+      const s = await servidorFalso('gemini', escenarios);
+      const provider = new GeminiProvider({ api_key: CLAVE, base_url: s.url });
+      return { provider, peticiones: () => s.peticiones.map((p) => p.cuerpo), cerrar: s.cerrar };
+    },
+    resultadosEnviados: (p) => p.contents.flatMap((c) => c.parts ?? []).filter((x) => x.functionResponse)
+      .map((x) => ({ id: x.functionResponse.id ?? null, contenido: String(x.functionResponse.response?.output ?? x.functionResponse.response?.error), esError: 'error' in (x.functionResponse.response ?? {}) })),
   },
   {
     nombre: 'ollama', declara: true, sinRechazo: true, errorServidor: true, cancelacion: true,

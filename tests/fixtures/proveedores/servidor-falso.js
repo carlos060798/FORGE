@@ -2,11 +2,11 @@
 /**
  * Servidores falsos locales para la batería de conformidad de proveedores
  * (spec 2026-10-13-proveedores-agnosticos, F1.1). Sin red ni claves: un `http.Server` en 127.0.0.1
- * que habla la API de chat de OpenAI (`/chat/completions`) o la de Ollama (`/api/chat`).
+ * que habla la API de chat de OpenAI (`/chat/completions`), la de Ollama (`/api/chat`) o `generateContent` de Gemini.
  *
  * Los escenarios se describen en forma neutra (no en la del proveedor) y el servidor los traduce:
- *   { texto?, usos?: [{ id?, nombre, entrada?, argumentosCrudos? }], parada?: 'longitud'|'rechazo',
- *     tokens?: { prompt, completion, cacheados? }, http?: number, mensaje?: string, colgar?: boolean }
+ *   { texto?, usos?: [{ id?, nombre, entrada?, argumentosCrudos?, sinId? }], opacos?: [{ signature }], parada?: 'longitud'|'rechazo',
+ *     tokens?: { prompt, completion, cacheados? }, crudo?: object, http?: number, mensaje?: string, colgar?: boolean }
  * Una lista de escenarios se sirve en orden; el último se repite.
  *
  * Las formas de la respuesta son las del spike `herramientas-por-proveedor.md`; lo que ese informe
@@ -15,8 +15,39 @@
 
 import http from 'node:http';
 
-/** @param {any} spec @param {'openai'|'ollama'} formato */
+/**
+ * Respuesta de `generateContent` de Gemini (forma de ADR-27; sin probar con el servicio real). Una firma de
+ * pensamiento (`opacos[0].signature`) va en la misma parte que la primera llamada, o en la del texto si no hay llamadas.
+ * @param {any} spec
+ */
+function cuerpoGemini(spec) {
+  const t = spec.tokens ?? { prompt: 12, completion: 5 };
+  const usos = spec.usos ?? [];
+  const firma = spec.opacos?.length ? String(spec.opacos[0].signature ?? 'firma') : null;
+  /** @type {any[]} */
+  const partes = [];
+  if (spec.texto) partes.push({ text: spec.texto, ...(firma && !usos.length ? { thoughtSignature: firma } : {}) });
+  usos.forEach((u, i) => partes.push({
+    functionCall: { ...(u.sinId ? {} : { id: u.id ?? `call_${i}` }), name: u.nombre, args: u.entrada ?? {} },
+    ...(firma && i === 0 ? { thoughtSignature: firma } : {}),
+  }));
+  let fin = 'STOP';
+  if (spec.parada === 'longitud') fin = 'MAX_TOKENS';
+  if (spec.parada === 'rechazo') fin = 'SAFETY';
+  return {
+    candidates: [{ content: { role: 'model', parts: partes }, finishReason: fin, index: 0 }],
+    usageMetadata: {
+      promptTokenCount: t.prompt, candidatesTokenCount: t.completion, totalTokenCount: t.prompt + t.completion,
+      ...(t.cacheados !== undefined ? { cachedContentTokenCount: t.cacheados } : {}),
+      ...(t.pensamiento !== undefined ? { thoughtsTokenCount: t.pensamiento } : {}),
+    },
+    modelVersion: 'falso',
+  };
+}
+
+/** @param {any} spec @param {'openai'|'ollama'|'gemini'} formato */
 function cuerpo(spec, formato) {
+  if (formato === 'gemini') return cuerpoGemini(spec);
   const t = spec.tokens ?? { prompt: 12, completion: 5 };
   const usos = spec.usos ?? [];
   if (formato === 'openai') {
@@ -49,7 +80,7 @@ function cuerpo(spec, formato) {
 }
 
 /**
- * @param {'openai'|'ollama'} formato
+ * @param {'openai'|'ollama'|'gemini'} formato
  * @param {any[]} escenarios
  * @returns {Promise<{ url: string, peticiones: { url?: string, headers: http.IncomingHttpHeaders, cuerpo: any }[], cerrar: () => Promise<void> }>}
  */
@@ -69,10 +100,10 @@ export function servidorFalso(formato, escenarios) {
       res.setHeader('content-type', 'application/json');
       if (spec.http) {
         res.statusCode = spec.http;
-        res.end(JSON.stringify(formato === 'openai' ? { error: { message: spec.mensaje ?? 'fallo del servidor', type: 'server_error' } } : { error: spec.mensaje ?? 'fallo del servidor' }));
+        res.end(JSON.stringify(formato === 'openai' ? { error: { message: spec.mensaje ?? 'fallo del servidor', type: 'server_error' } } : formato === 'gemini' ? { error: { code: spec.http, message: spec.mensaje ?? 'fallo del servidor', status: 'INTERNAL' } } : { error: spec.mensaje ?? 'fallo del servidor' }));
         return;
       }
-      res.end(JSON.stringify(cuerpo(spec, formato)));
+      res.end(JSON.stringify(spec.crudo ?? cuerpo(spec, formato)));   // `crudo`: una respuesta tal cual, para casos que la forma neutra no expresa
     });
   });
   return new Promise((resolver) => srv.listen(0, '127.0.0.1', () => resolver({
