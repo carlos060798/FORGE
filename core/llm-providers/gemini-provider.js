@@ -345,6 +345,10 @@ export class GeminiProvider extends LlmProvider {
       throw new Error(`Gemini bloqueó la petición (${json.promptFeedback.blockReason}).`);
     }
     const partes = json?.candidates?.[0]?.content?.parts;
-    return { output: Array.isArray(partes) ? textoDe(partes) : '', ...this._tokens(json?.usageMetadata) };
+    const output = Array.isArray(partes) ? textoDe(partes) : '';
+    const parada = json?.candidates?.[0]?.finishReason;
+    // Sin texto, una parada que no es normal (SAFETY, RECITATION, MAX_TOKENS…) es un error: una respuesta vacía no puede pasar por válida
+    if (output === '' && parada && parada !== 'STOP') throw new Error(`Gemini no devolvió texto (${parada}).`);
+    return { output, ...this._tokens(json?.usageMetadata) };
   }
 }

@@ -5,7 +5,7 @@
 
 ## Proveedores que existen
 
-`crearProvider` (`core/llm-providers/index.js`) elige por `FORGE_LLM_PROVIDER`, luego `provider:` de la configuración y, si no hay, por claves de entorno, en este orden (`proveedorPorCredenciales`): `ANTHROPIC_API_KEY`/`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_BASE_URL` y `GEMINI_API_KEY`/`GOOGLE_API_KEY`; si no hay ninguna, `anthropic`. Cinco implementaciones, con alias:
+`crearProvider` (`core/llm-providers/index.js`) elige por `FORGE_LLM_PROVIDER`, luego `provider:` de la configuración y, si no hay, por claves de entorno, en este orden (`proveedorPorCredenciales`): `ANTHROPIC_API_KEY`/`CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_BASE_URL` y `GEMINI_API_KEY` (`GOOGLE_API_KEY` no elige proveedor, solo sirve de clave); si no hay ninguna, `anthropic`. Cinco implementaciones, con alias:
 
 | Implementación | Nombres que la seleccionan |
 |---|---|

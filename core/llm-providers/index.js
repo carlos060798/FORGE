@@ -209,7 +209,8 @@ export function proveedorPorCredenciales(env = process.env) {
   if (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY) return 'anthropic';
   if (env.OPENAI_API_KEY) return 'openai';
   if (env.OLLAMA_BASE_URL) return 'ollama';
-  if (env.GEMINI_API_KEY || env.GOOGLE_API_KEY) return 'gemini';
+  // Solo el nombre específico: GOOGLE_API_KEY es la variable genérica de Google y no debe enviar tu código a Gemini sin que lo elijas
+  if (env.GEMINI_API_KEY) return 'gemini';
   return null;
 }
 

@@ -212,6 +212,17 @@ describe('Gemini: paradas, tokens y bloqueos', () => {
     await assert.rejects(p.complete({ model: 'medio', systemPrompt: 's', userPrompt: 'u' }), /PROHIBITED_CONTENT/);
   }));
 
+  test('complete: una parada por seguridad o por tope sin texto es un error, no una respuesta vacía', () => con([
+    { crudo: { candidates: [{ finishReason: 'SAFETY' }], usageMetadata: {} } },
+    { crudo: { candidates: [{ content: { role: 'model', parts: [] }, finishReason: 'MAX_TOKENS' }], usageMetadata: {} } },
+    { crudo: { candidates: [{ content: { role: 'model', parts: [{ text: 'parcial' }] }, finishReason: 'MAX_TOKENS' }], usageMetadata: {} } },
+  ], async (p) => {
+    const c = () => p.complete({ model: 'medio', systemPrompt: 's', userPrompt: 'u' });
+    await assert.rejects(c(), /SAFETY/);
+    await assert.rejects(c(), /MAX_TOKENS/);
+    assert.equal((await c()).output, 'parcial');
+  }));
+
   test('un motivo de parada desconocido es «otro»; con llamadas sigue siendo «herramientas»', () => con([
     { crudo: { candidates: [{ content: { role: 'model', parts: [{ text: 'x' }] }, finishReason: 'ALGO_NUEVO' }], usageMetadata: {} } },
     { crudo: { candidates: [{ content: { role: 'model', parts: [{ functionCall: { name: 'leer', args: {} } }] }, finishReason: 'FINISH_REASON_UNSPECIFIED' }], usageMetadata: {} } },
@@ -260,7 +271,8 @@ describe('Gemini: nombres, modelos y detección', () => {
 
   test('detección por credenciales: Gemini va al final y no cambia ninguna elección anterior', () => {
     assert.equal(proveedorPorCredenciales({ GEMINI_API_KEY: 'k' }), 'gemini');
-    assert.equal(proveedorPorCredenciales({ GOOGLE_API_KEY: 'k' }), 'gemini');
+    // GOOGLE_API_KEY es la variable genérica de Google (Maps, Cloud…): no basta para elegir un proveedor remoto
+    assert.equal(proveedorPorCredenciales({ GOOGLE_API_KEY: 'k' }), null);
     assert.equal(proveedorPorCredenciales({ GEMINI_API_KEY: 'k', ANTHROPIC_API_KEY: 'a' }), 'anthropic');
     assert.equal(proveedorPorCredenciales({ GEMINI_API_KEY: 'k', OPENAI_API_KEY: 'o' }), 'openai');
     assert.equal(proveedorPorCredenciales({ GEMINI_API_KEY: 'k', OLLAMA_BASE_URL: 'http://127.0.0.1:11434' }), 'ollama');

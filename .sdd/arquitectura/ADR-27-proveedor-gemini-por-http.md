@@ -35,7 +35,7 @@ Un `GeminiProvider` en `core/llm-providers/gemini-provider.js`, con `fetch` de N
 
 **Caché y razonamiento.** Gemini cuenta `cachedContentTokenCount` dentro de `promptTokenCount` (como OpenAI): se separan para no contar dos veces. FORGE no crea cachés de Gemini. La salida suma `thoughtsTokenCount`, que se cobra como salida; `toolUsePromptTokenCount` se suma a la entrada.
 
-**Detección por credenciales.** `GEMINI_API_KEY` o `GOOGLE_API_KEY` eligen `gemini` **al final**: el orden es Anthropic, OpenAI, Ollama, Gemini. Así nadie que hoy tenga otra señal cambia de proveedor. Quien tenga varias fija el proveedor con `FRAGUA_LLM_PROVIDER`.
+**Detección por credenciales.** Solo `GEMINI_API_KEY` elige `gemini` **al final**: el orden es Anthropic, OpenAI, Ollama, Gemini. `GOOGLE_API_KEY` es la variable genérica de Google (Maps, Cloud, otros SDK) y **no** elige proveedor: sigue valiendo como clave una vez elegido `gemini` (corrección tras el juicio del 2026-11-26; decisión del dueño pendiente). Así nadie que hoy tenga otra señal cambia de proveedor. Quien tenga varias fija el proveedor con `FRAGUA_LLM_PROVIDER`.
 
 **Dirección del servidor.** Por defecto `https://generativelanguage.googleapis.com`. `base_url` del proyecto sigue pasando por `sanearConfigDelProyecto` (solo loopback o un host permitido por el usuario); `GEMINI_BASE_URL` del entorno del usuario manda sobre el archivo. `redirect: 'error'` en cada llamada: una redirección no puede llevar la clave a otro servidor.
 
@@ -55,7 +55,7 @@ Un `GeminiProvider` en `core/llm-providers/gemini-provider.js`, con `fetch` de N
 ### Negativas
 - Todo lo de la API está contrastado solo con documentación y un servidor falso: **sin probar con la API real**. La documentación cambia (las páginas migraron de dominio durante la consulta).
 - Los identificadores de modelo por defecto pueden dejar de existir.
-- Cambio menor de comportamiento: quien tenga `GEMINI_API_KEY` o `GOOGLE_API_KEY` y ninguna otra señal pasa del respaldo «Anthropic» a `gemini`. Se anota en el CHANGELOG.
+- Cambio menor de comportamiento: quien tenga `GEMINI_API_KEY` y ninguna otra señal pasa del respaldo «Anthropic» a `gemini`. Se anota en el CHANGELOG.
 
 ## Fuentes (consultadas el 2026-11-26)
 
