@@ -16,9 +16,9 @@
  *
  * Opciones: --modelo humo|real (humo)   --proyectos lista (todos)   --tope USD por proyecto (0.30)
  *           --nivel haiku|sonnet|opus (haiku)   --salida carpeta (temporal)   --conservar   --desde-repo
- *           --proveedor anthropic|openai|ollama|stub (stub en humo, anthropic en real)
+ *           --proveedor anthropic|openai|gemini|ollama|stub (stub en humo, anthropic en real)
  *           --modelo-alto / --modelo-medio / --modelo-economico id (los del proveedor por defecto)
- * Con --modelo real hace falta la clave del proveedor elegido en el ENTORNO (ANTHROPIC_API_KEY, OPENAI_API_KEY;
+ * Con --modelo real hace falta la clave del proveedor elegido en el ENTORNO (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY;
  * Ollama no usa clave): nunca por la línea de comandos, y nunca se imprime ni se guarda.
  * El modo humo es siempre el proveedor stub: sin gasto y sin claves.
  */

@@ -223,6 +223,24 @@ describe('Gemini: paradas, tokens y bloqueos', () => {
     assert.equal((await c()).output, 'parcial');
   }));
 
+  test('un error HTTP lleva `status` numérico (complete y conversar), para que doctor lo distinga', () => con([
+    { http: 401, mensaje: 'API key not valid' }, { http: 429, mensaje: 'cuota' }, { http: 503, mensaje: 'caído' },
+  ], async (p) => {
+    const e1 = await p.complete({ model: 'medio', systemPrompt: 's', userPrompt: 'u' }).catch((e) => e);
+    assert.equal(e1.status, 401);
+    const e2 = await turno(p, [{ rol: 'usuario', contenido: 'hola' }]).catch((e) => e);
+    assert.equal(e2.status, 429);
+    const e3 = await p.complete({ model: 'medio', systemPrompt: 's', userPrompt: 'u' }).catch((e) => e);
+    assert.equal(e3.status, 503);
+  }));
+
+  test('MAX_TOKENS sin texto marca el error con `motivoParada` para que doctor lo explique', () => con([
+    { crudo: { candidates: [{ content: { role: 'model', parts: [] }, finishReason: 'MAX_TOKENS' }], usageMetadata: {} } },
+  ], async (p) => {
+    const e = await p.complete({ model: 'medio', systemPrompt: 's', userPrompt: 'u', maxTokens: 32 }).catch((x) => x);
+    assert.equal(e.motivoParada, 'MAX_TOKENS');
+  }));
+
   test('un motivo de parada desconocido es «otro»; con llamadas sigue siendo «herramientas»', () => con([
     { crudo: { candidates: [{ content: { role: 'model', parts: [{ text: 'x' }] }, finishReason: 'ALGO_NUEVO' }], usageMetadata: {} } },
     { crudo: { candidates: [{ content: { role: 'model', parts: [{ functionCall: { name: 'leer', args: {} } }] }, finishReason: 'FINISH_REASON_UNSPECIFIED' }], usageMetadata: {} } },

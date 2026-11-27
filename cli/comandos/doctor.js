@@ -52,6 +52,20 @@ import { PLUGIN_DIR, c, info, aviso, titulo, error, pluginVersion, claudeEnPath 
 import { banner, instalado, leerInstalacionGuardada, CLAUDE_MD_VERSION } from "./instalar.js";
 
 /** Variables de entorno con la clave de cada proveedor (los que no figuran no usan clave). */
+/**
+ * Mensaje de doctor para un error del ping al LLM. Se apoya en `e.status` (HTTP) y en `e.motivoParada`
+ * (respuesta cortada sin texto), que ponen los proveedores; no en el texto del error.
+ * @param {any} e @param {{ proveedor: string, variable?: string }} o
+ */
+export function diagnosticoDePing(e, { proveedor, variable }) {
+  if (e?.name === "AbortError" || e?.code === "UND_ERR_CONNECT_TIMEOUT") return "LLM no respondió en 10s — posible problema de red o de clave";
+  if (e?.status === 401) return `Clave rechazada (401 Unauthorized) — verifica ${variable ?? "la clave del proveedor"}`;
+  if (e?.status === 429) return "Rate limit alcanzado (429) — espera unos segundos y vuelve a intentarlo";
+  if (e?.status >= 500) return `Error del servidor del proveedor ${proveedor} (${e.status}) — reintenta más tarde`;
+  if (e?.motivoParada === "MAX_TOKENS") return `La respuesta del LLM se cortó por el tope de tokens del ping antes de dar texto (los modelos que razonan lo gastan pensando): no es un fallo de la clave ni de la conexión, que sí funcionan. Detalle: ${e.message}`;
+  return `Error inesperado al contactar el LLM: ${e?.message ?? e}`;
+}
+
 const VARIABLES_DE_CLAVE = { anthropic: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], openai: ["OPENAI_API_KEY"], gemini: ["GEMINI_API_KEY", "GOOGLE_API_KEY"] };
 
 /**
@@ -163,17 +177,7 @@ async function cmdDoctorLlm({ problemas }) {
       clearTimeout(timer);
     }
   } catch (e) {
-    if (e?.name === "AbortError" || e?.code === "UND_ERR_CONNECT_TIMEOUT") {
-      aviso(`LLM no respondió en ${PING_TIMEOUT_MS / 1000}s — posible problema de red o de clave`);
-    } else if (e?.status === 401) {
-      aviso(`Clave rechazada (401 Unauthorized) — verifica ${variables[0] ?? "la clave del proveedor"}`);
-    } else if (e?.status === 429) {
-      aviso("Rate limit alcanzado (429) — espera unos segundos y vuelve a intentarlo");
-    } else if (e?.status >= 500) {
-      aviso(`Error del servidor del proveedor ${nombreProveedor} (${e.status}) — reintenta más tarde`);
-    } else {
-      aviso(`Error inesperado al contactar el LLM: ${e?.message ?? e}`);
-    }
+    aviso(diagnosticoDePing(e, { proveedor: nombreProveedor, variable: variables[0] }));
     problemas(1);
     return;
   }

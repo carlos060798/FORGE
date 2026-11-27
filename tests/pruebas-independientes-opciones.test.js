@@ -40,7 +40,17 @@ describe('comportamiento de siempre', () => {
 });
 
 describe('--proveedor', () => {
-  test('rechaza uno desconocido', () => assert.match(mal(['--proveedor', 'gemini']), /anthropic, openai, ollama, stub/));
+  test('rechaza uno desconocido', () => assert.match(mal(['--proveedor', 'mistral']), /anthropic, openai, gemini, ollama, stub/));
+  test('acepta gemini: en real exige GEMINI_API_KEY y en humo no vale', () => {
+    assert.match(mal(['--modelo', 'real', '--proveedor', 'gemini'], { ANTHROPIC_API_KEY: 'k' }), /GEMINI_API_KEY/);
+    assert.equal(ok(['--modelo', 'real', '--proveedor', 'gemini'], { GEMINI_API_KEY: 'k' }).proveedor, 'gemini');
+    assert.match(mal(['--proveedor', 'gemini']), /humo/);
+  });
+  test('entornoDelCiclo con gemini conserva solo GEMINI_API_KEY', () => {
+    const o = ok(['--modelo', 'real', '--proveedor', 'gemini'], { GEMINI_API_KEY: 'g' });
+    const e = entornoDelCiclo(o, { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'x', ANTHROPIC_API_KEY: 'y' });
+    assert.deepEqual([e.GEMINI_API_KEY, e.OPENAI_API_KEY, e.ANTHROPIC_API_KEY, e.FORGE_LLM_PROVIDER], ['g', undefined, undefined, 'gemini']);
+  });
   test('humo solo con stub: ni claves ni gasto', () => {
     assert.match(mal(['--proveedor', 'openai']), /humo/);
     assert.equal(ok(['--proveedor', 'stub']).proveedor, 'stub');
