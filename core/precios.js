@@ -21,6 +21,12 @@ export const REVISADA = '2026-10-09';
 /** Fecha en que se contrastaron los precios de OpenAI con https://developers.openai.com/api/docs/pricing (los de Anthropic: REVISADA). */
 export const REVISADA_OPENAI = '2026-10-17';
 
+/** Fecha en que se contrastaron los precios de Gemini con la tarifa oficial (FUENTE_GEMINI). */
+export const REVISADA_GEMINI = '2026-11-26';
+
+/** Página de la que se copiaron los precios de Gemini (antes https://ai.google.dev/gemini-api/docs/pricing, que redirige ahí). */
+export const FUENTE_GEMINI = 'https://aistudio.google.com/docs/pricing';
+
 /** Página de la que se copiaron los precios de Anthropic. */
 export const FUENTE = 'https://platform.claude.com/docs/en/about-claude/pricing';
 
@@ -86,6 +92,25 @@ export const TABLA = {
     'gpt-6.1-sol':   { entrada: 2, salida: 10, cache_lectura: 0.1 },
     'gpt-6-sol':     { entrada: 2, salida: 10, cache_lectura: 0.2 },
     'gpt-6-luna':    { entrada: 0.1, salida: 0.5, cache_lectura: 0.01 },
+  },
+  // Gemini: contrastados el 2026-11-26 (REVISADA_GEMINI) con la tarifa oficial de pago, nivel estándar, SOLO texto
+  // (audio e imagen cuestan más y FORGE no los envía): https://aistudio.google.com/docs/pricing. USD por millón de tokens.
+  // `cache_lectura` es «Cached input»; Gemini no cobra escritura de caché aparte y FORGE no crea cachés propias (sin
+  // `cache_escritura_5m` se usa entrada × 1,25: nunca por debajo). El almacenamiento de caché por hora no se cuenta.
+  // Los Pro cobran por tramos: estos precios valen hasta 200 000 tokens de entrada; por encima, la petición entera
+  // cuesta más (3.1 Pro: 4 / 18; 2.5 Pro: 2,5 / 15) y FORGE NO lo contempla (su contexto por defecto no llega).
+  // Fuera a propósito: `gemini-3.8-flash` (sube a 1,50 / 7,50 el 2027-01-01) y los `gemini-4-*` (su precio cambia el
+  // 2026-12-01): una tabla que quedaría por debajo del cobro real. Un modelo ausente se cuenta al precio más caro.
+  // `gemini-2.5-pro` y `gemini-2.5-flash` figuran como obsoletos: el 2026-12-01 pasan a enrutarse a otros modelos.
+  gemini: {
+    'gemini-3.1-pro-preview':  { entrada: 2,    salida: 12,   cache_lectura: 0.2 },
+    'gemini-3.6-flash':        { entrada: 0.75, salida: 3.75, cache_lectura: 0.075 },
+    'gemini-3.1-flash-lite':   { entrada: 0.25, salida: 1.5,  cache_lectura: 0.025 },
+    'gemini-3.5-flash-lite':   { entrada: 0.3,  salida: 2.5,  cache_lectura: 0.03 },
+    'gemini-3-flash-preview':  { entrada: 0.5,  salida: 3,    cache_lectura: 0.05 },
+    'gemini-2.5-pro':          { entrada: 1.25, salida: 10,   cache_lectura: 0.125 },
+    'gemini-2.5-flash':        { entrada: 0.3,  salida: 2.5,  cache_lectura: 0.03 },
+    'gemini-2.5-flash-lite':   { entrada: 0.1,  salida: 0.4,  cache_lectura: 0.01 },
   },
 };
 

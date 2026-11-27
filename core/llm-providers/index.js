@@ -11,6 +11,7 @@
  *   anthropic  — Claude (Anthropic API)
  *   openai     — GPT-4o / Codex / Azure OpenAI / GitHub Models / Cursor
  *   ollama     — Modelos locales (llama3, mistral, deepseek, qwen, etc.)
+ *   gemini     — Gemini (Google) por HTTP, sin SDK (ADR-27; alias: google). Sin probar con la API real
  *   stub       — Tests y CI sin LLM
  *
  * Ejemplo sdd.config.yaml:
@@ -36,6 +37,7 @@ import { join } from 'node:path';
 import { AnthropicProvider } from './anthropic-provider.js';
 import { OpenAIProvider }    from './openai-provider.js';
 import { OllamaProvider }    from './ollama-provider.js';
+import { GeminiProvider }    from './gemini-provider.js';
 import { StubProvider }      from './stub-provider.js';
 import { leerModelosDe }     from '../ciclo/config.js';
 import { leerVariable, leerVariableRestrictiva } from '../entorno.js';
@@ -100,7 +102,7 @@ export function destinoDeModeloPermitido(direccion, env = process.env) {
 }
 
 const R_AVISO_ENTORNO = (url, variable) => '[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (' + url + ') se ignora: tu entorno fija ' + variable + ' y manda sobre el archivo del proyecto.';
-const R_AVISO_LOOPBACK = (url) => '[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (' + url + ') se ignora: es una dirección de tu propia máquina que el proyecto fija y que tú no pediste; con un proveedor remoto recibiría tu clave. Si es tuya, define OPENAI_BASE_URL en tu entorno o añade ese host:puerto a ' + VARIABLE_HOSTS_LLM + '.';
+const R_AVISO_LOOPBACK = (url) => '[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (' + url + ') se ignora: es una dirección de tu propia máquina que el proyecto fija y que tú no pediste; con un proveedor remoto recibiría tu clave. Si es tuya, define OPENAI_BASE_URL (o GEMINI_BASE_URL con Gemini) en tu entorno o añade ese host:puerto a ' + VARIABLE_HOSTS_LLM + '.';
 
 /** ¿Es una dirección de la propia máquina? */
 function esLoopback(direccion) {
@@ -114,6 +116,13 @@ function usuarioNombroElHost(direccion, env) {
     const lista = String(leerVariableRestrictiva('LLM_HOSTS', env, '') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
     return lista.includes(u.host.toLowerCase()) || lista.includes(u.hostname.toLowerCase());
   } catch { return false; }
+}
+
+/** Variable de entorno del USUARIO que fija la dirección del servidor, según el proveedor (OPENAI_BASE_URL por defecto). */
+function variableDeDireccion(proveedorDelProyecto, env, sinClave) {
+  const nombre = String(leerVariable('LLM_PROVIDER', env) ?? proveedorDelProyecto ?? '').toLowerCase();
+  if (sinClave) return 'OLLAMA_BASE_URL';
+  return ['gemini', 'google'].includes(nombre) ? 'GEMINI_BASE_URL' : 'OPENAI_BASE_URL';
 }
 
 /** ¿El proveedor elegido es local y no usa clave (Ollama y compatibles)? */
@@ -134,15 +143,16 @@ export function sanearConfigDelProyecto(config, env = process.env, avisar = (m) 
   for (const clave of ['api_key', 'api_version']) {
     if (clave in limpia) {
       delete limpia[clave];
-      avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.${clave}» se ignora. Una credencial no puede venir de un archivo del proyecto; defínela en tu entorno (ANTHROPIC_API_KEY, OPENAI_API_KEY).`);
+      avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.${clave}» se ignora. Una credencial no puede venir de un archivo del proyecto; defínela en tu entorno (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY).`);
     }
   }
   // H-4: lo que el USUARIO fija en su entorno manda siempre sobre el archivo del proyecto
   if ('base_url' in limpia) {
     const sinClave = proveedorSinClave(limpia.provider, env);
-    const delUsuario = env[sinClave ? 'OLLAMA_BASE_URL' : 'OPENAI_BASE_URL'];
+    const variable = variableDeDireccion(limpia.provider, env, sinClave);
+    const delUsuario = env[variable];
     if (delUsuario) {
-      avisar(R_AVISO_ENTORNO(limpia.base_url, sinClave ? 'OLLAMA_BASE_URL' : 'OPENAI_BASE_URL'));
+      avisar(R_AVISO_ENTORNO(limpia.base_url, variable));
       delete limpia.base_url;
     } else if (!sinClave && esLoopback(limpia.base_url) && !usuarioNombroElHost(limpia.base_url, env)) {
       // Un proveedor remoto envía su clave en cada llamada: el proyecto no puede mandarla a un
@@ -152,7 +162,7 @@ export function sanearConfigDelProyecto(config, env = process.env, avisar = (m) 
     }
   }
   if ('base_url' in limpia && !destinoDeModeloPermitido(limpia.base_url, env)) {
-    avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (${limpia.base_url}) se ignora: el proyecto no puede dirigir las llamadas al modelo a un servidor que tú no hayas permitido. Si es tuyo, añade su host a ${VARIABLE_HOSTS_LLM} en tu entorno, o define OPENAI_BASE_URL / OLLAMA_BASE_URL.`);
+    avisar(`[FORGE] .sdd/sdd.config.yaml: «llm.base_url» (${limpia.base_url}) se ignora: el proyecto no puede dirigir las llamadas al modelo a un servidor que tú no hayas permitido. Si es tuyo, añade su host a ${VARIABLE_HOSTS_LLM} en tu entorno, o define OPENAI_BASE_URL / GEMINI_BASE_URL / OLLAMA_BASE_URL.`);
     delete limpia.base_url;
   }
   if (typeof limpia.provider === 'string' && /^https?:/i.test(limpia.provider.trim()) && !destinoDeModeloPermitido(limpia.provider.trim(), env)) {
@@ -192,25 +202,28 @@ function detectarProvider() {
  * Proveedor que sugieren las credenciales del entorno, o `null` si no hay ninguna. Una sola fuente para quien
  * necesita saber si hay un proveedor real (crearProvider, probar-modelo).
  * @param {Record<string, string|undefined>} [env]
- * @returns {'anthropic'|'openai'|'ollama'|null}
+ * Gemini va al final: quien ya tenía otra señal no cambia de proveedor al definir además una clave de Gemini (ADR-27).
+ * @returns {'anthropic'|'openai'|'ollama'|'gemini'|null}
  */
 export function proveedorPorCredenciales(env = process.env) {
   if (env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY) return 'anthropic';
   if (env.OPENAI_API_KEY) return 'openai';
   if (env.OLLAMA_BASE_URL) return 'ollama';
+  // Solo el nombre específico: GOOGLE_API_KEY es la variable genérica de Google y no debe enviar tu código a Gemini sin que lo elijas
+  if (env.GEMINI_API_KEY) return 'gemini';
   return null;
 }
 
 /**
- * El nombre de proveedor no se reconoce (un error tipográfico, o uno sin soporte como Gemini). Quien llama decide por la
+ * El nombre de proveedor no se reconoce (un error tipográfico, o uno sin soporte como Mistral). Quien llama decide por la
  * clase o por `code`, no buscando texto en el mensaje.
  */
 export class ErrorProveedorDesconocido extends Error {
   /** @param {string} nombre el nombre recibido */
   constructor(nombre) {
     super(
-      `Proveedor de modelos desconocido: "${nombre}". Válidos: anthropic, openai, ollama, stub ` +
-      '(alias: claude, gpt, codex, azure, github-models, cursor, local, deepseek, llama, test) o una URL http(s) de Ollama. ' +
+      `Proveedor de modelos desconocido: "${nombre}". Válidos: anthropic, openai, ollama, gemini, stub ` +
+      '(alias: claude, gpt, codex, azure, github-models, cursor, local, deepseek, llama, google, test) o una URL http(s) de Ollama. ' +
       'Se detiene en vez de usar otro proveedor: un nombre mal escrito enviaría tu código y tus prompts a uno que no elegiste. ' +
       'Corrige FRAGUA_LLM_PROVIDER (o FORGE_LLM_PROVIDER) o `llm.provider` en .sdd/sdd.config.yaml.',
     );
@@ -239,8 +252,8 @@ export function crearProvider(opts = {}) {
     detectarProvider()
   ).toLowerCase();
 
-  // Quienes llaman pasan `api_key` leída de ANTHROPIC_API_KEY: esa clave solo vale para Anthropic. Con otro proveedor (OpenAI, Gemini por
-  // el endpoint compatible, Ollama...) viajaría como credencial a un servidor ajeno a Anthropic y taparía la variable del proveedor elegido.
+  // Quienes llaman pasan `api_key` leída de ANTHROPIC_API_KEY: esa clave solo vale para Anthropic. Con otro proveedor (OpenAI, Gemini,
+  // Ollama...) viajaría como credencial a un servidor ajeno a Anthropic y taparía la variable del proveedor elegido.
   if (!['anthropic', 'claude'].includes(nombreProvider) && config.api_key !== undefined) {
     const deAnthropic = [process.env.ANTHROPIC_API_KEY, process.env.CLAUDE_API_KEY].filter(Boolean);
     if (deAnthropic.includes(config.api_key)) delete config.api_key;
@@ -265,6 +278,10 @@ export function crearProvider(opts = {}) {
     case 'llama':
       return new OllamaProvider(config);
 
+    case 'gemini':
+    case 'google':
+      return new GeminiProvider(config);
+
     case 'stub':
     case 'test':
       return new StubProvider(config);
@@ -276,11 +293,11 @@ export function crearProvider(opts = {}) {
         // archivo del proyecto ya no puede traer una dirección sin permiso (sanearConfigDelProyecto)
         return new OllamaProvider({ base_url: nombreProvider, ...config });
       }
-      // Nombre que no se reconoce (un error tipográfico, o un proveedor sin soporte como Gemini): se detiene. Antes avisaba y
+      // Nombre que no se reconoce (un error tipográfico, o un proveedor sin soporte como Mistral): se detiene. Antes avisaba y
       // seguía con Anthropic, y enviaba el código y los prompts del usuario a un proveedor que no eligió (constitución:
       // «NO degradar en silencio»; «NO fijar un proveedor»).
       throw new ErrorProveedorDesconocido(nombreProvider);
   }
 }
 
-export { AnthropicProvider, OpenAIProvider, OllamaProvider, StubProvider };
+export { AnthropicProvider, OpenAIProvider, OllamaProvider, GeminiProvider, StubProvider };

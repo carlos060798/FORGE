@@ -2,8 +2,8 @@
 /**
  * Un nombre de proveedor que no se reconoce es un error, no un salto silencioso a Anthropic (informe de agnosticismo del
  * 2026-11-24, MEDIO-4). Constitución: «NO degradar en silencio: si el proveedor no está disponible, se informa y se detiene»
- * y «NO fijar un proveedor de modelos». Hasta ahora, `llm.provider: opnai` (o `FORGE_LLM_PROVIDER=gemini`, que no está
- * soportado) avisaba por consola y seguía con Anthropic: enviaba el código y los prompts del usuario a un proveedor que no
+ * y «NO fijar un proveedor de modelos». Hasta ahora, `llm.provider: opnai` (o `FORGE_LLM_PROVIDER=mistral`, que no está
+ * soportado; `gemini` sí lo está desde ADR-27) avisaba por consola y seguía con Anthropic: enviaba el código y los prompts del usuario a un proveedor que no
  * eligió. Criterios CA-004-04 y CA-004-05 de la spec 2026-11-12-proveedor-no-fijado.
  */
 import { test, describe, beforeEach, afterEach } from "node:test";
@@ -41,7 +41,7 @@ describe("crearProvider: un nombre desconocido se detiene", () => {
     });
   });
   test("el mensaje dice por qué no se usa otro proveedor y cómo corregirlo", () => {
-    assert.throws(() => crearProvider({ cwd, config: { provider: "gemini" } }), (e) => {
+    assert.throws(() => crearProvider({ cwd, config: { provider: "mistral" } }), (e) => {
       const m = aviso(/** @type {Error} */ (e));
       return /no (se )?usa(rá)? otro|en vez de usar otro|no elegiste|no elegido/i.test(m) && /LLM_PROVIDER/.test(m) && /sdd\.config\.yaml/.test(m);
     });
@@ -76,8 +76,8 @@ describe("crearProvider: un nombre desconocido se detiene", () => {
 });
 
 describe("crearProvider: lo que sí es válido sigue funcionando", () => {
-  test("los cuatro proveedores y sus alias se reconocen", () => {
-    const esperado = { anthropic: "anthropic", claude: "anthropic", openai: "openai", gpt: "openai", ollama: "ollama", local: "ollama", stub: "stub", test: "stub" };
+  test("los proveedores y sus alias se reconocen", () => {
+    const esperado = { anthropic: "anthropic", claude: "anthropic", openai: "openai", gpt: "openai", ollama: "ollama", local: "ollama", stub: "stub", test: "stub", gemini: "gemini", google: "gemini" };
     for (const [nombre, final] of Object.entries(esperado)) {
       assert.equal(crearProvider({ cwd, config: { provider: nombre } }).nombre, final, nombre);
     }

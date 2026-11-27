@@ -85,7 +85,7 @@ export function parseArgs(argv) {
 // ── Fábrica de dependencias ───────────────────────────────────────────────────
 
 /** Variable de entorno de la clave de cada proveedor que la necesita (Ollama y el de pruebas no usan). */
-const VARIABLE_DE_CLAVE = { anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY' };
+const VARIABLE_DE_CLAVE = { anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY' };
 
 /**
  * La clave y el aviso según el proveedor que de verdad se usará (el de `FORGE_LLM_PROVIDER`, el de

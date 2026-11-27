@@ -106,6 +106,22 @@ Que cualquier proveedor que pase una batería común de conformidad pueda ejecut
 - [ ] **CA-006-02**: Tres proyectos del kit terminan en éxito con un segundo proveedor real, con tope de gasto, y la evidencia queda en la carpeta de la spec. **Requiere clave y presupuesto del dueño.** (P1)
 - [ ] **CA-006-03**: Si no se hace, la documentación sigue diciendo «sin probar con modelo real» para ese proveedor. (P1)
 
+### HU-007: Proveedor Gemini por HTTP
+**Como** usuario con una clave de Gemini
+**Quiero** que FORGE use Gemini como proveedor de modelos
+**Para** no depender de Anthropic ni de OpenAI
+
+**Criterios de aceptación:** (añadidos el 2026-11-26, fase D1 del plan de huecos de agnosticismo; sin aprobar)
+- [ ] **CA-007-01**: Existe un proveedor `gemini` (alias `google`) que habla con la API HTTP de Gemini con `fetch`, sin SDK ni dependencias nuevas, y pasa la batería común de conformidad (`complete` y `conversar`) contra un servidor falso local, sin red ni clave. (P1)
+- [ ] **CA-007-02**: `gemini` y `google` se reconocen en la configuración; un nombre que no es válido sigue lanzando `ErrorProveedorDesconocido`. (P1)
+- [ ] **CA-007-03**: Con `GEMINI_API_KEY` y ninguna otra señal, la detección por credenciales elige `gemini`; `GOOGLE_API_KEY` sola no elige proveedor (es una variable genérica de Google), aunque sirve de clave si `gemini` ya está elegido. El orden anterior (Anthropic, OpenAI, Ollama) no cambia: Gemini va después. (P1)
+- [ ] **CA-007-04**: En `conversar`, cada llamada a herramienta recibe un id propio y único dentro de la respuesta (la API puede no traerlo), y el resultado vuelve emparejado por ese id y por el nombre original de la herramienta. (P1)
+- [ ] **CA-007-05**: La firma de pensamiento (`thoughtSignature`) que devuelva el modelo se conserva como bloque `opaco` y se reenvía intacta en la misma parte donde llegó; si falta, no se inventa. (P1)
+- [ ] **CA-007-06**: Los nombres de herramienta se adaptan a los caracteres que admite la API (sin puntos ni otros símbolos, con longitud máxima) y los que devuelve el modelo se traducen de vuelta al nombre original; dos nombres que colisionen no se confunden. (P1)
+- [ ] **CA-007-07**: Argumentos mal formados, resultado con error, corte por longitud, rechazo (bloqueo de seguridad) y error HTTP se traducen como en los demás proveedores; la clave no aparece en errores ni en la URL. (P1)
+- [ ] **CA-007-08**: Los niveles neutrales `alto`, `medio` y `economico` (y `opus`, `sonnet`, `haiku`) resuelven a un modelo de Gemini fijado en el código, sobrescribible con `modelos:`; `core/precios.js` trae sus precios con fecha y URL de fuente. (P1)
+- [ ] **CA-007-09**: Mientras no se ejecute el kit de pruebas independientes con una clave real, la documentación dice «sin probar con la API real» para Gemini (CA-006-03). (P1)
+
 ## 5. Escenarios de Uso
 
 ### Escenario 1: OpenAI con implementador por turnos
@@ -143,7 +159,7 @@ Un modelo nuevo de OpenAI sin entrada en la tabla: aviso con la clave que falta 
 
 ## 8. Fuera de Alcance (Exclusiones Explícitas)
 
-- Proveedores nuevos (Gemini, Mistral, Bedrock): se añaden después, pasando la batería.
+- Proveedores nuevos distintos de Gemini (Mistral, Bedrock): se añaden después, pasando la batería. Gemini entra por HU-007 (2026-11-26).
 - Caché de prompts fuera de Anthropic.
 - Enrutamiento automático entre proveedores según coste o éxito: es de la etapa de orquestador.
 - La API de respuestas de OpenAI: solo la de chat, que es la que comparten los puntos compatibles.
@@ -199,3 +215,4 @@ Un modelo nuevo de OpenAI sin entrada en la tabla: aviso con la clave que falta 
 ## 15. Historial de Aclaraciones
 
 - 2026-10-13: creada en borrador. Se corrige una afirmación previa de los planes: sí hay precios de OpenAI en la tabla, y un modelo sin precio se cuenta al más caro conocido.
+- 2026-11-26: se añade HU-007 (proveedor Gemini por HTTP, fase D1 del plan de huecos) en borrador. Decisiones en ADR-27 (propuesta). Sin aprobar.

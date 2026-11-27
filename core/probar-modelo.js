@@ -36,7 +36,7 @@ export async function probarModelo(opciones = {}) {
   const tope = opciones.tope ?? 0.5;
   const proveedor = leerVariable('LLM_PROVIDER', env) || proveedorPorCredenciales(env) || 'stub';
   if (proveedor === 'stub' && !opciones.permitirStub) {
-    return { ok: false, motivoNoEjecutada: 'No hay ningún proveedor de modelos real: define la clave de tu proveedor (ANTHROPIC_API_KEY, OPENAI_API_KEY u OLLAMA_BASE_URL) o FORGE_LLM_PROVIDER. Con el proveedor de pruebas no se demuestra nada.' };
+    return { ok: false, motivoNoEjecutada: 'No hay ningún proveedor de modelos real: define la clave de tu proveedor (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY u OLLAMA_BASE_URL) o FORGE_LLM_PROVIDER. Con el proveedor de pruebas no se demuestra nada.' };
   }
   if (!Number.isFinite(tope) || tope <= 0 || tope > 20) {
     return { ok: false, motivoNoEjecutada: 'El tope debe ser un número de dólares entre 0 y 20.' };
