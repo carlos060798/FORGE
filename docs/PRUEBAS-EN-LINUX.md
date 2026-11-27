@@ -16,10 +16,10 @@ Nota: al escribir esta guía no existía ninguna pasada verificada de la suite c
 
 ## Vía A: la CI de GitHub
 
-No necesita nada instalado. El flujo `.github/workflows/ci.yml` se dispara con `push` y con `pull_request` hacia `main`, `master` o `develop`.
+No necesita nada instalado. El flujo `.github/workflows/ci.yml` se dispara con `push` y con `pull_request` hacia `main`, `master`, `develop` o `desarrollo`.
 
 1. Sube la rama a GitHub: `git push origin <rama>`.
-2. Abre un pull request hacia `develop`, `main` o `master`. Un `push` a otra rama (por ejemplo `desarrollo`) no dispara la CI con la configuración actual.
+2. Haz `git push` a `desarrollo` (dispara la CI sin abrir nada) o abre un pull request hacia `main`, `develop` o `desarrollo`. Un `push` a cualquier otra rama no dispara la CI.
 3. En la pestaña **Actions**, abre la ejecución **CI**. Los trabajos «Tests (Node …)» corren en Ubuntu.
 4. Para ver un fallo, abre el trabajo en rojo, despliega el paso «Run tests» y busca la primera línea `not ok`.
 
