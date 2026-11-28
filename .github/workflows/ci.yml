@@ -47,7 +47,8 @@ jobs:
         run: |
           fallos=$(grep -E '^[[:space:]]*✖' prueba-linux.log | sed 's/^[[:space:]]*//' | sort -u | head -40 | awk '{printf "%s%%0A", $0}')
           resumen=$(grep -E '^ℹ (tests|pass|fail|skipped)' prueba-linux.log | paste -sd' ' -)
-          echo "::error title=Pruebas que fallan en Linux (Node ${{ matrix.node-version }})::${resumen}%0A${fallos}"
+          detalle=$(sed -n '/failing tests:/,$p' prueba-linux.log | head -120 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}' | cut -c1-6000)
+          echo "::error title=Pruebas que fallan en Linux (Node ${{ matrix.node-version }})::${resumen}%0A${fallos}%0A--- detalle ---%0A${detalle}"
 
   # La misma suite en Windows (los usuarios del MVP están en Windows; las pruebas de rutas con `\` y mayúsculas
   # solo tienen sentido aquí). Sin Docker real. Los runners de Windows son más lentos: tiempo máximo mayor.
@@ -84,7 +85,8 @@ jobs:
         run: |
           fallos=$(grep -E '^[[:space:]]*✖' prueba-windows.log | sed 's/^[[:space:]]*//' | sort -u | head -40 | awk '{printf "%s%%0A", $0}')
           resumen=$(grep -E '^ℹ (tests|pass|fail|skipped)' prueba-windows.log | paste -sd' ' -)
-          echo "::error title=Pruebas que fallan en Windows::${resumen}%0A${fallos}"
+          detalle=$(sed -n '/failing tests:/,$p' prueba-windows.log | head -120 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}' | cut -c1-6000)
+          echo "::error title=Pruebas que fallan en Windows::${resumen}%0A${fallos}%0A--- detalle ---%0A${detalle}"
 
   # Pruebas apartadas en tests/cuarentena.txt (ADR-23): se siguen ejecutando para que el fallo se vea,
   # pero este job NO bloquea (continue-on-error) y no debe ser comprobación requerida. CA-001-06.
