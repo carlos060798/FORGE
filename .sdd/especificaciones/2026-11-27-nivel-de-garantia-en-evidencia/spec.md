@@ -2,7 +2,7 @@
 id: 2026-11-27-nivel-de-garantia-en-evidencia
 titulo: "Nivel de garantía en la evidencia: todo informe dice si su veredicto es consultivo, local, aislado o verificable por terceros"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado — redactada por Claude a petición del dueño; la aprobación es del dueño

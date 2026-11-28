@@ -2,7 +2,7 @@
 id: 2026-11-27-guardian-cierre-c07
 titulo: "Guardián: cerrar el fallo abierto por ruta de hook no resuelta (C-07) y los rodeos conocidos"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

@@ -2,7 +2,7 @@
 id: 2026-11-27-modos-de-riesgo-y-persona
 titulo: "Modos de riesgo y persona: dos ejes que solo suben las exigencias sobre un suelo fijo del núcleo"
 tamano: grande  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado — redactada por Claude a petición del dueño; la aprobación es del dueño

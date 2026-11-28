@@ -2,7 +2,7 @@
 id: 2026-11-27-implementar-por-motor
 titulo: "Implementar por el motor: sdd.implementar invoca fragua run y decide por sus códigos de salida; y cada orden citada existe"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

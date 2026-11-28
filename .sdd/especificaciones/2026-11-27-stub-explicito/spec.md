@@ -2,7 +2,7 @@
 id: 2026-11-27-stub-explicito
 titulo: "Stub explícito: sin clave de modelo es un error; el proveedor de pruebas solo con opción explícita y su evidencia es inconfundible"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

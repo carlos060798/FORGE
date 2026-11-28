@@ -2,7 +2,7 @@
 id: 2026-11-27-runner-falla-cerrado
 titulo: "Runner falla cerrado: un lenguaje sin runner es un error con código propio, nunca `npm test`"
 tamano: pequeño  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

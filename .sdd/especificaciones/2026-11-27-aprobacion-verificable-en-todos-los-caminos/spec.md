@@ -2,7 +2,7 @@
 id: 2026-11-27-aprobacion-verificable-en-todos-los-caminos
 titulo: "Aprobación verificable en todos los caminos: la verificación firmada de la spec en todo llamador de la máquina de estados y en la evidencia"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

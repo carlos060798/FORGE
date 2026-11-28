@@ -2,7 +2,7 @@
 id: 2026-11-27-honestidad-documental-2
 titulo: "Honestidad documental 2: archivar la narrativa de «fábrica», cerrar las contradicciones y vigilar las órdenes citadas"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-27
 actualizada: 2026-11-27
 autor: humano  # humano | importado

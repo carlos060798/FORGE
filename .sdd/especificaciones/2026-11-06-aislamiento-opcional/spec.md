@@ -2,7 +2,7 @@
 id: 2026-11-06-aislamiento-opcional
 titulo: "Aislamiento opcional: nivel base sin Docker y nivel aislado, con el nivel usado visible en cada veredicto"
 tamano: mediano  # micro | pequeño | mediano | grande
-estado: borrador  # borrador | en_revision | aprobada | en_implementacion | completada
+estado: aprobada  # por delegación del dueño el 2026-11-28 (bloque MVP, respuesta «Aprobar bloque MVP por delegación»); pendiente de ratificación
 creada: 2026-11-06
 actualizada: 2026-11-06
 autor: humano  # humano | importado
