@@ -15,6 +15,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { leerVariableRestrictiva } from '../core/entorno.js';
 
 /** Las carpetas de la suite (antes, los globs del script `test` de package.json). */
 const CARPETAS = ['tests', 'tests/e2e', 'tests/evals'];
@@ -125,7 +126,8 @@ export function clasificar(raiz, hoy = new Date()) {
  * @returns {string[]}
  */
 export function argumentosDeRegistro(env) {
-  const destino = env.FRAGUA_PRUEBAS_REGISTRO;
+  // Por el módulo central (acepta FRAGUA_ y FORGE_): ninguna lectura directa de estas variables fuera de core/entorno.js
+  const destino = leerVariableRestrictiva('PRUEBAS_REGISTRO', env, '');
   if (!destino) return [];
   return ['--test-reporter=spec', '--test-reporter-destination=stdout', '--test-reporter=spec', `--test-reporter-destination=${destino}`];
 }

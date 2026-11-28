@@ -7,7 +7,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, cpSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, cpSync, rmSync, existsSync, readFileSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
@@ -28,7 +28,7 @@ const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
 
 describe("guardián endurecido — falla cerrado (C-07)", () => {
   test("si un módulo compartido no carga, bloquea todo en vez de dejar pasar", () => {
-    const tmp = mkdtempSync(join(tmpdir(), "guardian-roto-"));
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "guardian-roto-")));
     try {
       cpSync(join(RAIZ, "claude-hooks"), join(tmp, "hooks"), { recursive: true });
       // El stub reexporta ../../core/...: en el temporal no existe, así que la carga falla
@@ -65,7 +65,7 @@ describe("guardián endurecido — su propio registro (C-01)", () => {
 describe("guardián endurecido — CircuitBreaker (C-05)", () => {
   /** @param {string} nivel */
   function proyectoConNivel(nivel) {
-    const tmp = mkdtempSync(join(tmpdir(), "guardian-nivel-"));
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "guardian-nivel-")));
     mkdirSync(join(tmp, ".sdd"), { recursive: true });
     writeFileSync(join(tmp, ".sdd", "execution-level.json"), JSON.stringify({ nivel }));
     return tmp;
@@ -109,7 +109,7 @@ describe("guardián endurecido — agentes de solo lectura (C-06)", () => {
 
 describe("guardián endurecido — registros sin secretos (C-09)", () => {
   test("la auditoría del agente no guarda la clave que iba en el comando", () => {
-    const tmp = mkdtempSync(join(tmpdir(), "guardian-audit-"));
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "guardian-audit-")));
     try {
       // El comando se permite (la clave va en una variable que no coincide con los patrones de bloqueo) y se audita
       correr(bash("echo 'ghp_abcdefghijklmnopqrstuvwxyz0123456789'"), { cwd: tmp, env: { CLAUDE_AGENT_NAME: "implementador" } });

@@ -39,6 +39,15 @@ jobs:
         run: npm test
         env:
           FORGE_TEST_DOCKER: "0"
+          FRAGUA_PRUEBAS_REGISTRO: prueba-linux.log
+
+      # Ver el comentario del job test-windows: la anotación deja a la vista las pruebas que fallan.
+      - name: Pruebas que fallan (anotación)
+        if: failure()
+        run: |
+          fallos=$(grep -E '^[[:space:]]*✖' prueba-linux.log | sed 's/^[[:space:]]*//' | sort -u | head -40 | awk '{printf "%s%%0A", $0}')
+          resumen=$(grep -E '^ℹ (tests|pass|fail|skipped)' prueba-linux.log | paste -sd' ' -)
+          echo "::error title=Pruebas que fallan en Linux (Node ${{ matrix.node-version }})::${resumen}%0A${fallos}"
 
   # La misma suite en Windows (los usuarios del MVP están en Windows; las pruebas de rutas con `\` y mayúsculas
   # solo tienen sentido aquí). Sin Docker real. Los runners de Windows son más lentos: tiempo máximo mayor.

@@ -7,7 +7,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 const HOOK = join(dirname(fileURLToPath(import.meta.url)), "../claude-hooks/pre-tool-guard.js");
 
 function proyecto(adrs) {
-  const dir = mkdtempSync(join(tmpdir(), "forge-guarda-"));
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "forge-guarda-")));
   mkdirSync(join(dir, ".sdd", "arquitectura"), { recursive: true });
   for (const [nombre, texto] of Object.entries(adrs)) writeFileSync(join(dir, ".sdd", "arquitectura", nombre), texto);
   return dir;
@@ -70,6 +70,6 @@ describe("guarda de ADR en .sdd/arquitectura", () => {
   test("términos demasiado cortos se ignoran y un proyecto sin ADR no cambia", () => {
     const dir = proyecto({ "ADR-99-x.md": ADR("aceptada", "## Patrones prohibidos\n\n- `a`\n") });
     assert.equal(escribir(dir, join(dir, "a.js"), "a b c").codigo, 0);
-    assert.equal(escribir(mkdtempSync(join(tmpdir(), "forge-vacio-")), "a.js", "dockerode").codigo, 0);
+    assert.equal(escribir(realpathSync(mkdtempSync(join(tmpdir(), "forge-vacio-"))), "a.js", "dockerode").codigo, 0);
   });
 });
