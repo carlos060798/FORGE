@@ -65,6 +65,17 @@ jobs:
         run: npm test
         env:
           FORGE_TEST_DOCKER: "0"
+          FRAGUA_PRUEBAS_REGISTRO: prueba-windows.log
+
+      # Los registros de un job exigen sesión de GitHub; las anotaciones son públicas. Si la suite falla, deja en una
+      # anotación los nombres de las pruebas que fallaron para poder diagnosticarlo sin entrar al registro.
+      - name: Pruebas que fallan (anotación)
+        if: failure()
+        shell: bash
+        run: |
+          fallos=$(grep -E '^[[:space:]]*✖' prueba-windows.log | sed 's/^[[:space:]]*//' | sort -u | head -40 | awk '{printf "%s%%0A", $0}')
+          resumen=$(grep -E '^ℹ (tests|pass|fail|skipped)' prueba-windows.log | paste -sd' ' -)
+          echo "::error title=Pruebas que fallan en Windows::${resumen}%0A${fallos}"
 
   # Pruebas apartadas en tests/cuarentena.txt (ADR-23): se siguen ejecutando para que el fallo se vea,
   # pero este job NO bloquea (continue-on-error) y no debe ser comprobación requerida. CA-001-06.

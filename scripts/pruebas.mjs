@@ -118,6 +118,18 @@ export function clasificar(raiz, hoy = new Date()) {
   return { todos, lentos, rapidos, cuarentena, sobrantes, sobrantesCuarentena, erroresCuarentena };
 }
 
+/**
+ * Con `FRAGUA_PRUEBAS_REGISTRO=<archivo>` el mismo informe va además a ese archivo. La CI lo usa para publicar los nombres de
+ * las pruebas que fallan en una anotación (los registros de un job exigen sesión de GitHub; las anotaciones son públicas).
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {string[]}
+ */
+export function argumentosDeRegistro(env) {
+  const destino = env.FRAGUA_PRUEBAS_REGISTRO;
+  if (!destino) return [];
+  return ['--test-reporter=spec', '--test-reporter-destination=stdout', '--test-reporter=spec', `--test-reporter-destination=${destino}`];
+}
+
 function main() {
   const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const [modo = 'todo', ...extra] = process.argv.slice(2);
@@ -145,7 +157,7 @@ function main() {
     (codigo === 0 ? console.log : console.error)(`[pruebas] nada que ejecutar en el modo ${modo}${codigo === 0 ? '.' : ': el descubrimiento no encontró ningún archivo de prueba (¿carpeta renombrada o directorio de trabajo distinto?)'}`);
     process.exit(codigo);
   }
-  const r = spawnSync(process.execPath, ['--test', ...extra, ...archivos], { cwd: raiz, stdio: 'inherit' });
+  const r = spawnSync(process.execPath, ['--test', ...argumentosDeRegistro(process.env), ...extra, ...archivos], { cwd: raiz, stdio: 'inherit' });
   process.exit(r.status ?? 1);
 }
 

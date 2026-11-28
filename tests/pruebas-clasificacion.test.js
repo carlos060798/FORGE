@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { clasificar, parsearCuarentena, codigoSiNadaQueEjecutar, DIAS_CADUCIDAD, MAX_CUARENTENA, MODOS } from "../scripts/pruebas.mjs";
+import { clasificar, parsearCuarentena, codigoSiNadaQueEjecutar, argumentosDeRegistro, DIAS_CADUCIDAD, MAX_CUARENTENA, MODOS } from "../scripts/pruebas.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -177,5 +177,18 @@ describe("clasificar con un árbol de pruebas sintético", () => {
       assert.deepEqual(r.lentos, []);
       assert.ok(!r.todos.includes("tests/c.test.js"));
     } finally { rmSync(raiz, { recursive: true, force: true }); }
+  });
+});
+
+describe("argumentosDeRegistro: la CI deja un registro legible sin cambiar la salida", () => {
+  test("sin la variable no añade nada", () => {
+    assert.deepEqual(argumentosDeRegistro({}), []);
+    assert.deepEqual(argumentosDeRegistro({ FRAGUA_PRUEBAS_REGISTRO: "" }), []);
+  });
+  test("con la variable, el mismo informe va a la salida y al archivo", () => {
+    assert.deepEqual(argumentosDeRegistro({ FRAGUA_PRUEBAS_REGISTRO: "prueba.log" }), [
+      "--test-reporter=spec", "--test-reporter-destination=stdout",
+      "--test-reporter=spec", "--test-reporter-destination=prueba.log",
+    ]);
   });
 });
